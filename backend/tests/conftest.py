@@ -45,6 +45,34 @@ def seeded_db(empty_db, settings):
     return empty_db
 
 
+# 합성 문서를 판정 대상(묶음 A)으로 보게 하는 문서 목록 행
+CATALOG = [(91, "synthetic_judgment", "A"), (92, "synthetic_feeder", "A"),
+           (93, "synthetic_154kV_bundle_a", "A")]
+
+
+@pytest.fixture
+def db(seeded_db, settings):
+    """규칙 사전 + 제품표 + 합성 문서 목록까지 넣은 DB (판정 이후 단계 테스트용)."""
+    from rfp_agent.db.cli import LOSS_FILE, PRODUCT_FILES
+    from rfp_agent.db.seed import seed_products
+
+    products = settings.seed_dir / "products"
+    seed_products(seeded_db, [products / f for f in PRODUCT_FILES], products / LOSS_FILE)
+    for file_no, key, bundle in CATALOG:
+        seeded_db.execute("INSERT INTO document_catalog (file_no, file_key, bundle, language) "
+                          "VALUES (%s, %s, %s, 'en')", (file_no, key, bundle))
+    seeded_db.commit()
+    return seeded_db
+
+
+@pytest.fixture
+def spec(tmp_path):
+    """판정 대상 합성 데이터시트 (230 kV GIS 4,000 A 세 곳, 115 kV GIS)."""
+    from tests.docx_factory import build_judgment_spec
+
+    return build_judgment_spec(tmp_path / "synthetic_judgment.docx")
+
+
 class FakeLLM:
     """언어 모델 대역. 받은 프롬프트를 모두 기록하고, 스키마에 맞는 기본 답을 낸다."""
 

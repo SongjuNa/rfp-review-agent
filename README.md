@@ -43,10 +43,15 @@ uv run rfp-db setup                     # migrate + seed-rules + seed-products
 uv run uvicorn rfp_agent.api.main:app --reload
 
 cd ../frontend
-npm install && npm run dev
+npm install && npm run dev               # http://localhost:5173
 ```
 
+화면에서 docx를 올리거나 서버의 `data/private/rfp_docx` 파일을 골라 검토를 시작합니다. 처리가 끝나면 **담당자 확인** 단계에서 결과(요구사항, 위험 조건, 적합성 판정, 보증값, 손실 환산, 일탈·질의 목록, 제안 포인트)를 확정·수정·반려하고, "담당자 확인 마치기"를 누르면 승인 기준(AR-01·02·03·06·07·08)에 걸릴 때 **승인 대기**가 됩니다. 오른쪽 위 사용자를 "기본 승인자"로 바꾸면 승인·반려할 수 있습니다(로그인 전 임시).
+
 ### 테스트
+
+화면 E2E(Playwright)는 백엔드(8000)와 `npm run dev`(5173)를 띄우고 서버에 파일 1 원문이 있을 때 `cd frontend && npm run e2e`로 돌립니다(CI에서는 돌지 않음).
+
 
 ```bash
 cd backend
@@ -78,7 +83,7 @@ uv run rfp-review status 1
 
 docx를 읽어 분류 → 절·표 나누기 → 요구사항 추출 → 유형 → 값 정리 → 위험 조건 후보 → 제품 비교 판정 → 보증값 후보 → 손실 환산 → 일탈·질의 목록 초안 → 기술 제안 포인트 후보까지 돌리고 DB에 저장합니다. 판정에는 제품표(`rfp-db seed-products`)가 필요합니다. `GEMINI_API_KEY`가 없으면 AI 보조 단계를 건너뛰고 코드 규칙 결과만 냅니다. 같은 파일·같은 사전 판·같은 코드면 저장된 결과를 다시 씁니다.
 
-API: `POST /api/runs`(docx 올리기), `POST /api/runs/library`(서버의 `data/private/rfp_docx` 파일 이름으로), `GET /api/runs/{id}`, `…/documents`, `…/pairs`, `…/requirements?type_code=&document_id=`, `…/risks`, `…/judgments?result=&group=`, `…/equipment`(설비 묶음별 비교 제품과 후보), `PUT …/equipment/{묶음}/product`(비교 제품 바꿔 보기), `…/warranty`, `…/losses`, `PUT …/losses/{id}`(손실값 고치기, 팀 가정), `…/outputs?list_kind=`, `PUT …/outputs/{id}/status`(목록에서 빼기), `…/submission-check`, `…/proposals`. 자세한 모양은 `/docs`(FastAPI 문서).
+API: `POST /api/runs`(docx 올리기), `POST /api/runs/library`(서버의 `data/private/rfp_docx` 파일 이름으로), `GET /api/runs/{id}`, `…/documents`, `…/pairs`, `…/requirements?type_code=&document_id=`, `…/risks`, `…/judgments?result=&group=`, `…/equipment`(설비 묶음별 비교 제품과 후보), `PUT …/equipment/{묶음}/product`(비교 제품 바꿔 보기), `…/warranty`, `…/losses`, `PUT …/losses/{id}`(손실값 고치기, 팀 가정), `…/outputs?list_kind=`, `…/submission-check`, `…/proposals`, 확인·승인 `POST …/actions`(확정·수정·반려·채택·버림), `…/history`, `POST …/finish-review`, `GET·POST …/approval`, `POST …/reopen`, `…/deliverables`(전달 대상: 채택한 제안 포인트만). 자세한 모양은 `/docs`(FastAPI 문서).
 
 ## OpenSpec으로 일하기
 
@@ -87,9 +92,9 @@ API: `POST /api/runs`(docx 올리기), `POST /api/runs/library`(서버의 `data/
 | 단계 | change | 명세서 | 상태 |
 |---|---|---|---|
 | 1 | `add-project-foundation` | 저장소·DB·기준 데이터 | 완료 (archive) |
-| 2 | `add-document-pipeline` | FR-01~06, CR-02~05·11·12 | 할 일 |
-| 3 | `add-judgment-and-outputs` | FR-07·08·09·13·14 | 할 일 |
-| 4 | `add-review-approval` | FR-10, 화면 | 할 일 |
+| 2 | `add-document-pipeline` | FR-01~06, CR-02~05·11·12 | 완료 (archive) |
+| 3 | `add-judgment-and-outputs` | FR-07·08·09·13·14 | 완료 (archive) |
+| 4 | `add-review-approval` | FR-10, 화면 | 완료 (archive) |
 
 ```bash
 npm i -g @fission-ai/openspec

@@ -40,7 +40,7 @@ openspec/
 | 1 | `archive/2026-10-23-add-project-foundation` | 저장소·DB·기준 데이터 (완료) |
 | 2 | `archive/2026-10-23-add-document-pipeline` | FR-01~06 문서 분류 → 구조 → 추출 → 유형 → 값 → 위험 조건 (완료) |
 | 3 | `archive/2026-10-23-add-judgment-and-outputs` | FR-07·08·09·13·14 판정, 보증값, 일탈·질의 목록, 손실 환산, 제안 포인트 (완료) |
-| 4 | `add-review-approval` | FR-10 확인·승인·이력, 화면 |
+| 4 | `archive/2026-10-23-add-review-approval` | FR-10 확인·승인·이력, 화면 (완료) |
 
 ## 3. 작업 흐름
 

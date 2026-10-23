@@ -1,5 +1,6 @@
 """검토 실행 API: 문서를 올려 실행을 시작하고, 상태와 결과(요구사항·값·위험 조건·판정·보증값·
-손실 환산·일탈·질의 목록·제안 포인트)를 본다. 비교 제품 바꾸기와 손실값 고치기도 여기서 한다."""
+손실 환산·일탈·질의 목록·제안 포인트)를 본다. 비교 제품 바꾸기, 손실값 고치기,
+확인·승인(FR-10)도 여기서 한다."""
 
 import hashlib
 import re
@@ -10,7 +11,7 @@ from pydantic import BaseModel, Field
 
 from rfp_agent.config import get_settings
 from rfp_agent.db.connection import connect
-from rfp_agent.pipeline import queries
+from rfp_agent.pipeline import queries, review
 from rfp_agent.pipeline.loss import recalculate
 from rfp_agent.pipeline.outputs import check_submission
 from rfp_agent.pipeline.proposals import build_proposals
@@ -34,8 +35,31 @@ class LossValues(BaseModel):
     loss_aux_kw: float | None = Field(None, ge=0)
 
 
-class ItemStatus(BaseModel):
-    status: str = Field(pattern="^(DRAFT|REMOVED)$")
+class Action(BaseModel):
+    target: str     # judgment, warranty_candidate, output_item, proposal_point, risk_flag
+    target_id: int
+    action: str                     # CONFIRM, EDIT, REJECT, ADOPT, DISCARD
+    value: dict | None = None       # EDIT: {"result"} / {"value", "unit"} / {"text"}
+    reason: str | None = None
+    actor_id: int | None = None
+
+
+class Actor(BaseModel):
+    actor_id: int | None = None
+
+
+class Decision(BaseModel):
+    decision: str = Field(pattern="^(APPROVED|REJECTED)$")
+    comment: str | None = None
+    actor_id: int | None = None
+
+
+def _review(call):
+    """확인·승인 동작의 오류를 HTTP 응답으로 바꾼다."""
+    try:
+        return call()
+    except review.ReviewError as exc:
+        raise HTTPException(exc.status, str(exc)) from exc
 
 
 def _summary(run_id: int) -> dict:
@@ -58,6 +82,29 @@ def _safe_name(name: str) -> str:
     if not name.lower().endswith(".docx") or re.search(r"[\x00/\\]", name):
         raise HTTPException(400, f"docx 파일만 받습니다: {name}")
     return name
+
+
+@router.get("/users")
+def users() -> list[dict]:
+    """로그인(범위 밖) 전까지 화면에서 고르는 사용자 목록."""
+    with connect() as conn:
+        return queries.users(conn)
+
+
+@router.get("/runs")
+def runs(limit: int = Query(50, le=200)) -> list[dict]:
+    with connect() as conn:
+        return queries.run_list(conn, limit)
+
+
+@router.get("/requirements/{requirement_id}")
+def requirement(requirement_id: int, run_id: int | None = None) -> dict:
+    """요구사항 원문. run_id를 주면 그 실행의 문서 위치만 낸다."""
+    with connect() as conn:
+        item = queries.requirement(conn, requirement_id, run_id)
+    if item is None:
+        raise HTTPException(404, f"요구사항 {requirement_id}이(가) 없습니다.")
+    return item
 
 
 @router.get("/library")
@@ -160,10 +207,19 @@ def choose_product(run_id: int, group: str, body: ProductChoice) -> dict:
         if conn.execute("SELECT 1 FROM judgment WHERE run_id = %s AND equipment_group = %s "
                         "LIMIT 1", (run_id, group)).fetchone() is None:
             raise HTTPException(404, f"설비 묶음 {group}이(가) 없습니다.")
+        _review(lambda: review.require_stage(conn, run_id, "ENGINEER_REVIEW"))
+        before = conn.execute("SELECT product_code FROM run_product_choice WHERE run_id = %s "
+                              "AND equipment_group = %s", (run_id, group)).fetchone()
         try:
-            return switch_product(make_context(conn), run_id, group, body.product_code)
+            counts = switch_product(make_context(conn), run_id, group, body.product_code)
         except KeyError as exc:
             raise HTTPException(400, f"없는 제품: {body.product_code}") from exc
+        review.log(conn, run_id, "run_product_choice", run_id, "EDIT",
+                   {"group": group, "product_code": before[0] if before else None},
+                   {"group": group, "product_code": body.product_code}, "비교 제품 바꿔 보기",
+                   review.default_user(conn, "ENGINEER"))
+        conn.commit()
+        return counts
 
 
 @router.get("/runs/{run_id}/warranty")
@@ -189,8 +245,13 @@ def update_loss(run_id: int, loss_calc_id: int, body: LossValues) -> dict:
         if conn.execute("SELECT 1 FROM loss_calc WHERE run_id = %s AND loss_calc_id = %s",
                         (run_id, loss_calc_id)).fetchone() is None:
             raise HTTPException(404, f"손실 환산 {loss_calc_id}이(가) 없습니다.")
+        _review(lambda: review.require_stage(conn, run_id, "ENGINEER_REVIEW"))
+        before = review.row(conn, "loss_calc", loss_calc_id, run_id)
         result = recalculate(conn, loss_calc_id, body.loss_noload_kw, body.loss_load_kw,
                              body.loss_aux_kw)
+        review.log(conn, run_id, "loss_calc", loss_calc_id, "EDIT", before,
+                   review.row(conn, "loss_calc", loss_calc_id, run_id), "손실값 고치기",
+                   review.default_user(conn, "ENGINEER"))
         build_proposals(conn, run_id, make_context(conn).llm)
         conn.commit()
         return result
@@ -201,20 +262,6 @@ def run_outputs(run_id: int, list_kind: str | None = None) -> list[dict]:
     _summary(run_id)
     with connect() as conn:
         return queries.run_outputs(conn, run_id, list_kind)
-
-
-@router.put("/runs/{run_id}/outputs/{item_id}/status")
-def set_output_status(run_id: int, item_id: int, body: ItemStatus) -> dict:
-    """목록 항목을 빼거나(REMOVED) 되돌린다(DRAFT). 확정·승인은 4단계에서 한다."""
-    _summary(run_id)
-    with connect() as conn:
-        updated = conn.execute(
-            "UPDATE output_item SET status = %s WHERE run_id = %s AND item_id = %s "
-            "AND status IN ('DRAFT', 'REMOVED')", (body.status, run_id, item_id)).rowcount
-        if not updated:
-            raise HTTPException(404, f"바꿀 수 있는 목록 항목 {item_id}이(가) 없습니다.")
-        conn.commit()
-        return check_submission(conn, run_id)
 
 
 @router.get("/runs/{run_id}/submission-check")
@@ -239,3 +286,53 @@ def run_proposals(run_id: int) -> list[dict]:
     _summary(run_id)
     with connect() as conn:
         return queries.run_proposals(conn, run_id)
+
+
+@router.post("/runs/{run_id}/actions")
+def act(run_id: int, body: Action) -> dict:
+    """후보 하나를 확정·수정·반려(제안 포인트는 채택·버림·수정)하고 이력을 남긴다."""
+    with connect() as conn:
+        return _review(lambda: review.act(make_context(conn), run_id, body.target,
+                                          body.target_id, body.action, body.value,
+                                          body.reason, body.actor_id))
+
+
+@router.get("/runs/{run_id}/history")
+def history(run_id: int, target: str | None = None, target_id: int | None = None) -> list[dict]:
+    _summary(run_id)
+    with connect() as conn:
+        return review.history(conn, run_id, target, target_id)
+
+
+@router.post("/runs/{run_id}/finish-review")
+def finish_review(run_id: int, body: Actor) -> dict:
+    """담당자 확인을 마친다. 승인 기준에 걸리면 승인 대기가 된다."""
+    with connect() as conn:
+        return _review(lambda: review.finish_review(conn, run_id, body.actor_id))
+
+
+@router.get("/runs/{run_id}/approval")
+def get_approval(run_id: int) -> dict:
+    with connect() as conn:
+        return _review(lambda: review.approval(conn, run_id))
+
+
+@router.post("/runs/{run_id}/approval")
+def decide(run_id: int, body: Decision) -> dict:
+    with connect() as conn:
+        return _review(lambda: review.decide(conn, run_id, body.decision, body.comment,
+                                             body.actor_id))
+
+
+@router.post("/runs/{run_id}/reopen")
+def reopen(run_id: int, body: Actor) -> dict:
+    with connect() as conn:
+        return _review(lambda: review.reopen(conn, run_id, body.actor_id))
+
+
+@router.get("/runs/{run_id}/deliverables")
+def deliverables(run_id: int) -> dict:
+    """전달 대상: 빼지 않은 목록, 확정한 보증값, 채택한 제안 포인트만 (AR-08)."""
+    _summary(run_id)
+    with connect() as conn:
+        return review.deliverables(conn, run_id)

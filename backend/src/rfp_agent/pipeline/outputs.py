@@ -71,7 +71,7 @@ def _judgment_drafts(conn: psycopg.Connection, run_id: int) -> list[Draft]:
                       v.raw_text, k.name_ko
                FROM judgment j JOIN req_value v ON v.value_id = j.value_id
                LEFT JOIN item_key k ON k.item_key = v.item_key
-               WHERE j.run_id = %s AND j.is_current
+               WHERE j.run_id = %s AND j.is_current AND j.review_status <> 'REJECTED'
                  AND j.result IN ('DEVIATION_CANDIDATE', 'QUERY_CANDIDATE')
                ORDER BY j.judgment_id""", (run_id,)).fetchall()
     drafts: dict[tuple, Draft] = {}
@@ -93,6 +93,10 @@ def _judgment_drafts(conn: psycopg.Connection, run_id: int) -> list[Draft]:
                          "판정: 일탈 후보")
                 template = (f"{name} 요구값 {{v1}} {unit}에 대해 비교 제품 {{p}}의 값은 {{v2}}로 "
                             "요구를 그대로 맞추지 못합니다. 일탈로 제출할지 확인이 필요합니다.")
+            elif r["reason_code"] != "MULTI_VALUE":     # 엔지니어가 질의로 바꾼 판정
+                marks = {"v1": "요구값", "p": "비교 제품"}
+                facts = f"항목: {name}, 요구값 {{v1}} {unit}, 적용 방법을 질의"
+                template = f"{name} 요구값 {{v1}} {unit}의 적용 범위와 조건을 질의합니다."
             else:
                 marks = {"v1": "요구 칸의 값들", "p": "비교 제품"}
                 facts = f"항목: {name}, 요구 칸 {{v1}} {unit}에 값이 여럿, 어느 값인지 질의"
@@ -110,6 +114,8 @@ def _risk_drafts(conn: psycopg.Connection, run_id: int) -> list[Draft]:
     names = dict(conn.execute("SELECT item_key, name_ko FROM item_key"))
     drafts: dict[tuple, Draft] = {}
     for risk in queries.run_risks(conn, run_id):
+        if risk["status"] == "CLOSED_OK":           # 엔지니어가 문제 없음으로 닫은 위험 조건
+            continue
         members = risk["members"]
         if risk["risk_kind"] == "VALUE_MISMATCH":
             raws = sorted({(m["value_raw"] or "").strip() for m in members})
@@ -150,10 +156,17 @@ def build_outputs(conn: psycopg.Connection, run_id: int, document_ids: list[int]
     names = {kind: find_form(conn, document_ids, pattern)
              for kind, pattern in (("DEVIATION", DEVIATION_FORM), ("QUERY", QUERY_FORM))}
     _, clause = find_form(conn, document_ids, QUERY_CLAUSE)
+    reviewed = _reviewed_items(conn, run_id)
     with conn.transaction():
         clear_outputs(conn, run_id)
         by_requirement: dict[int, list[tuple[str, int]]] = defaultdict(list)
         for draft, (template, drafted_by) in zip(drafts, texts, strict=True):
+            status = "DRAFT"
+            if prev := reviewed.get((draft.list_kind, repr(draft.key))):
+                # 같은 항목을 다시 만들면 엔지니어 확인 결과(확정·빼기·고친 문장)를 이어 쓴다
+                status = prev["status"]
+                if prev["drafted_by"] == "ENGINEER":
+                    template, drafted_by = prev["text_draft"], "ENGINEER"
             filled = fill(template, draft.values)
             name, form_req = names[draft.list_kind]
             basis = form_req if draft.list_kind == "DEVIATION" else (clause or form_req)
@@ -161,9 +174,9 @@ def build_outputs(conn: psycopg.Connection, run_id: int, document_ids: list[int]
                 """INSERT INTO output_item (run_id, list_kind, text_draft, basis_requirement_id,
                        number_check, status, list_name, group_key, number_detail, drafted_by,
                        is_assumed)
-                   VALUES (%s, %s, %s, %s, %s, 'DRAFT', %s, %s, %s, %s, %s)
+                   VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                    RETURNING item_id""",
-                (run_id, draft.list_kind, filled.text, basis, filled.check,
+                (run_id, draft.list_kind, filled.text, basis, filled.check, status,
                  name or DEFAULT_NAMES[draft.list_kind], repr(draft.key), filled.detail,
                  drafted_by, draft.is_assumed)).fetchone()[0]
             sources = [(j, None) for j in draft.judgment_ids] + [(None, r) for r in draft.risk_ids]
@@ -185,6 +198,15 @@ def build_outputs(conn: psycopg.Connection, run_id: int, document_ids: list[int]
     return len(drafts)
 
 
+def _reviewed_items(conn: psycopg.Connection, run_id: int) -> dict[tuple, dict]:
+    with conn.cursor(row_factory=dict_row) as cur:
+        rows = cur.execute(
+            "SELECT list_kind, group_key, status, text_draft, drafted_by FROM output_item "
+            "WHERE run_id = %s AND (status <> 'DRAFT' OR drafted_by = 'ENGINEER')",
+            (run_id,)).fetchall()
+    return {(r["list_kind"], r["group_key"]): r for r in rows}
+
+
 def clear_outputs(conn: psycopg.Connection, run_id: int) -> None:
     items = "SELECT item_id FROM output_item WHERE run_id = %s"
     conn.execute(f"DELETE FROM output_item_link WHERE item_id IN ({items}) "
@@ -198,7 +220,8 @@ def check_submission(conn: psycopg.Connection, run_id: int) -> dict:
     """제출 전 누락 점검. 일탈 후보인데 일탈 목록(빼지 않은 항목)에 없는 판정을 찾는다 (AR-07)."""
     candidates = [r[0] for r in conn.execute(
         "SELECT judgment_id FROM judgment WHERE run_id = %s AND is_current "
-        "AND result = 'DEVIATION_CANDIDATE' ORDER BY judgment_id", (run_id,))]
+        "AND result = 'DEVIATION_CANDIDATE' AND review_status <> 'REJECTED' "
+        "ORDER BY judgment_id", (run_id,))]
     listed = {r[0] for r in conn.execute(
         """SELECT s.judgment_id FROM output_item_source s JOIN output_item i USING (item_id)
            WHERE i.run_id = %s AND i.list_kind = 'DEVIATION' AND i.status <> 'REMOVED'

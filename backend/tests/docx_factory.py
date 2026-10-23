@@ -98,6 +98,7 @@ GIS_115_ROWS = [
     ["6", "Rated normal current of bus coupler", "kA", "3.15", ""],
     ["7", "Manufacturer's name", "", "", ""],
     ["8", "Weight of circuit breaker", "kg", "", ""],
+    ["10", "Colour of enclosure", "", "RAL 7032", ""],
 ]
 FEEDER_QUERY_ROW = ["9", "Rated normal current of feeder bays", "A", "2000/1250", ""]
 

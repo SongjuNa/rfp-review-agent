@@ -4,40 +4,17 @@
 Scenario. 실제 문서로 하는 확인은 test_corpus.py에 있다.
 """
 
-import pytest
 
-from rfp_agent.db.cli import LOSS_FILE, PRODUCT_FILES
-from rfp_agent.db.seed import seed_products
 from rfp_agent.pipeline import queries
 from rfp_agent.pipeline.run import RunContext, create_run, execute_run, switch_product
 from tests.conftest import FakeLLM
-from tests.docx_factory import build_feeder_copy, build_gis_spec, build_judgment_spec
+from tests.docx_factory import build_feeder_copy, build_gis_spec
 
 VERSION = "test-dict-v1"
-CATALOG = [(91, "synthetic_judgment", "A"), (92, "synthetic_feeder", "A"),
-           (93, "synthetic_154kV_bundle_a", "A")]
-
-
-@pytest.fixture
-def db(seeded_db, settings):
-    products = settings.seed_dir / "products"
-    seed_products(seeded_db, [products / f for f in PRODUCT_FILES], products / LOSS_FILE)
-    for file_no, key, bundle in CATALOG:
-        seeded_db.execute("INSERT INTO document_catalog (file_no, file_key, bundle, language) "
-                          "VALUES (%s, %s, %s, 'en')", (file_no, key, bundle))
-    seeded_db.commit()
-    return seeded_db
-
-
 def run_once(conn, paths, llm=None):
     run_id = create_run(conn, VERSION, llm)
     assert execute_run(RunContext(conn, VERSION, llm, None), run_id, paths) == "ENGINEER_REVIEW"
     return run_id
-
-
-@pytest.fixture
-def spec(tmp_path):
-    return build_judgment_spec(tmp_path / "synthetic_judgment.docx")
 
 
 def judgment(conn, run_id, table, name):
@@ -280,12 +257,26 @@ def test_api_results_and_product_switch(db, spec, db_url, monkeypatch):
         assert {j["product_code"] for j in deviations} == {"GIS-245-50", "GIS-145-P7"}
         outputs = client.get(f"{base}/outputs", params={"list_kind": "DEVIATION"}).json()
         assert outputs and all(i["locations"] for i in outputs)
-        check = client.put(f"{base}/outputs/{outputs[0]['item_id']}/status",
-                           json={"status": "REMOVED"}).json()
-        assert check["ar_codes"] == ["AR-07"]
+        removed = client.post(f"{base}/actions", json={
+            "target": "output_item", "target_id": outputs[0]["item_id"], "action": "REJECT",
+            "reason": "목록에서 뺌"}).json()
+        assert removed["submission_check"]["ar_codes"] == ["AR-07"]
         assert client.get(f"{base}/submission-check").json()["ar_codes"] == ["AR-07"]
         assert client.get(f"{base}/warranty").status_code == 200
         assert client.get(f"{base}/losses").json() == []
         assert client.get(f"{base}/proposals").json()
     finally:
         get_settings.cache_clear()
+
+
+def test_locations_stay_within_the_run(db, spec, tmp_path):
+    """CR-02 원문 위치는 그 실행의 문서만 낸다.
+
+    앞 실행에서 같은 행이 다른 문서에 있었어도 섞이지 않는다."""
+    copy = build_feeder_copy(tmp_path / "synthetic_feeder.docx")
+    run_once(db, [spec, copy])
+    run_id = run_once(db, [spec])
+    files = {loc["file_no"] for i in queries.run_outputs(db, run_id) for loc in i["locations"]}
+    files |= {loc["file_no"] for j in queries.run_judgments(db, run_id, limit=500)
+              for loc in j["locations"]}
+    assert files == {91}

@@ -22,21 +22,29 @@ def build_warranty(conn: psycopg.Connection, run_id: int) -> int:
     mapping = {k: (col, fixed, usage) for k, col, fixed, usage in conn.execute(
         "SELECT item_key, pm_column, fixed_key, usage FROM item_pm_mapping")}
     fixed_values = dict(conn.execute("SELECT fixed_key, fixed_value FROM company_fixed_value"))
+    columns = ("candidate_value, candidate_unit, source_kind, product_code, pm_column, fixed_key, "
+               "status, reason_code, is_assumed")
+    # 엔지니어가 확정·수정·반려한 칸은 다시 만들 때도 그대로 둔다
+    reviewed = {r[0]: r[1:] for r in conn.execute(
+        f"SELECT judgment_id, {columns} FROM warranty_candidate WHERE run_id = %s "
+        "AND status IN ('CONFIRMED', 'REJECTED')", (run_id,))}
     rows = []
     for judgment_id, item_key, unit, product_code in conn.execute(
             """SELECT j.judgment_id, v.item_key, v.unit_raw, j.product_code
                FROM judgment j JOIN req_value v ON v.value_id = j.value_id
                WHERE j.run_id = %s AND j.is_current AND j.result = 'WARRANTY_TO_FILL'
+                 AND j.review_status <> 'REJECTED'
                ORDER BY j.judgment_id""", (run_id,)):
+        if judgment_id in reviewed:
+            rows.append((run_id, judgment_id, *reviewed[judgment_id]))
+            continue
         rows.append(_candidate(run_id, judgment_id, item_key, unit, products.get(product_code),
                                mapping, fixed_values))
     with conn.transaction():
         conn.execute("DELETE FROM warranty_candidate WHERE run_id = %s", (run_id,))
         with conn.cursor() as cur:
             cur.executemany(
-                """INSERT INTO warranty_candidate (run_id, judgment_id, candidate_value,
-                       candidate_unit, source_kind, product_code, pm_column, fixed_key, status,
-                       reason_code, is_assumed)
+                f"""INSERT INTO warranty_candidate (run_id, judgment_id, {columns})
                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)""", rows)
     return len(rows)
 

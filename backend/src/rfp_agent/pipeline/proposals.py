@@ -23,6 +23,7 @@ def _margin_points(conn: psycopg.Connection, run_id: int) -> list[dict]:
                FROM judgment j JOIN req_value v ON v.value_id = j.value_id
                LEFT JOIN item_key k ON k.item_key = v.item_key
                WHERE j.run_id = %s AND j.is_current AND j.result = 'COMPLY'
+                 AND j.review_status <> 'REJECTED'
                  AND j.margin_direction = 'STRENGTH' AND j.product_code IS NOT NULL
                  AND EXISTS (SELECT 1 FROM requirement_location rl
                              WHERE rl.requirement_id = j.requirement_id)
@@ -90,17 +91,28 @@ def build_proposals(conn: psycopg.Connection, run_id: int, llm: LLM | None) -> i
         drafted = [(t, "AI") for t in texts]
     else:
         drafted = [(p["template"], "CODE") for p in points]
+    with conn.cursor(row_factory=dict_row) as cur:
+        reviewed = {(r["point_kind"], r["requirement_id"], r["basis"]): r for r in cur.execute(
+            "SELECT point_kind, requirement_id, basis, status, text_draft, drafted_by "
+            "FROM proposal_point WHERE run_id = %s AND status <> 'CANDIDATE'",
+            (run_id,)).fetchall()}
     with conn.transaction():
         conn.execute("DELETE FROM proposal_point WHERE run_id = %s", (run_id,))
         for p, (template, by) in zip(points, drafted, strict=True):
+            status = "CANDIDATE"
+            if prev := reviewed.get((p["kind"], p["requirement_id"], p["basis"])):
+                # 다시 만들어도 같은 근거의 포인트면 채택·버림·고친 문장을 이어 쓴다
+                status = prev["status"]
+                if prev["drafted_by"] == "ENGINEER":
+                    template, by = prev["text_draft"].removesuffix(ASSUMED), "ENGINEER"
             filled = fill(template, p["values"])
             text = filled.text + (ASSUMED if p["is_assumed"] else "")
             conn.execute(
                 """INSERT INTO proposal_point (run_id, point_kind, requirement_id, product_code,
                        judgment_id, loss_calc_id, text_draft, number_check, is_assumed, status,
                        basis, number_detail, drafted_by)
-                   VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, 'CANDIDATE', %s, %s, %s)""",
+                   VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)""",
                 (run_id, p["kind"], p["requirement_id"], p["product_code"], p["judgment_id"],
-                 p["loss_calc_id"], text, filled.check, p["is_assumed"], p["basis"],
+                 p["loss_calc_id"], text, filled.check, p["is_assumed"], status, p["basis"],
                  filled.detail, by))
     return len(points)
