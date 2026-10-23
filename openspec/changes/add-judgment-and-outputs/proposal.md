@@ -23,6 +23,7 @@
 - `proposal-points`: FR-14 기술 제안 포인트 후보.
 
 ### Modified Capabilities
+- `evidence-integrity`: 팀 가정 값이 들어간 결과에 "팀 가정" 표시(CR-06). 2단계에서는 팀 가정 값이 아직 없어 이 change로 옮겼다.
 
 ## Impact
 

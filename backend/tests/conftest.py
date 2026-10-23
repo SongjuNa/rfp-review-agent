@@ -1,4 +1,5 @@
 import os
+import re
 from pathlib import Path
 
 import psycopg
@@ -30,3 +31,43 @@ def empty_db(db_url: str):
 @pytest.fixture
 def settings():
     return get_settings()
+
+
+@pytest.fixture
+def seeded_db(empty_db, settings):
+    """마이그레이션과 규칙 사전까지 넣은 빈 DB."""
+    from rfp_agent.db.migrate import migrate
+    from rfp_agent.db.seed import seed_rules
+
+    migrate(empty_db, settings.migrations_dir)
+    seed_rules(empty_db, settings.seed_dir)
+    empty_db.commit()
+    return empty_db
+
+
+class FakeLLM:
+    """언어 모델 대역. 받은 프롬프트를 모두 기록하고, 스키마에 맞는 기본 답을 낸다."""
+
+    model = "fake-model"
+
+    def __init__(self, fail: bool = False):
+        self.fail = fail
+        self.prompts: list[str] = []
+
+    def generate_json(self, prompt: str, schema: dict) -> dict:
+        self.prompts.append(prompt)
+        if self.fail:
+            raise TimeoutError("응답 시간 초과")
+        field = next(iter(schema["properties"]))
+        if field == "doc_kind":
+            return {"doc_kind": "UNKNOWN"}
+        if field == "explanation":
+            return {"explanation": "두 값의 적용 대상이 달라 확인이 필요하다."}
+        count = len(re.findall(r"^\d+\. ", prompt, re.MULTILINE))
+        default = {"labels": "REQUIREMENT", "types": "NONE"}[field]
+        return {field: [default] * count}
+
+
+@pytest.fixture
+def fake_llm():
+    return FakeLLM()

@@ -10,7 +10,7 @@
 
 #### Scenario: 정상
 - **WHEN** DB가 연결되고 마이그레이션이 적용된 상태에서 상태를 조회하면
-- **THEN** status는 ok, database는 ok, schema_version은 0002_reference_codes이다
+- **THEN** status는 ok, database는 ok, schema_version은 마지막 마이그레이션 파일 이름(지금은 0003_document_pipeline)이다
 
 #### Scenario: DB 장애
 - **WHEN** DB에 연결할 수 없는 상태에서 상태를 조회하면

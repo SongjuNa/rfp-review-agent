@@ -1,10 +1,9 @@
-# Spec Delta
+# evidence-integrity Specification
 
 ## Purpose
-
 시스템이 만드는 모든 값이 원문 근거를 갖고, 없는 값을 지어내지 않게 하는 공통 규칙이다.
 
-## ADDED Requirements
+## Requirements
 
 ### Requirement: 근거 묶음
 시스템은 결과로 내보내는 모든 값에 원문 위치(파일 번호 + 절 또는 표 이름 + 행 번호), 신뢰도, 가정 여부를 함께 저장해야 한다(SHALL, CR-02·03). 같은 내용이 여러 곳에 있으면 위치를 모두 저장해야 한다(SHALL).
@@ -23,10 +22,3 @@
 #### Scenario: 가림 표시
 - **WHEN** 요구값이 [REDACTED]이면
 - **THEN** 값은 "값 없음"으로 저장되고 숫자 칸은 비어 있다
-
-### Requirement: 팀 가정 표시
-시스템은 팀 가정 값이 들어간 모든 결과에 "팀 가정" 표시를 붙여야 한다(SHALL, CR-06).
-
-#### Scenario: 가정 값이 섞인 결과
-- **WHEN** 결과 계산에 팀 가정 값이 하나라도 쓰이면
-- **THEN** 그 결과는 팀 가정으로 표시된다

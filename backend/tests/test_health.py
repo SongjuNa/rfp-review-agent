@@ -25,4 +25,5 @@ def test_health_reports_schema_version(monkeypatch, empty_db, db_url, settings):
     finally:
         get_settings.cache_clear()
     assert body["status"] == "ok"
-    assert body["schema_version"] == "0002_reference_codes"
+    latest = sorted(settings.migrations_dir.glob("*.sql"))[-1].stem
+    assert body["schema_version"] == latest

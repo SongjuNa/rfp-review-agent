@@ -56,16 +56,29 @@ TEST_DATABASE_URL=postgresql://rfp:rfp@localhost:5432/rfp_test uv run pytest
 
 `TEST_DATABASE_URL`이 가리키는 DB는 테스트마다 **스키마를 지우고 다시 만듭니다**. 개발 DB와 다른 DB를 쓰세요. 지정하지 않으면 DB 테스트는 건너뜁니다.
 
+테스트는 두 가지입니다. 합성 docx(`tests/docx_factory.py`)로 도는 테스트는 CI에서도 돕니다. 실제 RFP 원문으로 Scenario를 확인하는 `tests/test_corpus.py`는 `data/private/rfp_docx`·`rfp_txt`가 있을 때만 돕니다 (원문은 저장소에 올리지 않음).
+
 ## DB 명령
 
 | 명령 | 하는 일 |
 |---|---|
 | `rfp-db migrate` | `db/migrations/*.sql` 중 아직 적용하지 않은 파일을 순서대로 적용 |
-| `rfp-db seed-rules` | 규칙 사전 4종 적재 (다시 해도 결과 같음) |
+| `rfp-db seed-rules` | 규칙 사전 적재 (항목키·비교 규칙·위험 표현·항목 매핑·파일 번호표·칸 이름·적용 대상·유형 규칙, 다시 해도 결과 같음) |
 | `rfp-db seed-products` | 제품표 적재. `product_master_TRF_v2.csv`가 입력용의 같은 코드를 덮어씀 |
 | `rfp-db setup` | 위 세 개를 차례로 |
 
 스키마를 바꿀 때는 기존 파일을 고치지 말고 다음 번호의 SQL 파일을 추가합니다.
+
+## 검토 실행
+
+```bash
+uv run rfp-review run "../data/private/rfp_docx/00지역_문서검토_1. Bidding Forms_Draft_교육용클렌징v6.docx"
+uv run rfp-review status 1
+```
+
+docx를 읽어 분류 → 절·표 나누기 → 요구사항 추출 → 유형 → 값 정리 → 위험 조건 후보까지 돌리고 DB에 저장합니다. `GEMINI_API_KEY`가 없으면 AI 보조 단계를 건너뛰고 코드 규칙 결과만 냅니다. 같은 파일·같은 사전 판·같은 코드면 저장된 결과를 다시 씁니다.
+
+API: `POST /api/runs`(docx 올리기), `POST /api/runs/library`(서버의 `data/private/rfp_docx` 파일 이름으로), `GET /api/runs/{id}`, `…/documents`, `…/pairs`, `…/requirements?type_code=&document_id=`, `…/risks`. 자세한 모양은 `/docs`(FastAPI 문서).
 
 ## OpenSpec으로 일하기
 
