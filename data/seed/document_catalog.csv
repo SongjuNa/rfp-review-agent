@@ -1,0 +1,23 @@
+file_no,file_key,bundle,language,project_key,note
+1,1. Bidding Forms_Draft,A,en,P-A,"가격표, 데이터시트 49종, 손실 환산 조항"
+2,6. Section6_Employers Requirement_Substation_Draft,A,en,P-A,변전소 6곳. 파일 1과 데이터시트 공유
+3,문서검토_115kV GIS_,B,en,,"구매 요청서, 포괄 조항(6장). 사업 확인 필요(Q5)"
+4,FEED-EL-TS-055,B,en,,GIS 기술 사양. 사업 확인 필요(Q5)
+5,FEED-EL-TS-039,B,en,,전기 시험 사양. 사업 확인 필요(Q5)
+6,Attachment 4.1 Detail Technical Spec. for 154kV GIS,B,ko,,"공급 범위, 가스 누설 0.5 % / 1 %. 사업 확인 필요(Q5)"
+7,Comment Update_Preliminary Technical Specification for GIS,B,en,,공급사 사양 + 고객 의견. 사업 확인 필요(Q5)
+8,Attachment.05_00고객사 Specification No. E-039 - Circuit Breaker,B,image,,이미지가 지워져 분석 불가
+9,26 05 48.01-GA-Seismic Controls,C,en,,내진
+10,26 11 16.01-GA-Secondary LV Unit Substations,C,en,,유닛 변전소
+11,26 11 16 12 fl - secondary unit substations with switchboard secondary,C,en,,유닛 변전소
+12,261116.11 fl - secondary unit substations with switchgear secondary,C,en,,유닛 변전소
+13,26 13 00 fl - medium-voltage switchgear,C,en,,15 kV 배전반
+14,261326 fl - medium-voltage metal-clad switchgear,C,en,,15 kV 배전반
+15,337230 Medium-Voltage Metal-Clad Switchgear,C,en,,13.8 kV 배전반
+16,26-2413-SWITCHBOARDS,C,en,,600 V 스위치보드
+17,262413 fl - switchboards,C,en,,"600 V 스위치보드, 서지보호기 요구"
+18,262000 Electric Distribution,C,en,,공급사 준수·일탈·제외 표시
+19,제Ⅳ편 제1장_설계기준,D,ko,P-D,설계 조건표 (UPS 10 kVA)
+20,제Ⅳ편 제2장_계통설명서,D,ko,P-D,계통 설명
+21,제Ⅳ편 제3장_일반사항,D,ko,P-D,"공통 규칙, 성능 보증"
+22,제Ⅳ편 제8장_154kV 송변전설비,D,ko,P-D,설비 14종 반복 (UPS 30 kVA)

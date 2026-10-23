@@ -1,11 +1,12 @@
 """규칙 사전·제품표를 DB에 적재한다.
 
 - 고정 코드표(유형 7종, 승인 기준, 칸 이름, 회사 고정값)는 db/migrations 에 있다.
-- 규칙 사전 4종은 data/seed/*.csv, 제품표는 data/seed/products/*.csv.
+- 규칙 사전은 data/seed/*.csv, 제품표는 data/seed/products/*.csv.
 같은 파일을 여러 번 적재해도 결과가 같다 (CR-11).
 """
 
 import csv
+import hashlib
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -111,35 +112,45 @@ def seed_item_keys(conn: psycopg.Connection, rows: list[dict[str, str]], report:
 
 
 def seed_compare_rules(conn: psycopg.Connection, rows: list[dict[str, str]], report: SeedReport):
-    conn.execute("DELETE FROM compare_rule")
+    keep = []
     for row in rows:
         where = f"{row['대상 표']} {row['항목 번호']}"
         direction_text = row["비교 방향"]
-        conn.execute(
+        values = (table_name_of(row["대상 표"]), row["항목 번호"], blank_to_none(row["표준 항목키"]),
+                  direction_code(direction_text, where), "+시간" in direction_text,
+                  "; ".join(filter(None, [row["처리"], row["비고(사례)"]])) or None)
+        row_id = conn.execute(
             """INSERT INTO compare_rule
                  (table_name, item_no, item_key, direction, time_condition, process_note)
-               VALUES (%s, %s, %s, %s, %s, %s)""",
-            (table_name_of(row["대상 표"]), row["항목 번호"], blank_to_none(row["표준 항목키"]),
-             direction_code(direction_text, where), "+시간" in direction_text,
-             "; ".join(filter(None, [row["처리"], row["비고(사례)"]])) or None),
-        )
+               VALUES (%s, %s, %s, %s, %s, %s)
+               ON CONFLICT (table_name, item_no, COALESCE(item_key, '')) DO UPDATE SET
+                 direction = EXCLUDED.direction, time_condition = EXCLUDED.time_condition,
+                 process_note = EXCLUDED.process_note
+               RETURNING compare_rule_id""",
+            values,
+        ).fetchone()[0]
+        keep.append(row_id)
+    conn.execute("DELETE FROM compare_rule WHERE NOT (compare_rule_id = ANY(%s))", (keep,))
     report.counts["compare_rule"] = len(rows)
 
 
 def seed_risk_expressions(conn: psycopg.Connection, rows: list[dict[str, str]],
                           report: SeedReport):
-    conn.execute("DELETE FROM risk_expression")
     for row in rows:
         expr = row["표현"]
         if row["종류"] not in RISK_KINDS:
             raise SeedError(f"위험 표현 '{expr}': 종류 '{row['종류']}'을 코드로 바꿀 수 없음")
         conn.execute(
             """INSERT INTO risk_expression (expression, language, risk_kind, context_rule)
-               VALUES (%s, %s, %s, %s)""",
+               VALUES (%s, %s, %s, %s)
+               ON CONFLICT (expression) DO UPDATE SET language = EXCLUDED.language,
+                 risk_kind = EXCLUDED.risk_kind, context_rule = EXCLUDED.context_rule""",
             # 사전 초안에서 조건이 빈 줄은 팀이 아직 정하지 않은 것이다.
             (expr, LANGUAGES[row["언어"]], RISK_KINDS[row["종류"]],
              row["위험 후보로 보는 조건"] or "(조건 미정)"),
         )
+    conn.execute("DELETE FROM risk_expression WHERE NOT (expression = ANY(%s))",
+                 ([r["표현"] for r in rows],))
     report.counts["risk_expression"] = len(rows)
 
 
@@ -172,13 +183,89 @@ def seed_item_pm_mapping(conn: psycopg.Connection, rows: list[dict[str, str]],
     report.counts["item_pm_mapping"] = count
 
 
+def seed_document_catalog(conn: psycopg.Connection, rows: list[dict[str, str]],
+                          report: SeedReport):
+    for key in sorted({r["project_key"] for r in rows if r["project_key"]}):
+        conn.execute(
+            "INSERT INTO project (project_name, project_key, is_confirmed) VALUES (%s, %s, TRUE) "
+            "ON CONFLICT (project_key) DO NOTHING",
+            (f"사업 {key}", key),
+        )
+    conn.execute("DELETE FROM document_catalog")
+    for row in rows:
+        conn.execute(
+            """INSERT INTO document_catalog (file_no, file_key, bundle, language, project_key, note)
+               VALUES (%s, %s, %s, %s, %s, %s)""",
+            (int(row["file_no"]), row["file_key"], row["bundle"], row["language"],
+             row["project_key"] or None, row["note"] or None),
+        )
+    report.counts["document_catalog"] = len(rows)
+
+
+def seed_column_roles(conn: psycopg.Connection, rows: list[dict[str, str]], report: SeedReport):
+    for row in rows:
+        conn.execute(
+            "INSERT INTO column_role_dict (header_text, column_role) VALUES (%s, %s) "
+            "ON CONFLICT (header_text) DO UPDATE SET column_role = EXCLUDED.column_role",
+            (row["header_text"], row["column_role"]),
+        )
+    report.counts["column_role_dict"] = len(rows)
+
+
+def seed_target_objects(conn: psycopg.Connection, rows: list[dict[str, str]],
+                        report: SeedReport):
+    conn.execute("DELETE FROM target_object_dict")
+    for row in rows:
+        conn.execute(
+            "INSERT INTO target_object_dict (term, target_object, parent_object) "
+            "VALUES (%s, %s, %s)",
+            (row["term"].lower(), row["target_object"], row["parent_object"] or None),
+        )
+    report.counts["target_object_dict"] = len(rows)
+
+
+def seed_type_rules(conn: psycopg.Connection, rows: list[dict[str, str]], report: SeedReport):
+    for row in rows:
+        conn.execute(
+            """INSERT INTO type_rule (rule_code, pattern, type_code, match_kind, priority)
+               VALUES (%s, %s, %s, %s, %s)
+               ON CONFLICT (rule_code) DO UPDATE SET pattern = EXCLUDED.pattern,
+                 type_code = EXCLUDED.type_code, match_kind = EXCLUDED.match_kind,
+                 priority = EXCLUDED.priority""",
+            (row["rule_code"], row["pattern"], row["type_code"], row["match_kind"],
+             int(row["priority"])),
+        )
+    conn.execute("DELETE FROM type_rule WHERE NOT (rule_code = ANY(%s))",
+                 ([r["rule_code"] for r in rows],))
+    report.counts["type_rule"] = len(rows)
+
+
+SEED_STEPS = [
+    ("item_keys.csv", seed_item_keys),
+    ("compare_rules.csv", seed_compare_rules),
+    ("risk_expressions.csv", seed_risk_expressions),
+    ("item_pm_mapping.csv", seed_item_pm_mapping),
+    ("document_catalog.csv", seed_document_catalog),
+    ("column_roles.csv", seed_column_roles),
+    ("target_objects.csv", seed_target_objects),
+    ("type_rules.csv", seed_type_rules),
+]
+
+
+def dict_version(seed_dir: Path) -> str:
+    """사전·제품표 파일 내용으로 만든 판 번호. 같은 파일이면 같은 판이다 (CR-11)."""
+    digest = hashlib.sha256()
+    for path in sorted(seed_dir.rglob("*.csv")):
+        digest.update(path.relative_to(seed_dir).as_posix().encode())
+        digest.update(path.read_bytes())
+    return digest.hexdigest()[:12]
+
+
 def seed_rules(conn: psycopg.Connection, seed_dir: Path) -> SeedReport:
     report = SeedReport()
     with conn.transaction():
-        seed_item_keys(conn, read_csv(seed_dir / "item_keys.csv"), report)
-        seed_compare_rules(conn, read_csv(seed_dir / "compare_rules.csv"), report)
-        seed_risk_expressions(conn, read_csv(seed_dir / "risk_expressions.csv"), report)
-        seed_item_pm_mapping(conn, read_csv(seed_dir / "item_pm_mapping.csv"), report)
+        for name, step in SEED_STEPS:
+            step(conn, read_csv(seed_dir / name), report)
     return report
 
 

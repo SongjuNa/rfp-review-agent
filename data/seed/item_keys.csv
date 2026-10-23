@@ -25,3 +25,4 @@ manufacturer,제조사,Manufacturer; Manufacturer’s name; 제조사,작성,보
 country_of_origin,원산지,Country of Origin; 원산지,작성,보증값 작성 (회사 고정값)
 model_number,형식·모델 번호,Type designation and type ref or model number; 형식,작성,보증값 작성 (product_name)
 weight,중량,Weight of complete 3-phase breaker; Weight; 중량,작성,보증값 작성 (weight_kg)
+rated_capacity,정격 용량,Rated capacity; Rated power; Capacity; 정격용량; 용량,≥,팀 추가(2단계): UPS·변압기 용량. 사례 7

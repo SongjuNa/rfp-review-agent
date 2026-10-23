@@ -11,10 +11,20 @@ class Settings(BaseSettings):
 
     database_url: str = "postgresql://rfp:rfp@localhost:5432/rfp"
     gemini_api_key: str | None = None
+    gemini_model: str = "gemini-2.5-flash"
     migrations_dir: Path = REPO_ROOT / "db" / "migrations"
     seed_dir: Path = REPO_ROOT / "data" / "seed"
     # RFP 원문처럼 저장소에 올리지 않는 자료 (data/private/README.md)
     private_data_dir: Path = REPO_ROOT / "data" / "private"
+
+    @property
+    def docx_dir(self) -> Path:
+        return self.private_data_dir / "rfp_docx"
+
+    @property
+    def txt_dir(self) -> Path:
+        """팀 추출 txt. 있으면 원문 위치 줄 번호를 이 txt에 맞춘다."""
+        return self.private_data_dir / "rfp_txt"
 
 
 @lru_cache
