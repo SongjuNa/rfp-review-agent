@@ -22,7 +22,8 @@ services:
       DATABASE_URL: postgresql://rfp:rfp@db:5432/rfp
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
     volumes:
-      - ./data/private:/app/data/private:ro
+      # 화면에서 올린 docx를 data/private/uploads에 저장하므로 쓰기 가능하게 붙인다
+      - ./data/private:/app/data/private
     ports:
       - "8000:8000"
     depends_on:

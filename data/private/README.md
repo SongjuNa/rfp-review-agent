@@ -7,4 +7,4 @@
 |---|---|---|
 | `rfp_docx/*.docx` | RFP 원본 22개 (RFP_Cleansed_styled_v6) | 팀 공유 폴더 |
 
-Docker Compose는 이 폴더를 백엔드 컨테이너의 `/app/data/private`에 읽기 전용으로 붙입니다.
+Docker Compose는 이 폴더를 백엔드 컨테이너의 `/app/data/private`에 붙입니다. 화면에서 올린 docx는 `uploads/`에 저장됩니다.
