@@ -1,0 +1,9 @@
+:root {
+  font-family: system-ui, 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
+  color: #1f2328;
+  background: #fff;
+}
+main { max-width: 960px; margin: 0 auto; padding: 24px 16px; }
+dl { display: grid; grid-template-columns: max-content 1fr; gap: 4px 16px; }
+dt { font-weight: 600; }
+dd { margin: 0; }
