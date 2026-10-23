@@ -192,7 +192,7 @@ export type Proposal = {
   point_id: number
   point_kind: string
   requirement_id: number
-  product_code: string
+  product_code: string | null   // 현장 이력(FIELD)은 제품 행 대신 연결표 줄이 근거
   text_draft: string
   basis: string
   number_check: string

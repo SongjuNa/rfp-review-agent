@@ -1,0 +1,98 @@
+fault_id,family,applies_to,symptom,root_cause,action,needs_rma,typical_resolution_hours,verified
+FLT-001,DRIVE,INV-LSLV0075-S100;INV-LSLV0220-H100;INV-LSLV0750-iS7,Over-current trip during acceleration,Acceleration time too short for load inertia,Increase acceleration time and enable stall prevention,N,6,N
+FLT-002,DRIVE,INV-LSLV0075-S100;INV-LSLV0220-H100;INV-LSLV0750-iS7,Over-current trip immediately at run command,Motor cable insulation breakdown (phase-to-phase short),Replace damaged motor cable section,N,30,N
+FLT-003,DRIVE,INV-LSLV0075-S100;INV-LSLV0220-H100;INV-LSLV0750-iS7,Over-current trip even with motor disconnected,Output IGBT module damaged,Replace power module under RMA,Y,120,N
+FLT-004,DRIVE,INV-LSLV0750-iS7,Over-current trip at restart after momentary power loss,Firmware defect in speed search at restart,Update firmware to 4.05 or later,N,12,N
+FLT-005,DRIVE,INV-LSLV0075-S100;INV-LSLV0220-H100;INV-LSLV0750-iS7,Over-voltage trip during deceleration,Regenerative energy from load; deceleration time too short,Increase deceleration time or install braking resistor,N,8,N
+FLT-006,DRIVE,INV-LSLV0075-S100;INV-LSLV0220-H100;INV-LSLV0750-iS7,Over-voltage trip at standstill,Supply voltage above tolerance (> 528 V),Adjust transformer tap or install input reactor,N,48,N
+FLT-007,DRIVE,INV-LSLV0075-S100;INV-LSLV0220-H100;INV-LSLV0750-iS7,Low-voltage trip during operation,Loose input power terminal causing voltage drop,Retighten input terminals to specified torque,N,8,N
+FLT-008,DRIVE,INV-LSLV0075-S100;INV-LSLV0220-H100;INV-LSLV0750-iS7,Low-voltage trip on one phase loss,Input fuse blown on one phase,Replace input fuse and check upstream protection,N,6,N
+FLT-009,DRIVE,INV-LSLV0075-S100;INV-LSLV0220-H100;INV-LSLV0750-iS7,Motor stops with overload trip,Motor rated current parameter set lower than motor nameplate,Correct motor rated current parameter and overload level,N,4,N
+FLT-010,DRIVE,INV-LSLV0075-S100;INV-LSLV0220-H100;INV-LSLV0750-iS7,Overload trip after several minutes of operation,Mechanical jam / bearing failure in driven load,Repair mechanical load; resume operation,N,24,N
+FLT-011,DRIVE,INV-LSLV0075-S100;INV-LSLV0220-H100;INV-LSLV0750-iS7,Inverter overheat trip,Cooling fan failure,Replace cooling fan,N,24,N
+FLT-012,DRIVE,INV-LSLV0075-S100;INV-LSLV0220-H100;INV-LSLV0750-iS7,Overheat trip in summer afternoons,Panel ventilation insufficient; ambient > 50 °C,Improve panel ventilation or apply derating,N,72,N
+FLT-013,DRIVE,INV-LSLV0075-S100;INV-LSLV0220-H100;INV-LSLV0750-iS7,Ground fault trip,Motor winding insulation degradation,Repair or replace motor,N,48,N
+FLT-014,DRIVE,INV-LSLV0075-S100;INV-LSLV0220-H100;INV-LSLV0750-iS7,Output phase open trip,Loose motor terminal or contactor between drive and motor opened during run,Fix wiring and correct output contactor sequence,N,8,N
+FLT-015,DRIVE,INV-LSLV0075-S100;INV-LSLV0220-H100;INV-LSLV0750-iS7,Communication error trip from PLC/BMS network,RS-485 termination missing or baud rate mismatch,Set matching baud rate and enable termination,N,6,N
+FLT-016,DRIVE,INV-LSLV0075-S100,Intermittent communication error with fast polling,Firmware defect: Modbus response timeout below 20 ms polling,Update firmware to 3.05 or later,N,12,N
+FLT-017,DRIVE,INV-LSLV0220-H100,BACnet communication drops on large network,Firmware defect: MS/TP token loss with > 32 nodes,Update firmware to 2.31 or later,N,12,N
+FLT-018,DRIVE,INV-LSLV0075-S100,Parameter write error after keypad copy,Keypad parameter file from incompatible firmware version,Update firmware to 3.10 and initialize parameters,N,8,N
+FLT-019,DRIVE,INV-LSLV0075-S100;INV-LSLV0220-H100;INV-LSLV0750-iS7,Motor does not run on remote command,Command source parameter set to keypad instead of terminal,Set command source to terminal/fieldbus,N,2,N
+FLT-020,PLC,PLC-XGB-XBM-DR16S;PLC-XGI-CPUU,CPU stops with watchdog error,Scan time exceeds watchdog due to program loop,Fix program loop or increase watchdog setting,N,8,N
+FLT-021,PLC,PLC-XGB-XBM-DR16S;PLC-XGI-CPUU,Random watchdog error in noisy environment,Electrical noise due to improper grounding,Separate grounding and add surge suppressors,N,48,N
+FLT-022,PLC,PLC-XGB-XBM-DR16S;PLC-XGI-CPUU,I/O configuration mismatch after module replacement,Replacement module type differs from I/O parameter,Update I/O parameter and download,N,4,N
+FLT-023,PLC,PLC-XGB-XBM-DR16S;PLC-XGI-CPUU,Battery low warning,Backup battery end of life,Replace backup battery (keep power on during replacement),N,4,N
+FLT-024,PLC,PLC-XGB-XBM-DR16S,Program checksum error after power cycle,Firmware defect on repeated power cycling within 1 s,Re-download program and update firmware to 3.10,N,8,N
+FLT-025,PLC,PLC-XGB-XBM-DR16S;PLC-XGI-CPUU,Program lost repeatedly,Flash memory failure in CPU,Replace CPU under RMA,Y,120,N
+FLT-026,PLC,PLC-XGB-XBM-DR16S;PLC-XGI-CPUU,Ethernet communication timeout,IP address conflict on plant network,Assign unique IP address,N,4,N
+FLT-027,PLC,PLC-XGI-CPUU,Ethernet timeout during broadcast storm,"Firmware defect under broadcast storm > 2,000 frames/s",Update firmware to 4.40 and configure switch storm control,N,24,N
+FLT-028,PLC,PLC-XGB-XBM-DR16S;PLC-XGI-CPUU,"Base power fault, CPU does not start",Power supply module output degraded,Replace power supply module,Y,72,N
+FLT-029,PLC,PLC-XGB-XBM-DR16S;PLC-XGI-CPUU,Relay output stuck ON,Relay contact welded by inrush of capacitive/lamp load,Replace output module and add interposing relay,Y,72,N
+FLT-030,HMI,HMI-XGT-eXP60;HMI-XGT-iXP90,PLC communication timeout on HMI,Driver protocol or station number mismatch,Correct protocol and station number,N,4,N
+FLT-031,HMI,HMI-XGT-iXP90,Timeout when both Ethernet ports used,Firmware defect with two ports on same subnet,Update OS to 2.05 or use separate subnets,N,8,N
+FLT-032,HMI,HMI-XGT-eXP60,Project download fails,Editor version newer than HMI OS,Update HMI OS to 1.62 or later,N,4,N
+FLT-033,HMI,HMI-XGT-eXP60;HMI-XGT-iXP90,Touch position misaligned,Touch calibration drift,Recalibrate touch panel,N,2,N
+FLT-034,HMI,HMI-XGT-eXP60;HMI-XGT-iXP90,Touch not responding in one area,Touch panel physically damaged,Replace touch panel under RMA,Y,96,N
+FLT-035,HMI,HMI-XGT-eXP60;HMI-XGT-iXP90,Screen very dark,Backlight end of life,Replace backlight / unit under RMA,Y,96,N
+FLT-036,HMI,HMI-XGT-eXP60;HMI-XGT-iXP90,"Logging stops, memory full warning",Logging storage set to internal memory without rotation,Enable ring buffer or log to USB,N,2,N
+FLT-037,HMI,HMI-XGT-eXP60,Screen freezes after weeks of operation,Firmware defect after ~30 days uptime,Update OS to 1.58 or later,N,8,N
+FLT-038,LV_BREAKER,MCCB-ABS-103c;MCCB-ABS-403c,Breaker trips at motor start,Motor inrush exceeds magnetic trip setting,Select breaker with higher magnetic setting or adjust,N,8,N
+FLT-039,LV_BREAKER,MCCB-ABS-103c;MCCB-ABS-403c;ACB-AS-2000;ELCB-EBN-203c,Terminal overheating / discoloration,Loose connection or undersized cable,Retighten to specified torque; replace damaged terminal,N,24,N
+FLT-040,LV_BREAKER,MCCB-ABS-103c;MCCB-ABS-403c;ELCB-EBN-203c,Breaker cannot be reset after trip,Handle not moved to reset position before ON,Push handle fully to OFF/RESET then ON,N,1,N
+FLT-041,LV_BREAKER,MCCB-ABS-103c;MCCB-ABS-403c;ELCB-EBN-203c,"Breaker does not close, mechanism damaged",Internal mechanism failure,Replace breaker under warranty,Y,72,N
+FLT-042,LV_BREAKER,ELCB-EBN-203c,Unwanted earth leakage trip,Cumulative leakage current from VFD EMC filters,Change sensitivity setting to 100/300 mA or separate circuits,N,24,N
+FLT-043,LV_BREAKER,ELCB-EBN-203c,Test button does not trip ELCB,Residual current sensing circuit failure,Replace ELCB immediately (safety),Y,48,N
+FLT-044,LV_BREAKER,ACB-AS-2000,ACB long-time trip,Sustained overload above long-time setting,Reduce load or adjust long-time setting per coordination study,N,8,N
+FLT-045,LV_BREAKER,ACB-AS-2000,ACB ground fault trip,Insulation fault in downstream feeder,Repair insulation fault before re-closing,N,24,N
+FLT-046,LV_BREAKER,ACB-AS-2000,ACB trip unit self-diagnosis alarm,Firmware defect after control power dip,Update trip unit firmware to 1.4,N,8,N
+FLT-047,LV_BREAKER,ACB-AS-2000,ACB motor does not charge spring,Control voltage mismatch or motor fuse blown,Supply correct control voltage; replace fuse,N,8,N
+FLT-048,MV_EQUIP,VCB-25kV-1250,VCB spring not charging,Charging motor failure,Replace charging motor,N,48,Y
+FLT-049,MV_EQUIP,VCB-25kV-1250,VCB fails to close electrically,Closing coil burnt,Replace closing coil,N,24,N
+FLT-050,MV_EQUIP,VCB-25kV-1250,VCB contact wear indicator at limit,Vacuum interrupter end of electrical life,Replace vacuum interrupter,N,72,N
+FLT-051,MV_EQUIP,SWGR-MV-12kV,Partial discharge alarm in switchgear,Condensation due to anti-condensation heater off,Restore heater operation and clean insulators,N,48,Y
+FLT-052,MV_EQUIP,SWGR-MV-12kV,Partial discharge at cable compartment,Cable termination workmanship defect,Re-terminate cable,N,72,Y
+FLT-053,MV_EQUIP,SWGR-MV-12kV,Cable compartment door cannot be opened,Earthing switch not closed (interlock),"Follow operation sequence: open VCB, rack out, close earthing switch",N,2,N
+FLT-054,MV_EQUIP,SWGR-MV-12kV,Busbar joint overheating,Insufficient joint torque,Retorque busbar joints in outage,N,48,N
+FLT-055,MV_EQUIP,VCB-25kV-1250;SWGR-MV-12kV,Protection relay trip without fault,CT polarity reversed / wrong relay setting,Correct CT wiring and relay settings,N,24,Y
+FLT-056,CONTROL,CONT-MC-32a,Contactor chattering,Control voltage drops below pick-up level,Fix control supply capacity / cable length,N,8,N
+FLT-057,CONTROL,CONT-MC-32a,Contactor coil burnt,Coil voltage different from supply voltage,Replace coil with correct voltage,N,24,N
+FLT-058,CONTROL,CONT-MC-32a,Main contacts welded,Short circuit without proper SCPD coordination,Replace contactor; apply Type 2 coordination,Y,48,N
+FLT-059,CONTROL,RELAY-GMR-22,Overload relay nuisance trip,Setting lower than motor full load current,Adjust setting to motor FLC,N,2,N
+FLT-060,CONTROL,RELAY-GMR-22,Overload relay does not trip on overload,Mechanism failure,Replace relay under warranty,Y,48,N
+FLT-061,CONTROL,RELAY-GMR-22,Overload relay trips on phase loss,Upstream fuse blown on one phase,Replace fuse; check motor,N,4,N
+FLT-062,TRANSFORMER,TRF-DRY-630,Winding temperature alarm (140 °C),Cooling fans not operating under high load,Repair fan control; reduce load,N,24,N
+FLT-063,TRANSFORMER,TRF-DRY-630;TRF-OIL-1000,Abnormal humming noise,Loose core clamping or harmonic load,Retighten clamping; apply harmonic filter,N,72,Y
+FLT-064,TRANSFORMER,TRF-DRY-630,Low insulation resistance before energisation,Moisture absorption during storage,Dry out with heaters and retest,N,72,N
+FLT-065,TRANSFORMER,TRF-OIL-1000,Buchholz alarm,Air trapped after oil filling,Bleed air from Buchholz relay; monitor,N,24,Y
+FLT-066,TRANSFORMER,TRF-OIL-1000,Buchholz trip,Internal winding fault,Factory repair under warranty claim,Y,240,Y
+FLT-067,TRANSFORMER,TRF-OIL-1000,Oil leakage at gasket,Gasket damage during transport,Replace gasket and top up oil,N,48,N
+FLT-068,TRANSFORMER,TRF-DRY-630;TRF-OIL-1000,Secondary voltage too high,Off-circuit tap at wrong position,Change tap position in de-energised state,N,8,Y
+FLT-069,METER,METER-LP3500-3P4W;METER-LPB-DIN,Negative active power reading,CT polarity reversed,Rewire CT or set CT reverse parameter,N,4,N
+FLT-070,METER,METER-LP3500-3P4W;METER-LPB-DIN,No Modbus response,Address / baud / parity mismatch,Align communication settings,N,2,N
+FLT-071,METER,METER-LP3500-3P4W,No response at 38400 even parity,Firmware defect at 38400 / even parity,Update firmware to 1.80,N,4,N
+FLT-072,METER,METER-LP3500-3P4W,Energy register reset after power loss,Firmware defect during flash write,Update firmware to 1.72 or later,N,4,N
+FLT-073,METER,METER-LPB-DIN,Pulse output not counted by PLC,Open-collector output polarity reversed,Correct polarity and pull-up,N,2,N
+FLT-074,ESS,ESS-PCS-100kW,Grid over-voltage trip,Wrong country grid profile selected,Select correct grid profile per utility requirement,N,8,N
+FLT-075,ESS,ESS-PCS-100kW,Frequency trip during generator operation,Firmware defect in ROCOF measurement,Update PCS firmware to 2.70,N,24,N
+FLT-076,ESS,ESS-PCS-100kW,IGBT over-temperature,Air filter clogged,Clean/replace filters,N,24,N
+FLT-077,ESS,ESS-PCS-100kW;ESS-BMS-V3,DC insulation fault,Moisture in battery rack DC cabling,Dry and repair cabling,N,48,N
+FLT-078,ESS,ESS-PCS-100kW;ESS-BMS-V3,BMS communication loss on PCS,Firmware compatibility: BMS 3.4 heartbeat vs PCS < 2.62,Update PCS firmware to 2.62 or later,N,24,N
+FLT-079,ESS,ESS-PCS-100kW;ESS-BMS-V3,Intermittent CAN errors,CAN termination missing,Install 120 Ω termination,N,8,N
+FLT-080,ESS,ESS-BMS-V3,Cell over-voltage alarm,Defective battery module cell,Replace battery module under RMA,Y,120,N
+FLT-081,ESS,ESS-BMS-V3,Cell over-temperature,Container HVAC failure,Stop operation; repair HVAC,N,24,N
+FLT-082,ESS,ESS-BMS-V3,Cell imbalance alarm,Insufficient balancing after long partial cycling,Perform full charge balancing maintenance,N,48,N
+FLT-083,ESS,ESS-BMS-V3,Main contactor welded alarm,Pre-charge circuit failure,Replace contactor and pre-charge resistor,Y,72,N
+FLT-084,ESS,ESS-BMS-V3,SOC jumps after long rest,Firmware defect in SOC estimation,Update BMS firmware to 3.50 and perform calibration,N,24,N
+FLT-085,PV,PV-INV-SOLAR-25,Insulation fault at sunrise,Firmware defect at humidity > 95%,Update firmware to 1.82,N,8,N
+FLT-086,PV,PV-INV-SOLAR-25,Insulation fault after rain,Water ingress in PV connector,Replace damaged connectors,N,48,N
+FLT-087,PV,PV-INV-SOLAR-25,Grid lost alarm,AC breaker tripped / grid outage,Restore AC supply; check breaker rating,N,4,N
+FLT-088,PV,PV-INV-SOLAR-25,PV over-voltage alarm in winter,String too long for low temperature Voc,Reduce modules per string,N,48,N
+FLT-089,PV,PV-INV-SOLAR-25,Power derating at noon,Installed in direct sunlight with poor airflow,Relocate or add shading,N,72,N
+FLT-090,PV,PV-INV-SOLAR-25,Residual current trip,Damaged DC cable insulation,Repair cable,N,48,N
+FLT-091,PV,PV-INV-SOLAR-25,Yield lower than expected,One string disconnected,Reconnect string; check fuse,N,8,N
+FLT-092,UPS,UPS-LSU-10K,Short backup time,Battery end of life (> 3 years),Replace battery set,N,48,N
+FLT-093,UPS,UPS-LSU-10K,UPS on bypass due to overload,Connected load exceeds rating,Redistribute load,N,4,N
+FLT-094,UPS,UPS-LSU-10K,"Inverter fault, load on bypass",Inverter board failure,Repair inverter board under RMA,Y,120,N
+FLT-095,UPS,UPS-LSU-10K,Over-temperature alarm,Fan failure,Replace fan,N,24,N
+FLT-096,UPS,UPS-LSU-10K,SNMP card not detected,Firmware defect after hot-swap,Update UPS firmware to 2.30,N,8,N
+FLT-097,UPS,UPS-LSU-10K,Frequent transfer to battery on generator,Generator frequency outside default window,Enable generator mode (firmware 2.20 or later),N,8,N

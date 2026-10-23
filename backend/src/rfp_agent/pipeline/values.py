@@ -42,6 +42,7 @@ ITEM_UNITS = {
     "breaking_time": r"ms|cycles?", "closing_time": r"ms|cycles?",
     "ambient_temp_max": r"°C|℃|deg\.? ?[CF]|°F|oC", "altitude": r"m|ft",
     "rated_capacity": r"kVA|MVA|kW|MW|Ah", "weight": r"kg|t|ton",
+    "sound_level": r"dB(?:\s*\(A\))?",
 }
 TEXT_ITEMS = {"manufacturer", "country_of_origin", "model_number", "standard",
               "operating_sequence"}     # 숫자 값이 아닌 항목

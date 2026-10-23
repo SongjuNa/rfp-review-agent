@@ -280,7 +280,8 @@ def run_outputs(conn: psycopg.Connection, run_id: int,
 def run_proposals(conn: psycopg.Connection, run_id: int) -> list[dict]:
     rows = _rows(conn, """
         SELECT point_id, point_kind, requirement_id, product_code, judgment_id, loss_calc_id,
-               text_draft, basis, number_check, number_detail, drafted_by, is_assumed, status
+               fault_link_id, text_draft, basis, number_check, number_detail, drafted_by,
+               is_assumed, status
         FROM proposal_point WHERE run_id = %s ORDER BY point_id""", (run_id,))
     return _with_locations(conn, rows, run_id)
 

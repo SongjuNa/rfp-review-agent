@@ -26,3 +26,9 @@ country_of_origin,원산지,Country of Origin; 원산지,작성,강점 아님,�
 model_number,형식·모델 번호,Type designation and type ref or model number; 형식,작성,강점 아님,보증값 작성 (product_name)
 weight,중량,Weight of complete 3-phase breaker; Weight; 중량,작성,강점 아님,보증값 작성 (weight_kg)
 rated_capacity,정격 용량,Rated capacity; Rated power; Capacity; 정격용량; 용량,≥,강점 아님,팀 추가(2단계): UPS·변압기 용량. 사례 7
+anti_condensation_heater,결로 방지 히터,Anti-condensation heater; Space heater; 결로 방지 히터; 스페이스 히터,= (문자열),강점 아님,팀 추가(FR-15): 현장 이력 연결표 항목
+spring_charging_motor,스프링 충전 전동기,Spring charge motor; Spring charging motor; Motor driven spring charge; Motor for spring; 스프링 충전 전동기,= (문자열),강점 아님,팀 추가(FR-15): 현장 이력 연결표 항목
+ct_polarity,변류기 극성,CT polarity; Polarity of current transformer; Polarity of all current; 변류기 극성,= (문자열),강점 아님,팀 추가(FR-15): 현장 이력 연결표 항목. 극성 시험 요구
+buchholz_relay,부흐홀츠 계전기,Buchholz relay; Buchholz; 부흐홀츠; 브흐홀쯔,= (문자열),강점 아님,팀 추가(FR-15): 현장 이력 연결표 항목
+off_load_tap_changer,무부하 탭 절환기,Off-load tap changer; Off-load tap-changing; Off-circuit tap; No-load tap changer; 무부하 탭 절환,= (문자열),강점 아님,팀 추가(FR-15): 현장 이력 연결표 항목
+sound_level,소음,Sound level; Audible sound level; Noise level; 소음 레벨; 소음도,≤,작을수록 좋음,팀 추가(FR-15): 현장 이력 연결표 항목. dB(A)

@@ -29,6 +29,9 @@ export const STATUS_NAMES: Record<string, string> = {
 export const MARGIN_NAMES: Record<string, string> = {
   STRENGTH: '강점', NOT_STRENGTH: '강점 아님', NOT_CALC: '—',
 }
+export const POINT_KIND_NAMES: Record<string, string> = {
+  MARGIN: '여유', LOSS: '손실 환산', FIELD: '현장 이력',
+}
 export const RISK_NAMES: Record<string, string> = {
   BLANKET: '포괄 조항', VALUE_MISMATCH: '값 불일치', OPEN_SCOPE: '범위 모호',
 }
