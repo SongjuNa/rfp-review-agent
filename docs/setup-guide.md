@@ -183,6 +183,7 @@ npm run dev                # http://localhost:5173
 ```
 
 백엔드는 저장소 맨 위의 `.env`를 자동으로 읽으니 2-2에서 만든 파일을 그대로 씁니다.
+Docker DB는 내 컴퓨터의 **5433번**으로 열립니다. 2026-10-23 전에 `.env`를 만들었다면 `DATABASE_URL`의 `5432`를 `5433`으로 고쳐 주세요.
 `--reload` 덕분에 Python 코드를 저장하면 백엔드가 알아서 다시 켜지고, 화면도 저장하면 바로 바뀝니다.
 
 명령으로만 검토를 돌려 볼 수도 있습니다.
@@ -204,13 +205,13 @@ docker compose exec db createdb -U rfp rfp_test
 # 백엔드 검사와 테스트
 cd backend
 uv run ruff check .
-TEST_DATABASE_URL=postgresql://rfp:rfp@localhost:5432/rfp_test uv run pytest
+TEST_DATABASE_URL=postgresql://rfp:rfp@localhost:5433/rfp_test uv run pytest
 ```
 
 윈도우 PowerShell에서는 마지막 줄을 이렇게 씁니다.
 
 ```powershell
-$env:TEST_DATABASE_URL="postgresql://rfp:rfp@localhost:5432/rfp_test"; uv run pytest
+$env:TEST_DATABASE_URL="postgresql://rfp:rfp@localhost:5433/rfp_test"; uv run pytest
 ```
 
 화면 검사와 스펙 검사:
@@ -229,7 +230,7 @@ npx -y @fission-ai/openspec@1.14.3 validate --all --strict      # 저장소 맨 
 | 이런 일이 생기면 | 이렇게 해 보세요 |
 |---|---|
 | `Cannot connect to the Docker daemon` / `docker: command not found` | Docker Desktop이 켜져 있는지 확인. 고래 아이콘이 "Running"이 될 때까지 기다린 뒤 다시 |
-| `port is already allocated` 또는 `address already in use` (5432) | 내 컴퓨터에 PostgreSQL이 이미 켜져 있는 것. 그 PostgreSQL을 끄거나, `docker-compose.yml`의 `"5432:5432"`를 `"5433:5432"`로 바꾸고 방법 B의 주소도 `localhost:5433`으로 |
+| `port is already allocated` 또는 `address already in use` (5433) | 다른 프로그램이 5433번을 쓰는 중. `lsof -nP -iTCP:5433 -sTCP:LISTEN`(맥)으로 찾아서 끄거나, `docker-compose.yml`의 `"5433:5432"` 앞 숫자를 다른 번호(예: `5434`)로 바꾸고 `.env`의 주소도 같은 번호로 |
 | 같은 오류인데 8000이나 5173 | 다른 프로그램(예전에 켜 둔 백엔드·화면)이 그 번호를 쓰는 중. 그 창을 끄고 다시 |
 | `git clone`에서 `Repository not found` | 저장소 초대를 아직 수락하지 않았거나 다른 계정으로 로그인함. GitHub 메일함의 초대 수락 |
 | 화면이 하얗거나 "백엔드에 연결할 수 없습니다" | 첫 실행은 화면 준비(`npm ci`)에 몇 분 걸림. `frontend-1 … Local: http://localhost:5173/`가 보일 때까지 기다린 뒤 새로 고침 |

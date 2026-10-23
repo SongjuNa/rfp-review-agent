@@ -9,7 +9,7 @@ REPO_ROOT = Path(__file__).resolve().parents[3]
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=REPO_ROOT / ".env", extra="ignore")
 
-    database_url: str = "postgresql://rfp:rfp@localhost:5432/rfp"
+    database_url: str = "postgresql://rfp:rfp@localhost:5433/rfp"
     gemini_api_key: str | None = None
     gemini_model: str = "gemini-2.5-flash"
     migrations_dir: Path = REPO_ROOT / "db" / "migrations"

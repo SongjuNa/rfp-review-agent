@@ -40,7 +40,7 @@ PostgreSQL 16, Python 3.12+, [uv](https://docs.astral.sh/uv/), Node 22가 필요
 ```bash
 cd backend
 uv sync
-export DATABASE_URL=postgresql://rfp:rfp@localhost:5432/rfp
+export DATABASE_URL=postgresql://rfp:rfp@localhost:5433/rfp
 uv run rfp-db setup                     # migrate + seed-rules + seed-products
 uv run uvicorn rfp_agent.api.main:app --reload
 
@@ -58,7 +58,7 @@ npm install && npm run dev               # http://localhost:5173
 ```bash
 cd backend
 uv run ruff check .
-TEST_DATABASE_URL=postgresql://rfp:rfp@localhost:5432/rfp_test uv run pytest
+TEST_DATABASE_URL=postgresql://rfp:rfp@localhost:5433/rfp_test uv run pytest
 ```
 
 `TEST_DATABASE_URL`이 가리키는 DB는 테스트마다 **스키마를 지우고 다시 만듭니다**. 개발 DB와 다른 DB를 쓰세요. 지정하지 않으면 DB 테스트는 건너뜁니다.
