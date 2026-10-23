@@ -10,12 +10,11 @@ import psycopg
 import pytest
 
 from rfp_agent.config import get_settings
-from rfp_agent.db.cli import LOSS_FILE, PRODUCT_FILES
 from rfp_agent.db.migrate import migrate
 from rfp_agent.db.seed import dict_version, seed_products, seed_rules
 from rfp_agent.pipeline import queries
 from rfp_agent.pipeline.run import RunContext, create_run, execute_run
-from tests.conftest import FakeLLM
+from tests.conftest import JUDGMENT_LOSS_FILE, JUDGMENT_PRODUCT_FILES, FakeLLM
 
 SETTINGS = get_settings()
 FILES = {
@@ -43,8 +42,7 @@ def conn():
         conn.commit()
         migrate(conn, SETTINGS.migrations_dir)
         seed_rules(conn, SETTINGS.seed_dir)
-        products = SETTINGS.seed_dir / "products"
-        seed_products(conn, [products / f for f in PRODUCT_FILES], products / LOSS_FILE)
+        seed_products(conn, JUDGMENT_PRODUCT_FILES, JUDGMENT_LOSS_FILE)
         conn.commit()
         yield conn
 

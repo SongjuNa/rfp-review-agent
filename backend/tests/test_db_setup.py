@@ -56,6 +56,33 @@ def test_seed_products_later_file_wins_and_losses(empty_db, settings):
     assert card == (True,)
 
 
+def test_seed_products_replace_clears_old_products_and_runs(empty_db, settings, tmp_path):
+    """Scenario: 제품표 바꾸기 / 이전 제품이 남아 있음"""
+    migrate(empty_db, settings.migrations_dir)
+    seed_products(empty_db, [FIXTURES / "products.csv"])
+    run_id = empty_db.execute(
+        "INSERT INTO review_run (started_by, stage, dict_version) "
+        "VALUES (1, 'ENGINEER_REVIEW', 'test') RETURNING run_id").fetchone()[0]
+    empty_db.execute("INSERT INTO run_product_choice (run_id, equipment_group, product_code) "
+                     "VALUES (%s, 'g', 'GIS-145')", (run_id,))
+    new_file = tmp_path / "new.csv"
+    new_file.write_text("product_code,product_name,family,family_name,is_assumed,source_doc\n"
+                        "GIS-245-50,GIS 245kV 50kA,GIS,Gas-insulated switchgear,N,CAT p.1\n",
+                        encoding="utf-8")
+
+    kept = seed_products(empty_db, [new_file])
+    assert kept.skipped == ["파일에 없는 이전 제품 3개가 DB에 남아 있음 "
+                            "(비우려면 seed-products --replace)"]
+
+    report = seed_products(empty_db, [new_file], replace=True)
+    assert report.skipped == []
+    codes = empty_db.execute("SELECT product_code FROM product_master").fetchall()
+    assert codes == [("GIS-245-50",)]
+    families = empty_db.execute("SELECT family, family_name FROM product_family").fetchall()
+    assert families == [("GIS", "Gas-insulated switchgear")]
+    assert empty_db.execute("SELECT count(*) FROM review_run").fetchone()[0] == 0
+
+
 def test_unknown_direction_stops_without_loading(empty_db, settings, tmp_path):
     migrate(empty_db, settings.migrations_dir)
     seed_dir = tmp_path / "seed"
