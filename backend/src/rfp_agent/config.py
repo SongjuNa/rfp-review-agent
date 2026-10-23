@@ -1,0 +1,22 @@
+from functools import lru_cache
+from pathlib import Path
+
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+REPO_ROOT = Path(__file__).resolve().parents[3]
+
+
+class Settings(BaseSettings):
+    model_config = SettingsConfigDict(env_file=REPO_ROOT / ".env", extra="ignore")
+
+    database_url: str = "postgresql://rfp:rfp@localhost:5432/rfp"
+    gemini_api_key: str | None = None
+    migrations_dir: Path = REPO_ROOT / "db" / "migrations"
+    seed_dir: Path = REPO_ROOT / "data" / "seed"
+    # RFP 원문처럼 저장소에 올리지 않는 자료 (data/private/README.md)
+    private_data_dir: Path = REPO_ROOT / "data" / "private"
+
+
+@lru_cache
+def get_settings() -> Settings:
+    return Settings()
