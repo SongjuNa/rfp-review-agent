@@ -6,7 +6,8 @@ services:
       POSTGRES_PASSWORD: rfp
       POSTGRES_DB: rfp
     ports:
-      - "5432:5432"
+      # 맥·윈도우에 PostgreSQL이 따로 켜져 있어도 겹치지 않게 내 컴퓨터 쪽은 5433번을 쓴다
+      - "5433:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
