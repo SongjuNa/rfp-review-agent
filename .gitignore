@@ -1,0 +1,13 @@
+# 고객사 RFP 원문·제품표 (data/private/README.md)
+data/private/*
+!data/private/README.md
+
+.env
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+.ruff_cache/
+node_modules/
+dist/
+.DS_Store
