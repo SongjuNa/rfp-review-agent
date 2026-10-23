@@ -19,7 +19,8 @@ from tests.conftest import JUDGMENT_LOSS_FILE, JUDGMENT_PRODUCT_FILES, FakeLLM
 SETTINGS = get_settings()
 FILES = {
     1: "1. Bidding Forms_Draft", 2: "6. Section6_Employers", 3: "문서검토_115kV GIS_",
-    6: "Attachment 4.1", 8: "Attachment.05", 13: "26 13 00 fl", 18: "262000 Electric",
+    4: "FEED-EL-TS-055", 6: "Attachment 4.1", 8: "Attachment.05", 13: "26 13 00 fl",
+    18: "262000 Electric",
     19: "제1장_설계기준", 22: "제8장_154kV",
 }
 
@@ -294,6 +295,18 @@ def test_loss_evaluation_case_5(conn, main_run):
                         for x in rest)
     [point] = [p for p in queries.run_proposals(conn, main_run) if p["point_kind"] == "LOSS"]
     assert point["is_assumed"] and point["text_draft"].endswith("(팀 가정)")
+
+
+def test_field_history_heater(conn):
+    """Scenario: 결로 방지 히터 (파일 4 327행) — 고압 개폐기 요구가 FLT-051과 이어지고,
+    문장에는 고장 사전의 증상·원인·조치 외 내용이 없다."""
+    run_id = run(conn, [4])
+    points = [p for p in queries.run_proposals(conn, run_id) if p["point_kind"] == "FIELD"]
+    heater = next(p for p in points if "FLT-051" in p["text_draft"])
+    assert heater["requirement_id"] == requirement_at(conn, run_id, 4, 327)["requirement_id"]
+    assert "Condensation due to anti-condensation heater off" in heater["text_draft"]
+    assert "Restore heater operation and clean insulators" in heater["text_draft"]
+    assert heater["number_check"] == "OK" and heater["product_code"] is None
 
 
 def test_switch_breaker_product_fills_weight(conn, main_run):

@@ -1,7 +1,7 @@
 // 일탈·질의 목록과 누락 점검(시안 3), 제안 포인트 채택
 import { api, type OutputItem, type SubmissionCheck } from '../api'
 import { ActionBar, Assumed, Badge, ErrorText, Evidence } from '../components/common'
-import { STATUS_NAMES } from '../components/labels'
+import { POINT_KIND_NAMES, STATUS_NAMES } from '../components/labels'
 import { useLoad } from '../components/useLoad'
 import type { ViewProps } from './types'
 
@@ -81,7 +81,7 @@ export function Proposals({ runId, actorId, editable }: ViewProps) {
         {data?.map((p) => (
           <li key={p.point_id} className={`card ${p.status === 'DISCARDED' ? 'removed' : ''}`}>
             <header>
-              <Badge tone="ok">{p.point_kind === 'LOSS' ? '손실 환산' : '여유'}</Badge>
+              <Badge tone="ok">{POINT_KIND_NAMES[p.point_kind] ?? p.point_kind}</Badge>
               <Badge>{STATUS_NAMES[p.status]}</Badge>
               {p.number_check === 'MISMATCH' && <Badge tone="bad">숫자 불일치: {p.number_detail}</Badge>}
               <Assumed show={p.is_assumed} />

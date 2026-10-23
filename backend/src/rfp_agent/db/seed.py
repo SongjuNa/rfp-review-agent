@@ -13,6 +13,8 @@ from pathlib import Path
 
 import psycopg
 
+from rfp_agent.pipeline.field_history import EQUIPMENT_KINDS
+
 # 사전의 기호 표기 → compare_rule/item_key 방향 코드
 DIRECTION_CODES = {
     "=": "EQ",
@@ -271,6 +273,110 @@ SEED_STEPS = [
 ]
 
 
+# FR-15 현장 이력. 고장 사전 파일이 없으면 이 기능은 꺼 둔다 (데이터 사용 확인 전제, Q8).
+FAULT_CATALOG_FILE = "fault_catalog.csv"
+RESOLUTION_CASE_FILE = "resolution_cases.csv"
+FAULT_LINK_FILE = "fault_link.csv"
+SUSPECT_HOURS_RATIO = 10        # 처리 시간이 사전 기준의 이 배수를 넘으면 의심 사례
+
+
+def _yes(value: str) -> bool:
+    return value.strip().upper() == "Y"
+
+
+def suspect_reason(case: dict[str, str], fault: dict[str, str]) -> str | None:
+    """해결 사례가 고장 사전과 어긋나면 그 이유. 의심 사례는 해결 사례 수에서 뺀다."""
+    reasons = []
+    if case["rma_no"] and not _yes(fault["needs_rma"]):
+        reasons.append(f"RMA 번호 불일치 (사전: RMA 불필요, 사례: {case['rma_no']})")
+    hours, typical = case["time_to_resolve_hours"], fault["typical_resolution_hours"]
+    if hours and typical and float(hours) > SUSPECT_HOURS_RATIO * float(typical):
+        reasons.append(f"처리 시간 {hours}h (사전 기준 {typical}h의 "
+                       f"{SUSPECT_HOURS_RATIO}배 초과)")
+    return " / ".join(reasons) or None
+
+
+def seed_field_history(conn: psycopg.Connection, seed_dir: Path, report: SeedReport) -> None:
+    """고장 사전·해결 사례·요구–고장 연결표. 파일에 없는 줄은 지운다."""
+    if not (seed_dir / FAULT_CATALOG_FILE).exists():
+        for table in ("fault_link", "resolution_case", "fault_catalog"):
+            conn.execute(f"DELETE FROM {table}")
+        report.skipped.append(f"{FAULT_CATALOG_FILE} 없음: 현장 이력 연결(FR-15)을 꺼 둠")
+        return
+    faults = {r["fault_id"]: r for r in read_csv(seed_dir / FAULT_CATALOG_FILE)}
+    cases = read_csv(seed_dir / RESOLUTION_CASE_FILE)
+    links = read_csv(seed_dir / FAULT_LINK_FILE)
+    item_keys = {k for (k,) in conn.execute("SELECT item_key FROM item_key")}
+    for case in cases:
+        if case["fault_id"] not in faults:
+            raise SeedError(f"해결 사례 {case['case_id']}: 고장 사전에 없는 {case['fault_id']}")
+    for link in links:
+        where = f"연결표 {link['표준 항목키']} {link['고장 번호']}"
+        if link["고장 번호"] not in faults:
+            raise SeedError(f"{where}: 고장 사전에 없는 고장 번호")
+        if link["표준 항목키"] not in item_keys:
+            raise SeedError(f"{where}: 항목 이름 사전에 없는 표준 항목키")
+        kinds = [k.strip() for k in link["적용 설비(;로 구분)"].split(";") if k.strip()]
+        if not kinds or set(kinds) - EQUIPMENT_KINDS:
+            raise SeedError(f"{where}: 적용 설비 '{link['적용 설비(;로 구분)']}'을 코드로 "
+                            "바꿀 수 없음")
+        link["kinds"] = kinds
+    keep = {(r["표준 항목키"], r["제품군"], r["고장 번호"]) for r in links}
+    stale = [link_id for link_id, *key in conn.execute(
+        "SELECT fault_link_id, item_key, product_family, fault_id FROM fault_link")
+        if tuple(key) not in keep]
+    # 연결표에서 뺀 줄을 가리키던 현장 이력 후보도 함께 지워진다 (ON DELETE CASCADE)
+    conn.execute("DELETE FROM fault_link WHERE fault_link_id = ANY(%s)", (stale,))
+    conn.execute("DELETE FROM resolution_case WHERE NOT (case_id = ANY(%s))",
+                 ([c["case_id"] for c in cases],))
+    conn.execute("DELETE FROM fault_catalog WHERE NOT (fault_id = ANY(%s))", (list(faults),))
+    for f in faults.values():
+        conn.execute(
+            """INSERT INTO fault_catalog (fault_id, family, applies_to, symptom, root_cause,
+                   action, verified, needs_rma, typical_hours)
+               VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+               ON CONFLICT (fault_id) DO UPDATE SET family = EXCLUDED.family,
+                 applies_to = EXCLUDED.applies_to, symptom = EXCLUDED.symptom,
+                 root_cause = EXCLUDED.root_cause, action = EXCLUDED.action,
+                 verified = EXCLUDED.verified, needs_rma = EXCLUDED.needs_rma,
+                 typical_hours = EXCLUDED.typical_hours""",
+            (f["fault_id"], f["family"], f["applies_to"] or None, f["symptom"], f["root_cause"],
+             f["action"], _yes(f["verified"]), _yes(f["needs_rma"]),
+             f["typical_resolution_hours"] or None))
+    suspects = 0
+    for c in cases:
+        reason = suspect_reason(c, faults[c["fault_id"]])
+        suspects += reason is not None
+        conn.execute(
+            """INSERT INTO resolution_case (case_id, fault_id, summary, prevention, product_code,
+                   rma_no, resolution_result, resolve_hours, suspect_reason)
+               VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+               ON CONFLICT (case_id) DO UPDATE SET fault_id = EXCLUDED.fault_id,
+                 summary = EXCLUDED.summary, prevention = EXCLUDED.prevention,
+                 product_code = EXCLUDED.product_code, rma_no = EXCLUDED.rma_no,
+                 resolution_result = EXCLUDED.resolution_result,
+                 resolve_hours = EXCLUDED.resolve_hours,
+                 suspect_reason = EXCLUDED.suspect_reason""",
+            (c["case_id"], c["fault_id"], c["case_summary"] or None,
+             c["recurrence_prevention"] or None, c["product_code"] or None, c["rma_no"] or None,
+             c["resolution_result"] or None, c["time_to_resolve_hours"] or None, reason))
+    for link in links:
+        conn.execute(
+            """INSERT INTO fault_link (item_key, product_family, fault_id, confirmed_by,
+                   equipment_kinds, source_note)
+               VALUES (%s, %s, %s, %s, %s, %s)
+               ON CONFLICT (item_key, product_family, fault_id) DO UPDATE SET
+                 confirmed_by = EXCLUDED.confirmed_by,
+                 equipment_kinds = EXCLUDED.equipment_kinds,
+                 source_note = EXCLUDED.source_note""",
+            (link["표준 항목키"], link["제품군"], link["고장 번호"], link["확정자"],
+             link["kinds"], link["근거 원문 위치"] or None))
+    report.counts["fault_catalog"] = len(faults)
+    report.counts["resolution_case"] = len(cases)
+    report.counts["의심 사례"] = suspects
+    report.counts["fault_link"] = len(links)
+
+
 def dict_version(seed_dir: Path) -> str:
     """사전·제품표 파일 내용으로 만든 판 번호. 같은 파일이면 같은 판이다 (CR-11)."""
     digest = hashlib.sha256()
@@ -285,6 +391,7 @@ def seed_rules(conn: psycopg.Connection, seed_dir: Path) -> SeedReport:
     with conn.transaction():
         for name, step in SEED_STEPS:
             step(conn, read_csv(seed_dir / name), report)
+        seed_field_history(conn, seed_dir, report)
     return report
 
 

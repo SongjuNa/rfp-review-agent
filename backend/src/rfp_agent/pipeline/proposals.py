@@ -1,4 +1,4 @@
-"""FR-14 기술 제안 포인트 후보. 준수 + 강점 여유, 손실 환산 합계를 코드가 고른다.
+"""FR-14 기술 제안 포인트 후보. 준수 + 강점 여유, 손실 환산 합계, 현장 이력(FR-15)을 코드가 고른다.
 
 근거 칸(요구 원문 위치, 제품 행)이 비면 만들지 않는다 (K12 = 0). 문장은 근거 값만으로 쓰고
 숫자는 자리표시자로 둔 뒤 코드가 채우고 대조한다 (CR-07). 경쟁 제품 비교 문장은 쓰지 않는다.
@@ -9,6 +9,7 @@ from psycopg.rows import dict_row
 
 from rfp_agent.llm import tasks
 from rfp_agent.llm.client import LLM
+from rfp_agent.pipeline.field_history import find_matches
 from rfp_agent.pipeline.numbers import fill, fmt
 
 ASSUMED = " (팀 가정)"
@@ -83,6 +84,26 @@ def _loss_points(conn: psycopg.Connection, run_id: int) -> list[dict]:
     return points
 
 
+def _field_points(conn: psycopg.Connection, run_id: int) -> list[dict]:
+    """현장 이력 후보. 문장은 고장 사전의 증상·원인·조치만으로 코드가 쓴다 (AI에 맡기지 않음)."""
+    points = []
+    for m in find_matches(conn, run_id):
+        link = m.link
+        values = {"f": link.fault_id, "s": link.symptom, "c": link.root_cause, "a": link.action,
+                  "n": str(link.cases)}
+        template = (f"{link.name_ko} 요구와 이어지는 현장 고장 {{f}} (제품군 {link.family}). "
+                    "증상: {s}. 원인: {c}. 조치: {a}. 해결 사례 {n}건.")
+        files = ", ".join(str(n) for n in m.file_nos)
+        basis = (f"요구 항목 {link.name_ko} · 같은 요구 {m.count}곳 (파일 {files}) · "
+                 f"고장 사전 {link.fault_id} ({link.family}) · 해결 사례 {link.cases}건 "
+                 f"(의심 사례 {link.suspects}건 제외)")
+        points.append({"kind": "FIELD", "requirement_id": m.requirement_id,
+                       "product_code": None, "judgment_id": None, "loss_calc_id": None,
+                       "fault_link_id": link.fault_link_id, "template": template,
+                       "values": values, "basis": basis, "is_assumed": False})
+    return points
+
+
 def build_proposals(conn: psycopg.Connection, run_id: int, llm: LLM | None) -> int:
     points = _margin_points(conn, run_id) + _loss_points(conn, run_id)
     if llm is not None and points:
@@ -91,6 +112,9 @@ def build_proposals(conn: psycopg.Connection, run_id: int, llm: LLM | None) -> i
         drafted = [(t, "AI") for t in texts]
     else:
         drafted = [(p["template"], "CODE") for p in points]
+    field = _field_points(conn, run_id)
+    points += field
+    drafted += [(p["template"], "CODE") for p in field]
     with conn.cursor(row_factory=dict_row) as cur:
         reviewed = {(r["point_kind"], r["requirement_id"], r["basis"]): r for r in cur.execute(
             "SELECT point_kind, requirement_id, basis, status, text_draft, drafted_by "
@@ -109,10 +133,10 @@ def build_proposals(conn: psycopg.Connection, run_id: int, llm: LLM | None) -> i
             text = filled.text + (ASSUMED if p["is_assumed"] else "")
             conn.execute(
                 """INSERT INTO proposal_point (run_id, point_kind, requirement_id, product_code,
-                       judgment_id, loss_calc_id, text_draft, number_check, is_assumed, status,
-                       basis, number_detail, drafted_by)
-                   VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)""",
+                       judgment_id, loss_calc_id, fault_link_id, text_draft, number_check,
+                       is_assumed, status, basis, number_detail, drafted_by)
+                   VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)""",
                 (run_id, p["kind"], p["requirement_id"], p["product_code"], p["judgment_id"],
-                 p["loss_calc_id"], text, filled.check, p["is_assumed"], status, p["basis"],
-                 filled.detail, by))
+                 p["loss_calc_id"], p.get("fault_link_id"), text, filled.check,
+                 p["is_assumed"], status, p["basis"], filled.detail, by))
     return len(points)

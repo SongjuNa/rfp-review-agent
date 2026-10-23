@@ -70,7 +70,7 @@ TEST_DATABASE_URL=postgresql://rfp:rfp@localhost:5433/rfp_test uv run pytest
 | 명령 | 하는 일 |
 |---|---|
 | `rfp-db migrate` | `db/migrations/*.sql` 중 아직 적용하지 않은 파일을 순서대로 적용 |
-| `rfp-db seed-rules` | 규칙 사전 적재 (항목키·비교 규칙·위험 표현·항목 매핑·파일 번호표·칸 이름·적용 대상·유형 규칙, 다시 해도 결과 같음) |
+| `rfp-db seed-rules` | 규칙 사전 적재 (항목키·비교 규칙·위험 표현·항목 매핑·파일 번호표·칸 이름·적용 대상·유형 규칙, 고장 사전·해결 사례·요구–고장 연결표, 다시 해도 결과 같음) |
 | `rfp-db seed-products` | 제품표 적재 (`data/seed/products/product_master.csv`, 손실값 `trf_spec.csv`는 있으면). 파일에 없는 이전 제품이 남아 있으면 알려 줌 |
 | `rfp-db seed-products --replace` | 제품표 바꾸기. 이전 제품·제품군과 **검토 실행 결과를 모두 지우고** 파일 내용만 넣음 (되돌릴 수 없음) |
 | `rfp-db setup` | 위 세 개를 차례로 |
