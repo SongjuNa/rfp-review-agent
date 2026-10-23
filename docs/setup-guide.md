@@ -114,9 +114,13 @@ cd RFP-agent-service
 docker compose exec backend rfp-db seed-products
 ```
 
-`[제품표] product_family 19, product_master 93`처럼 나오면 성공입니다.
+`[제품표] product_family 4, product_master 122`처럼 나오면 성공입니다.
 우리 제품 정보를 창고(DB)에 넣는 단계라서, 이걸 해야 "우리 제품과 비교·판정"이 됩니다.
 규칙 사전과 DB 표는 백엔드가 켜질 때 자동으로 만들어 줍니다.
+
+> **예전에 이미 설치한 사람은** 제품표가 바뀌었으니(2026-10-23) 코드를 새로 받은 뒤 한 번 이렇게 실행하세요.
+> `docker compose exec backend rfp-db seed-products --replace`
+> 예전 제품과 **예전 검토 결과가 모두 지워지고** 새 제품표만 남습니다. 그냥 `seed-products`만 하면 예전 제품이 남아 있다고 알려 줍니다.
 
 ### 2-6. 화면 열기
 

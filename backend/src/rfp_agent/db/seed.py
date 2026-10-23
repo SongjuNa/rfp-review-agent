@@ -305,8 +305,11 @@ def product_row(row: dict[str, str]) -> dict[str, object]:
 
 
 def seed_products(conn: psycopg.Connection, product_files: list[Path],
-                  loss_file: Path | None = None) -> SeedReport:
-    """뒤에 오는 파일이 같은 product_code를 덮어쓴다 (예: TRF_v2가 입력용의 TRF-HV를)."""
+                  loss_file: Path | None = None, replace: bool = False) -> SeedReport:
+    """뒤에 오는 파일이 같은 product_code를 덮어쓴다 (여러 파일을 줄 때).
+
+    replace면 이전 제품표와 그 제품을 참조하는 검토 실행 결과를 모두 지우고 파일 내용만 남긴다.
+    """
     report = SeedReport()
     products: dict[str, dict[str, object]] = {}
     families: dict[str, str] = {}
@@ -331,6 +334,9 @@ def seed_products(conn: psycopg.Connection, product_files: list[Path],
                "rated_capacity_unit", *LOSS_COLUMNS.values(), "loss_is_assumed"]
     updates = ", ".join(f"{c} = EXCLUDED.{c}" for c in columns if c != "product_code")
     with conn.transaction():
+        if replace:
+            # 판정·보증값·손실 등이 제품 행을 참조하므로 검토 실행도 함께 비운다
+            conn.execute("TRUNCATE review_run, product_master, product_family CASCADE")
         for family, name in families.items():
             conn.execute(
                 "INSERT INTO product_family (family, family_name) VALUES (%s, %s) "
@@ -346,4 +352,9 @@ def seed_products(conn: psycopg.Connection, product_files: list[Path],
             )
     report.counts["product_family"] = len(families)
     report.counts["product_master"] = len(products)
+    stale = conn.execute("SELECT count(*) FROM product_master WHERE product_code <> ALL(%s)",
+                         (list(products),)).fetchone()[0]
+    if stale:
+        report.skipped.append(f"파일에 없는 이전 제품 {stale}개가 DB에 남아 있음 "
+                              "(비우려면 seed-products --replace)")
     return report

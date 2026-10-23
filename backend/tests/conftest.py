@@ -8,6 +8,11 @@ import pytest
 from rfp_agent.config import get_settings
 
 FIXTURES = Path(__file__).parent / "fixtures"
+# 판정 이후 단계 테스트용 고정 제품표. 실제 제품표(data/seed/products)가 바뀌어도 시나리오가
+# 같은 입력으로 돌도록 따로 둔다. 실제 제품 데이터로 쓰지 않는다.
+JUDGMENT_PRODUCTS = FIXTURES / "judgment_products"
+JUDGMENT_PRODUCT_FILES = [JUDGMENT_PRODUCTS / f for f in ("products_a.csv", "products_b.csv")]
+JUDGMENT_LOSS_FILE = JUDGMENT_PRODUCTS / "losses.csv"
 
 
 @pytest.fixture
@@ -53,11 +58,9 @@ CATALOG = [(91, "synthetic_judgment", "A"), (92, "synthetic_feeder", "A"),
 @pytest.fixture
 def db(seeded_db, settings):
     """규칙 사전 + 제품표 + 합성 문서 목록까지 넣은 DB (판정 이후 단계 테스트용)."""
-    from rfp_agent.db.cli import LOSS_FILE, PRODUCT_FILES
     from rfp_agent.db.seed import seed_products
 
-    products = settings.seed_dir / "products"
-    seed_products(seeded_db, [products / f for f in PRODUCT_FILES], products / LOSS_FILE)
+    seed_products(seeded_db, JUDGMENT_PRODUCT_FILES, JUDGMENT_LOSS_FILE)
     for file_no, key, bundle in CATALOG:
         seeded_db.execute("INSERT INTO document_catalog (file_no, file_key, bundle, language) "
                           "VALUES (%s, %s, %s, 'en')", (file_no, key, bundle))
