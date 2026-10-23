@@ -21,6 +21,8 @@ SKKU × LS AI CAMPUS 1기 2조, 주제 2.
 
 ## 실행
 
+처음 설치하는 조원은 **[내 컴퓨터에서 설치하고 실행하기](docs/setup-guide.md)** 를 따라 하세요 (준비물부터 문제 해결까지 쉽게 정리).
+
 ### Docker Compose (권장)
 
 ```bash
