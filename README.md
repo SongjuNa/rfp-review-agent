@@ -76,9 +76,9 @@ uv run rfp-review run "../data/private/rfp_docx/00지역_문서검토_1. Bidding
 uv run rfp-review status 1
 ```
 
-docx를 읽어 분류 → 절·표 나누기 → 요구사항 추출 → 유형 → 값 정리 → 위험 조건 후보까지 돌리고 DB에 저장합니다. `GEMINI_API_KEY`가 없으면 AI 보조 단계를 건너뛰고 코드 규칙 결과만 냅니다. 같은 파일·같은 사전 판·같은 코드면 저장된 결과를 다시 씁니다.
+docx를 읽어 분류 → 절·표 나누기 → 요구사항 추출 → 유형 → 값 정리 → 위험 조건 후보 → 제품 비교 판정 → 보증값 후보 → 손실 환산 → 일탈·질의 목록 초안 → 기술 제안 포인트 후보까지 돌리고 DB에 저장합니다. 판정에는 제품표(`rfp-db seed-products`)가 필요합니다. `GEMINI_API_KEY`가 없으면 AI 보조 단계를 건너뛰고 코드 규칙 결과만 냅니다. 같은 파일·같은 사전 판·같은 코드면 저장된 결과를 다시 씁니다.
 
-API: `POST /api/runs`(docx 올리기), `POST /api/runs/library`(서버의 `data/private/rfp_docx` 파일 이름으로), `GET /api/runs/{id}`, `…/documents`, `…/pairs`, `…/requirements?type_code=&document_id=`, `…/risks`. 자세한 모양은 `/docs`(FastAPI 문서).
+API: `POST /api/runs`(docx 올리기), `POST /api/runs/library`(서버의 `data/private/rfp_docx` 파일 이름으로), `GET /api/runs/{id}`, `…/documents`, `…/pairs`, `…/requirements?type_code=&document_id=`, `…/risks`, `…/judgments?result=&group=`, `…/equipment`(설비 묶음별 비교 제품과 후보), `PUT …/equipment/{묶음}/product`(비교 제품 바꿔 보기), `…/warranty`, `…/losses`, `PUT …/losses/{id}`(손실값 고치기, 팀 가정), `…/outputs?list_kind=`, `PUT …/outputs/{id}/status`(목록에서 빼기), `…/submission-check`, `…/proposals`. 자세한 모양은 `/docs`(FastAPI 문서).
 
 ## OpenSpec으로 일하기
 

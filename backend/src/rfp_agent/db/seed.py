@@ -33,6 +33,8 @@ DIRECTION_CODES = {
     "AI 읽기": "AI",
 }
 
+STRENGTH_CODES = {"클수록 좋음": "HIGHER", "작을수록 좋음": "LOWER", "강점 아님": "NONE"}
+
 RISK_KINDS = {
     "포괄 조항": "BLANKET",
     "포괄 조항(간주)": "BLANKET",
@@ -56,6 +58,10 @@ PRODUCT_COLUMNS = [
 LOSS_COLUMNS = {"no_load_loss_kw": "noload_loss_kw", "load_loss_kw": "load_loss_kw",
                 "aux_loss_kw": "aux_loss_kw"}
 DESIGN_CARD_MARK = "[설계 사례 카드"
+# 카탈로그 문장에서 정격 주파수·용량을 칸으로 옮긴다 (판정에 자주 쓰임). 단위는 그대로 둔다.
+FREQUENCY = [re.compile(r"주파수\s*(\d+(?:/\d+)?)\s*Hz"), re.compile(r"(?<![\d~.])(\d+/\d+)\s*Hz"),
+             re.compile(r"(?<![\d~.])(\d+)\s*Hz")]
+CAPACITY = re.compile(r"(?<![\d.])(\d[\d,]*(?:\.\d+)?)(?:/[\d.,]+)*\s*(MVA|kVA)(?![A-Za-z])")
 
 
 class SeedError(ValueError):
@@ -80,6 +86,15 @@ def direction_code(text: str, where: str) -> str:
         raise SeedError(f"{where}: 비교 방향 '{text}'을 코드로 바꿀 수 없음") from None
 
 
+def strength_code(text: str, where: str) -> str | None:
+    if not text:
+        return None
+    try:
+        return STRENGTH_CODES[text]
+    except KeyError:
+        raise SeedError(f"{where}: 강점 방향 '{text}'을 코드로 바꿀 수 없음") from None
+
+
 def blank_to_none(value: str) -> str | None:
     return value if value and value != "—" else None
 
@@ -96,12 +111,13 @@ def seed_item_keys(conn: psycopg.Connection, rows: list[dict[str, str]], report:
     for row in rows:
         key = row["표준 항목키"]
         conn.execute(
-            """INSERT INTO item_key (item_key, name_ko, default_direction, note)
-               VALUES (%s, %s, %s, %s)
+            """INSERT INTO item_key (item_key, name_ko, default_direction, strength_direction, note)
+               VALUES (%s, %s, %s, %s, %s)
                ON CONFLICT (item_key) DO UPDATE SET name_ko = EXCLUDED.name_ko,
-                 default_direction = EXCLUDED.default_direction, note = EXCLUDED.note""",
+                 default_direction = EXCLUDED.default_direction,
+                 strength_direction = EXCLUDED.strength_direction, note = EXCLUDED.note""",
             (key, row["한글 이름"], direction_code(row["기본 비교 방향"], key),
-             blank_to_none(row["비고"])),
+             strength_code(row["강점 방향"], key) or "NONE", blank_to_none(row["비고"])),
         )
         conn.execute("DELETE FROM item_alias WHERE item_key = %s", (key,))
         aliases = (a.strip() for a in row["같은 뜻의 원문 표현(;로 구분)"].split(";"))
@@ -119,13 +135,15 @@ def seed_compare_rules(conn: psycopg.Connection, rows: list[dict[str, str]], rep
         values = (table_name_of(row["대상 표"]), row["항목 번호"],
                   blank_to_none(row["표준 항목키"]),
                   direction_code(direction_text, where), "+시간" in direction_text,
+                  strength_code(row["강점 방향"], where),
                   "; ".join(filter(None, [row["처리"], row["비고(사례)"]])) or None)
         row_id = conn.execute(
-            """INSERT INTO compare_rule
-                 (table_name, item_no, item_key, direction, time_condition, process_note)
-               VALUES (%s, %s, %s, %s, %s, %s)
+            """INSERT INTO compare_rule (table_name, item_no, item_key, direction, time_condition,
+                                         strength_direction, process_note)
+               VALUES (%s, %s, %s, %s, %s, %s, %s)
                ON CONFLICT (table_name, item_no, COALESCE(item_key, '')) DO UPDATE SET
                  direction = EXCLUDED.direction, time_condition = EXCLUDED.time_condition,
+                 strength_direction = EXCLUDED.strength_direction,
                  process_note = EXCLUDED.process_note
                RETURNING compare_rule_id""",
             values,
@@ -274,7 +292,15 @@ def product_row(row: dict[str, str]) -> dict[str, object]:
     values: dict[str, object] = {c: (row.get(c) or None) for c in PRODUCT_COLUMNS}
     values["lifecycle_status"] = values["lifecycle_status"] or "UNKNOWN"
     values["is_assumed"] = values["is_assumed"] or "N"
-    values["is_design_card"] = (row.get("description") or "").startswith(DESIGN_CARD_MARK)
+    description = row.get("description") or ""
+    values["is_design_card"] = description.startswith(DESIGN_CARD_MARK)
+    values["rated_frequency"] = next(
+        (m.group(1) for p in FREQUENCY if (m := p.search(description))), None)
+    # 정격 용량은 변압기만 (차단기의 "차단용량 … MVA"는 다른 값이다)
+    capacity = (CAPACITY.search(row.get("product_name") or "") or CAPACITY.search(description)
+                if row.get("family") == "TRANSFORMER" else None)
+    values["rated_capacity"] = float(capacity.group(1).replace(",", "")) if capacity else None
+    values["rated_capacity_unit"] = capacity.group(2) if capacity else None
     return values
 
 
@@ -296,10 +322,13 @@ def seed_products(conn: psycopg.Connection, product_files: list[Path],
                 continue
             losses = {dst: row.get(src) or None for src, dst in LOSS_COLUMNS.items()}
             product.update(losses)
+            product["rated_frequency"] = (product["rated_frequency"] or row.get("frequency_hz")
+                                          or None)
             if any(losses.values()):
                 product["loss_is_assumed"] = row.get("is_assumed") == "Y"
 
-    columns = [*PRODUCT_COLUMNS, "is_design_card", *LOSS_COLUMNS.values(), "loss_is_assumed"]
+    columns = [*PRODUCT_COLUMNS, "is_design_card", "rated_frequency", "rated_capacity",
+               "rated_capacity_unit", *LOSS_COLUMNS.values(), "loss_is_assumed"]
     updates = ", ".join(f"{c} = EXCLUDED.{c}" for c in columns if c != "product_code")
     with conn.transaction():
         for family, name in families.items():

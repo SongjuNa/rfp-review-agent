@@ -16,7 +16,13 @@ def run_summary(conn: psycopg.Connection, run_id: int) -> dict | None:
                (SELECT count(*) FROM run_document WHERE run_id = r.run_id) AS documents,
                (SELECT count(*) FROM requirement q JOIN run_document rd USING (document_id)
                  WHERE rd.run_id = r.run_id AND q.req_kind = 'REQUIREMENT') AS requirements,
-               (SELECT count(*) FROM risk_flag WHERE run_id = r.run_id) AS risks
+               (SELECT count(*) FROM risk_flag WHERE run_id = r.run_id) AS risks,
+               (SELECT count(*) FROM judgment WHERE run_id = r.run_id AND is_current)
+                   AS judgments,
+               (SELECT count(*) FROM judgment WHERE run_id = r.run_id AND is_current
+                  AND result = 'DEVIATION_CANDIDATE') AS deviation_candidates,
+               (SELECT count(*) FROM output_item WHERE run_id = r.run_id) AS output_items,
+               (SELECT count(*) FROM proposal_point WHERE run_id = r.run_id) AS proposals
         FROM review_run r WHERE r.run_id = %s""", (run_id,))
     return rows[0] if rows else None
 
@@ -126,3 +132,157 @@ def run_risks(conn: psycopg.Connection, run_id: int) -> list[dict]:
         m["locations"] = locations.get(m["requirement_id"], [])
         by_id[m.pop("risk_id")]["members"].append(m)
     return list(by_id.values())
+
+
+def _locations(conn: psycopg.Connection, requirement_ids) -> dict[int, list[dict]]:
+    out: dict[int, list[dict]] = {}
+    for loc in _rows(conn, LOCATIONS, (list(set(requirement_ids)),)):
+        out.setdefault(loc.pop("requirement_id"), []).append(loc)
+    return out
+
+
+def _with_locations(conn: psycopg.Connection, rows: list[dict],
+                    key: str = "requirement_id") -> list[dict]:
+    """원문 위치가 없는 결과는 내지 않는다 (CR-02)."""
+    locations = _locations(conn, [r[key] for r in rows if r[key] is not None])
+    out = []
+    for r in rows:
+        r["locations"] = locations.get(r[key], [])
+        if r["locations"]:
+            out.append(r)
+    return out
+
+
+JUDGMENTS = """
+    SELECT j.judgment_id, j.requirement_id, j.equipment_group, j.result, j.reason_code,
+           j.reason_text, j.product_code, j.product_selected_by, j.product_value_raw,
+           j.product_value_unit, j.margin_value, j.margin_kind, j.margin_direction,
+           j.is_assumed, v.raw_text AS req_value_raw, v.num_value AS req_num, v.unit_raw,
+           v.cond_time_s, v.item_key, k.name_ko AS item_name, tr.item_name_raw
+    FROM judgment j
+    JOIN req_value v ON v.value_id = j.value_id
+    JOIN requirement q ON q.requirement_id = j.requirement_id
+    LEFT JOIN table_row tr ON tr.row_id = q.row_id
+    LEFT JOIN item_key k ON k.item_key = v.item_key"""
+
+
+def run_judgments(conn: psycopg.Connection, run_id: int, *, result: str | None = None,
+                  group: str | None = None, limit: int = 100, offset: int = 0) -> list[dict]:
+    rows = _rows(conn, JUDGMENTS + """
+        WHERE j.run_id = %(run)s AND j.is_current
+          AND (%(result)s::text IS NULL OR j.result = %(result)s)
+          AND (%(group)s::text IS NULL OR j.equipment_group = %(group)s)
+        ORDER BY j.judgment_id LIMIT %(limit)s OFFSET %(offset)s""",
+        {"run": run_id, "result": result, "group": group, "limit": limit, "offset": offset})
+    return _with_locations(conn, rows)
+
+
+def run_equipment(conn: psycopg.Connection, run_id: int) -> list[dict]:
+    """설비 묶음마다 지금 비교 제품, 고른 주체, 후보 제품, 판정 수."""
+    from rfp_agent.pipeline.judge import group_contexts
+    from rfp_agent.pipeline.selection import candidates
+
+    rows = _rows(conn, """
+        SELECT j.equipment_group, array_agg(DISTINCT j.product_code)
+                   FILTER (WHERE j.product_code IS NOT NULL) AS products,
+               max(j.product_selected_by) AS selected_by, count(*) AS judgments,
+               count(*) FILTER (WHERE j.result = 'DEVIATION_CANDIDATE') AS deviations,
+               count(*) FILTER (WHERE j.reason_code = 'PRODUCT_AMBIGUOUS') AS ambiguous,
+               c.product_code AS chosen_product
+        FROM judgment j
+        LEFT JOIN run_product_choice c ON c.run_id = j.run_id
+                                      AND c.equipment_group = j.equipment_group
+        WHERE j.run_id = %s AND j.is_current
+        GROUP BY j.equipment_group, c.product_code ORDER BY j.equipment_group""", (run_id,))
+    if not rows:
+        return []
+    ids = [r[0] for r in conn.execute(
+        """SELECT d.document_id FROM run_document rd JOIN document d USING (document_id)
+           WHERE rd.run_id = %s AND d.readable""", (run_id,))]
+    groups, products = group_contexts(conn, run_id, ids)
+    for r in rows:
+        ctx = groups.get(r["equipment_group"])
+        r["label"] = ctx.label if ctx else None
+        r["family"] = ctx.family if ctx else None
+        r["candidates"] = [p.code for p in candidates(products, ctx)] if ctx else []
+    return rows
+
+
+def run_warranty(conn: psycopg.Connection, run_id: int, *, status: str | None = None,
+                 limit: int = 100, offset: int = 0) -> list[dict]:
+    rows = _rows(conn, """
+        SELECT w.candidate_id, j.requirement_id, j.equipment_group, v.item_key,
+               k.name_ko AS item_name, tr.item_name_raw, w.candidate_value, w.candidate_unit,
+               w.source_kind, w.product_code, w.pm_column, w.fixed_key, w.status,
+               w.reason_code, w.is_assumed
+        FROM warranty_candidate w
+        JOIN judgment j USING (judgment_id)
+        JOIN req_value v ON v.value_id = j.value_id
+        JOIN requirement q ON q.requirement_id = j.requirement_id
+        LEFT JOIN table_row tr ON tr.row_id = q.row_id
+        LEFT JOIN item_key k ON k.item_key = v.item_key
+        WHERE w.run_id = %(run)s AND (%(status)s::text IS NULL OR w.status = %(status)s)
+        ORDER BY w.candidate_id LIMIT %(limit)s OFFSET %(offset)s""",
+        {"run": run_id, "status": status, "limit": limit, "offset": offset})
+    return _with_locations(conn, rows)
+
+
+def run_losses(conn: psycopg.Connection, run_id: int) -> list[dict]:
+    rows = _rows(conn, """
+        SELECT loss_calc_id, clause_requirement_id AS requirement_id, product_code,
+               price_noload, price_load, price_aux, price_unit, loss_noload_kw, loss_load_kw,
+               loss_aux_kw, total_usd, formula, status, reason_code, is_assumed,
+               price_requirement_ids
+        FROM loss_calc WHERE run_id = %s ORDER BY loss_calc_id""", (run_id,))
+    return _with_locations(conn, rows)
+
+
+def run_outputs(conn: psycopg.Connection, run_id: int,
+                list_kind: str | None = None) -> list[dict]:
+    """일탈·질의 목록 항목. 항목마다 근거 요구사항과 원문 위치, 연결된 항목을 붙인다."""
+    items = _rows(conn, """
+        SELECT item_id, list_kind, list_name, text_draft, number_check, number_detail,
+               drafted_by, status, is_assumed, basis_requirement_id
+        FROM output_item WHERE run_id = %(run)s
+          AND (%(kind)s::text IS NULL OR list_kind = %(kind)s)
+        ORDER BY list_kind, item_id""", {"run": run_id, "kind": list_kind})
+    if not items:
+        return []
+    ids = [i["item_id"] for i in items]
+    sources = _rows(conn, """
+        SELECT s.item_id, s.source_seq, s.judgment_id, s.risk_id,
+               COALESCE(j.requirement_id, m.requirement_id) AS requirement_id
+        FROM output_item_source s
+        LEFT JOIN judgment j USING (judgment_id)
+        LEFT JOIN risk_flag_member m ON m.risk_id = s.risk_id
+        WHERE s.item_id = ANY(%s) ORDER BY s.item_id, s.source_seq""", (ids,))
+    locations = _locations(conn, [s["requirement_id"] for s in sources])
+    links: dict[int, list[int]] = {}
+    for a, b in conn.execute("SELECT item_id, linked_item_id FROM output_item_link "
+                             "WHERE item_id = ANY(%s) ORDER BY 1, 2", (ids,)):
+        links.setdefault(a, []).append(b)
+    by_id = {i["item_id"]: i | {"sources": [], "locations": [],
+                                "linked_items": links.get(i["item_id"], [])} for i in items}
+    for s in sources:
+        item = by_id[s.pop("item_id")]
+        item["sources"].append(s)
+        for loc in locations.get(s["requirement_id"], []):
+            if loc not in item["locations"]:
+                item["locations"].append(loc)
+    return [i for i in by_id.values() if i["locations"]]
+
+
+def run_proposals(conn: psycopg.Connection, run_id: int) -> list[dict]:
+    rows = _rows(conn, """
+        SELECT point_id, point_kind, requirement_id, product_code, judgment_id, loss_calc_id,
+               text_draft, basis, number_check, number_detail, drafted_by, is_assumed, status
+        FROM proposal_point WHERE run_id = %s ORDER BY point_id""", (run_id,))
+    return _with_locations(conn, rows)
+
+
+def submission_check(conn: psycopg.Connection, run_id: int) -> dict | None:
+    rows = _rows(conn, """
+        SELECT deviation_candidates, deviation_listed, missing_judgment_ids, open_queries,
+               ar_codes, checked_at
+        FROM submission_check WHERE run_id = %s ORDER BY check_id DESC LIMIT 1""", (run_id,))
+    return rows[0] if rows else None

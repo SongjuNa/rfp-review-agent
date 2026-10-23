@@ -10,8 +10,9 @@ import psycopg
 import pytest
 
 from rfp_agent.config import get_settings
+from rfp_agent.db.cli import LOSS_FILE, PRODUCT_FILES
 from rfp_agent.db.migrate import migrate
-from rfp_agent.db.seed import dict_version, seed_rules
+from rfp_agent.db.seed import dict_version, seed_products, seed_rules
 from rfp_agent.pipeline import queries
 from rfp_agent.pipeline.run import RunContext, create_run, execute_run
 from tests.conftest import FakeLLM
@@ -42,6 +43,8 @@ def conn():
         conn.commit()
         migrate(conn, SETTINGS.migrations_dir)
         seed_rules(conn, SETTINGS.seed_dir)
+        products = SETTINGS.seed_dir / "products"
+        seed_products(conn, [products / f for f in PRODUCT_FILES], products / LOSS_FILE)
         conn.commit()
         yield conn
 
@@ -205,3 +208,110 @@ def test_pair_candidate_and_section_sized_ai_inputs(conn):
     label_prompts = [p for p in llm.prompts if "절 제목:" in p]
     assert label_prompts and all(p.count("절 제목:") == 1 for p in label_prompts)
     assert max(len(p) for p in llm.prompts) < 40_000
+
+
+# ---------------------------------------------------------------- FR-07·08·09·13·14
+
+def judgments_at(conn, run_id, file_no, line):
+    return [j for j in _current_judgments(conn, run_id)
+            if (file_no, line) in {(loc["file_no"], loc["line_start"]) for loc in j["locations"]}]
+
+
+def _all(query, conn, run_id):
+    rows, offset = [], 0
+    while batch := query(conn, run_id, limit=500, offset=offset):
+        rows += batch
+        offset += 500
+    return rows
+
+
+def _current_judgments(conn, run_id):
+    return _all(queries.run_judgments, conn, run_id)
+
+
+def test_main_bus_4000a_deviation(conn, main_run):
+    """Scenario: 요구를 넘는 제품 / 세 곳에 반복된 일탈.
+
+    견적표 1784행은 아직 추출되지 않는다 [확인 필요]."""
+    [j] = judgments_at(conn, main_run, 1, 7100)
+    assert (j["product_code"], j["result"]) == ("GIS-245-50", "DEVIATION_CANDIDATE")
+    [item] = [i for i in queries.run_outputs(conn, main_run, "DEVIATION")
+              if (1, 7100) in {(loc["file_no"], loc["line_start"]) for loc in i["locations"]}]
+    lines = {(loc["file_no"], loc["line_start"]) for loc in item["locations"]}
+    assert {(1, 7100), (1, 7161), (1, 7213)} <= lines
+
+
+def test_short_time_7459_time_margin(conn, main_run):
+    """Scenario: 40 kA 1초 요구, 3초 제품 / 시간 여유 제안 포인트."""
+    [j] = judgments_at(conn, main_run, 1, 7459)
+    assert (j["result"], j["product_code"], j["margin_kind"], float(j["margin_value"]),
+            j["margin_direction"]) == ("COMPLY", "GIS-145", "TIME_RATIO", 3, "STRENGTH")
+    points = [p for p in queries.run_proposals(conn, main_run)
+              if p["judgment_id"] == j["judgment_id"]]
+    assert len(points) == 1 and "GIS-145" in points[0]["basis"]
+
+
+def test_not_strength_margin_7439(conn, main_run):
+    """Scenario: 강점이 아닌 여유 — 준수이고 여유가 있어도 제안 포인트를 만들지 않는다."""
+    [j] = judgments_at(conn, main_run, 1, 7439)
+    assert (j["result"], j["margin_direction"]) == ("COMPLY", "NOT_STRENGTH")
+    assert not [p for p in queries.run_proposals(conn, main_run)
+                if p["judgment_id"] == j["judgment_id"]]
+
+
+def test_bundle_c_documents_not_judged(conn, main_run):
+    """Scenario: 묶음 C 문서 — 파일 13(미국 규격)에는 판정이 없다."""
+    files = {loc["file_no"] for j in _current_judgments(conn, main_run) for loc in j["locations"]}
+    assert 13 not in files and 18 not in files and 1 in files
+
+
+def test_gas_leakage_deviation_linked_to_query(conn, main_run):
+    """Scenario: 154 kV 가스 누설 — 0.5 % 일탈과 0.5 % / 1 % 질의가 서로 연결된다."""
+    [j] = judgments_at(conn, main_run, 6, 174)
+    assert (j["product_code"], j["result"]) == ("GIS-170", "DEVIATION_CANDIDATE")
+    outputs = {i["item_id"]: i for i in queries.run_outputs(conn, main_run)}
+    [deviation] = [i for i in outputs.values() if i["list_kind"] == "DEVIATION"
+                   and any(s["judgment_id"] == j["judgment_id"] for s in i["sources"])]
+    linked = [outputs[x] for x in deviation["linked_items"]]
+    assert [i["list_kind"] for i in linked] == ["QUERY"]
+
+
+def test_manufacturer_fixed_value(conn, main_run):
+    """Scenario: 회사 고정값 — TS-115-GIS 1번 Manufacturer's name은 LS ELECTRIC."""
+    rows = [w for w in _all(queries.run_warranty, conn, main_run)
+            if (1, 7431) in {(loc["file_no"], loc["line_start"]) for loc in w["locations"]}]
+    assert [(w["candidate_value"], w["source_kind"]) for w in rows] == [("LS ELECTRIC", "FIXED")]
+
+
+def test_loss_evaluation_case_5(conn, main_run):
+    """Scenario: 사례 5 / 손실값 없음 — 360 MVA 변압기는 1,240,400 $(팀 가정),
+    나머지는 확인 필요."""
+    losses = queries.run_losses(conn, main_run)
+    done = [x for x in losses if x["status"] == "CALCULATED"]
+    assert [(x["product_code"], float(x["total_usd"]), x["is_assumed"]) for x in done] == [
+        ("TRF-HV-230-360A", 1_240_400, True)]
+    assert done[0]["locations"][0]["line_start"] == 8238
+    rest = [x for x in losses if x["status"] != "CALCULATED"]
+    assert rest and all(x["reason_code"] == "NO_LOSS_VALUE" and x["total_usd"] is None
+                        for x in rest)
+    [point] = [p for p in queries.run_proposals(conn, main_run) if p["point_kind"] == "LOSS"]
+    assert point["is_assumed"] and point["text_draft"].endswith("(팀 가정)")
+
+
+def test_switch_breaker_product_fills_weight(conn, main_run):
+    """Scenario: 제품표 값 / 고를 수 없는 행 — TS-SG 무게는 처음엔 확인 필요, VCB-SUSOL-24-40-3150을
+    고르면 318 kg. (실행 상태를 바꾸므로 이 파일의 마지막 테스트로 둔다.)"""
+    from rfp_agent.pipeline.run import RunContext, switch_product
+
+    def weight():
+        [w] = [w for w in _all(queries.run_warranty, conn, main_run)
+               if (1, 11366) in {(loc["file_no"], loc["line_start"]) for loc in w["locations"]}]
+        return w
+
+    before = weight()
+    assert (before["status"], before["reason_code"]) == ("EMPTY_REVIEW", "PRODUCT_AMBIGUOUS")
+    switch_product(RunContext(conn, "test", None, None), main_run, before["equipment_group"],
+                   "VCB-SUSOL-24-40-3150")
+    after = weight()
+    assert (after["candidate_value"], after["candidate_unit"], after["pm_column"]) == (
+        "318", "kg", "weight_kg")

@@ -1,4 +1,5 @@
-"""검토 실행 하나를 LangGraph 흐름으로 돌린다: 문서별 ①~⑤ → 위험 조건 ⑥.
+"""검토 실행 하나를 LangGraph 흐름으로 돌린다: 문서별 ①~⑤ → 위험 조건 ⑥ → 판정 ⑦ → 보증값 ⑧
+→ 손실 환산 → 일탈·질의 목록 ⑨ → 제안 포인트.
 
 실행 상태는 review_run에 남기고, AI 호출이 재시도 뒤에도 실패하면 FAILED와 실패 단계를 기록한다
 (CR-12). 결과는 모두 run_id에 묶인다.
@@ -17,6 +18,10 @@ from rfp_agent.llm import tasks
 from rfp_agent.llm.client import FAILURE_MESSAGE, LLM, LLMFailure
 from rfp_agent.pipeline import code_version, dictionaries
 from rfp_agent.pipeline.document import process_document
+from rfp_agent.pipeline.judge import judge_run
+from rfp_agent.pipeline.loss import build_losses
+from rfp_agent.pipeline.outputs import build_outputs
+from rfp_agent.pipeline.proposals import build_proposals
 from rfp_agent.pipeline.risk import (
     FLAG_KIND,
     RiskCandidate,
@@ -24,6 +29,7 @@ from rfp_agent.pipeline.risk import (
     find_clause_risks,
     find_value_mismatches,
 )
+from rfp_agent.pipeline.warranty import build_warranty
 
 log = logging.getLogger(__name__)
 
@@ -34,7 +40,13 @@ class RunState(TypedDict, total=False):
     run_id: int
     paths: list[str]
     document_ids: list[int]
+    readable_ids: list[int]
     risk_count: int
+    judgment_count: int
+    warranty_count: int
+    loss_count: int
+    output_count: int
+    proposal_count: int
 
 
 @dataclass
@@ -221,9 +233,7 @@ def _risks_node(ctx: RunContext):
         conn, run_id = ctx.conn, state["run_id"]
         _set_step(conn, run_id, "risks")
         dicts = dictionaries.load(conn)
-        ids = state["document_ids"]
-        readable = [r[0] for r in conn.execute(
-            "SELECT document_id FROM document WHERE document_id = ANY(%s) AND readable", (ids,))]
+        readable = readable_documents(conn, state["document_ids"])
         candidates = clause_candidates(conn, readable, dicts)
         candidates += find_value_mismatches(value_refs(conn, readable), dicts.values.parents)
         with conn.transaction():
@@ -231,8 +241,56 @@ def _risks_node(ctx: RunContext):
                          "(SELECT risk_id FROM risk_flag WHERE run_id = %s)", (run_id,))
             conn.execute("DELETE FROM risk_flag WHERE run_id = %s", (run_id,))
             count = _save_risks(ctx, run_id, candidates)
-        return {"risk_count": count}
+        return {"risk_count": count, "readable_ids": readable}
     return node
+
+
+def readable_documents(conn: psycopg.Connection, document_ids: list[int]) -> list[int]:
+    return [r[0] for r in conn.execute(
+        "SELECT document_id FROM document WHERE document_id = ANY(%s) AND readable ORDER BY 1",
+        (document_ids,))]
+
+
+def rebuild_outputs(ctx: RunContext, run_id: int, document_ids: list[int]) -> dict[str, int]:
+    """판정 뒤 단계(보증값·손실·목록·제안)를 다시 만든다.
+
+    제품을 바꾸거나 손실값을 고친 뒤에도 쓴다.
+    """
+    state: RunState = {"run_id": run_id, "readable_ids": document_ids}
+    counts = {}
+    for _, key, build in STEPS:
+        counts[key] = build(ctx, state)
+        ctx.conn.commit()
+    return counts
+
+
+def _judge_node(ctx: RunContext):
+    def node(state: RunState) -> RunState:
+        _set_step(ctx.conn, state["run_id"], "judge")
+        count = judge_run(ctx.conn, state["run_id"], state["readable_ids"])
+        ctx.conn.commit()
+        return {"judgment_count": count}
+    return node
+
+
+def _step_node(ctx: RunContext, step: str, key: str, build):
+    def node(state: RunState) -> RunState:
+        _set_step(ctx.conn, state["run_id"], step)
+        count = build(ctx, state)
+        ctx.conn.commit()
+        return {key: count}
+    return node
+
+
+STEPS = [
+    ("warranty", "warranty_count", lambda ctx, s: build_warranty(ctx.conn, s["run_id"])),
+    ("loss", "loss_count", lambda ctx, s: build_losses(ctx.conn, s["run_id"])),
+    ("outputs", "output_count",
+     lambda ctx, s: build_outputs(ctx.conn, s["run_id"], s["readable_ids"], ctx.llm)),
+    ("proposals", "proposal_count",
+     lambda ctx, s: build_proposals(ctx.conn, s["run_id"], ctx.llm)),
+]
+COUNTS = ["risk_count", "judgment_count"] + [key for _, key, _ in STEPS]
 
 
 def build_graph(ctx: RunContext):
@@ -240,10 +298,15 @@ def build_graph(ctx: RunContext):
     graph.add_node("documents", _documents_node(ctx))
     graph.add_node("pairs", _pairs_node(ctx))
     graph.add_node("risks", _risks_node(ctx))
-    graph.add_edge(START, "documents")
-    graph.add_edge("documents", "pairs")
-    graph.add_edge("pairs", "risks")
-    graph.add_edge("risks", END)
+    graph.add_node("judge", _judge_node(ctx))
+    order = ["documents", "pairs", "risks", "judge"]
+    for step, key, build in STEPS:
+        graph.add_node(step, _step_node(ctx, step, key, build))
+        order.append(step)
+    graph.add_edge(START, order[0])
+    for a, b in zip(order, order[1:], strict=False):
+        graph.add_edge(a, b)
+    graph.add_edge(order[-1], END)
     return graph.compile()
 
 
@@ -266,6 +329,36 @@ def execute_run(ctx: RunContext, run_id: int, paths: list[Path]) -> str:
     conn.execute(
         """UPDATE review_run SET stage = 'ENGINEER_REVIEW', finished_at = now(),
                   graph_state = graph_state || %s WHERE run_id = %s""",
-        (Jsonb({"step": "done", "risk_count": state["risk_count"]}), run_id))
+        (Jsonb({"step": "done", **{k: state.get(k, 0) for k in COUNTS}}), run_id))
     conn.commit()
     return "ENGINEER_REVIEW"
+
+
+def switch_product(ctx: RunContext, run_id: int, group: str, product_code: str | None,
+                   chosen_by: int | None = None) -> dict[str, int]:
+    """엔지니어가 설비 묶음의 비교 제품을 바꾼다 (None이면 자동 선택으로 되돌린다).
+
+    그 묶음만 다시 판정하고(이전 판정은 is_current = false로 남긴다) 뒤 단계를 다시 만든다.
+    """
+    conn = ctx.conn
+    if product_code is not None and conn.execute(
+            "SELECT 1 FROM product_master WHERE product_code = %s",
+            (product_code,)).fetchone() is None:
+        raise KeyError(product_code)
+    with conn.transaction():
+        if product_code is None:
+            conn.execute("DELETE FROM run_product_choice WHERE run_id = %s "
+                         "AND equipment_group = %s", (run_id, group))
+        else:
+            conn.execute(
+                """INSERT INTO run_product_choice (run_id, equipment_group, product_code,
+                                                   chosen_by)
+                   VALUES (%s, %s, %s, %s)
+                   ON CONFLICT (run_id, equipment_group) DO UPDATE
+                   SET product_code = EXCLUDED.product_code, chosen_by = EXCLUDED.chosen_by,
+                       chosen_at = now()""", (run_id, group, product_code, chosen_by))
+    ids = readable_documents(conn, [r[0] for r in conn.execute(
+        "SELECT document_id FROM run_document WHERE run_id = %s", (run_id,))])
+    counts = {"judgment_count": judge_run(conn, run_id, ids, only_groups={group})}
+    conn.commit()
+    return counts | rebuild_outputs(ctx, run_id, ids)
