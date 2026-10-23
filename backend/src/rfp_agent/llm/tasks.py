@@ -13,6 +13,11 @@ TYPE_CODES = ["TECH_PERF", "RISK", "STANDARD_CERT", "COST", "TEST", "MAKER_QUAL"
 CHUNK = 40
 
 
+def one_line(text: str) -> str:
+    """번호 매긴 목록이 깨지지 않게 줄바꿈을 없앤다."""
+    return re.sub(r"\s+", " ", text).strip()
+
+
 def classify_document(llm: LLM, file_name: str, first_page: str) -> str:
     prompt = (
         "다음은 전력 설비 입찰 RFP 문서의 파일명과 첫 장이다. 문서 종류를 하나 고른다.\n"
@@ -34,10 +39,12 @@ def label_sentences(llm: LLM, section_title: str | None, sentences: list[str]) -
     labels: list[str] = []
     for start in range(0, len(sentences), CHUNK):
         part = sentences[start:start + CHUNK]
-        numbered = "\n".join(f"{i}. {s[:600]}" for i, s in enumerate(part))
+        numbered = "\n".join(f"{i}. {one_line(s)[:600]}" for i, s in enumerate(part))
         prompt = (
-            "RFP의 한 절에서 뽑은 문장들이다. 각 문장이 입찰자가 지켜야 할 요구사항(REQUIREMENT)인지, "
-            "제출 양식을 채우는 방법에 대한 작성 규칙(WRITING_RULE)인지, 설명(DESCRIPTION)인지 고른다. "
+            "RFP의 한 절에서 뽑은 문장들이다. "
+            "각 문장이 입찰자가 지켜야 할 요구사항(REQUIREMENT)인지, "
+            "제출 양식을 채우는 방법에 대한 작성 규칙(WRITING_RULE)인지, "
+            "설명(DESCRIPTION)인지 고른다. "
             "문장 수와 같은 개수의 label을 같은 순서로 낸다.\n"
             f"절 제목: {section_title or '(없음)'}\n{numbered}"
         )
@@ -45,8 +52,8 @@ def label_sentences(llm: LLM, section_title: str | None, sentences: list[str]) -
             "type": "array", "items": {"type": "string", "enum": SENTENCE_LABELS}}},
             "required": ["labels"]}
 
-        def check(d, n=len(part)):
-            assert len(d["labels"]) == n and all(x in SENTENCE_LABELS for x in d["labels"])
+        def check(d, part=part):
+            assert len(d["labels"]) == len(part) and all(x in SENTENCE_LABELS for x in d["labels"])
 
         labels.extend(call_with_retry(llm, prompt, schema, check)["labels"])
     return labels
@@ -56,7 +63,7 @@ def type_unclassified(llm: LLM, texts: list[str]) -> list[str]:
     out: list[str] = []
     for start in range(0, len(texts), CHUNK):
         part = texts[start:start + CHUNK]
-        numbered = "\n".join(f"{i}. {t[:400]}" for i, t in enumerate(part))
+        numbered = "\n".join(f"{i}. {one_line(t)[:400]}" for i, t in enumerate(part))
         prompt = (
             "RFP 요구사항마다 유형 하나를 고른다. TECH_PERF=기술 성능, RISK=위험 조건, "
             "STANDARD_CERT=적용 규격·인증, COST=비용 영향, TEST=시험, MAKER_QUAL=제조사 자격, "
@@ -66,8 +73,8 @@ def type_unclassified(llm: LLM, texts: list[str]) -> list[str]:
             "type": "array", "items": {"type": "string", "enum": TYPE_CODES}}},
             "required": ["types"]}
 
-        def check(d, n=len(part)):
-            assert len(d["types"]) == n and all(x in TYPE_CODES for x in d["types"])
+        def check(d, part=part):
+            assert len(d["types"]) == len(part) and all(x in TYPE_CODES for x in d["types"])
 
         out.extend(call_with_retry(llm, prompt, schema, check)["types"])
     return out

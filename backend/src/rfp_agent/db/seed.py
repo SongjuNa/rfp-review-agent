@@ -116,7 +116,8 @@ def seed_compare_rules(conn: psycopg.Connection, rows: list[dict[str, str]], rep
     for row in rows:
         where = f"{row['대상 표']} {row['항목 번호']}"
         direction_text = row["비교 방향"]
-        values = (table_name_of(row["대상 표"]), row["항목 번호"], blank_to_none(row["표준 항목키"]),
+        values = (table_name_of(row["대상 표"]), row["항목 번호"],
+                  blank_to_none(row["표준 항목키"]),
                   direction_code(direction_text, where), "+시간" in direction_text,
                   "; ".join(filter(None, [row["처리"], row["비고(사례)"]])) or None)
         row_id = conn.execute(

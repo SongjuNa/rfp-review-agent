@@ -8,15 +8,13 @@ from rfp_agent.config import get_settings
 from rfp_agent.db.connection import connect
 from rfp_agent.db.seed import dict_version
 from rfp_agent.llm.client import make_llm
-from rfp_agent.pipeline import code_version
 from rfp_agent.pipeline.run import RunContext, create_run, execute_run
 
 
 def make_context(conn: psycopg.Connection) -> RunContext:
     settings = get_settings()
     txt_dir = settings.txt_dir if settings.txt_dir.exists() else None
-    # 결과를 만든 판 = 사전 판(12자) + 처리 코드 판(7자). 둘 중 하나라도 바뀌면 다시 처리한다 (CR-11).
-    return RunContext(conn, f"{dict_version(settings.seed_dir)}-{code_version()}",
+    return RunContext(conn, dict_version(settings.seed_dir),
                       make_llm(settings.gemini_api_key, settings.gemini_model), txt_dir)
 
 

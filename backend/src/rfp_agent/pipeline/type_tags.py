@@ -18,7 +18,8 @@ class TypeRule:
     def matches(self, text: str) -> bool:
         if self.match_kind == "REGEX":
             return re.search(self.pattern, text) is not None
-        return re.search(rf"(?<!\w){re.escape(self.pattern)}(?!\w)", text, re.IGNORECASE) is not None
+        word = rf"(?<!\w){re.escape(self.pattern)}(?!\w)"
+        return re.search(word, text, re.IGNORECASE) is not None
 
 
 @dataclass

@@ -27,6 +27,7 @@ from rfp_agent.pipeline.structure import (
 from rfp_agent.pipeline.type_tags import tag
 from rfp_agent.pipeline.values import normalize_candidate, target_of
 
+
 @dataclass
 class DocumentResult:
     document_id: int
@@ -38,12 +39,16 @@ class DocumentResult:
 
 def _next_file_no(conn: psycopg.Connection) -> int:
     # 파일 목록(1~22)에 없는 문서는 101번부터 붙인다.
-    return max(100, conn.execute("SELECT COALESCE(max(file_no), 0) FROM document").fetchone()[0]) + 1
+    last = conn.execute("SELECT COALESCE(max(file_no), 0) FROM document").fetchone()[0]
+    return max(100, last) + 1
 
 
 def _insert_document(conn, path: Path, c: cls.Classification, dicts: PipelineDicts,
-                     line_basis: str, version: str) -> tuple[int, int]:
-    """이 사전 판으로 처리한 문서 행을 새로 만든다. 번호는 파일 목록 → 같은 파일의 이전 번호 → 101번부터."""
+                     line_basis: str, key: str) -> tuple[int, int]:
+    """이 처리 판(key)으로 처리한 문서 행을 새로 만든다.
+
+    번호는 파일 목록 → 같은 파일의 이전 번호 → 101번부터.
+    """
     previous = conn.execute("SELECT max(file_no) FROM document WHERE source_path = %s",
                             (str(path),)).fetchone()[0]
     file_no = c.file_no or previous or _next_file_no(conn)
@@ -52,7 +57,7 @@ def _insert_document(conn, path: Path, c: cls.Classification, dicts: PipelineDic
         project_id=dicts.projects.get(c.project_key) if c.project_key else None,
         language=c.language, standard_system=c.standard_system, judge_target=c.judge_target,
         readable=c.readable, classify_by=c.classify_by, needs_review=c.needs_review,
-        source_path=str(path), line_basis=line_basis, processed_dict_version=version,
+        source_path=str(path), line_basis=line_basis, processing_key=key,
     )
     cols = ", ".join(values)
     marks = ", ".join(f"%({k})s" for k in values)
@@ -110,14 +115,15 @@ def _refine_with_ai(llm: LLM, candidates: list[Candidate]) -> None:
             by_section.setdefault(c.section.index if c.section else None, []).append(c)
     for group in by_section.values():
         title = group[0].section.title if group[0].section else None
-        for c, label in zip(group, tasks.label_sentences(llm, title, [c.text for c in group])):
+        for c, label in zip(group, tasks.label_sentences(llm, title, [c.text for c in group]),
+                            strict=True):
             if label == "WRITING_RULE":
                 c.req_kind, c.rule_id, c.extracted_by = "WRITING_RULE", "E-AI-WRITING-RULE", "AI"
             elif label == "DESCRIPTION":
                 c.req_kind, c.rule_id, c.extracted_by = "DESCRIPTION", "E-AI-DESCRIPTION", "AI"
 
 
-def process_document(conn: psycopg.Connection, path: Path, dicts: PipelineDicts, version: str,
+def process_document(conn: psycopg.Connection, path: Path, dicts: PipelineDicts, key: str,
                      llm: LLM | None, txt_dir: Path | None) -> DocumentResult:
     blocks = read_blocks(path)
     line_basis = "DOCX"
@@ -129,7 +135,7 @@ def process_document(conn: psycopg.Connection, path: Path, dicts: PipelineDicts,
     c = cls.classify(path.name, blocks, dicts.catalog)
     existing = conn.execute(
         "SELECT document_id, file_no FROM document WHERE source_path = %s "
-        "AND processed_dict_version = %s", (str(path), version)).fetchone()
+        "AND processing_key = %s", (str(path), key)).fetchone()
     if existing:
         count = conn.execute("SELECT count(*) FROM requirement WHERE document_id = %s",
                              (existing[0],)).fetchone()[0]
@@ -140,7 +146,7 @@ def process_document(conn: psycopg.Connection, path: Path, dicts: PipelineDicts,
                                                          cls.first_page_text(blocks)))
 
     with conn.transaction():
-        doc_id, file_no = _insert_document(conn, path, c, dicts, line_basis, version)
+        doc_id, file_no = _insert_document(conn, path, c, dicts, line_basis, key)
         if not c.readable:
             # 판독 불가 문서는 이후 단계를 건너뛴다 (FR-01 예외).
             return DocumentResult(doc_id, file_no, False, False)
@@ -178,8 +184,8 @@ def process_document(conn: psycopg.Connection, path: Path, dicts: PipelineDicts,
             rep = conn.execute(
                 "SELECT r.requirement_id FROM requirement r JOIN document d USING (document_id) "
                 "WHERE r.dedup_key = %s AND r.dedup_of IS NULL AND r.document_id <> %s "
-                "AND d.processed_dict_version = %s ORDER BY r.requirement_id LIMIT 1",
-                (cand.dedup_key, doc_id, version)).fetchone() if cand.dedup_key else None
+                "AND d.processing_key = %s ORDER BY r.requirement_id LIMIT 1",
+                (cand.dedup_key, doc_id, key)).fetchone() if cand.dedup_key else None
             req_id = conn.execute(
                 """INSERT INTO requirement (document_id, section_id, row_id, source_kind,
                      text_raw, req_kind, dedup_of, extracted_by, confidence, rule_id,
@@ -234,7 +240,7 @@ def process_document(conn: psycopg.Connection, path: Path, dicts: PipelineDicts,
 
         if llm is not None and unclassified:
             ai_types = tasks.type_unclassified(llm, [cand.text for _, cand in unclassified])
-            for (req_id, _), code in zip(unclassified, ai_types):
+            for (req_id, _), code in zip(unclassified, ai_types, strict=True):
                 if code != "NONE":
                     conn.execute(
                         "INSERT INTO requirement_type_tag (requirement_id, type_code, is_primary, "

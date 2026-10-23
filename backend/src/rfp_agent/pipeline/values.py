@@ -7,7 +7,7 @@ import re
 from dataclasses import dataclass, field
 
 from rfp_agent.pipeline.docx_reader import is_redacted
-from rfp_agent.pipeline.extract import Candidate
+from rfp_agent.pipeline.extract import STANDARD_TITLE, Candidate
 from rfp_agent.pipeline.structure import Section, ancestors, normalize
 
 YESNO = {"required", "yes", "no", "not required", "필요", "불필요", "요", "부"}
@@ -48,7 +48,6 @@ TEXT_ITEMS = {"manufacturer", "country_of_origin", "model_number", "standard",
 RANGE = re.compile(r"(\d[\d,.]*)\s*(?:[A-Za-z%°℃]+)?\s*(?:~|∼|～|\bto\b)\s*(\d[\d,.]*)"
                    r"|between\s+(?:the\s+limits\s+of\s+)?(\d[\d,.]*)\s*(?:[A-Za-z%°℃]+)?\s+and\s+"
                    r"(\d[\d,.]*)", re.IGNORECASE)
-STANDARD_TITLE = re.compile(r"\bPart\s+\d+\s*:")    # 규격 목록 문장 속 숫자는 요구값이 아니다
 
 
 def unit_fits(item_key: str | None, unit: str | None) -> bool:
@@ -83,14 +82,16 @@ class Value:
 
 @dataclass
 class Dictionaries:
-    aliases: list[tuple[str, str]]                         # (원문 표현 소문자, 표준 항목키) 긴 것 먼저
-    targets: list[tuple[str, str, str | None]]             # (표현 소문자, 대상, 상위 대상) 긴 것 먼저
+    aliases: list[tuple[str, str]]              # (원문 표현 소문자, 항목키) 긴 것 먼저
+    targets: list[tuple[str, str, str | None]]  # (표현 소문자, 대상, 상위 대상) 긴 것 먼저
     parents: dict[str, str] = field(default_factory=dict)  # 대상 → 상위 대상
 
     @classmethod
     def build(cls, aliases: dict[str, str], targets: list[tuple[str, str, str | None]]):
-        a = sorted(((normalize(k).lower(), v) for k, v in aliases.items()), key=lambda x: -len(x[0]))
-        t = sorted(((normalize(k).lower(), v, p) for k, v, p in targets), key=lambda x: -len(x[0]))
+        a = sorted(((normalize(k).lower(), v) for k, v in aliases.items()),
+                   key=lambda x: -len(x[0]))
+        t = sorted(((normalize(k).lower(), v, p) for k, v, p in targets),
+                   key=lambda x: -len(x[0]))
         return cls(a, t, {v: p for _, v, p in targets if p})
 
 
@@ -245,8 +246,9 @@ def sentence_values(text: str) -> list[Value]:
         sym, num, unit, bound = m.group(1), m.group(2), m.group(3), (m.group(4) or "").strip()
         operator = OPERATORS.get(sym) if sym else KOREAN_BOUNDS.get(bound, "=")
         qualifier = QUALIFIER.match(text[m.end():])
-        cond = qualifier.group(1) if qualifier and not SENTENCE_VALUE.fullmatch(qualifier.group(1).strip()) \
-            else None
+        # 값 바로 뒤 괄호는 조건이다. 괄호 안이 또 값이면 ("104 deg F (40 deg C)") 조건이 아니다.
+        is_value = qualifier and SENTENCE_VALUE.fullmatch(qualifier.group(1).strip())
+        cond = qualifier.group(1) if qualifier and not is_value else None
         values.append(Value(
             raw_text=m.group(0).strip(), cell_form="NUMBER", num_value=number(num),
             operator=range_starts.get(m.start(2), operator), unit_raw=unit, cond_raw=cond,
@@ -285,6 +287,9 @@ def normalize_candidate(c: Candidate, sections: list[Section], dicts: Dictionari
         values = cell_values(c.row.required, c.row.unit)
         name = c.row.item_name
         key = item_key_of(name, dicts)
+        if key is None and c.row.parent_index is not None:
+            # "- Feeder bays"는 상위 항목("Rated normal current")의 값이다.
+            key = item_key_of(c.table.rows[c.row.parent_index].item_name, dicts)
         if not unit_fits(key, c.row.unit):
             key = None
         cond = TIME_CONDITION.search(name or "") or re.search(

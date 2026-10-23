@@ -4,10 +4,11 @@
 ALTER TABLE document ADD COLUMN source_path TEXT;
 ALTER TABLE document ADD COLUMN line_basis VARCHAR(4) NOT NULL DEFAULT 'DOCX'
   CHECK (line_basis IN ('TXT','DOCX'));        -- TXT: 팀 추출 txt 줄 번호와 맞춤 (추적표 v3 기준)
-ALTER TABLE document ADD COLUMN processed_dict_version VARCHAR(20);   -- 구조·추출 결과를 만든 사전 판
--- 사전 판이 바뀌면 같은 파일을 새 행으로 다시 처리한다. 이전 실행의 결과(요구사항·위험 조건)는 그대로 남는다 (CR-11).
+-- 구조·추출 결과를 만든 판: 사전 판 + 처리 코드 판 + AI 모델·프롬프트 판 (예: 3cb1c99f8f41-54e98af-rule)
+ALTER TABLE document ADD COLUMN processing_key VARCHAR(80);
+-- 판이 바뀌면 같은 파일을 새 행으로 다시 처리한다. 이전 실행의 결과(요구사항·위험 조건)는 그대로 남는다 (CR-11).
 ALTER TABLE document DROP CONSTRAINT document_file_no_key;
-CREATE UNIQUE INDEX ux_document_version ON document (file_no, processed_dict_version);
+CREATE UNIQUE INDEX ux_document_version ON document (file_no, processing_key);
 
 -- 실행 실패 정보와 언어 모델 기록 (CR-12)
 ALTER TABLE review_run ADD COLUMN failed_step VARCHAR(30);

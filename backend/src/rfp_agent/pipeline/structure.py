@@ -101,7 +101,8 @@ def find_sections(blocks: list[Block]) -> list[Section]:
             if h := heading_of(line):
                 candidates.append((b, offset, h))
 
-    # 목차: 연달아 나온 제목 묶음(사이에 본문 없음)에서 절반 이상이 뒤에 다시 나오면 목차.
+    # 목차: 연달아 나온 제목 묶음(사이에 본문 없음)에서
+    # 3개 이상 또는 절반 이상이 뒤에 다시 나오면 목차.
     # ("가. 일반사항"처럼 장마다 되풀이되는 제목 하나만으로는 목차로 보지 않는다.)
     toc_seqs: set[int] = set()
     key_of = {b.seq: normalize(f"{number} {title}").lower()
@@ -115,8 +116,8 @@ def find_sections(blocks: list[Block]) -> list[Section]:
             run.append(b.seq)
             continue
         if len(run) >= TOC_CLUSTER:
-            repeated = [s for s in run if last_seq_of[key_of[s]] > run[-1]]
-            if len(repeated) * 2 >= len(run):
+            repeated = [s for s in run if last_seq_of[key_of[s]] > s]
+            if len(repeated) >= TOC_CLUSTER or len(repeated) * 2 >= len(run):
                 toc_seqs.update(repeated)
         run = []
     for b, offset, _ in candidates:
@@ -151,7 +152,7 @@ def find_sections(blocks: list[Block]) -> list[Section]:
 
     body = [s for s in sections if not s.is_toc]
     last_line = blocks[-1].last_line if blocks else 0
-    for cur, nxt in zip(body, body[1:] + [None]):
+    for cur, nxt in zip(body, body[1:] + [None], strict=True):
         cur.line_end = (nxt.line_start - 1) if nxt else last_line
     return sections
 

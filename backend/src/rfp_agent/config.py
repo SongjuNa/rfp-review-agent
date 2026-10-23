@@ -22,6 +22,11 @@ class Settings(BaseSettings):
         return self.private_data_dir / "rfp_docx"
 
     @property
+    def upload_dir(self) -> Path:
+        """화면에서 올린 RFP 원문 (git에 올리지 않는 data/private 아래)."""
+        return self.private_data_dir / "uploads"
+
+    @property
     def txt_dir(self) -> Path:
         """팀 추출 txt. 있으면 원문 위치 줄 번호를 이 txt에 맞춘다."""
         return self.private_data_dir / "rfp_txt"

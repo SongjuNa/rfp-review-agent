@@ -116,7 +116,8 @@ def find_value_mismatches(values: list[ValueRef], parents: dict[str, str]) -> li
                 # (파일 1 TS-AUTO-TR 360 MVA / 240 MVA), 한 표 안의 두 행은 서로 다른 항목이다.
                 continue
             if same_doc:
-                # 같은 문서라도 장소가 다르게 적힌 값(5 kVA 수상전기실 / 10 kVA 154kV 변전소)은 다른 설비다.
+                # 같은 문서라도 장소가 다르게 적힌 값은 다른 설비다
+                # (5 kVA 수상전기실 / 10 kVA 154kV 변전소).
                 if a.equipment_key and b.equipment_key and a.equipment_key != b.equipment_key:
                     continue
             elif not (a.equipment_key and a.equipment_key == b.equipment_key):

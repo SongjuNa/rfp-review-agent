@@ -7,7 +7,8 @@ from rfp_agent.pipeline.docx_reader import Block
 from rfp_agent.pipeline.structure import LogicalTable, Section, SectionIndex, TableRow, normalize
 
 SENTENCE_MARKERS = re.compile(
-    r"\b(shall|must|required|is to be|are to be)\b|하여야|되어야|할 것|한다\s*\.?$|하여야 한다",
+    r"\b(shall|must|required|is to be|are to be|not exceeding|not less than|at least)\b"
+    r"|하여야|되어야|할 것|한다\s*\.?$|하여야 한다",
     re.IGNORECASE,
 )
 WRITING_RULE = re.compile(
@@ -19,6 +20,7 @@ ROMAN = re.compile(r"^(?:[IVX]+|[A-Z])\.?$")
 # 사양 목록 줄 ("1)UPS 30kVA", "정격전압 : 154 kV")은 문장 표현이 없어도 값이 있으면 후보다.
 SPEC_VALUE = re.compile(r"\d\s*(?:kVA|MVA|kV|kA|kW|MW|A|V|Hz|%|℃|°C)(?![A-Za-z])")
 CHAPTER_STYLES = ("NUM", "PART", "CHAPTER")       # 장·절 번호 제목은 값이 있어도 제목이다
+STANDARD_TITLE = re.compile(r"\bPart\s+\d+\s*:")    # 규격 목록 줄 ("… Part 103: … 52 kV")
 
 
 @dataclass
@@ -103,11 +105,12 @@ def extract(blocks: list[Block], sections: list[Section],
             continue
         raw, offset = b.text, 0
         first = normalize(raw.strip().split("\n")[0])
-        if b.seq in heading_seqs and SPEC_VALUE.search(first) \
+        spec_line = SPEC_VALUE.search(first) and not STANDARD_TITLE.search(first)
+        if b.seq in heading_seqs and spec_line \
                 and not heading_style[b.seq].startswith(CHAPTER_STYLES):
             out.append(_spec_value(b, normalize(raw), sec))
             continue
-        if b.seq not in heading_seqs and ":" in first and SPEC_VALUE.search(first) \
+        if b.seq not in heading_seqs and ":" in first and spec_line \
                 and not SENTENCE_MARKERS.search(raw):
             out.append(_spec_value(b, normalize(raw), sec))
             continue

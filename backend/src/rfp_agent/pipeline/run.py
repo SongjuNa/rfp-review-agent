@@ -15,7 +15,7 @@ from psycopg.types.json import Jsonb
 
 from rfp_agent.llm import tasks
 from rfp_agent.llm.client import FAILURE_MESSAGE, LLM, LLMFailure
-from rfp_agent.pipeline import dictionaries
+from rfp_agent.pipeline import code_version, dictionaries
 from rfp_agent.pipeline.document import process_document
 from rfp_agent.pipeline.risk import (
     FLAG_KIND,
@@ -40,9 +40,15 @@ class RunState(TypedDict, total=False):
 @dataclass
 class RunContext:
     conn: psycopg.Connection
-    version: str
+    version: str                # 사전·제품표 판 (dict_version)
     llm: LLM | None
     txt_dir: Path | None
+
+    @property
+    def processing_key(self) -> str:
+        """문서 처리 결과를 다시 쓸 수 있는 조건: 사전 판 + 처리 코드 판 + AI 모델·프롬프트 판."""
+        ai = f"{self.llm.model}/{tasks.PROMPT_VERSION}" if self.llm else "rule"
+        return f"{self.version}-{code_version()}-{ai}"
 
 
 def create_run(conn: psycopg.Connection, version: str, llm: LLM | None,
@@ -54,7 +60,8 @@ def create_run(conn: psycopg.Connection, version: str, llm: LLM | None,
         """INSERT INTO review_run (started_by, stage, dict_version, llm_model, graph_state)
            VALUES (%s, 'PROCESSING', %s, %s, %s) RETURNING run_id""",
         (started_by, version, llm.model if llm else None,
-         Jsonb({"step": "created", "prompt_version": tasks.PROMPT_VERSION})),
+         Jsonb({"step": "created", "code_version": code_version(),
+                "prompt_version": tasks.PROMPT_VERSION})),
     ).fetchone()[0]
     conn.commit()
     return run_id
@@ -73,7 +80,8 @@ def _documents_node(ctx: RunContext):
         dicts = dictionaries.load(conn)
         ids = []
         for path in state["paths"]:
-            result = process_document(conn, Path(path), dicts, ctx.version, ctx.llm, ctx.txt_dir)
+            result = process_document(conn, Path(path), dicts, ctx.processing_key, ctx.llm,
+                                      ctx.txt_dir)
             conn.execute("INSERT INTO run_document VALUES (%s, %s) ON CONFLICT DO NOTHING",
                          (run_id, result.document_id))
             conn.commit()
@@ -85,6 +93,34 @@ def _documents_node(ctx: RunContext):
                          (projects.pop(), run_id))
             conn.commit()
         return {"document_ids": ids}
+    return node
+
+
+PAIR_MIN_SHARED = 50          # 데이터시트 항목이 이만큼 겹치면 같은 문서의 다른 판 후보
+
+
+def _pairs_node(ctx: RunContext):
+    """같은 데이터시트 항목을 많이 공유하는 문서 쌍을 후보로 낸다 (FR-01). 확정은 사람이."""
+    def node(state: RunState) -> RunState:
+        conn, run_id = ctx.conn, state["run_id"]
+        _set_step(conn, run_id, "pairs")
+        shared = conn.execute(
+            """SELECT LEAST(a.document_id, b.document_id), GREATEST(a.document_id, b.document_id),
+                      count(*)
+               FROM requirement a JOIN requirement b ON b.dedup_of = a.requirement_id
+               WHERE a.document_id = ANY(%(ids)s) AND b.document_id = ANY(%(ids)s)
+                 AND a.source_kind = 'TABLE_CELL'
+               GROUP BY 1, 2 HAVING count(*) >= %(min)s""",
+            {"ids": state["document_ids"], "min": PAIR_MIN_SHARED}).fetchall()
+        for doc_a, doc_b, count in shared:
+            conn.execute(
+                """INSERT INTO document_pair (document_id_a, document_id_b, relation, status,
+                                             evidence)
+                   VALUES (%s, %s, 'DUPLICATE_CONTENT', 'CANDIDATE', %s)
+                   ON CONFLICT DO NOTHING""",
+                (doc_a, doc_b, f"데이터시트 항목 {count}개 겹침"))
+        conn.commit()
+        return {}
     return node
 
 
@@ -106,22 +142,23 @@ def _section_titles(conn: psycopg.Connection, document_ids: list[int]) -> dict[i
 
 def clause_candidates(conn: psycopg.Connection, document_ids: list[int],
                       dicts: dictionaries.PipelineDicts) -> list[RiskCandidate]:
+    """조항 하나에 위험 표현이 여럿이면 종류별로 후보 하나에 모은다 ("deemed" + "no deviation")."""
     titles = _section_titles(conn, document_ids)
-    out: list[RiskCandidate] = []
-    seen: set[tuple] = set()
+    by_key: dict[tuple, RiskCandidate] = {}
     for req_id, dedup_of, section_id, text in conn.execute(
             """SELECT requirement_id, dedup_of, section_id, text_raw FROM requirement
                WHERE document_id = ANY(%s) AND req_kind = 'REQUIREMENT'
                ORDER BY requirement_id""", (document_ids,)):
         for expr in find_clause_risks(text, titles.get(section_id, []), dicts.risk_expressions):
             target = dedup_of or req_id         # 같은 문장이 여러 문서에 있으면 대표 하나만
-            key = (expr.expr_id, target)
-            if key in seen:
-                continue
-            seen.add(key)
-            out.append(RiskCandidate(FLAG_KIND[expr.risk_kind], [target], expression=expr,
-                                     facts=f"표현: {expr.expression}"))
-    return out
+            kind = FLAG_KIND[expr.risk_kind]
+            cand = by_key.get((kind, target))
+            if cand is None:
+                by_key[(kind, target)] = RiskCandidate(kind, [target], expression=expr,
+                                                       facts=f"표현: {expr.expression}")
+            elif expr.expression not in cand.facts:
+                cand.facts += f", {expr.expression}"
+    return list(by_key.values())
 
 
 def value_refs(conn: psycopg.Connection, document_ids: list[int]) -> list[ValueRef]:
@@ -132,7 +169,7 @@ def value_refs(conn: psycopg.Connection, document_ids: list[int]) -> list[ValueR
                   tr.table_id IS NOT NULL AND EXISTS (
                       SELECT 1 FROM req_value w WHERE w.requirement_id = v.requirement_id
                       AND w.value_seq > 1) AS multi,
-                  tr.item_no || '|' || lower(regexp_replace(tr.item_name_raw, '\s+', ' ', 'g'))
+                  tr.item_no || '|' || lower(regexp_replace(tr.item_name_raw, '\\s+', ' ', 'g'))
                       AS row_label
            FROM req_value v
            JOIN requirement r USING (requirement_id)
@@ -173,7 +210,7 @@ def _save_risks(ctx: RunContext, run_id: int, candidates: list[RiskCandidate]) -
              explanation, cand.facts, cand.item_key),
         ).fetchone()[0]
         values = cand.value_members or [None] * len(cand.members)
-        for req_id, value_id in zip(cand.members, values):
+        for req_id, value_id in zip(cand.members, values, strict=True):
             conn.execute("INSERT INTO risk_flag_member VALUES (%s, %s, %s) "
                          "ON CONFLICT DO NOTHING", (risk_id, req_id, value_id))
     return len(candidates)
@@ -201,9 +238,11 @@ def _risks_node(ctx: RunContext):
 def build_graph(ctx: RunContext):
     graph = StateGraph(RunState)
     graph.add_node("documents", _documents_node(ctx))
+    graph.add_node("pairs", _pairs_node(ctx))
     graph.add_node("risks", _risks_node(ctx))
     graph.add_edge(START, "documents")
-    graph.add_edge("documents", "risks")
+    graph.add_edge("documents", "pairs")
+    graph.add_edge("pairs", "risks")
     graph.add_edge("risks", END)
     return graph.compile()
 

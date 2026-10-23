@@ -52,9 +52,10 @@ def _attach(conn: psycopg.Connection, items: list[dict]) -> list[dict]:
     for loc in _rows(conn, LOCATIONS, (ids,)):
         by_id[loc.pop("requirement_id")]["locations"].append(loc)
     for t in _rows(conn, """
-            SELECT requirement_id, type_code, is_primary, decided_by, tr.rule_code
-            FROM requirement_type_tag LEFT JOIN type_rule tr USING (type_rule_id)
-            WHERE requirement_id = ANY(%s) ORDER BY NOT is_primary, type_code""", (ids,)):
+            SELECT t.requirement_id, t.type_code, t.is_primary, t.decided_by, tr.rule_code
+            FROM requirement_type_tag t LEFT JOIN type_rule tr USING (type_rule_id)
+            WHERE t.requirement_id = ANY(%s) ORDER BY NOT t.is_primary, t.type_code""",
+            (ids,)):
         by_id[t.pop("requirement_id")]["types"].append(t)
     for v in _rows(conn, """
             SELECT requirement_id, value_seq, raw_text, cell_form, num_value, operator, unit_raw,
@@ -76,6 +77,9 @@ def run_requirements(conn: psycopg.Connection, run_id: int, *, document_id: int 
         JOIN run_document rd ON rd.document_id = q.document_id AND rd.run_id = %(run)s
         JOIN document d ON d.document_id = q.document_id
         WHERE q.req_kind = 'REQUIREMENT'
+          -- 원문 위치가 없는 요구사항은 결과로 내지 않는다 (CR-02)
+          AND EXISTS (SELECT 1 FROM requirement_location rl
+                      WHERE rl.requirement_id = q.requirement_id)
           AND (%(doc)s::int IS NULL OR q.document_id = %(doc)s)
           AND (%(type)s::text IS NULL OR EXISTS (
                 SELECT 1 FROM requirement_type_tag t
@@ -85,6 +89,18 @@ def run_requirements(conn: psycopg.Connection, run_id: int, *, document_id: int 
         {"run": run_id, "doc": document_id, "type": type_code, "limit": limit,
          "offset": offset})
     return _attach(conn, items)
+
+
+def run_pairs(conn: psycopg.Connection, run_id: int) -> list[dict]:
+    return _rows(conn, """
+        SELECT p.pair_id, da.file_no AS file_no_a, db.file_no AS file_no_b, p.relation,
+               p.status, p.evidence
+        FROM document_pair p
+        JOIN document da ON da.document_id = p.document_id_a
+        JOIN document db ON db.document_id = p.document_id_b
+        WHERE p.document_id_a IN (SELECT document_id FROM run_document WHERE run_id = %(r)s)
+          AND p.document_id_b IN (SELECT document_id FROM run_document WHERE run_id = %(r)s)
+        ORDER BY da.file_no, db.file_no""", {"r": run_id})
 
 
 def run_risks(conn: psycopg.Connection, run_id: int) -> list[dict]:
