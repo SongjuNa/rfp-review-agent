@@ -83,3 +83,54 @@ def build_image_only(path: Path) -> Path:
     doc.add_paragraph("［도면 삭제］")
     doc.save(str(path))
     return path
+
+
+def _datasheet(doc, name: str, rows: list[list[str]]) -> None:
+    _table(doc, [[name] * len(HEADER), HEADER, *rows])
+
+
+GIS_115_ROWS = [
+    ["1", "Rated voltage", "kV", "145", ""],
+    ["2", "Rated frequency", "Hz", "50", ""],
+    ["3", "Rated normal current", "A", "3000", ""],
+    ["4", "Rated short-time withstand current, (1 sec.)", "kA", "40", ""],
+    ["5", "Annual leakage rate for each gas compartment", "%", "<0.5", ""],
+    ["6", "Rated normal current of bus coupler", "kA", "3.15", ""],
+    ["7", "Manufacturer's name", "", "", ""],
+    ["8", "Weight of circuit breaker", "kg", "", ""],
+]
+FEEDER_QUERY_ROW = ["9", "Rated normal current of feeder bays", "A", "2000/1250", ""]
+
+
+def build_judgment_spec(path: Path, title: str = "SCHEDULE OF TECHNICAL DATA") -> Path:
+    """판정 대상(묶음 A) 데이터시트: 230 kV GIS(4,000 A 세 곳), 115 kV GIS(3,000 A·50 Hz)."""
+    doc = Document()
+    doc.add_paragraph(title)
+    doc.add_paragraph("1. DATA SHEET")
+    _datasheet(doc, "TS-230-GIS", [
+        ["1", "Rated voltage", "kV", "245", ""],
+        ["2", "Rated frequency", "Hz", "50", ""],
+        ["3", "Rated normal current of main busbar", "A", "4000", ""],
+        ["4", "Rated normal current of bus coupler", "A", "4000", ""],
+        ["5", "Rated normal current of busbar disconnector", "A", "4000", ""],
+        ["6", "Rated normal current of feeder bays", "A", "3500", ""],
+        ["7", "Rated short-time withstand current, (1 sec.)", "kA", "50", ""],
+    ])
+    _datasheet(doc, "TS-115-GIS", [*GIS_115_ROWS, FEEDER_QUERY_ROW])
+    doc.save(str(path))
+    return path
+
+
+def build_feeder_copy(path: Path) -> Path:
+    """다른 문서에 같은 115 kV 행이 다시 나오는 경우 (같은 질의가 두 문서에)."""
+    doc = Document()
+    doc.add_paragraph("EMPLOYER'S REQUIREMENTS")
+    doc.add_paragraph("1. GENERAL")
+    doc.add_paragraph("The switchgear shall be designed, manufactured and tested in accordance "
+                      "with the latest IEC standards and the data sheet below.")
+    for topic in ("enclosure", "gas monitoring", "earthing", "control cubicle", "painting"):
+        doc.add_paragraph(f"The {topic} shall be as specified in the general specification.")
+    doc.add_paragraph("2. DATA SHEET")
+    _datasheet(doc, "TS-115-GIS", [GIS_115_ROWS[0], GIS_115_ROWS[1], FEEDER_QUERY_ROW])
+    doc.save(str(path))
+    return path

@@ -32,7 +32,7 @@ QUALIFIER = re.compile(r"^\s*\(([^)]{1,30})\)")
 UNIT_ITEM_FALLBACK = {"kva": "rated_capacity", "mva": "rated_capacity"}
 # 항목마다 맞는 단위. 문장 속 값의 단위가 안 맞으면 그 항목 값으로 보지 않는다
 # ("정격전류의 25 %"는 정격 전류 값이 아니고, "nominal voltage … 50 Hz"는 전압이 아니다).
-_V, _A = r"k?V", r"k?A"
+_V, _A = r"k?V(?:rms|p|peak)?", r"k?A(?:rms|p|peak)?"   # "kVrms", "kVp"도 전압
 ITEM_UNITS = {
     "rated_voltage_um": _V, "nominal_voltage": _V, "lightning_impulse": _V,
     "power_freq_withstand": _V, "switching_impulse": _V, "control_voltage": _V,
@@ -141,10 +141,14 @@ def standard_of(text: str | None) -> str | None:
     return f"{re.sub(r'\s+', ' ', m.group(1))} {m.group(2)}" if m else None
 
 
+LIST_MARK = re.compile(r"^(?:[-–•·]\s*|\(?\d+\)\s*|\(?[a-z]\)\s+)+")
+
+
 def item_key_of(name: str | None, dicts: Dictionaries, contains: bool = False) -> str | None:
     if not name:
         return None
-    text = normalize(name).lower()
+    # "- Short-duration …", "2) Short circuit …"의 목록 표시는 항목 이름이 아니다.
+    text = LIST_MARK.sub("", normalize(name).lower())
     for alias, key in dicts.aliases:
         if text.startswith(alias) or (contains and alias in text):
             return key
@@ -197,6 +201,13 @@ def preceding_siblings(sections: list[Section], section: Section):
 
 def cell_values(raw: str | None, unit: str | None) -> list[Value]:
     text = normalize(raw or "")
+    # "25 (2seconds)"처럼 값 뒤 괄호의 시간은 조건이다.
+    time = TIME_CONDITION.search(text)
+    if time and SIMPLE_NUMBER.match(text[:time.start()].strip()):
+        values = cell_values(text[:time.start()].strip(), unit)
+        for v in values:
+            v.raw_text, v.cond_time_s = raw, float(time.group(1))
+        return values
     if is_redacted(text):
         return [Value(raw_text=raw, cell_form="EMPTY", flag="REDACTED")]    # CR-05 값 없음
     if text.lower() in EMPTY_MARKS:
@@ -279,24 +290,38 @@ def site_of(value: Value, text: str, preceding: str) -> str | None:
 
 # ---------------------------------------------------------------- 한 요구사항
 
+def _heading_key(c: Candidate, parent, dicts: Dictionaries) -> str | None:
+    """하위 항목의 항목키는 바로 위 소제목 행("1) Continuous current") → 상위 항목 순서로 찾는다."""
+    rows = c.table.rows
+    index = next(i for i, row in enumerate(rows) if row is c.row)
+    stop = c.row.parent_index if c.row.parent_index is not None else index
+    for row in reversed(rows[stop + 1:index]):
+        if not (row.item_no or "").strip() and not (row.required or "").strip():
+            return item_key_of(row.item_name, dicts)
+    return item_key_of(parent.item_name, dicts) if parent else None
+
+
 def normalize_candidate(c: Candidate, sections: list[Section], dicts: Dictionaries,
                         doc_target: str | None, preceding_text: str = "") -> list[Value]:
     if c.req_kind != "REQUIREMENT":
         return []
     if c.row is not None and c.table is not None and c.table.is_datasheet:
-        values = cell_values(c.row.required, c.row.unit)
+        parent = c.table.rows[c.row.parent_index] if c.row.parent_index is not None else None
+        # "- Feeder bays"의 단위 칸이 비면 상위 항목("Rated normal current / A")의 단위다.
+        unit = c.row.unit or (parent.unit if parent else None)
+        values = cell_values(c.row.required, unit)
         name = c.row.item_name
         key = item_key_of(name, dicts)
-        if key is None and c.row.parent_index is not None:
-            # "- Feeder bays"는 상위 항목("Rated normal current")의 값이다.
-            key = item_key_of(c.table.rows[c.row.parent_index].item_name, dicts)
-        if not unit_fits(key, c.row.unit):
+        if key is None:
+            key = _heading_key(c, parent, dicts)
+        if not unit_fits(key, unit):
             key = None
         cond = TIME_CONDITION.search(name or "") or re.search(
             r"\((\d+(?:\.\d+)?)\s*seconds?\)", name or "", re.IGNORECASE)
         for v in values:
             v.item_key = key
-            v.cond_time_s = float(cond.group(1)) if cond else None
+            if cond:
+                v.cond_time_s = float(cond.group(1))
             v.basis_standard = standard_of(c.row.required) if v.cell_form != "DELEGATED" else None
             v.target_object = context_target(c, sections, dicts, doc_target)
             # 데이터시트 하나는 설비 하나다 (파일 1의 TS-230-GIS와 TS-115-GIS는 다른 설비).

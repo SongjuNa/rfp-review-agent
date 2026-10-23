@@ -50,8 +50,9 @@ class FakeLLM:
 
     model = "fake-model"
 
-    def __init__(self, fail: bool = False):
+    def __init__(self, fail: bool = False, text: str | None = None):
         self.fail = fail
+        self.text = text            # 문장 초안 답 (없으면 자리표시자를 모두 쓴 문장)
         self.prompts: list[str] = []
 
     def generate_json(self, prompt: str, schema: dict) -> dict:
@@ -64,6 +65,10 @@ class FakeLLM:
         if field == "explanation":
             return {"explanation": "두 값의 적용 대상이 달라 확인이 필요하다."}
         count = len(re.findall(r"^\d+\. ", prompt, re.MULTILINE))
+        if field == "texts":
+            lines = re.findall(r"^\d+\. .*\(자리표시자: (.*)\)$", prompt, re.MULTILINE)
+            return {"texts": [self.text or "초안: " + " ".join(
+                re.findall(r"\{\w+\}", marks)) for marks in lines]}
         default = {"labels": "REQUIREMENT", "types": "NONE"}[field]
         return {field: [default] * count}
 

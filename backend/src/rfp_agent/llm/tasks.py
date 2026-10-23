@@ -101,3 +101,41 @@ def explain_risk(llm: LLM, kind: str, facts: str, texts: list[str]) -> str | Non
     if any(n.replace(",", "") not in allowed for n in NUMBER.findall(text)):
         return None
     return text
+
+
+DRAFT_VERSION = "d1"
+COMPETITOR = re.compile(r"경쟁|타사|다른 회사|competitor|other manufacturer", re.IGNORECASE)
+_PLACEHOLDER = re.compile(r"\{(\w+)\}")
+
+
+def draft_sentences(llm: LLM, purpose: str, items: list[tuple[str, dict[str, str]]]) -> list[str]:
+    """항목마다 한국어 문장 하나. 숫자는 자리표시자로만 쓰게 하고(CR-07) 채우기·대조는 코드가 한다.
+
+    items: (사실 문장, {자리표시자: 뜻}) 목록.
+    자리표시자 밖의 숫자나 경쟁 제품 비교가 있으면 실패로 본다.
+    """
+    out: list[str] = []
+    for start in range(0, len(items), CHUNK):
+        part = items[start:start + CHUNK]
+        numbered = "\n".join(
+            f"{i}. {one_line(facts)} (자리표시자: "
+            + ", ".join(f"{{{k}}}={v}" for k, v in marks.items()) + ")"
+            for i, (facts, marks) in enumerate(part))
+        prompt = (
+            f"입찰 기술 검토 엔지니어가 쓸 {purpose} 문장 초안을 "
+            "항목마다 한국어 한두 문장으로 쓴다. "
+            "숫자와 제품 이름은 직접 쓰지 말고 주어진 자리표시자만 그대로 쓴다. "
+            "사실에 없는 내용을 더하지 않고, 경쟁 제품이나 다른 회사와 비교하는 말은 쓰지 않는다. "
+            "항목 수와 같은 개수의 문장을 같은 순서로 낸다.\n" + numbered
+        )
+        schema = {"type": "object", "properties": {"texts": {
+            "type": "array", "items": {"type": "string"}}}, "required": ["texts"]}
+
+        def check(d, part=part):
+            assert len(d["texts"]) == len(part)
+            for text, (_, marks) in zip(d["texts"], part, strict=True):
+                assert text.strip() and not COMPETITOR.search(text)
+                assert set(_PLACEHOLDER.findall(text)) <= set(marks)
+
+        out.extend(t.strip() for t in call_with_retry(llm, prompt, schema, check)["texts"])
+    return out
