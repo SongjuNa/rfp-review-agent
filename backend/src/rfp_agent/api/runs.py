@@ -281,6 +281,13 @@ def run_submission_check(run_id: int) -> dict:
         return check_submission(conn, run_id)
 
 
+@router.get("/runs/{run_id}/checks")
+def run_checks(run_id: int) -> list[dict]:
+    _summary(run_id)
+    with connect() as conn:
+        return queries.run_checks(conn, run_id)
+
+
 @router.get("/runs/{run_id}/proposals")
 def run_proposals(run_id: int) -> list[dict]:
     _summary(run_id)

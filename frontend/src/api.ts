@@ -25,6 +25,7 @@ export type RunSummary = {
   judgments: number
   deviation_candidates: number
   output_items: number
+  check_violations: number
   proposals: number
   llm_model: string | null
 }
@@ -144,6 +145,23 @@ export type Warranty = {
   reason_code: string | null
   is_assumed: boolean
   locations: Location[]
+}
+
+export type EngineeringCheck = {
+  check_id: number
+  rule_code: string
+  result: 'PASS' | 'VIOLATION' | 'NEEDS_REVIEW'
+  reason_code: string | null
+  expected_ka: number | null
+  factor: number | null
+  requirement_id: number
+  peak_item_key: string
+  peak_ka: number
+  ik_item_key: string
+  ik_ka: number
+  frequency_hz: number | null
+  locations: Location[]
+  ik_locations: Location[]
 }
 
 export type Loss = {
@@ -288,6 +306,7 @@ export const api = {
   warranty: (id: number, params: { status?: string; offset?: number; limit?: number }) =>
     call<Warranty[]>(`/runs/${id}/warranty?${query(params)}`),
   losses: (id: number) => call<Loss[]>(`/runs/${id}/losses`),
+  checks: (id: number) => call<EngineeringCheck[]>(`/runs/${id}/checks`),
   updateLoss: (id: number, lossId: number, values: Record<string, number | null>) =>
     call<{ total_usd: number | null; formula: string }>(`/runs/${id}/losses/${lossId}`, json('PUT', values)),
   outputs: (id: number) => call<OutputItem[]>(`/runs/${id}/outputs`),

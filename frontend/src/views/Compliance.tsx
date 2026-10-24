@@ -1,8 +1,8 @@
 // 적합성 표(비교 제품·여유·바꿔 보기), 보증값, 손실 환산
 import { useState } from 'react'
-import { api, type Equipment, type Judgment, type Loss } from '../api'
+import { api, type EngineeringCheck, type Equipment, type Judgment, type Loss } from '../api'
 import { ActionBar, Assumed, Badge, ErrorText, Evidence, More } from '../components/common'
-import { MARGIN_NAMES, RESULT_NAMES, STATUS_NAMES } from '../components/labels'
+import { CHECK_NAMES, CHECK_REASONS, MARGIN_NAMES, RESULT_NAMES, STATUS_NAMES } from '../components/labels'
 import { useLoad, usePaged } from '../components/useLoad'
 import type { ViewProps } from './types'
 
@@ -189,6 +189,37 @@ export function Losses({ runId, editable, onChanged }: ViewProps) {
             <p className="sub">단가 {Number(l.price_noload).toLocaleString('en-US')} / {Number(l.price_load).toLocaleString('en-US')} / {Number(l.price_aux).toLocaleString('en-US')} {l.price_unit}</p>
             <Evidence runId={runId} requirementId={l.requirement_id} locations={l.locations} />
             {editable && <LossEdit runId={runId} loss={l} onDone={() => { reload(); onChanged() }} />}
+          </li>
+        ))}
+      </ul>
+    </section>
+  )
+}
+
+function checkLine(c: EngineeringCheck) {
+  const values = `최대 순간 전류 ${Number(c.peak_ka)} kA · 단시간 전류 ${Number(c.ik_ka)} kA`
+  if (c.result === 'NEEDS_REVIEW') return `${values} · ${CHECK_REASONS[c.reason_code ?? ''] ?? c.reason_code}`
+  return `${values} · 주파수 ${Number(c.frequency_hz)} Hz → 계산한 값 ${Number(c.expected_ka)} kA (× ${Number(c.factor)})`
+}
+
+export function Checks({ runId }: ViewProps) {
+  const { data, error } = useLoad(() => api.checks(runId), [runId])
+  const order = { VIOLATION: 0, NEEDS_REVIEW: 1, PASS: 2 }
+  const rows = [...(data ?? [])].sort((a, b) => order[a.result] - order[b.result])
+  return (
+    <section>
+      <p>같은 표·같은 부위에서 최대 순간 전류 = 단시간 전류 × 2.5(50 Hz) 또는 × 2.6(60 Hz)인지 봅니다 (규칙 B1).
+        위반은 질의 목록에 질의 후보로 들어갑니다.</p>
+      <ErrorText error={error} />
+      {data?.length === 0 && <p>같은 부위에 단시간 전류와 최대 순간 전류가 함께 있는 표가 없습니다.</p>}
+      <ul className="cards">
+        {rows.map((c) => (
+          <li key={c.check_id} className="card">
+            <header>
+              <Badge tone={c.result === 'PASS' ? 'ok' : c.result === 'VIOLATION' ? 'bad' : 'warn'}>{CHECK_NAMES[c.result]}</Badge>
+            </header>
+            <p>{checkLine(c)}</p>
+            <Evidence runId={runId} requirementId={c.requirement_id} locations={[...c.locations, ...c.ik_locations]} />
           </li>
         ))}
       </ul>
