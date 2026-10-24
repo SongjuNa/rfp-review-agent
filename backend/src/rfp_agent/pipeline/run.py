@@ -18,6 +18,7 @@ from rfp_agent.llm import tasks
 from rfp_agent.llm.client import FAILURE_MESSAGE, LLM, LLMFailure
 from rfp_agent.pipeline import code_version, dictionaries
 from rfp_agent.pipeline.document import process_document
+from rfp_agent.pipeline.engineering import build_checks
 from rfp_agent.pipeline.judge import judge_run
 from rfp_agent.pipeline.loss import build_losses
 from rfp_agent.pipeline.outputs import build_outputs
@@ -43,6 +44,7 @@ class RunState(TypedDict, total=False):
     readable_ids: list[int]
     risk_count: int
     judgment_count: int
+    check_count: int
     warranty_count: int
     loss_count: int
     output_count: int
@@ -283,6 +285,8 @@ def _step_node(ctx: RunContext, step: str, key: str, build):
 
 
 STEPS = [
+    ("check", "check_count",
+     lambda ctx, s: build_checks(ctx.conn, s["run_id"], s["readable_ids"])),
     ("warranty", "warranty_count", lambda ctx, s: build_warranty(ctx.conn, s["run_id"])),
     ("loss", "loss_count", lambda ctx, s: build_losses(ctx.conn, s["run_id"])),
     ("outputs", "output_count",

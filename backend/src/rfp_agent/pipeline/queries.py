@@ -22,6 +22,8 @@ def run_summary(conn: psycopg.Connection, run_id: int) -> dict | None:
                (SELECT count(*) FROM judgment WHERE run_id = r.run_id AND is_current
                   AND result = 'DEVIATION_CANDIDATE') AS deviation_candidates,
                (SELECT count(*) FROM output_item WHERE run_id = r.run_id) AS output_items,
+               (SELECT count(*) FROM engineering_check WHERE run_id = r.run_id
+                  AND result = 'VIOLATION') AS check_violations,
                (SELECT count(*) FROM proposal_point WHERE run_id = r.run_id) AS proposals
         FROM review_run r WHERE r.run_id = %s""", (run_id,))
     return rows[0] if rows else None
@@ -242,6 +244,26 @@ def run_losses(conn: psycopg.Connection, run_id: int) -> list[dict]:
     return _with_locations(conn, rows, run_id)
 
 
+def run_checks(conn: psycopg.Connection, run_id: int) -> list[dict]:
+    """공학 규칙 검산 (FR-12). 근거 위치는 최대 순간 전류 행과 단시간 전류 행."""
+    rows = _rows(conn, """
+        SELECT c.check_id, c.rule_code, c.result, c.reason_code, c.expected_ka, c.factor,
+               p.requirement_id, i.requirement_id AS ik_requirement_id,
+               p.item_key AS peak_item_key, p.num_value AS peak_ka, p.raw_text AS peak_raw,
+               i.item_key AS ik_item_key, i.num_value AS ik_ka, i.raw_text AS ik_raw,
+               f.num_value AS frequency_hz
+        FROM engineering_check c
+        JOIN req_value p ON p.value_id = c.peak_value_id
+        JOIN req_value i ON i.value_id = c.ik_value_id
+        LEFT JOIN req_value f ON f.value_id = c.freq_value_id
+        WHERE c.run_id = %s ORDER BY c.check_id""", (run_id,))
+    rows = _with_locations(conn, rows, run_id)
+    ik_locations = _locations(conn, [r["ik_requirement_id"] for r in rows], run_id)
+    for r in rows:
+        r["ik_locations"] = ik_locations.get(r["ik_requirement_id"], [])
+    return rows
+
+
 def run_outputs(conn: psycopg.Connection, run_id: int,
                 list_kind: str | None = None) -> list[dict]:
     """일탈·질의 목록 항목. 항목마다 근거 요구사항과 원문 위치, 연결된 항목을 붙인다."""
@@ -255,13 +277,19 @@ def run_outputs(conn: psycopg.Connection, run_id: int,
         return []
     ids = [i["item_id"] for i in items]
     sources = _rows(conn, """
-        SELECT s.item_id, s.source_seq, s.judgment_id, s.risk_id,
-               COALESCE(j.requirement_id, m.requirement_id) AS requirement_id
+        SELECT s.item_id, s.source_seq, s.judgment_id, s.risk_id, s.check_id,
+               COALESCE(j.requirement_id, m.requirement_id, pv.requirement_id) AS requirement_id,
+               iv.requirement_id AS ik_requirement_id
         FROM output_item_source s
         LEFT JOIN judgment j USING (judgment_id)
         LEFT JOIN risk_flag_member m ON m.risk_id = s.risk_id
+        LEFT JOIN engineering_check c ON c.check_id = s.check_id
+        LEFT JOIN req_value pv ON pv.value_id = c.peak_value_id
+        LEFT JOIN req_value iv ON iv.value_id = c.ik_value_id
         WHERE s.item_id = ANY(%s) ORDER BY s.item_id, s.source_seq""", (ids,))
-    locations = _locations(conn, [s["requirement_id"] for s in sources], run_id)
+    locations = _locations(conn, [r for s in sources
+                                  for r in (s["requirement_id"], s["ik_requirement_id"]) if r],
+                           run_id)
     links: dict[int, list[int]] = {}
     for a, b in conn.execute("SELECT item_id, linked_item_id FROM output_item_link "
                              "WHERE item_id = ANY(%s) ORDER BY 1, 2", (ids,)):
@@ -270,10 +298,12 @@ def run_outputs(conn: psycopg.Connection, run_id: int,
                                 "linked_items": links.get(i["item_id"], [])} for i in items}
     for s in sources:
         item = by_id[s.pop("item_id")]
+        ik_requirement = s.pop("ik_requirement_id")    # 검산: 단시간 전류 행도 근거 위치
         item["sources"].append(s)
-        for loc in locations.get(s["requirement_id"], []):
-            if loc not in item["locations"]:
-                item["locations"].append(loc)
+        for req_id in (s["requirement_id"], ik_requirement):
+            for loc in locations.get(req_id, []):
+                if loc not in item["locations"]:
+                    item["locations"].append(loc)
     return [i for i in by_id.values() if i["locations"]]
 
 

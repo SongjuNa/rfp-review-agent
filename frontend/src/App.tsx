@@ -4,12 +4,12 @@ import { Badge, ErrorText } from './components/common'
 import { STAGE_NAMES, STEP_NAMES } from './components/labels'
 import { useLoad } from './components/useLoad'
 import { Approval, History } from './views/Approval'
-import { Judgments, Losses, WarrantyView } from './views/Compliance'
+import { Checks, Judgments, Losses, WarrantyView } from './views/Compliance'
 import { Requirements, Risks } from './views/Findings'
 import { Outputs, Proposals } from './views/Outputs'
 
 const TABS = [
-  ['requirements', '요구사항'], ['risks', '위험 조건'], ['judgments', '적합성 판정'], ['warranty', '보증값'],
+  ['requirements', '요구사항'], ['risks', '위험 조건'], ['judgments', '적합성 판정'], ['checks', '공학 검산'], ['warranty', '보증값'],
   ['losses', '손실 환산'], ['outputs', '일탈·질의 목록'], ['proposals', '제안 포인트'], ['approval', '승인'],
   ['history', '이력'],
 ] as const
@@ -68,7 +68,7 @@ function RunStatus({ run }: { run: RunSummary }) {
       {run.stage === 'PROCESSING' && <span>현재 단계: {STEP_NAMES[run.step ?? ''] ?? run.step}</span>}
       {run.stage === 'FAILED' && <span className="error">{run.error_message} (실패 단계: {STEP_NAMES[run.failed_step ?? ''] ?? run.failed_step})</span>}
       <span className="sub">문서 {run.documents} · 요구사항 {run.requirements} · 위험 조건 {run.risks} · 판정 {run.judgments}
-        · 일탈 후보 {run.deviation_candidates} · 목록 {run.output_items} · 제안 {run.proposals}</span>
+        · 일탈 후보 {run.deviation_candidates} · 검산 위반 {run.check_violations} · 목록 {run.output_items} · 제안 {run.proposals}</span>
     </div>
   )
 }
@@ -104,6 +104,7 @@ function RunView({ runId, user, onChanged }: { runId: number; user: User | null;
             {tab === 'requirements' && <Requirements {...props} />}
             {tab === 'risks' && <Risks {...props} />}
             {tab === 'judgments' && <Judgments {...props} />}
+            {tab === 'checks' && <Checks {...props} />}
             {tab === 'warranty' && <WarrantyView {...props} />}
             {tab === 'losses' && <Losses {...props} />}
             {tab === 'outputs' && <Outputs {...props} />}

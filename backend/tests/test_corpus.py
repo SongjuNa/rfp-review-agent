@@ -297,6 +297,20 @@ def test_loss_evaluation_case_5(conn, main_run):
     assert point["is_assumed"] and point["text_draft"].endswith("(팀 가정)")
 
 
+def test_engineering_check_230kv_breaker(conn, main_run):
+    """Scenario: 230 kV 차단기 (파일 1 TS-230-GIS II) — 차단 50 kA, 최대 순간 100 kA, 50 Hz이면
+    위반(계산값 125)이고 질의 후보가 된다. 115 kV GIS 40 kA·100 kA는 통과."""
+    checks = queries.run_checks(conn, main_run)
+    [bad] = [c for c in checks if c["result"] == "VIOLATION"]
+    assert (float(bad["ik_ka"]), float(bad["peak_ka"]), float(bad["expected_ka"])) == (50, 100, 125)
+    assert (1, 7180) in {(loc["file_no"], loc["line_start"]) for loc in bad["locations"]}
+    gis_115 = [c for c in checks if c["locations"][0]["table_name"] == "TS-115-GIS"
+               and float(c["peak_ka"]) == 100 and c["peak_item_key"] == "peak_current"]
+    assert gis_115 and all(c["result"] == "PASS" for c in gis_115)
+    assert any(any(s["check_id"] == bad["check_id"] for s in i["sources"])
+               for i in queries.run_outputs(conn, main_run, "QUERY"))
+
+
 def test_field_history_heater(conn):
     """Scenario: 결로 방지 히터 (파일 4 327행) — 고압 개폐기 요구가 FLT-051과 이어지고,
     문장에는 고장 사전의 증상·원인·조치 외 내용이 없다."""

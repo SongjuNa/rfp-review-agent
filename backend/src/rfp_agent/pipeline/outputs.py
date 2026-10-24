@@ -41,6 +41,7 @@ class Draft:
     values: dict[str, str]                          # 자리표시자 → 근거 값
     judgment_ids: list[int] = field(default_factory=list)
     risk_ids: list[int] = field(default_factory=list)
+    check_ids: list[int] = field(default_factory=list)
     requirement_ids: set[int] = field(default_factory=set)
     is_assumed: bool = False
 
@@ -140,6 +141,33 @@ def _risk_drafts(conn: psycopg.Connection, run_id: int) -> list[Draft]:
     return list(drafts.values())
 
 
+def _check_drafts(conn: psycopg.Connection, run_id: int) -> list[Draft]:
+    """공학 규칙 검산 위반 (FR-12) → 질의 후보. 같은 숫자의 위반은 한 건으로 묶는다."""
+    names = dict(conn.execute("SELECT item_key, name_ko FROM item_key"))
+    drafts: dict[tuple, Draft] = {}
+    for c in queries.run_checks(conn, run_id):
+        if c["result"] != "VIOLATION":
+            continue
+        peak, ik = float(c["peak_ka"]), float(c["ik_ka"])
+        key = ("QUERY", "C", c["peak_item_key"], peak, ik, float(c["factor"]))
+        draft = drafts.get(key)
+        if draft is None:
+            name = names.get(c["peak_item_key"], "최대 순간 전류")
+            values = {"v1": fmt(ik), "v2": fmt(peak), "f": fmt(float(c["frequency_hz"])),
+                      "k": fmt(float(c["factor"])), "e": fmt(float(c["expected_ka"]))}
+            marks = {"v1": "단시간 전류(kA)", "v2": "요구값(kA)", "f": "주파수(Hz)",
+                     "k": "배수", "e": "계산한 값(kA)"}
+            facts = (f"항목: {name}, 요구값 {{v2}} kA, 같은 부위 단시간 전류 {{v1}} kA, "
+                     "주파수 {f} Hz, 계산한 값 {e} kA (× {k}), 어느 값이 맞는지 질의")
+            template = (f"{name} 요구값 {{v2}} kA가 같은 부위의 단시간 전류 {{v1}} kA와 주파수 "
+                        "{f} Hz로 계산한 값 {e} kA(× {k})와 맞지 않습니다. 어느 값이 맞는지 "
+                        "질의합니다.")
+            draft = drafts[key] = Draft("QUERY", key, facts, template, marks, values)
+        draft.check_ids.append(c["check_id"])
+        draft.requirement_ids.update({c["requirement_id"], c["ik_requirement_id"]})
+    return list(drafts.values())
+
+
 def _texts(llm: LLM | None, drafts: list[Draft]) -> list[tuple[str, str]]:
     """(자리표시자 문장, 작성 주체)."""
     if llm is None or not drafts:
@@ -150,7 +178,8 @@ def _texts(llm: LLM | None, drafts: list[Draft]) -> list[tuple[str, str]]:
 
 def build_outputs(conn: psycopg.Connection, run_id: int, document_ids: list[int],
                   llm: LLM | None) -> int:
-    drafts = _judgment_drafts(conn, run_id) + _risk_drafts(conn, run_id)
+    drafts = (_judgment_drafts(conn, run_id) + _risk_drafts(conn, run_id)
+              + _check_drafts(conn, run_id))
     drafts.sort(key=lambda d: (d.list_kind, min(d.requirement_ids)))
     texts = _texts(llm, drafts)
     names = {kind: find_form(conn, document_ids, pattern)
@@ -179,11 +208,13 @@ def build_outputs(conn: psycopg.Connection, run_id: int, document_ids: list[int]
                 (run_id, draft.list_kind, filled.text, basis, filled.check, status,
                  name or DEFAULT_NAMES[draft.list_kind], repr(draft.key), filled.detail,
                  drafted_by, draft.is_assumed)).fetchone()[0]
-            sources = [(j, None) for j in draft.judgment_ids] + [(None, r) for r in draft.risk_ids]
-            for seq, (judgment_id, risk_id) in enumerate(sources, start=1):
+            sources = ([(j, None, None) for j in draft.judgment_ids]
+                       + [(None, r, None) for r in draft.risk_ids]
+                       + [(None, None, c) for c in draft.check_ids])
+            for seq, (judgment_id, risk_id, check_id) in enumerate(sources, start=1):
                 conn.execute("INSERT INTO output_item_source (item_id, source_seq, judgment_id, "
-                             "risk_id) VALUES (%s, %s, %s, %s)",
-                             (item_id, seq, judgment_id, risk_id))
+                             "risk_id, check_id) VALUES (%s, %s, %s, %s, %s)",
+                             (item_id, seq, judgment_id, risk_id, check_id))
             for req_id in draft.requirement_ids:
                 by_requirement[req_id].append((draft.list_kind, item_id))
         links = set()
