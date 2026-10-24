@@ -17,6 +17,7 @@ from psycopg.types.json import Jsonb
 from rfp_agent.llm import tasks
 from rfp_agent.llm.client import FAILURE_MESSAGE, LLM, LLMFailure
 from rfp_agent.pipeline import code_version, dictionaries
+from rfp_agent.pipeline.assignments import build_assignments
 from rfp_agent.pipeline.document import process_document
 from rfp_agent.pipeline.engineering import build_checks
 from rfp_agent.pipeline.judge import judge_run
@@ -49,6 +50,7 @@ class RunState(TypedDict, total=False):
     loss_count: int
     output_count: int
     proposal_count: int
+    assignment_count: int
 
 
 @dataclass
@@ -293,6 +295,7 @@ STEPS = [
      lambda ctx, s: build_outputs(ctx.conn, s["run_id"], s["readable_ids"], ctx.llm)),
     ("proposals", "proposal_count",
      lambda ctx, s: build_proposals(ctx.conn, s["run_id"], ctx.llm)),
+    ("assign", "assignment_count", lambda ctx, s: build_assignments(ctx.conn, s["run_id"])),
 ]
 COUNTS = ["risk_count", "judgment_count"] + [key for _, key, _ in STEPS]
 

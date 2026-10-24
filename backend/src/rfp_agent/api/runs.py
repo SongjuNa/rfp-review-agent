@@ -12,6 +12,7 @@ from pydantic import BaseModel, Field
 from rfp_agent.config import get_settings
 from rfp_agent.db.connection import connect
 from rfp_agent.pipeline import queries, review
+from rfp_agent.pipeline.assignments import build_assignments
 from rfp_agent.pipeline.loss import recalculate
 from rfp_agent.pipeline.outputs import check_submission
 from rfp_agent.pipeline.proposals import build_proposals
@@ -46,6 +47,11 @@ class Action(BaseModel):
 
 class Actor(BaseModel):
     actor_id: int | None = None
+
+
+class TaskStatus(BaseModel):
+    status: str = Field(pattern="^(TODO|DOING|DONE)$")
+    actor_id: int
 
 
 class Decision(BaseModel):
@@ -253,6 +259,7 @@ def update_loss(run_id: int, loss_calc_id: int, body: LossValues) -> dict:
                    review.row(conn, "loss_calc", loss_calc_id, run_id), "손실값 고치기",
                    review.default_user(conn, "ENGINEER"))
         build_proposals(conn, run_id, make_context(conn).llm)
+        build_assignments(conn, run_id)
         conn.commit()
         return result
 
@@ -343,3 +350,25 @@ def deliverables(run_id: int) -> dict:
     _summary(run_id)
     with connect() as conn:
         return review.deliverables(conn, run_id)
+
+
+@router.get("/tasks")
+def my_tasks(user_id: int) -> dict:
+    """고른 사용자의 "내 할 일": 엔지니어·승인자는 멈춘 검토, 담당자는 받은 할 일 (FR-11)."""
+    with connect() as conn:
+        return _review(lambda: review.my_tasks(conn, user_id))
+
+
+@router.get("/runs/{run_id}/assignments")
+def run_assignments(run_id: int, role: str) -> list[dict]:
+    _summary(run_id)
+    with connect() as conn:
+        return review.assignments_for(conn, role, run_id)
+
+
+@router.put("/assignments/{assignment_id}")
+def update_assignment(assignment_id: int, body: TaskStatus) -> dict:
+    """담당자가 할 일 상태를 바꾼다 (할 일 → 하는 중 → 끝)."""
+    with connect() as conn:
+        return _review(lambda: review.set_assignment_status(conn, assignment_id, body.status,
+                                                            body.actor_id))

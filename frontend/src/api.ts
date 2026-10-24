@@ -250,6 +250,31 @@ export type LogEntry = {
   acted_at: string
 }
 
+export type Assignment = {
+  assignment_id: number
+  run_id: number
+  assignee_role: string
+  status: 'TODO' | 'DOING' | 'DONE'
+  repeat_count: number
+  sent_at: string
+  updated_at: string | null
+  requirement_id: number
+  requirement_ids: number[]
+  point_id: number | null
+  point_kind: string | null
+  type_code: string | null
+  type_name: string | null
+  assignee: string | null
+  text: string
+  is_assumed: boolean | null
+  stage: Stage
+  locations: Location[]
+}
+
+export type ReviewCard = RunListItem & { summary: RunSummary; criteria: Criterion[] }
+
+export type MyTasks = { role: string; reviews: ReviewCard[]; assignments: Assignment[] }
+
 export type ActionBody = {
   target: string
   target_id: number
@@ -320,6 +345,9 @@ export const api = {
     call<{ stage: Stage; criteria: Criterion[] }>(`/runs/${id}/finish-review`, json('POST', { actor_id })),
   decide: (id: number, decision: string, comment: string, actor_id: number) =>
     call<ApprovalScreen>(`/runs/${id}/approval`, json('POST', { decision, comment, actor_id })),
+  tasks: (user_id: number) => call<MyTasks>(`/tasks?user_id=${user_id}`),
+  setTaskStatus: (assignmentId: number, status: string, actor_id: number) =>
+    call<{ status: string }>(`/assignments/${assignmentId}`, json('PUT', { status, actor_id })),
   reopen: (id: number, actor_id: number) => call<{ stage: Stage }>(`/runs/${id}/reopen`, json('POST', { actor_id })),
 }
 

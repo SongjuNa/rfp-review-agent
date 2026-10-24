@@ -13,6 +13,8 @@ import psycopg
 from psycopg.rows import dict_row
 from psycopg.types.json import Jsonb
 
+from rfp_agent.pipeline import queries
+from rfp_agent.pipeline.assignments import build_assignments
 from rfp_agent.pipeline.numbers import fill
 from rfp_agent.pipeline.outputs import build_outputs, check_submission
 from rfp_agent.pipeline.proposals import build_proposals
@@ -211,6 +213,8 @@ def act(ctx: RunContext, run_id: int, target: str, target_id: int, action: str,
         conn.commit()
     elif target == "output_item":
         check_submission(conn, run_id)
+    build_assignments(conn, run_id)                 # 채택한 제안 포인트는 영업·견적에 전달 (FR-11)
+    conn.commit()
     return {"before": _json(before).obj, "after": _json(after).obj,
             "submission_check": _latest_check(conn, run_id)}
 
@@ -386,3 +390,85 @@ def deliverables(conn: psycopg.Connection, run_id: int) -> dict:
             "w.source_kind FROM warranty_candidate w WHERE w.run_id = %s "
             "AND w.status = 'CONFIRMED' ORDER BY w.candidate_id", (run_id,)).fetchall()
     return {"proposals": points, "outputs": items, "warranty": warranty}
+
+
+# ---------------------------------------------------------------- 내 할 일 (FR-11)
+
+TASK_STATUSES = ("TODO", "DOING", "DONE")
+VISIBLE_STAGES = ("ENGINEER_REVIEW", "APPROVAL", "APPROVED", "REJECTED")
+
+
+def set_assignment_status(conn: psycopg.Connection, assignment_id: int, status: str,
+                          actor_id: int) -> dict:
+    """담당자가 할 일 상태를 바꾼다 (할 일 → 하는 중 → 끝). 그 역할 사용자만 바꿀 수 있다."""
+    if status not in TASK_STATUSES:
+        raise ReviewError(400, f"상태 {status}은(는) 없습니다.")
+    found = conn.execute("SELECT assignee_role FROM assignment WHERE assignment_id = %s",
+                         (assignment_id,)).fetchone()
+    if found is None:
+        raise ReviewError(404, f"할 일 {assignment_id}이(가) 없습니다.")
+    if _user_role(conn, actor_id) != found[0]:
+        raise ReviewError(403, "이 할 일은 담당 역할 사용자만 바꿀 수 있습니다.")
+    conn.execute("UPDATE assignment SET status = %s, assignee_id = %s, updated_at = now() "
+                 "WHERE assignment_id = %s", (status, actor_id, assignment_id))
+    conn.commit()
+    return {"assignment_id": assignment_id, "status": status}
+
+
+def _review_cards(conn: psycopg.Connection, stage: str) -> list[dict]:
+    """엔지니어는 담당자 확인, 승인자는 승인 대기인 검토. 카드마다 걸린 승인 기준을 붙인다."""
+    cards = []
+    for run in queries.run_list(conn, 200):
+        if run["stage"] != stage:
+            continue
+        summary = queries.run_summary(conn, run["run_id"])
+        if stage == "ENGINEER_REVIEW":
+            found = [{"ar_code": c.ar_code, "detail": c.detail}
+                     for c in criteria(conn, run["run_id"])]
+        else:
+            found = approval(conn, run["run_id"])["reasons"]
+        cards.append({**run, "summary": summary, "criteria": found})
+    conn.commit()
+    return cards
+
+
+def assignments_for(conn: psycopg.Connection, role: str, run_id: int | None = None) -> list[dict]:
+    with conn.cursor(row_factory=dict_row) as cur:
+        rows = cur.execute(
+            """SELECT a.assignment_id, a.run_id, a.assignee_role, a.status, a.repeat_count,
+                      a.sent_at, a.updated_at, a.requirement_id, a.requirement_ids, a.point_id,
+                      a.type_code, t.type_name, u.user_name AS assignee,
+                      COALESCE(q.text_raw, p.text_draft) AS text, p.point_kind,
+                      p.requirement_id AS point_requirement_id, p.is_assumed, r.stage
+               FROM assignment a JOIN review_run r ON r.run_id = a.run_id
+               LEFT JOIN requirement_type t ON t.type_code = a.type_code
+               LEFT JOIN app_user u ON u.user_id = a.assignee_id
+               LEFT JOIN requirement q ON q.requirement_id = a.requirement_id
+               LEFT JOIN proposal_point p ON p.point_id = a.point_id
+               WHERE a.assignee_role = %s AND r.stage = ANY(%s)
+                 AND (a.requirement_id IS NOT NULL OR a.point_id IS NOT NULL)
+                 AND (%s::int IS NULL OR a.run_id = %s)
+               ORDER BY a.run_id DESC, a.point_id IS NULL, a.assignment_id""",
+            (role, list(VISIBLE_STAGES), run_id, run_id)).fetchall()
+    out = []
+    for r in rows:
+        ids = r["requirement_ids"] or [r["point_requirement_id"]]
+        locations = queries._locations(conn, ids, r["run_id"])
+        r["locations"] = [loc for i in ids for loc in locations.get(i, [])]
+        r["requirement_id"] = r["requirement_id"] or r["point_requirement_id"]
+        if r["locations"]:                      # 원문 위치가 없으면 보내지 않는다 (CR-02)
+            out.append(r)
+    return out
+
+
+def my_tasks(conn: psycopg.Connection, user_id: int) -> dict:
+    """고른 사용자 역할의 "내 할 일". 엔지니어·승인자는 멈춰 있는 검토, 담당자는 전달받은 할 일."""
+    role = _user_role(conn, user_id)
+    out: dict = {"role": role, "reviews": [], "assignments": []}
+    if role == "ENGINEER":
+        out["reviews"] = _review_cards(conn, "ENGINEER_REVIEW")
+    elif role == "APPROVER":
+        out["reviews"] = _review_cards(conn, "APPROVAL")
+    else:
+        out["assignments"] = assignments_for(conn, role)
+    return out

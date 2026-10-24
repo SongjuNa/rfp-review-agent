@@ -19,7 +19,7 @@ export const STAGE_NAMES: Record<string, string> = {
 export const STEP_NAMES: Record<string, string> = {
   created: '시작', documents: '문서 읽기', pairs: '같은 문서 찾기', risks: '위험 조건 찾기',
   judge: '제품 비교 판정', check: '공학 규칙 검산', warranty: '보증값 후보', loss: '손실 환산', outputs: '일탈·질의 목록',
-  proposals: '제안 포인트', done: '처리 끝', engineer_review: '담당자 확인', approval: '승인 대기',
+  proposals: '제안 포인트', assign: '담당자 전달', done: '처리 끝', engineer_review: '담당자 확인', approval: '승인 대기',
   approved: '승인됨', rejected: '반려됨',
 }
 export const STATUS_NAMES: Record<string, string> = {
@@ -38,6 +38,12 @@ export const CHECK_NAMES: Record<string, string> = {
 export const CHECK_REASONS: Record<string, string> = {
   NO_FREQUENCY: '같은 표에 주파수가 없음', MULTI_FREQUENCY: '주파수가 여럿이거나 50·60 Hz가 아님',
   MULTI_IK: '같은 부위에 단시간 전류 값이 여럿', UNIT_DIFF: '단위가 kA가 아님 (환산하지 않음)',
+}
+export const ROLE_NAMES: Record<string, string> = {
+  ENGINEER: '기술 검토 엔지니어', APPROVER: '승인자', COST: '견적 담당', QUALITY: '품질 담당', SALES: '영업 담당',
+}
+export const TASK_STATUS_NAMES: Record<string, string> = {
+  TODO: '할 일', DOING: '하는 중', DONE: '끝',
 }
 export const RISK_NAMES: Record<string, string> = {
   BLANKET: '포괄 조항', VALUE_MISMATCH: '값 불일치', OPEN_SCOPE: '범위 모호',

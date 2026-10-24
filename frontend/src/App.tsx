@@ -7,6 +7,7 @@ import { Approval, History } from './views/Approval'
 import { Checks, Judgments, Losses, WarrantyView } from './views/Compliance'
 import { Requirements, Risks } from './views/Findings'
 import { Outputs, Proposals } from './views/Outputs'
+import { MyTasks } from './views/Tasks'
 
 const TABS = [
   ['requirements', '요구사항'], ['risks', '위험 조건'], ['judgments', '적합성 판정'], ['checks', '공학 검산'], ['warranty', '보증값'],
@@ -73,8 +74,10 @@ function RunStatus({ run }: { run: RunSummary }) {
   )
 }
 
-function RunView({ runId, user, onChanged }: { runId: number; user: User | null; onChanged: () => void }) {
-  const [tab, setTab] = useState<Tab>('judgments')
+function RunView({ runId, user, onChanged, initialTab }: {
+  runId: number; user: User | null; onChanged: () => void; initialTab: Tab
+}) {
+  const [tab, setTab] = useState<Tab>(initialTab)
   const { data: run, error, reload } = useLoad(() => api.run(runId), [runId])
   const stage = run?.stage
   useEffect(() => {
@@ -124,6 +127,7 @@ export default function App() {
   const runs = useLoad(() => api.runs(), [])
   const [userId, setUserId] = useState<number | null>(null)
   const [runId, setRunId] = useState<number | null>(null)
+  const [mode, setMode] = useState<'review' | 'tasks'>('review')
   const user = users.data?.find((u) => u.user_id === userId) ?? users.data?.[0] ?? null
   return (
     <div className="app">
@@ -136,6 +140,12 @@ export default function App() {
             {users.data?.map((u) => <option key={u.user_id} value={u.user_id}>{u.user_name} ({u.role})</option>)}
           </select>
         </label>
+        <nav className="tabs" aria-label="화면">
+          <button type="button" className={mode === 'review' ? 'active' : ''} aria-pressed={mode === 'review'}
+            onClick={() => setMode('review')}>검토</button>
+          <button type="button" className={mode === 'tasks' ? 'active' : ''} aria-pressed={mode === 'tasks'}
+            onClick={() => setMode('tasks')}>내 할 일</button>
+        </nav>
       </header>
       <ErrorText error={health.error && `백엔드에 연결할 수 없습니다 (${health.error})`} />
       <div className="layout">
@@ -145,7 +155,8 @@ export default function App() {
           <ul className="runs">
             {runs.data?.map((r) => (
               <li key={r.run_id}>
-                <button type="button" className={r.run_id === runId ? 'active' : ''} onClick={() => setRunId(r.run_id)}>
+                <button type="button" className={r.run_id === runId ? 'active' : ''}
+                  onClick={() => { setRunId(r.run_id); setMode('review') }}>
                   #{r.run_id} <Badge>{STAGE_NAMES[r.stage]}</Badge>
                   <span className="sub">{r.files}</span>
                 </button>
@@ -154,8 +165,11 @@ export default function App() {
           </ul>
         </aside>
         <main>
-          {runId === null ? <p>왼쪽에서 검토를 고르거나 새로 시작하세요.</p> : (
-            <RunView key={runId} runId={runId} user={user} onChanged={runs.reload} />
+          {mode === 'tasks' ? (
+            <MyTasks user={user} onOpen={(id) => { setRunId(id); setMode('review') }} />
+          ) : runId === null ? <p>왼쪽에서 검토를 고르거나 새로 시작하세요.</p> : (
+            <RunView key={runId} runId={runId} user={user} onChanged={runs.reload}
+              initialTab={user?.role === 'APPROVER' ? 'approval' : 'judgments'} />
           )}
         </main>
       </div>
