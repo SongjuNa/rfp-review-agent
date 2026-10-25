@@ -63,3 +63,22 @@ def test_clause_risk_needs_clause_context():
     text = "Any item not listed shall be deemed to be accepted by the Vendor."
     assert find_clause_risks(text, ["CLARIFICATION, EXCEPTION AND DEVIATION"], [deemed])
     assert not find_clause_risks(text, ["Painting"], [deemed])
+
+
+OPEN_SCOPE = [RiskExpression(5, "including but not limited to", "en", "OPEN_SCOPE"),
+              RiskExpression(6, "but not limited to", "en", "OPEN_SCOPE")]
+
+
+def test_but_not_limited_to_without_including():
+    """Scenario: including 없는 but not limited to (파일 2 369행 모양)."""
+    text = ("The Scope of Work includes design, supply, transportation, erection, installation, "
+            "testing & commissioning of the equipment as summarized below but not limited to;")
+    [hit] = find_clause_risks(text, ["1.1 Scope of Work"], OPEN_SCOPE)
+    assert hit.expression == "but not limited to"
+
+
+def test_but_not_limited_to_outside_scope_is_not_candidate():
+    """Scenario: 공급 범위가 아닌 절의 but not limited to."""
+    text = "The report shall contain, but not limited to, the following data:"
+    assert find_clause_risks(text, ["1.05 SUBMITTALS"], OPEN_SCOPE) == []
+    assert find_clause_risks(text, ["Progress Reports"], OPEN_SCOPE) == []
