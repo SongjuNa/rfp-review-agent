@@ -72,6 +72,10 @@ def test_type_tags(seeded_db, spec_docx):
 
 
 def test_risk_candidates(seeded_db, spec_docx):
+    """Scenario: 겹치는 열린 표현.
+
+    "including but not limited to"는 사전의 두 표현에 걸려도 범위 모호 1건이다.
+    """
     run_id, _ = run_once(seeded_db, [spec_docx])
     risks = queries.run_risks(seeded_db, run_id)
     kinds = sorted(r["risk_kind"] for r in risks)

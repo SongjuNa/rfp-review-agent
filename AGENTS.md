@@ -45,6 +45,7 @@ openspec/
 | 6 | `archive/2026-10-23-add-field-history` | FR-15 현장 이력 연결 (완료) |
 | 7 | `archive/2026-10-24-add-engineering-check` | FR-12 공학 규칙 검산 (완료) |
 | 8 | `archive/2026-10-24-add-role-assignment` | FR-11 유형별 담당자 전달, "내 할 일" 화면 (완료) |
+| 9 | `archive/2026-10-25-update-risk-dictionary` | FR-06 위험 표현 사전에 "but not limited to" 추가 (완료) |
 
 ## 3. 작업 흐름
 
