@@ -2,9 +2,9 @@
 
 import re
 
-from rfp_agent.llm.client import LLM, call_with_retry
+from rfp_agent.llm.client import LLM, LLMFailure, call_with_retry
 
-PROMPT_VERSION = "p1"
+PROMPT_VERSION = "p2"
 DOC_KINDS = ["BID_FORM", "REQUIREMENT_SPEC", "PURCHASE_SPEC", "TEST_SPEC", "SUPPLIER_SPEC",
              "UNKNOWN"]
 SENTENCE_LABELS = ["REQUIREMENT", "WRITING_RULE", "DESCRIPTION"]
@@ -34,13 +34,36 @@ def classify_document(llm: LLM, file_name: str, first_page: str) -> str:
     return call_with_retry(llm, prompt, schema, check)["doc_kind"]
 
 
+def _pick_each(llm: LLM, items: list[str], field: str, choices: list[str], prompt_of) -> list[str]:
+    """항목마다 보기 하나를 고르게 한다. 답의 개수가 틀리면 묶음을 반으로 나눠 다시 묻는다.
+
+    모델이 긴 목록에서 한두 개를 빠뜨리면 같은 질문을 되풀이해도 같은 답이 나온다(temperature 0).
+    그래서 재시도(CR-12) 뒤에도 실패한 묶음만 둘로 나눈다. 한 개짜리도 실패하면 그대로 실패로 둔다.
+    """
+    prompt = prompt_of(items)
+    schema = {"type": "object", "properties": {field: {
+        "type": "array", "items": {"type": "string", "enum": choices}}}, "required": [field]}
+
+    def check(d):
+        assert len(d[field]) == len(items), f"{field} {len(d[field])}개, 필요 {len(items)}개"
+        assert all(x in choices for x in d[field])
+
+    try:
+        return call_with_retry(llm, prompt, schema, check)[field]
+    except LLMFailure:
+        if len(items) == 1:
+            raise
+        half = len(items) // 2
+        return (_pick_each(llm, items[:half], field, choices, prompt_of)
+                + _pick_each(llm, items[half:], field, choices, prompt_of))
+
+
 def label_sentences(llm: LLM, section_title: str | None, sentences: list[str]) -> list[str]:
     """절 단위로 문장마다 요구사항 / 작성 규칙 / 설명 중 하나를 붙인다."""
-    labels: list[str] = []
-    for start in range(0, len(sentences), CHUNK):
-        part = sentences[start:start + CHUNK]
+
+    def prompt_of(part: list[str]) -> str:
         numbered = "\n".join(f"{i}. {one_line(s)[:600]}" for i, s in enumerate(part))
-        prompt = (
+        return (
             "RFP의 한 절에서 뽑은 문장들이다. "
             "각 문장이 입찰자가 지켜야 할 요구사항(REQUIREMENT)인지, "
             "제출 양식을 채우는 방법에 대한 작성 규칙(WRITING_RULE)인지, "
@@ -48,35 +71,27 @@ def label_sentences(llm: LLM, section_title: str | None, sentences: list[str]) -
             "문장 수와 같은 개수의 label을 같은 순서로 낸다.\n"
             f"절 제목: {section_title or '(없음)'}\n{numbered}"
         )
-        schema = {"type": "object", "properties": {"labels": {
-            "type": "array", "items": {"type": "string", "enum": SENTENCE_LABELS}}},
-            "required": ["labels"]}
 
-        def check(d, part=part):
-            assert len(d["labels"]) == len(part) and all(x in SENTENCE_LABELS for x in d["labels"])
-
-        labels.extend(call_with_retry(llm, prompt, schema, check)["labels"])
+    labels: list[str] = []
+    for start in range(0, len(sentences), CHUNK):
+        labels.extend(_pick_each(llm, sentences[start:start + CHUNK], "labels", SENTENCE_LABELS,
+                                 prompt_of))
     return labels
 
 
 def type_unclassified(llm: LLM, texts: list[str]) -> list[str]:
-    out: list[str] = []
-    for start in range(0, len(texts), CHUNK):
-        part = texts[start:start + CHUNK]
+
+    def prompt_of(part: list[str]) -> str:
         numbered = "\n".join(f"{i}. {one_line(t)[:400]}" for i, t in enumerate(part))
-        prompt = (
+        return (
             "RFP 요구사항마다 유형 하나를 고른다. TECH_PERF=기술 성능, RISK=위험 조건, "
             "STANDARD_CERT=적용 규격·인증, COST=비용 영향, TEST=시험, MAKER_QUAL=제조사 자격, "
             "SITE_ENV=설치 환경, NONE=어느 것도 아님. 같은 순서, 같은 개수로 낸다.\n" + numbered
         )
-        schema = {"type": "object", "properties": {"types": {
-            "type": "array", "items": {"type": "string", "enum": TYPE_CODES}}},
-            "required": ["types"]}
 
-        def check(d, part=part):
-            assert len(d["types"]) == len(part) and all(x in TYPE_CODES for x in d["types"])
-
-        out.extend(call_with_retry(llm, prompt, schema, check)["types"])
+    out: list[str] = []
+    for start in range(0, len(texts), CHUNK):
+        out.extend(_pick_each(llm, texts[start:start + CHUNK], "types", TYPE_CODES, prompt_of))
     return out
 
 
