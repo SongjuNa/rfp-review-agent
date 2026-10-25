@@ -26,3 +26,19 @@ class NumberLLM(FakeLLM):
 def test_explanation_with_invented_number_is_dropped():
     facts = "파일 6 174행: 0.5 % 이내\n파일 6 278행: 1 % 이내"
     assert tasks.explain_risk(NumberLLM(), "VALUE_MISMATCH", facts, []) is None
+
+
+class ShortListLLM(FakeLLM):
+    """긴 목록이면 답을 하나 빠뜨리는 모델. 같은 질문에는 늘 같은 답(temperature 0)."""
+
+    def generate_json(self, prompt, schema):
+        self.prompts.append(prompt)
+        n = sum(1 for line in prompt.splitlines() if line[:1].isdigit() and ". " in line)
+        return {"types": ["TECH_PERF"] * (n - 1 if n > 10 else n)}
+
+
+def test_missing_answer_splits_chunk_and_keeps_count():
+    """모델이 40개 중 하나를 빠뜨려도 묶음을 나눠 다시 물어 개수를 맞춘다."""
+    texts = [f"요구사항 {i}" for i in range(40)]
+    out = tasks.type_unclassified(ShortListLLM(), texts)
+    assert out == ["TECH_PERF"] * 40
