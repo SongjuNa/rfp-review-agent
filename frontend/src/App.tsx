@@ -7,6 +7,8 @@ import { ReviewDetail } from './views/ReviewDetail'
 import { ReviewList } from './views/ReviewList'
 import { Home } from './views/Home'
 import { Datasheet } from './views/Datasheet'
+import { findBid } from './examples/SCR-14'
+import { BidView } from './views/examples/BidView'
 import { Bids } from './views/examples/Bids'
 import { Products } from './views/Products'
 import { Rules } from './views/Rules'
@@ -63,6 +65,11 @@ function route(path: string): Route {
   }
   if (path === '/rules') {
     return { menu: 'rules', crumbs: [home, { label: '기준 데이터' }, { label: '판정 규칙' }], body: <Rules /> }
+  }
+  const bid = path.match(/^\/bids\/([^/]+)$/)
+  if (bid) {
+    const b = findBid(decodeURIComponent(bid[1]))
+    return { menu: 'bids', crumbs: [home, { label: '입찰 이력', path: '/bids' }, { label: b.bid }], body: <BidView key={b.bid} bid={b} /> }
   }
   if (path === '/bids') {
     return { menu: 'bids', crumbs: [home, { label: '입찰 이력' }], body: <Bids /> }

@@ -109,3 +109,8 @@ export const EXAMPLE_BIDS: Bid[] = [
   { bid: 'BD-2025-001', rv: 'RV-2025-002', name: '예시 사업장 P · 170 kV GIS 증설', cust: '예시 고객사 D', country: '베트남', sub: '2025-01-25', prod: 'LSG-170-40', dev: 5, res: 'lose', why: '가격',
     items: ['SF6 가스 누설률 확인 질의'], memo: '실주. 가격 평가 (순위는 영업 권한 필요)', rsn: '가격' },
 ]
+
+/** 주소의 입찰 번호. 없는 번호면 목업처럼 기본 입찰(BD-2025-024)을 연다. */
+export function findBid(id: string): Bid {
+  return EXAMPLE_BIDS.find((x) => x.bid === id) ?? EXAMPLE_BIDS.find((x) => x.bid === 'BD-2025-024')!
+}
