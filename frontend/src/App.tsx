@@ -14,6 +14,7 @@ import { Bids } from './views/examples/Bids'
 import { Eval } from './views/examples/Eval'
 import { Phrases } from './views/examples/Phrases'
 import { Project } from './views/examples/Project'
+import { Team } from './views/examples/Team'
 import { Projects } from './views/examples/Projects'
 import { Products } from './views/Products'
 import { Rules } from './views/Rules'
@@ -92,6 +93,9 @@ function route(path: string): Route {
   }
   if (path === '/eval') {
     return { menu: 'eval', crumbs: [home, { label: '지식 관리' }, { label: '정답지·채점' }], body: <Eval /> }
+  }
+  if (path === '/team') {
+    return { menu: 'team', crumbs: [home, { label: '팀 공유' }, { label: '팀 현황' }], body: <Team /> }
   }
   if (path === '/todo') {
     return { menu: 'todo', crumbs: [home, { label: '협조 요청 현황' }], body: <Todo /> }
