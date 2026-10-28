@@ -6,6 +6,8 @@ import { Register } from './views/Register'
 import { ReviewDetail } from './views/ReviewDetail'
 import { ReviewList } from './views/ReviewList'
 import { Home } from './views/Home'
+import { Products } from './views/Products'
+import { Rules } from './views/Rules'
 import { Todo } from './views/Todo'
 
 /** 아직 만들지 않은 화면 자리. 목업 순서대로 하나씩 채운다 (docs/screens/README.md 1장). */
@@ -40,6 +42,12 @@ function route(path: string): Route {
   }
   if (path === '/' || path === '') {
     return { menu: 'home', crumbs: [{ label: '홈' }], body: <Home /> }
+  }
+  if (path === '/products') {
+    return { menu: 'products', crumbs: [home, { label: '기준 데이터' }, { label: '제품표' }], body: <Products /> }
+  }
+  if (path === '/rules') {
+    return { menu: 'rules', crumbs: [home, { label: '기준 데이터' }, { label: '판정 규칙' }], body: <Rules /> }
   }
   if (path === '/todo') {
     return { menu: 'todo', crumbs: [home, { label: '협조 요청 현황' }], body: <Todo /> }

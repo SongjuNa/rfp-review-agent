@@ -12,8 +12,8 @@ test('메뉴로 화면 이동', async ({ page }) => {
   await nav.getByRole('link', { name: '제품 관리' }).click()
   await expect(page).toHaveURL(/#\/products$/)
   await expect(nav.getByRole('link', { name: '제품 관리' })).toHaveAttribute('aria-current', 'page')
-  await expect(page.getByRole('navigation', { name: '현재 위치' })).toContainText('제품 관리')
-  await expect(page.getByRole('heading', { level: 1 })).toHaveText('제품 관리')
+  await expect(page.getByRole('navigation', { name: '현재 위치' })).toContainText('기준 데이터')
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('제품표')
   await expect(page.getByRole('navigation', { name: '현재 위치' }).getByRole('link', { name: '홈' })).toBeVisible()
 
   // 주소로 바로 열어도 같은 화면과 메뉴가 켜진다

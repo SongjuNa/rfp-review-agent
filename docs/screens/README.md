@@ -46,8 +46,8 @@
 | SCR-13 | `Todo` | 협조 요청 | RFP 관리 | FR-11, `role-assignment` | 실제 (부서별 요청·확인). 재요청·회신·내보내기는 잠김, 요청하기는 예시 창 |
 | SCR-14 | `Bids` | 입찰 이력 | RFP 관리 | 범위 밖 (금액은 가격 범위) | 예시 화면 |
 | SCR-15 | `BidView` | 입찰 상세 | RFP 관리 | 범위 밖 | 예시 화면 |
-| SCR-16 | `Products` | 제품표 | 지식 관리 | `reference-data`, FR-07 근거, FR-13, FR-15, `add-reference-views` | 실제 + 예정 (읽기 전용, 2026-10-28 결정) |
-| SCR-17 | `Rules` | 판정 규칙 | 지식 관리 | `reference-data`, FR-05·06·07 사전, `add-reference-views` | 실제 + 예정 (읽기 전용, 2026-10-28 결정) |
+| SCR-16 | `Products` | 제품표 | 지식 관리 | `reference-data`, FR-07 근거, FR-13, FR-15, `add-reference-views` | 실제 (읽기 전용). 엑셀·요구 조건으로 찾기 잠김, 제품 카드 창 없음 |
+| SCR-17 | `Rules` | 판정 규칙 | 지식 관리 | `reference-data`, FR-05·06·07 사전, `add-reference-views` | 실제 (읽기 전용). 사람이 제안한 표현은 예시, 단위 탭 없음 |
 | SCR-18 | `Phrases` | 표준 문구 | 지식 관리 | 없음 (일탈·질의 문장은 FR-09에서 언어 모델이 씀) | 예시 화면 |
 | SCR-19 | `Eval` | 정답지·채점 | 지식 관리 | K1~K12 (정답지·채점기, 남은 작업) | 예시 화면 |
 | SCR-20 | `Team` | 팀 현황 | 팀 공유 | 범위 밖 | 예시 화면 |
@@ -99,6 +99,6 @@
 | SCR-11 | `GET /runs/{id}` (`failed_step`, `error_message`), `/documents` | — | 멈춘 위치·원문, 이어서 재시도, 처리 기록 |
 | SCR-12 | `GET /approval`, `POST /approval`, `/outputs`, `/risks`, `/history` | 상신 정보·상신 취소 `POST /withdraw` (`update-approval-flow`) | 열람 시각, 다시 알림, 전자결재 번호 |
 | SCR-13 | `GET /assignments?role=`, `PUT /assignments/{id}` | — | 재요청, 직접 요청, 회신, 내보내기 |
-| SCR-16 | — | `GET /products`, `GET /products/{code}` (`add-reference-views`) | 엑셀 가져오기, 요구 조건으로 찾기, 고치기 |
-| SCR-17 | — | `GET /rules/compare`, `/rules/items`, `/rules/risk-expressions` (`add-reference-views`) | 단위 사전, 수정 요청, 규칙 추가, 수정자·수정일 |
+| SCR-16 | `GET /products`, `/products/families`, `/products/{code}`, `/rules/items` | — | 엑셀 가져오기, 내보내기, 요구 조건으로 찾기, 고치기, 제품 카드 자료 |
+| SCR-17 | `GET /rules/compare`, `/rules/items`, `/rules/risk-expressions` | — | 수정 요청, 규칙 추가, 수정 이력, 규칙별 판정 목록 (단위 사전은 CR-10으로 만들지 않음) |
 | 그 밖 (예시 화면) | — | — | 화면 전체 |

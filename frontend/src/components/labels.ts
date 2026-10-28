@@ -47,7 +47,7 @@ export const ROLE_NAMES: Record<string, string> = {
   ENGINEER: '기술 검토 엔지니어', APPROVER: '승인자', COST: '견적 담당', QUALITY: '품질 담당', SALES: '영업 담당',
 }
 export const RISK_NAMES: Record<string, string> = {
-  BLANKET: '포괄 조항', VALUE_MISMATCH: '값 불일치', OPEN_SCOPE: '범위 모호',
+  BLANKET: '포괄 조항', VALUE_MISMATCH: '값 불일치', OPEN_SCOPE: '범위 모호', COST_SHIFT: '비용 전가',
 }
 
 export function locationText(loc: Location): string {
@@ -60,4 +60,13 @@ export function locationText(loc: Location): string {
 export const DOC_KIND_NAMES: Record<string, string> = {
   BID_FORM: '입찰 양식', REQUIREMENT_SPEC: '요구 사양서', PURCHASE_SPEC: '구매 사양서', TEST_SPEC: '시험 사양서',
   SUPPLIER_SPEC: '공급사 사양', UNKNOWN: '종류 모름',
+}
+/** 제품군 (product_master.family) */
+export const FAMILY_NAMES: Record<string, string> = {
+  GIS: 'GIS', MV_EQUIP: '중전압 설비', SPD: '서지 보호기', TRANSFORMER: '변압기',
+}
+/** 비교 방향 (compare_rule.direction, item_key.default_direction) */
+export const DIRECTION_NAMES: Record<string, string> = {
+  EQ: '같아야 함', GE: '같거나 커야 함', LE: '같거나 작아야 함', LT: '작아야 함', IN: '요구를 포함해야 함',
+  FILL: '보증값 작성', TEXT: '문장 비교', AI: '문장 읽기 (언어 모델)', SOURCE: '원문 기호 따름',
 }

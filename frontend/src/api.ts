@@ -331,6 +331,51 @@ export type ActionBody = {
   actor_id?: number
 }
 
+/** 제품표 한 줄 (add-reference-views). 빈 칸은 null 그대로 (CR-04) */
+export type Product = {
+  product_code: string
+  product_name: string
+  family: string
+  rated_voltage_kv: string | null
+  rated_current_a: string | null
+  short_circuit_ka: string | null
+  rated_frequency: string | null
+  rated_capacity: string | null
+  rated_capacity_unit: string | null
+  weight_kg: string | null
+  noload_loss_kw: string | null
+  load_loss_kw: string | null
+  aux_loss_kw: string | null
+  loss_is_assumed: boolean | null
+  is_assumed: boolean
+  is_design_card: boolean
+  source_doc: string
+  lifecycle_status: string
+  used: number
+  value_columns: string[]        // 이 제품군에서 판정에 쓰는 칸
+  empty_columns: string[]
+  empty_count: number
+}
+
+export type ProductDetail = Product & Record<string, unknown> & {
+  used_runs: number
+  used_in: { run_id: number; review_no: string; project_name: string | null; review_name: string | null; judgment_id: number
+    equipment_group: string; item_name: string; result: string; product_selected_by: string | null }[]
+  proposals: { point_id: number; run_id: number; point_kind: string; status: string; text_draft: string | null; is_assumed: boolean }[]
+  field_history: { fault_link_id: number; item_key: string; item_name: string; fault_id: string; symptom: string; root_cause: string
+    action: string; confirmed_by: string; cases: number }[]
+}
+
+export type ProductFamily = { family: string; products: number; with_empty: number; empty_cells: number; assumed: number; design_cards: number }
+
+export type CompareRule = { compare_rule_id: number; table_name: string | null; item_no: string | null; item_key: string | null
+  name_ko: string | null; direction: string; time_condition: boolean; strength_direction: string | null; process_note: string | null; used: number }
+
+export type ItemKey = { item_key: string; name_ko: string; default_direction: string; strength_direction: string; note: string | null
+  pm_column: string | null; fixed_key: string | null; aliases: string[]; used: number }
+
+export type RiskExpression = { expr_id: number; expression: string; language: string; risk_kind: string; context_rule: string; used: number }
+
 async function send(path: string, init?: RequestInit): Promise<Response> {
   const res = await fetch(`/api${path}`, init)
   if (!res.ok) {
@@ -441,6 +486,12 @@ export const api = {
   decide: (id: number, decision: string, comment: string, actor_id: number) =>
     call<ApprovalScreen>(`/runs/${id}/approval`, json('POST', { decision, comment, actor_id })),
   tasks: (user_id: number) => call<MyTasks>(`/tasks?user_id=${user_id}`),
+  products: (params: { family?: string; q?: string; offset?: number; limit?: number; cards?: 'false' }) => page<Product>(`/products?${query(params)}`),
+  productFamilies: () => call<ProductFamily[]>('/products/families'),
+  product: (code: string) => call<ProductDetail>(`/products/${encodeURIComponent(code)}`),
+  compareRules: () => call<CompareRule[]>('/rules/compare'),
+  ruleItems: () => call<ItemKey[]>('/rules/items'),
+  riskExpressions: () => call<RiskExpression[]>('/rules/risk-expressions'),
   assignments: (role: string) => call<Assignment[]>(`/assignments?role=${role}`),
   setTaskStatus: (assignmentId: number, status: string, actor_id: number) =>
     call<{ status: string }>(`/assignments/${assignmentId}`, json('PUT', { status, actor_id })),
