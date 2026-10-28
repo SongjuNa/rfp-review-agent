@@ -52,7 +52,7 @@
 | SCR-19 | `Eval` | 정답지·채점 | 지식 관리 | K1~K12 (정답지·채점기, 남은 작업) | 예시 화면 (`add-example-screens`) |
 | SCR-20 | `Team` | 팀 현황 | 팀 공유 | 범위 밖 | 예시 화면 (`add-example-screens`) |
 | SCR-21 | `Notice` | 공지사항 | 팀 공유 | 범위 밖 | 예시 화면 (`add-example-screens`) |
-| SCR-22 | `SysNotice` | 시스템 공지 | 팀 공유 | 범위 밖 | 예시 화면 |
+| SCR-22 | `SysNotice` | 시스템 공지 | 팀 공유 | 범위 밖 | 예시 화면 (`add-example-screens`) |
 | SCR-23 | `Files` | 자료실 | 팀 공유 | 범위 밖 | 예시 화면 |
 | SCR-24 | `Settings` | 설정 | 설정 | 범위 밖 | 예시 화면 |
 

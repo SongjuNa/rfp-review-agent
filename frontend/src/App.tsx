@@ -15,6 +15,7 @@ import { Eval } from './views/examples/Eval'
 import { Notice } from './views/examples/Notice'
 import { Phrases } from './views/examples/Phrases'
 import { Project } from './views/examples/Project'
+import { SysNotice } from './views/examples/SysNotice'
 import { Team } from './views/examples/Team'
 import { Projects } from './views/examples/Projects'
 import { Products } from './views/Products'
@@ -100,6 +101,9 @@ function route(path: string): Route {
   }
   if (path === '/notice') {
     return { menu: 'notice', crumbs: [home, { label: '팀 공유' }, { label: '공지사항' }], body: <Notice /> }
+  }
+  if (path === '/sysnotice') {
+    return { menu: 'sysnotice', crumbs: [home, { label: '팀 공유' }, { label: '시스템 공지' }], body: <SysNotice /> }
   }
   if (path === '/todo') {
     return { menu: 'todo', crumbs: [home, { label: '협조 요청 현황' }], body: <Todo /> }
