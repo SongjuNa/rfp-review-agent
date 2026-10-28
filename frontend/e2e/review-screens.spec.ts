@@ -50,7 +50,7 @@ test('판정 칩으로 거르기', async ({ page, request }) => {
   await expect(chip).toHaveAttribute('aria-pressed', 'true')
   const rows = page.locator('#judge .tw tbody tr')
   await expect(rows).toHaveCount(n)
-  await expect(rows.locator('td:first-child .st')).toHaveText(Array(n).fill('질의 후보'))
+  await expect(rows.locator('td:nth-child(2) .st')).toHaveText(Array(n).fill('질의 후보'))
   await expect(page.locator('.tfoot')).toContainText(`${n}줄 표시`)
 })
 

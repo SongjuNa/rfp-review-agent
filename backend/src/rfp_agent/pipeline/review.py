@@ -179,6 +179,38 @@ def _text(value: dict) -> str:
     return text
 
 
+def bulk_confirm(ctx: RunContext, run_id: int, judgment_ids: list[int],
+                 actor_id: int | None = None) -> dict:
+    """여러 현재 판정을 한 번에 제안대로 확정한다. 줄마다 이력을 남기고 다시 만들기는 한 번.
+
+    하나라도 이 실행의 현재 판정이 아니면 아무것도 바꾸지 않는다.
+    """
+    conn = ctx.conn
+    ids = list(dict.fromkeys(judgment_ids))         # 같은 줄을 두 번 보내도 한 번만
+    if not ids:
+        raise ReviewError(400, "확정할 판정을 하나 이상 고르세요.")
+    require_stage(conn, run_id, "ENGINEER_REVIEW")
+    actor_id = actor_id or default_user(conn, "ENGINEER")
+    _user_role(conn, actor_id)
+    befores = [row(conn, "judgment", i, run_id) for i in ids]
+    if stale := [b["judgment_id"] for b in befores if not b["is_current"]]:
+        raise ReviewError(409, f"현재 판정이 아닌 줄이 있습니다 ({', '.join(map(str, stale))}).")
+    for before in befores:
+        _apply(conn, "judgment", before, "CONFIRM", {})
+        after = row(conn, "judgment", before["judgment_id"], run_id)
+        log(conn, run_id, "judgment", before["judgment_id"], "CONFIRM", before, after, None,
+            actor_id)
+    conn.commit()
+    docs = readable_documents(conn, [r[0] for r in conn.execute(
+        "SELECT document_id FROM run_document WHERE run_id = %s", (run_id,))])
+    build_warranty(conn, run_id)
+    build_outputs(conn, run_id, docs, ctx.llm)
+    build_proposals(conn, run_id, ctx.llm)
+    build_assignments(conn, run_id)
+    conn.commit()
+    return {"confirmed": len(ids), "submission_check": _latest_check(conn, run_id)}
+
+
 def act(ctx: RunContext, run_id: int, target: str, target_id: int, action: str,
         value: dict | None = None, reason: str | None = None,
         actor_id: int | None = None) -> dict:

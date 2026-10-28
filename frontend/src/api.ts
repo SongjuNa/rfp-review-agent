@@ -470,6 +470,8 @@ export const api = {
   submissionCheck: (id: number) => call<SubmissionCheck>(`/runs/${id}/submission-check`),
   proposals: (id: number) => call<Proposal[]>(`/runs/${id}/proposals`),
   exportOutputs: (id: number, list_kind: 'DEVIATION' | 'QUERY') => file(`/runs/${id}/outputs/export?list_kind=${list_kind}`),
+  bulkConfirm: (id: number, ids: number[], actor_id: number) =>
+    call<{ confirmed: number }>(`/runs/${id}/actions/bulk`, json('POST', { target: 'judgment', ids, action: 'CONFIRM', actor_id })),
   act: (id: number, body: ActionBody) =>
     call<{ submission_check: SubmissionCheck | null }>(`/runs/${id}/actions`, json('POST', body)),
   history: (id: number) => call<LogEntry[]>(`/runs/${id}/history`),

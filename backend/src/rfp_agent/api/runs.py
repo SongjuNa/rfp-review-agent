@@ -63,6 +63,13 @@ class Action(BaseModel):
     actor_id: int | None = None
 
 
+class BulkAction(BaseModel):
+    target: str = "judgment"
+    ids: list[int]
+    action: str = "CONFIRM"
+    actor_id: int | None = None
+
+
 class Actor(BaseModel):
     actor_id: int | None = None
 
@@ -384,6 +391,16 @@ def act(run_id: int, body: Action) -> dict:
         return _review(lambda: review.act(make_context(conn), run_id, body.target,
                                           body.target_id, body.action, body.value,
                                           body.reason, body.actor_id))
+
+
+@router.post("/runs/{run_id}/actions/bulk")
+def act_bulk(run_id: int, body: BulkAction) -> dict:
+    """여러 판정을 한 번에 제안대로 확정한다 (수정·반려는 한 줄씩)."""
+    if body.target != "judgment" or body.action != "CONFIRM":
+        raise HTTPException(400, "한꺼번에는 판정 확정만 할 수 있습니다.")
+    with connect() as conn:
+        return _review(lambda: review.bulk_confirm(make_context(conn), run_id, body.ids,
+                                                   body.actor_id))
 
 
 @router.get("/runs/{run_id}/history")

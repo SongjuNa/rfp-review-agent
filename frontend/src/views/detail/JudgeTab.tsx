@@ -10,7 +10,7 @@ import { JudgmentDialog } from './JudgmentDialog'
 import { OutputEditor } from './OutputEditor'
 
 // SCR-08-1 판정 탭 (목업 v4.57 Detail #judge). docs/screens/SCR-08-1-판정.md
-// 판정 칩·거르기·판정 순서 표, 줄을 누르면 판정 상세 창과 오른쪽 패널. 여러 줄 한꺼번에 확정은 로드맵 7번 (SCR-08-1_공유.md).
+// 판정 칩·거르기·판정 순서 표, 줄을 누르면 판정 상세 창과 오른쪽 패널. 고른 줄·준수 모두를 한꺼번에 제안대로 확정 (add-bulk-confirm).
 
 const TYPES: [string, string][] = [
   ['TECH_PERF', '기술 성능'], ['STANDARD_CERT', '적용 규격·인증'], ['SITE_ENV', '설치 환경'], ['MAKER_QUAL', '제조사 자격'],
@@ -47,6 +47,9 @@ export function JudgeTab({ run, tick, onChanged, head }: {
   const [wVal, setWVal] = useState('')
   const [wWhy, setWWhy] = useState('')
   const [error, setError] = useState<string | null>(null)
+  const [sel, setSel] = useState<Record<number, string>>({})   // 고른 판정 id → 판정 (쪽을 넘겨도 남는다)
+  const [toast, setToast] = useState('')
+  const [busy, setBusy] = useState(false)
   const filters = { result: f === 'all' ? undefined : f, unconfirmed: onlyUnc, q, type_code: type || undefined }
   const key = JSON.stringify(filters)
   const counts = useLoad(() => api.judgmentCounts(id), [id, tick])
@@ -84,6 +87,46 @@ export function JudgeTab({ run, tick, onChanged, head }: {
     act({ target: 'judgment', target_id: curRow.judgment_id, action: 'EDIT', value: { result: edK }, reason: edWhy.trim() })
       .then(() => { setEdK(''); setEdWhy('') }, (e: Error) => setError(e.message))
   }
+  const selIds = Object.keys(sel).map(Number)
+  const selSum = RESULT_ORDER.map((r) => [r, Object.values(sel).filter((v) => v === r).length] as const)
+    .filter(([, k]) => k).map(([r, k]) => `${RESULT_NAMES[r]} ${k}`).join(' · ')
+  const allSel = list.length > 0 && list.every((j) => sel[j.judgment_id])
+  const toggle = (j: Judgment) => setSel((s) => {
+    const n = { ...s }
+    if (n[j.judgment_id]) delete n[j.judgment_id]; else n[j.judgment_id] = j.result
+    return n
+  })
+  const toggleAll = () => setSel((s) => {
+    const n = { ...s }
+    list.forEach((j) => { if (allSel) delete n[j.judgment_id]; else n[j.judgment_id] = j.result })
+    return n
+  })
+  const confirmIds = async (ids: number[]) => {
+    if (!ids.length) return
+    setBusy(true)
+    setError(null)
+    try {
+      await api.bulkConfirm(id, ids, user!.user_id)
+      setSel({})
+      setToast(`판정 ${ids.length}줄을 제안대로 확정했습니다.`)
+      setTimeout(() => setToast(''), 3000)
+      done()
+    } catch (e) {
+      setError((e as Error).message)
+    } finally {
+      setBusy(false)
+    }
+  }
+  /** 확정하지 않은 준수 판정을 쪽마다 모두 모은다 */
+  const quickComply = async () => {
+    const ids: number[] = []
+    for (let off = 0; ; off += 500) {
+      const p = await api.judgmentPage(id, { result: 'COMPLY', unconfirmed: true, offset: off, limit: 500 })
+      ids.push(...p.items.map((j) => j.judgment_id))
+      if (off + 500 >= p.total) break
+    }
+    await confirmIds(ids)
+  }
   const saveW = (candidateId: number) => {
     setError(null)
     act({ target: 'warranty_candidate', target_id: candidateId, action: 'EDIT', value: { value: wVal.trim() }, reason: wWhy.trim() })
@@ -114,17 +157,25 @@ export function JudgeTab({ run, tick, onChanged, head }: {
       </div>
       <div className={'work' + (curRow ? ' open' : '')}>
         <div style={{ minWidth: 0 }}>
-          {c && c.unconfirmed > 0 && (
-            <div className="bulk q"><span>아직 확정하지 않은 판정 <b>{c.unconfirmed}줄</b> · 그중 준수 {c.unconfirmed_comply}줄</span></div>
+          {canEdit && selIds.length > 0 && (
+            <div className="bulk"><b>{selIds.length}줄 선택</b><span className="en" style={{ margin: 0 }}>{selSum}</span><span style={{ flex: '1 1 0' }} />
+              <button type="button" className="bo" onClick={() => setSel({})}>선택 해제</button>
+              <button type="button" className="bp" disabled={busy} onClick={() => confirmIds(selIds)}><span className="ms" aria-hidden="true" style={{ fontSize: 'var(--ic-s)' }}>done_all</span>제안대로 확정</button></div>
+          )}
+          {canEdit && selIds.length === 0 && c && c.unconfirmed_comply > 0 && (
+            <div className="bulk q"><span>아직 확정하지 않은 판정 <b>{c.unconfirmed}줄</b> · 그중 준수 {c.unconfirmed_comply}줄</span><span style={{ flex: '1 1 0' }} />
+              <button type="button" className="bo" disabled={busy} onClick={quickComply}><span className="ms" aria-hidden="true" style={{ fontSize: 'var(--ic-s)' }}>done_all</span>준수 {c.unconfirmed_comply}줄 모두 확정</button></div>
           )}
           <div className="tw">
             <table className="tbl">
-              <thead><tr><th style={{ width: 92 }}>판정</th><th>항목</th><th>요구값</th><th>제품값 · 보증값</th><th>원문 위치</th></tr></thead>
+              <thead><tr><th style={{ width: 34 }}><input type="checkbox" className="jck" checked={allSel} onChange={toggleAll} disabled={!canEdit} aria-label="보이는 줄 모두 선택" /></th><th style={{ width: 92 }}>판정</th><th>항목</th><th>요구값</th><th>제품값 · 보증값</th><th>원문 위치</th></tr></thead>
               <tbody>
                 {list.map((j) => {
                   const p = prodCell(j, wOf(j))
                   return (
                     <tr key={j.judgment_id} className={curRow?.judgment_id === j.judgment_id ? 'cur' : ''} onClick={() => open(j)}>
+                      <td onClick={(e) => e.stopPropagation()}><input type="checkbox" className="jck" checked={!!sel[j.judgment_id]} onChange={() => toggle(j)}
+                        disabled={!canEdit} aria-label={`${itemName(j)} 선택`} /></td>
                       <td><span className={`st ${RESULT_TONES[j.result]}`}>{RESULT_NAMES[j.result]}</span>
                         {j.review_status === 'EDITED' && <div className="en" title="사람이 바꾼 판정">바꿈</div>}
                         {(j.review_status === 'CONFIRMED' || j.review_status === 'EDITED') && <div className="cfm"><span className="ms" aria-hidden="true">check</span>확정</div>}
@@ -166,6 +217,7 @@ export function JudgeTab({ run, tick, onChanged, head }: {
           onEdit={() => { setMd(null); setTimeout(() => document.getElementById('newk')?.focus(), 0) }}
           onConfirm={() => act({ target: 'judgment', target_id: mdRow.judgment_id, action: 'CONFIRM' })} />
       )}
+      {toast && <div className="toast" role="status"><span className="ms" aria-hidden="true">check_circle</span>{toast}</div>}
     </section>
   )
 }

@@ -51,6 +51,7 @@ openspec/
 | 12 | `archive/2026-10-28-update-approval-flow` | 결재자를 골라 상신, 지정 결재자만 결정, 상신 취소. 결재 상신 창·결재 대기 화면 (완료) |
 | 13 | `archive/2026-10-28-update-review-screens` | 목업 v4.57 검토 화면: 검토 상세 탭 전부, 처리 상태·분석 실패, 협조 요청 현황, 홈. 예전 화면 지움 (완료) |
 | 14 | `archive/2026-10-28-add-reference-views` | 제품표·판정 규칙 화면 (읽기 전용) (완료) |
+| 15 | `archive/2026-10-28-add-bulk-confirm` | 판정 여러 줄 한꺼번에 확정 (완료) |
 
 ## 3. 작업 흐름
 
