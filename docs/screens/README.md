@@ -44,7 +44,7 @@
 | SCR-11 | `Fail` | 분석 실패 상세 | RFP 관리 | CR-12, `review-run` AI 오류 처리 | 실제 (단계·오류 문장). 재시도 방법 고르기·처리 기록은 일부 예시 |
 | SCR-12 | `Wait` | 결재 대기 상세 | RFP 관리 | FR-10, `update-approval-flow` | 실제 + 예정 |
 | SCR-13 | `Todo` | 협조 요청 | RFP 관리 | FR-11, `role-assignment` | 실제 (부서별 요청·확인). 재요청·회신·내보내기는 잠김, 요청하기는 예시 창 |
-| SCR-14 | `Bids` | 입찰 이력 | RFP 관리 | 범위 밖 (금액은 가격 범위) | 예시 화면 |
+| SCR-14 | `Bids` | 입찰 이력 | RFP 관리 | 범위 밖 (금액은 가격 범위) | 예시 화면 (`add-example-screens`) |
 | SCR-15 | `BidView` | 입찰 상세 | RFP 관리 | 범위 밖 | 예시 화면 |
 | SCR-16 | `Products` | 제품표 | 지식 관리 | `reference-data`, FR-07 근거, FR-13, FR-15, `add-reference-views` | 실제 (읽기 전용). 엑셀·요구 조건으로 찾기 잠김, 제품 카드 창 없음 |
 | SCR-17 | `Rules` | 판정 규칙 | 지식 관리 | `reference-data`, FR-05·06·07 사전, `add-reference-views` | 실제 (읽기 전용). 사람이 제안한 표현은 예시, 단위 탭 없음 |

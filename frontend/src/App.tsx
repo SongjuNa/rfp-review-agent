@@ -7,6 +7,7 @@ import { ReviewDetail } from './views/ReviewDetail'
 import { ReviewList } from './views/ReviewList'
 import { Home } from './views/Home'
 import { Datasheet } from './views/Datasheet'
+import { Bids } from './views/examples/Bids'
 import { Products } from './views/Products'
 import { Rules } from './views/Rules'
 import { Tbe } from './views/Tbe'
@@ -62,6 +63,9 @@ function route(path: string): Route {
   }
   if (path === '/rules') {
     return { menu: 'rules', crumbs: [home, { label: '기준 데이터' }, { label: '판정 규칙' }], body: <Rules /> }
+  }
+  if (path === '/bids') {
+    return { menu: 'bids', crumbs: [home, { label: '입찰 이력' }], body: <Bids /> }
   }
   if (path === '/todo') {
     return { menu: 'todo', crumbs: [home, { label: '협조 요청 현황' }], body: <Todo /> }
