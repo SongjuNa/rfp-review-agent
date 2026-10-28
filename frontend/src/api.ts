@@ -245,10 +245,15 @@ export type ApprovalScreen = {
     comment: string | null
     requested_at: string
     decided_at: string | null
+    approver_id: number | null
     approver: string | null
+    requested_by_id: number | null
+    requested_by: string | null
+    request_comment: string | null
   } | null
   reasons: Criterion[]
   preview: Criterion[] | null
+  review_ratio: { review: number; total: number; threshold: number }
   submission_check: SubmissionCheck | null
 }
 
@@ -285,7 +290,7 @@ export type Assignment = {
   locations: Location[]
 }
 
-export type ReviewCard = RunListItem & { summary: RunSummary; criteria: Criterion[] }
+export type ReviewCard = RunListItem & { summary: RunSummary; criteria: Criterion[]; approval?: ApprovalScreen['approval'] }
 
 export type MyTasks = { role: string; reviews: ReviewCard[]; assignments: Assignment[] }
 
@@ -386,8 +391,10 @@ export const api = {
     call<{ submission_check: SubmissionCheck | null }>(`/runs/${id}/actions`, json('POST', body)),
   history: (id: number) => call<LogEntry[]>(`/runs/${id}/history`),
   approval: (id: number) => call<ApprovalScreen>(`/runs/${id}/approval`),
-  finishReview: (id: number, actor_id: number) =>
-    call<{ stage: Stage; criteria: Criterion[] }>(`/runs/${id}/finish-review`, json('POST', { actor_id })),
+  /** 결재 상신: 결재자와 상신 의견은 필수 */
+  submit: (id: number, approver_id: number, comment: string, actor_id: number) =>
+    call<{ stage: Stage; criteria: Criterion[] }>(`/runs/${id}/finish-review`, json('POST', { approver_id, comment, actor_id })),
+  withdraw: (id: number, actor_id: number) => call<{ stage: Stage }>(`/runs/${id}/withdraw`, json('POST', { actor_id })),
   decide: (id: number, decision: string, comment: string, actor_id: number) =>
     call<ApprovalScreen>(`/runs/${id}/approval`, json('POST', { decision, comment, actor_id })),
   tasks: (user_id: number) => call<MyTasks>(`/tasks?user_id=${user_id}`),

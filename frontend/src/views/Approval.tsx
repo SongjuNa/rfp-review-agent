@@ -16,7 +16,6 @@ const TARGET_NAMES: Record<string, string> = {
 
 export function Approval({ runId, user, onChanged }: { runId: number; user: User | null; onChanged: () => void }) {
   const { data, error, reload } = useLoad(() => api.approval(runId), [runId])
-  const [comment, setComment] = useState('')
   const [busy, setBusy] = useState(false)
   const [actionError, setActionError] = useState<string | null>(null)
   const done = (p: Promise<unknown>) => {
@@ -25,14 +24,13 @@ export function Approval({ runId, user, onChanged }: { runId: number; user: User
     p.then(() => { reload(); onChanged() }, (e: Error) => setActionError(e.message)).finally(() => setBusy(false))
   }
   if (!data) return <ErrorText error={error} />
-  const isApprover = user?.role === 'APPROVER'
   const criteria = data.stage === 'ENGINEER_REVIEW' ? data.preview ?? [] : data.reasons
   return (
     <section>
       <p>지금 단계: <Badge>{STAGE_NAMES[data.stage]}</Badge></p>
       <CheckBox check={data.submission_check} />
-      <h3>{data.stage === 'ENGINEER_REVIEW' ? '확인을 마치면 걸릴 승인 기준' : '걸린 승인 기준'}</h3>
-      {criteria.length === 0 ? <p>걸린 기준이 없습니다. 확인을 마치면 바로 승인됩니다.</p> : (
+      <h3>{data.stage === 'ENGINEER_REVIEW' ? '결재 상신하면 걸릴 승인 기준' : '걸린 승인 기준'}</h3>
+      {criteria.length === 0 ? <p>걸린 기준이 없습니다. 그래도 결재자의 승인이 필요합니다.</p> : (
         <ul className="plain">
           {criteria.map((c) => (
             <li key={c.ar_code}><Badge tone="warn">{c.ar_code}</Badge> {c.description ?? ''} — {c.detail}</li>
@@ -40,23 +38,11 @@ export function Approval({ runId, user, onChanged }: { runId: number; user: User
         </ul>
       )}
       <ErrorText error={actionError} />
-      {data.stage === 'ENGINEER_REVIEW' && (
-        <button type="button" disabled={busy || !user}
-          onClick={() => done(api.finishReview(runId, user!.user_id))}>담당자 확인 마치기</button>
-      )}
-      {data.stage === 'APPROVAL' && (
-        isApprover ? (
-          <form className="action-form" onSubmit={(e) => e.preventDefault()}>
-            <label className="wide">의견 <textarea value={comment} rows={3} onChange={(e) => setComment(e.target.value)} /></label>
-            <button type="button" disabled={busy} onClick={() => done(api.decide(runId, 'APPROVED', comment, user!.user_id))}>승인</button>
-            <button type="button" disabled={busy} onClick={() => done(api.decide(runId, 'REJECTED', comment, user!.user_id))}>반려</button>
-          </form>
-        ) : <p>승인자 역할 사용자로 바꾸면 승인·반려할 수 있습니다.</p>
-      )}
+      {data.stage === 'ENGINEER_REVIEW' && <p>머리글의 "결재 상신" 버튼으로 결재자를 골라 올립니다.</p>}
       {data.approval?.decided_at && (
         <p>결정: <Badge tone={data.approval.decision === 'APPROVED' ? 'ok' : 'bad'}>
           {data.approval.decision === 'APPROVED' ? '승인' : '반려'}</Badge>{' '}
-          {data.approval.approver ?? '자동'} · {new Date(data.approval.decided_at).toLocaleString('ko-KR')}
+          {data.approval.approver ?? '—'} · {new Date(data.approval.decided_at).toLocaleString('ko-KR')}
           {data.approval.comment && <> · “{data.approval.comment}”</>}</p>
       )}
       {data.stage === 'REJECTED' && (

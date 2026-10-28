@@ -24,6 +24,10 @@ def judgment(conn, run_id, table, name):
     return j
 
 
+def submit(conn, run_id, comment="질의 1건은 10-27 회신 예정"):
+    return review.finish_review(conn, run_id, review.default_user(conn, "APPROVER"), comment)
+
+
 def codes(found):
     return [c["ar_code"] if isinstance(c, dict) else c.ar_code for c in found]
 
@@ -31,7 +35,7 @@ def codes(found):
 def test_deviation_run_waits_for_approval(db, spec):
     """Scenario: 일탈 후보가 있는 실행 / 승인 대기 중 수정."""
     run_id = run_once(db, [spec])
-    result = review.finish_review(db, run_id)
+    result = submit(db, run_id)
     assert result["stage"] == "APPROVAL" and "AR-01" in codes(result["criteria"])
     assert queries.run_summary(db, run_id)["stage"] == "APPROVAL"
     screen = review.approval(db, run_id)
@@ -94,7 +98,7 @@ def test_only_adopted_point_is_delivered(db, spec):
 def test_rejection_records_comment(db, spec):
     """Scenario: 반려 / 승인자가 아닌 사용자."""
     run_id = run_once(db, [spec])
-    review.finish_review(db, run_id)
+    submit(db, run_id)
     engineer = review.default_user(db, "ENGINEER")
     with pytest.raises(review.ReviewError) as err:          # 엔지니어는 승인할 수 없다
         review.decide(db, run_id, "APPROVED", None, engineer)

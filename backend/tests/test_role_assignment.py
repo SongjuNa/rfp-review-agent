@@ -145,7 +145,7 @@ def test_review_cards_for_engineer_and_approver(tasks_run):
     assert mine["role"] == "ENGINEER" and mine["assignments"] == []
     assert card["summary"]["stage"] == "ENGINEER_REVIEW" and card["criteria"]
     assert [c for c in review.my_tasks(conn, approver)["reviews"] if c["run_id"] == run_id] == []
-    review.finish_review(conn, run_id)
+    review.finish_review(conn, run_id, approver, "결재 바랍니다")
     [card] = [c for c in review.my_tasks(conn, approver)["reviews"] if c["run_id"] == run_id]
     assert "AR-01" in [r["ar_code"] for r in card["criteria"]]
 

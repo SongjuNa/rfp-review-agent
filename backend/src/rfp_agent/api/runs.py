@@ -69,6 +69,12 @@ class TaskStatus(BaseModel):
     actor_id: int
 
 
+class Submit(BaseModel):
+    actor_id: int | None = None
+    approver_id: int | None = None
+    comment: str | None = None
+
+
 class Decision(BaseModel):
     decision: str = Field(pattern="^(APPROVED|REJECTED)$")
     comment: str | None = None
@@ -363,10 +369,18 @@ def history(run_id: int, target: str | None = None, target_id: int | None = None
 
 
 @router.post("/runs/{run_id}/finish-review")
-def finish_review(run_id: int, body: Actor) -> dict:
-    """담당자 확인을 마친다. 승인 기준에 걸리면 승인 대기가 된다."""
+def finish_review(run_id: int, body: Submit) -> dict:
+    """결재 상신. 결재자와 상신 의견을 받아 승인 대기로 둔다 (걸린 기준이 없어도)."""
     with connect() as conn:
-        return _review(lambda: review.finish_review(conn, run_id, body.actor_id))
+        return _review(lambda: review.finish_review(conn, run_id, body.approver_id,
+                                                    body.comment, body.actor_id))
+
+
+@router.post("/runs/{run_id}/withdraw")
+def withdraw(run_id: int, body: Actor) -> dict:
+    """결정 전인 상신을 취소하고 담당자 확인으로 되돌린다."""
+    with connect() as conn:
+        return _review(lambda: review.withdraw(conn, run_id, body.actor_id))
 
 
 @router.get("/runs/{run_id}/approval")
