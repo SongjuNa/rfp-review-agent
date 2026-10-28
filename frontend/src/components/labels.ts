@@ -40,24 +40,11 @@ export const STATUS_NAMES: Record<string, string> = {
   CANDIDATE: '후보', CONFIRMED: '확정', EDITED: '수정함', REJECTED: '반려', EMPTY_REVIEW: '확인 필요',
   DRAFT: '초안', REMOVED: '뺌', ADOPTED: '채택', DISCARDED: '버림', CLOSED_OK: '문제 없음',
 }
-export const MARGIN_NAMES: Record<string, string> = {
-  STRENGTH: '강점', NOT_STRENGTH: '강점 아님', NOT_CALC: '—',
-}
 export const POINT_KIND_NAMES: Record<string, string> = {
   MARGIN: '여유', LOSS: '손실 환산', FIELD: '현장 이력',
 }
-export const CHECK_NAMES: Record<string, string> = {
-  PASS: '통과', VIOLATION: '위반', NEEDS_REVIEW: '확인 필요',
-}
-export const CHECK_REASONS: Record<string, string> = {
-  NO_FREQUENCY: '같은 표에 주파수가 없음', MULTI_FREQUENCY: '주파수가 여럿이거나 50·60 Hz가 아님',
-  MULTI_IK: '같은 부위에 단시간 전류 값이 여럿', UNIT_DIFF: '단위가 kA가 아님 (환산하지 않음)',
-}
 export const ROLE_NAMES: Record<string, string> = {
   ENGINEER: '기술 검토 엔지니어', APPROVER: '승인자', COST: '견적 담당', QUALITY: '품질 담당', SALES: '영업 담당',
-}
-export const TASK_STATUS_NAMES: Record<string, string> = {
-  TODO: '할 일', DOING: '하는 중', DONE: '끝',
 }
 export const RISK_NAMES: Record<string, string> = {
   BLANKET: '포괄 조항', VALUE_MISMATCH: '값 불일치', OPEN_SCOPE: '범위 모호',

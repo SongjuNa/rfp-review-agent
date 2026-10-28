@@ -49,7 +49,8 @@ openspec/
 | 10 | `archive/2026-10-28-update-app-shell` | 목업 v4.57 앱 틀: 왼쪽 메뉴, 머리글, 화면 주소 (완료) |
 | 11 | `archive/2026-10-28-add-review-info` | 검토 정보(사업명·검토명·고객사·국가·마감·담당), 검토 목록·등록·상세 화면 (완료) |
 | 12 | `archive/2026-10-28-update-approval-flow` | 결재자를 골라 상신, 지정 결재자만 결정, 상신 취소. 결재 상신 창·결재 대기 화면 (완료) |
-| 13 | `add-reference-views` | 제품표·규칙 화면 (준비됨) |
+| 13 | `archive/2026-10-28-update-review-screens` | 목업 v4.57 검토 화면: 검토 상세 탭 전부, 처리 상태·분석 실패, 협조 요청 현황, 홈. 예전 화면 지움 (완료) |
+| 14 | `add-reference-views` | 제품표·규칙 화면 (준비됨) |
 
 ## 3. 작업 흐름
 

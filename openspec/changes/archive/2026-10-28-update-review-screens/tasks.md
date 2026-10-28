@@ -116,6 +116,10 @@
 - [x] 14.4 e2e: 내 업무와 단계별 카드(강조·사업별 포함) / 분석 실패 알림 / 팀 공유와 행사 예시
 - [x] 14.5 목업 대조 스크린샷, `SCR-03_공유.md`
 
-## 15. 마무리
+## 15. 예전 화면 정리
 
-- [x] 15.1 `ruff`, `pytest`, `npm run lint`, `npm run build`, `openspec validate update-review-screens --strict`
+- [x] 15.1 쓰지 않는 예전 화면(`Findings`, `Compliance`, `Outputs`, `Approval`, `types.ts`)과 공용 부품(`Badge`, `Evidence`, `ActionBar`, `More`, `usePaged`), `index.css`의 `.legacy` 모양 지우기
+
+## 16. 마무리
+
+- [x] 16.1 `ruff`, `pytest`, `npm run lint`, `npm run build`, `openspec validate update-review-screens --strict`
