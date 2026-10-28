@@ -38,7 +38,7 @@ def _join(*parts: object) -> str:
     return " ".join(str(p) for p in parts if p not in (None, ""))
 
 
-def _with_unit(raw: str | None, unit: str | None) -> str:
+def with_unit(raw: str | None, unit: str | None) -> str:
     """화면(withUnit)과 같게: 원문에 단위가 이미 있으면 다시 붙이지 않는다."""
     if not raw:
         return ""
@@ -74,7 +74,7 @@ def tbe(conn: psycopg.Connection, run_id: int, include: str = "all", lang: str =
             continue
         en = j["item_name_raw"] or j["item_name"] or j["item_key"] or ""
         ko = j["item_name"] or j["item_name_raw"] or j["item_key"] or ""
-        offered = _with_unit(j["product_value_raw"], j["product_value_unit"])
+        offered = with_unit(j["product_value_raw"], j["product_value_unit"])
         if offered and j["product_code"]:
             offered += f" ({j['product_code']})"
         state = word[0] if confirmed else word[1]
@@ -84,7 +84,7 @@ def tbe(conn: psycopg.Connection, run_id: int, include: str = "all", lang: str =
         rows.append({
             "no": len(rows) + 1, "judgment_id": j["judgment_id"], "result": j["result"],
             "item": ko if lang == "ko" else en, "item_ko": ko if lang == "both" else None,
-            "requirement": _with_unit(j["req_value_raw"], j["unit_raw"]) or "—",
+            "requirement": with_unit(j["req_value_raw"], j["unit_raw"]) or "—",
             "verdict": VERDICT[j["result"]][1 if lang == "ko" else 0],
             "offered": offered or "—", "confirmed": confirmed, "assumed": j["is_assumed"],
             "status": state,

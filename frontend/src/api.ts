@@ -185,6 +185,17 @@ export type Tbe = {
 }
 export type TbeQuery = { include: 'all' | 'confirmed'; lang: 'en' | 'ko' | 'both'; base: 'now' | 'v1' }
 
+export type DatasheetInfo = { table_id: number; table_name: string; file_name: string; rows: number; empty: number }
+export type DatasheetRow = {
+  judgment_id: number; candidate_id: number | null; target: 'warranty' | 'judgment'; no: string; item: string; item_en: string
+  unit: string; requirement: string; value: string | null; basis: string; why: string; state: 'ok' | 'cand' | 'empty'
+  status: string; assumed: boolean
+}
+export type Datasheet = {
+  file_name: string; review_no: string; table_id: number; table_name: string; source_file: string; rows: DatasheetRow[]
+  counts: { rows: number; ok: number; cand: number; empty: number }
+}
+
 export type EngineeringCheck = {
   check_id: number
   rule_code: string
@@ -480,6 +491,9 @@ export const api = {
   outputs: (id: number) => call<OutputItem[]>(`/runs/${id}/outputs`),
   submissionCheck: (id: number) => call<SubmissionCheck>(`/runs/${id}/submission-check`),
   proposals: (id: number) => call<Proposal[]>(`/runs/${id}/proposals`),
+  datasheets: (id: number) => call<DatasheetInfo[]>(`/runs/${id}/datasheets`),
+  datasheet: (id: number, tableId: number) => call<Datasheet>(`/runs/${id}/datasheet?table_id=${tableId}`),
+  exportDatasheet: (id: number, tableId: number) => file(`/runs/${id}/datasheet/export?table_id=${tableId}`),
   tbe: (id: number, q: TbeQuery) => call<Tbe>(`/runs/${id}/tbe?${query(q)}`),
   exportTbe: (id: number, q: TbeQuery) => file(`/runs/${id}/tbe/export?${query(q)}`),
   exportOutputs: (id: number, list_kind: 'DEVIATION' | 'QUERY') => file(`/runs/${id}/outputs/export?list_kind=${list_kind}`),

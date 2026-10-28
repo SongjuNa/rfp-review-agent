@@ -6,6 +6,7 @@ import { Register } from './views/Register'
 import { ReviewDetail } from './views/ReviewDetail'
 import { ReviewList } from './views/ReviewList'
 import { Home } from './views/Home'
+import { Datasheet } from './views/Datasheet'
 import { Products } from './views/Products'
 import { Rules } from './views/Rules'
 import { Tbe } from './views/Tbe'
@@ -30,6 +31,12 @@ type Route = { menu: MenuKey; crumbs: Crumb[]; body: ReactNode }
 /** 화면 주소 → 화면 (docs/screens/SCR-00-앱틀.md 2장). */
 function route(path: string): Route {
   const home: Crumb = { label: '홈', path: '/' }
+  const sheet = path.match(/^\/reviews\/(\d+)\/datasheet$/)
+  if (sheet) {
+    const id = Number(sheet[1])
+    return { menu: 'reviews', crumbs: [home, { label: 'RFP 검토', path: '/reviews' }, { label: '검토 상세', path: `/reviews/${id}`, tail: true },
+      { label: '데이터시트 채우기' }], body: <Datasheet runId={id} /> }
+  }
   const tbe = path.match(/^\/reviews\/(\d+)\/tbe$/)
   if (tbe) {
     const id = Number(tbe[1])

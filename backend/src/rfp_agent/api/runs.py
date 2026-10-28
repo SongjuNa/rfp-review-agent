@@ -13,7 +13,7 @@ from pydantic import BaseModel, Field
 
 from rfp_agent.config import get_settings
 from rfp_agent.db.connection import connect
-from rfp_agent.pipeline import queries, read_checks, review, review_info, tbe
+from rfp_agent.pipeline import datasheet, queries, read_checks, review, review_info, tbe
 from rfp_agent.pipeline.assignments import build_assignments
 from rfp_agent.pipeline.export import outputs_docx
 from rfp_agent.pipeline.loss import recalculate
@@ -378,6 +378,39 @@ def export_tbe(run_id: int, include: str = Query("all", pattern="^(all|confirmed
             name, body, n = tbe.tbe_xlsx(conn, run_id, include, lang, base)
         except tbe.NotApproved as exc:
             raise HTTPException(409, str(exc)) from exc
+    return Response(body, media_type=XLSX_TYPE, headers={
+        "Content-Disposition": f"attachment; filename*=UTF-8''{quote(name)}",
+        "X-Row-Count": str(n), "Access-Control-Expose-Headers": "X-Row-Count"})
+
+
+@router.get("/runs/{run_id}/datasheets")
+def get_datasheets(run_id: int) -> list[dict]:
+    """판정이 있는 고객 표(데이터시트) 목록 (SCR-10)."""
+    _summary(run_id)
+    with connect() as conn:
+        return datasheet.datasheets(conn, run_id)
+
+
+@router.get("/runs/{run_id}/datasheet")
+def get_datasheet(run_id: int, table_id: int) -> dict:
+    """데이터시트 한 장 미리보기. 엑셀과 같은 줄."""
+    _summary(run_id)
+    with connect() as conn:
+        try:
+            return datasheet.datasheet(conn, run_id, table_id)
+        except datasheet.NotFound as exc:
+            raise HTTPException(404, str(exc)) from exc
+
+
+@router.get("/runs/{run_id}/datasheet/export")
+def export_datasheet(run_id: int, table_id: int) -> Response:
+    """데이터시트 엑셀 파일. X-Row-Count = 줄 수."""
+    _summary(run_id)
+    with connect() as conn:
+        try:
+            name, body, n = datasheet.datasheet_xlsx(conn, run_id, table_id)
+        except datasheet.NotFound as exc:
+            raise HTTPException(404, str(exc)) from exc
     return Response(body, media_type=XLSX_TYPE, headers={
         "Content-Disposition": f"attachment; filename*=UTF-8''{quote(name)}",
         "X-Row-Count": str(n), "Access-Control-Expose-Headers": "X-Row-Count"})

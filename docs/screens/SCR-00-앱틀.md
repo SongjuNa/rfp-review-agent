@@ -37,7 +37,7 @@
 |---|---|---|
 | `#/reviews/:id` | 검토 상세 (탭은 화면 안에서 고름) | SCR-08 |
 | `#/reviews/:id/tbe` | TBE 준수표 | SCR-09 |
-| `#/reviews/:id/datasheet` | 데이터시트 | SCR-10 (예정) |
+| `#/reviews/:id/datasheet` | 데이터시트 | SCR-10 |
 | `#/reviews/:id/fail` | 분석 실패 상세 | SCR-11 (예정) |
 | `#/reviews/:id` (승인 대기일 때) | 결재 대기 상세 | SCR-12. 주소를 따로 두지 않고 승인 대기 검토를 열면 보인다 (`update-approval-flow` 결정) |
 | `#/reviews/:id/loading` | 처리 상태 | SCR-02 (예정) |

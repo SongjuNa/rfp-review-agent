@@ -58,6 +58,7 @@ export function DetailBody({ run, tab, onChanged, onSubmit }: {
       <button type="button" className="bo" onClick={() => exporter.start('DEVIATION', c?.deviations ?? 0)}>일탈 목록 초안</button>
       <button type="button" className="bo" onClick={() => exporter.start('QUERY', c?.queries ?? 0)}>질의서 초안</button>
       <a className="bo" href={href(`/reviews/${id}/tbe`)}>TBE 준수표</a>
+      <a className="bo" href={href(`/reviews/${id}/datasheet`)}>데이터시트 채우기</a>
       {SUBMIT_LABELS[run.stage] && (
         <button type="button" className={run.stage === 'ENGINEER_REVIEW' ? 'bp' : 'bo'} disabled={run.stage !== 'ENGINEER_REVIEW'}
           onClick={onSubmit}>{SUBMIT_LABELS[run.stage]}</button>

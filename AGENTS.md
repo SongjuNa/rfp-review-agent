@@ -53,6 +53,7 @@ openspec/
 | 14 | `archive/2026-10-28-add-reference-views` | 제품표·판정 규칙 화면 (읽기 전용) (완료) |
 | 15 | `archive/2026-10-28-add-bulk-confirm` | 판정 여러 줄 한꺼번에 확정 (완료) |
 | 16 | `archive/2026-10-28-add-tbe-export` | TBE 준수표 화면과 엑셀 내려받기 (완료) |
+| 17 | `archive/2026-10-28-add-datasheet-export` | 데이터시트 채우기 화면과 엑셀 내려받기 (완료) |
 
 ## 3. 작업 흐름
 
