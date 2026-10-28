@@ -5,14 +5,15 @@ import { useLoad } from '../../components/useLoad'
 import { useSession } from '../../shell/useSession'
 import { History } from '../Approval'
 import { Checks, Losses } from '../Compliance'
-import { Requirements, Risks } from '../Findings'
+import { Requirements } from '../Findings'
 import { Proposals } from '../Outputs'
 import { ExampleTab } from './ExampleTab'
 import { JudgeTab } from './JudgeTab'
 import { OutputsDialog } from './OutputsDialog'
+import { RiskTab } from './RiskTab'
 
 // SCR-08 검토 상세 본문: 요약 칸 5개와 탭 9개 (목업 v4.57 Detail .kpis, .pgtabs).
-// 판정 탭은 목업대로 만들었고, 나머지 탭은 다음 묶음에서 바꿀 때까지 예전 화면을 둔다.
+// 판정·위험 조건 탭은 목업대로 만들었고, 나머지 탭은 다음 묶음에서 바꿀 때까지 예전 화면을 둔다.
 
 const TABS = [
   ['judge', '판정'], ['read', '문서 읽기 점검'], ['risk', '위험 조건'], ['loss', '손실 환산 (참고)'], ['bid', '입찰 영향'],
@@ -73,7 +74,7 @@ export function DetailBody({ run, tab, onChanged, onSubmit }: {
 
       {tab === 'judge' && <JudgeTab run={run} tick={tick} onChanged={changed} head={head} />}
       {tab === 'read' && <section className="sec legacy"><Requirements {...legacy} /></section>}
-      {tab === 'risk' && <section className="sec legacy"><Risks {...legacy} /></section>}
+      {tab === 'risk' && <RiskTab run={run} tick={tick} onChanged={changed} />}
       {tab === 'loss' && <section className="sec legacy"><Losses {...legacy} /></section>}
       {tab === 'bid' && <section className="sec legacy"><Proposals {...legacy} /><Checks {...legacy} /></section>}
       {(tab === 'comm' || tab === 'cmp' || tab === 'subm') && <ExampleTab tab={tab} />}

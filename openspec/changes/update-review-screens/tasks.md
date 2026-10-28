@@ -11,6 +11,15 @@
 - [x] 1.7 e2e: 요약 칸 / 탭으로 내용 바꾸기 / 예시 탭 / 판정 칩으로 거르기 / 거른 결과가 없음 / 줄을 눌러 원문 보기 / 사유 없이 판정 바꾸기
 - [x] 1.8 목업 대조 스크린샷, `SCR-08-1_공유.md`
 
-## 2. 마무리
+## 2. 위험 조건 탭 (SCR-08-3)
 
-- [x] 2.1 `ruff`, `pytest`, `npm run lint`, `npm run build`, `openspec validate update-review-screens --strict`
+- [x] 2.1 화면 명세 `docs/screens/SCR-08-3-위험조건.md`
+- [x] 2.2 `queries.run_risks`: 값 불일치 줄에 항목 이름, 테스트 "값 불일치 항목 이름"
+- [x] 2.3 화면: 머리 건수, 위험 조건 표(상태·종류·설명·위치·처리자), 위험으로 확정, 사유를 적어 문제 없음, 원문 펼치기
+- [x] 2.4 화면: 사람이 찾은 특이 요구 예시 영역
+- [x] 2.5 e2e: 위험 조건 건수 / 문제 없음으로 닫기 / 사유 없이 닫기 / 위험으로 확정 / 특이 요구 제안은 예시
+- [x] 2.6 목업 대조 스크린샷, `SCR-08-3_공유.md`
+
+## 3. 마무리
+
+- [x] 3.1 `ruff`, `pytest`, `npm run lint`, `npm run build`, `openspec validate update-review-screens --strict`

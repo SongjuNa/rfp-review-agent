@@ -1,0 +1,64 @@
+import { expect, test, type Page } from '@playwright/test'
+import { ENGINEER, as, riskRun } from './helpers'
+
+// 명세 review-workspace "위험 조건 탭"·"사람이 찾은 특이 요구 예시"의 Scenario (change update-review-screens).
+
+async function openRisk(page: Page, name: string) {
+  const run = await riskRun(page.request, `${name} ${Date.now()}`)
+  await as(page, ENGINEER)
+  await page.goto(`/#/reviews/${run.run_id}`)
+  await page.getByRole('tab', { name: '위험 조건' }).click()
+  return page.locator('#risk table.mini > tbody > tr')
+}
+
+test('위험 조건 건수', async ({ page }) => {
+  const rows = await openRisk(page, '위험 건수')
+  await expect(page.locator('#risk .sech .note')).toHaveText('포괄 조항 1 · 값 불일치 1 · 범위 모호 1')
+  await expect(rows).toHaveCount(3)
+  await expect(rows.locator('td:first-child .st')).toHaveText(['후보', '후보', '후보'])
+  await expect(rows.locator('td.loc button').first()).toContainText('행')
+  await expect(rows.filter({ hasText: '가스 누설률' })).toHaveCount(1)
+})
+
+test('문제 없음으로 닫기', async ({ page }) => {
+  const rows = await openRisk(page, '위험 닫기')
+  const row = rows.filter({ hasText: '가스 누설률' })
+  await row.getByRole('button', { name: '문제 없음' }).click()
+  await row.getByLabel('문제 없음 사유').fill('적용 대상이 달라 문제 없음')
+  await row.getByRole('button', { name: '닫기' }).click()
+  await expect(rows.last()).toHaveClass('dis')
+  await expect(rows.last().locator('.st')).toHaveText('문제 없음')
+  await expect(rows.last()).toContainText('적용 대상이 달라 문제 없음')
+  await expect(rows.last().locator('td').last()).toContainText('·')
+  await expect(page.locator('#risk .sech .note')).toContainText('값 불일치 0')
+})
+
+test('사유 없이 닫기', async ({ page }) => {
+  const rows = await openRisk(page, '위험 사유')
+  const row = rows.filter({ hasText: '가스 누설률' })
+  await row.getByRole('button', { name: '문제 없음' }).click()
+  await expect(row.getByRole('button', { name: '닫기' })).toBeDisabled()
+  await row.getByLabel('문제 없음 사유').fill('  ')
+  await expect(row.getByRole('button', { name: '닫기' })).toBeDisabled()
+})
+
+test('위험으로 확정', async ({ page }) => {
+  const rows = await openRisk(page, '위험 확정')
+  const row = rows.filter({ hasText: '“deemed”' })
+  await row.getByRole('button', { name: '위험으로 확정' }).click()
+  await expect(row.locator('.st')).toHaveText('확정')
+  await expect(row.locator('td').last()).not.toContainText('위험으로 확정')
+  await expect(row.locator('td').last()).toContainText('·')
+})
+
+test('특이 요구 제안은 예시', async ({ page }) => {
+  await openRisk(page, '특이 요구')
+  const box = page.locator('#risk .rk')
+  await expect(box.getByRole('note')).toContainText('예시 화면 · 실제 데이터와 연결되지 않음')
+  const posts: string[] = []
+  page.on('request', (r) => { if (r.method() !== 'GET') posts.push(r.url()) })
+  await box.getByLabel('놓친 위험 표현').fill('shall be capable of continuous operation')
+  await box.getByRole('button', { name: '제안 추가' }).click()
+  await expect(box.locator('.rk-r', { hasText: 'shall be capable of continuous operation' })).toContainText('제안함')
+  expect(posts).toEqual([])
+})

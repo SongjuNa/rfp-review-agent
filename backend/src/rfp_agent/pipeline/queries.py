@@ -139,9 +139,10 @@ def run_pairs(conn: psycopg.Connection, run_id: int) -> list[dict]:
 
 def run_risks(conn: psycopg.Connection, run_id: int) -> list[dict]:
     risks = _rows(conn, """
-        SELECT f.risk_id, f.risk_kind, f.status, f.item_key, f.facts, f.explanation_ai,
-               e.expression
+        SELECT f.risk_id, f.risk_kind, f.status, f.item_key, k.name_ko AS item_name, f.facts,
+               f.explanation_ai, e.expression
         FROM risk_flag f LEFT JOIN risk_expression e USING (expr_id)
+        LEFT JOIN item_key k ON k.item_key = f.item_key
         WHERE f.run_id = %s ORDER BY f.risk_id""", (run_id,))
     if not risks:
         return []

@@ -99,6 +99,7 @@ export type Risk = {
   risk_kind: string
   status: string
   item_key: string | null
+  item_name: string | null
   facts: string | null
   explanation_ai: string | null
   expression: string | null

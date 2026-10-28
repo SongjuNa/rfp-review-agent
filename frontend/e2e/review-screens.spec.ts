@@ -71,7 +71,7 @@ test('줄을 눌러 원문 보기', async ({ page, request }) => {
   await expect(dialog.locator('.pv')).toContainText('아직 확정 안 함')
   await page.keyboard.press('Escape')
   const panel = page.getByRole('complementary', { name: '원문과 판정' })
-  await expect(panel).toContainText('파일 91')                                       // 원문 위치
+  await expect(panel).toContainText('synthetic_judgment.docx · ')                   // 원문 위치 (파일 이름)
   await expect(panel.locator('.pv')).toContainText('아직 확정 안 함')
 })
 

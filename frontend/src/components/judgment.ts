@@ -1,4 +1,4 @@
-import type { Judgment, LogEntry, Warranty } from '../api'
+import type { Judgment, Location, LogEntry, RunDocument, Warranty } from '../api'
 import { num } from './format'
 import { locationText } from './labels'
 
@@ -14,11 +14,18 @@ export function itemName(j: Pick<Judgment, 'item_name' | 'item_name_raw'>): stri
   return j.item_name ?? j.item_name_raw ?? '—'
 }
 
+/** 원문 위치 한 곳: 파일 번호 대신 파일 이름 (_공통규칙.md 3장) */
+export function locName(loc: Location, docs: RunDocument[] = []): string {
+  const name = docs.find((d) => d.file_no === loc.file_no)?.file_name
+  const text = locationText(loc)
+  return name ? text.replace(/^파일 \d+/, name) : text
+}
+
 /** 원문 위치: 첫 위치, 더 있으면 "외 n곳" */
-export function locShort(j: Pick<Judgment, 'locations'>): string {
+export function locShort(j: Pick<Judgment, 'locations'>, docs: RunDocument[] = []): string {
   const [first, ...rest] = j.locations
   if (!first) return '—'
-  return locationText(first) + (rest.length ? ` 외 ${rest.length}곳` : '')
+  return locName(first, docs) + (rest.length ? ` 외 ${rest.length}곳` : '')
 }
 
 export function reqText(j: Judgment): string {

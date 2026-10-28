@@ -1,9 +1,13 @@
-"""판정 목록 거르기·판정 순서·칩 건수. 명세 review-run의 Scenario (change update-review-screens)."""
+"""판정 목록 거르기·판정 순서·칩 건수·위험 조건 항목 이름.
+
+명세 review-run의 Scenario (change update-review-screens).
+"""
 
 import pytest
 
 from rfp_agent.pipeline import queries, review
 from rfp_agent.pipeline.run import RunContext, create_run, execute_run
+from tests.docx_factory import build_gis_spec
 
 VERSION = "test-dict-v1"
 ORDER = ["DEVIATION_CANDIDATE", "QUERY_CANDIDATE", "NEEDS_REVIEW", "WARRANTY_TO_FILL", "COMPLY"]
@@ -79,3 +83,14 @@ def test_judgment_filters_api(db, run, db_url, monkeypatch):
         assert counts["by_result"]["DEVIATION_CANDIDATE"] == 4
     finally:
         get_settings.cache_clear()
+
+
+def test_mismatch_item_name(seeded_db, tmp_path):
+    """Scenario: 값 불일치 항목 이름."""
+    run_id = create_run(seeded_db, VERSION, None)
+    path = build_gis_spec(tmp_path / "synthetic_154kV_GIS_spec.docx")
+    ctx = RunContext(seeded_db, VERSION, None, None)
+    assert execute_run(ctx, run_id, [path]) == "ENGINEER_REVIEW"
+    names = {r["risk_kind"]: r["item_name"] for r in queries.run_risks(seeded_db, run_id)}
+    assert names["VALUE_MISMATCH"] == "가스 누설률"
+    assert names["BLANKET"] is None

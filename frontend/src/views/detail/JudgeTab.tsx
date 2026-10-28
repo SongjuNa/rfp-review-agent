@@ -132,7 +132,7 @@ export function JudgeTab({ run, tick, onChanged, head }: {
                         {j.item_name && j.item_name_raw && <div className="en">{j.item_name_raw}</div>}</td>
                       <td style={{ whiteSpace: 'nowrap' }}>{reqText(j)}</td>
                       <td style={{ whiteSpace: 'nowrap' }}><span className={p.cls}>{p.val}</span><div className="en">{p.sub}</div></td>
-                      <td className="loc">{locShort(j)}</td>
+                      <td className="loc">{locShort(j, docs.data ?? [])}</td>
                     </tr>
                   )
                 })}
@@ -188,7 +188,7 @@ function Panel({ runId, j, w, items, log, docs, canEdit, edK, edWhy, edHint, wVa
   return (
     <aside className="panel" aria-label="원문과 판정">
       <div className="ph">
-        <div style={{ flex: '1 1 auto', minWidth: 0 }}><div className="en" style={{ margin: '0 0 2px' }}>{locShort(j)}</div><h3>{itemName(j)}</h3></div>
+        <div style={{ flex: '1 1 auto', minWidth: 0 }}><div className="en" style={{ margin: '0 0 2px' }}>{locShort(j, docs)}</div><h3>{itemName(j)}</h3></div>
         <button type="button" className="ib" aria-label="이전 줄" onClick={onPrev}><span className="ms" aria-hidden="true">keyboard_arrow_up</span></button>
         <button type="button" className="ib" aria-label="다음 줄" onClick={onNext}><span className="ms" aria-hidden="true">keyboard_arrow_down</span></button>
         <button type="button" className="ib" aria-label="원문 창 닫기" onClick={onClose}><span className="ms" aria-hidden="true">close</span></button>

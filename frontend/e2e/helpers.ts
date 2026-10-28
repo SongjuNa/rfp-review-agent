@@ -34,3 +34,19 @@ export async function as(page: Page, userId: number) {
   await page.addInitScript((id) => localStorage.setItem('s2w.user', String(id)), userId)
 }
 
+
+// 위험 조건 후보(포괄 조항·값 불일치·범위 모호 하나씩)가 나오는 합성 사양서 (tests/docx_factory.build_gis_spec)
+const RISK_DOCX = new URL('./fixtures/synthetic_154kV_GIS_spec.docx', import.meta.url)
+
+export async function riskRun(request: APIRequestContext, name: string) {
+  const res = await request.post('/api/runs', {
+    multipart: {
+      files: { name: 'synthetic_154kV_GIS_spec.docx', mimeType: 'application/octet-stream', buffer: readFileSync(RISK_DOCX) },
+      review_name: name, actor_id: String(ENGINEER),
+    },
+  })
+  const run = await res.json() as { run_id: number; review_no: string }
+  await expect.poll(async () => (await (await request.get(`/api/runs/${run.run_id}`)).json()).stage,
+    { timeout: 60_000 }).toBe('ENGINEER_REVIEW')
+  return run
+}
