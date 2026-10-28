@@ -77,6 +77,13 @@
 - [x] 9.3 e2e: 지난 RFP 비교 거르기 예시
 - [x] 9.4 목업 대조 스크린샷, `SCR-08-7_공유.md`
 
-## 10. 마무리
+## 10. 제출본 탭 (SCR-08-8)
 
-- [x] 10.1 `ruff`, `pytest`, `npm run lint`, `npm run build`, `openspec validate update-review-screens --strict`
+- [x] 10.1 화면 명세 `docs/screens/SCR-08-8-제출본.md`
+- [x] 10.2 화면: 승인된 실행의 제출본 v1 줄, 승인 전 안내, 머리 단추 "제출본 v1 확정", TBE 단추(다음 change 전까지 잠김)
+- [x] 10.3 e2e: 승인된 실행의 제출본 / 승인 전 제출본 없음
+- [x] 10.4 목업 대조 스크린샷, `SCR-08-8_공유.md`
+
+## 11. 마무리
+
+- [x] 11.1 `ruff`, `pytest`, `npm run lint`, `npm run build`, `openspec validate update-review-screens --strict`
