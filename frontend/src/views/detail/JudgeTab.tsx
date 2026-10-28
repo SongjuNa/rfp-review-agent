@@ -2,11 +2,12 @@ import { useEffect, useState } from 'react'
 import { api, type Judgment, type LogEntry, type OutputItem, type RunDocument, type RunSummary, type Warranty } from '../../api'
 import { Pager } from '../../components/Pager'
 import { stamp } from '../../components/format'
-import { confirmedBy, compareText, itemName, locShort, markSplit, prodCell, reqText, suggested } from '../../components/judgment'
+import { confirmedBy, compareText, itemName, locShort, markSplit, prodCell, reqText, suggested, itemFor } from '../../components/judgment'
 import { RESULT_DOTS, RESULT_NAMES, RESULT_ORDER, RESULT_TONES } from '../../components/labels'
 import { useLoad } from '../../components/useLoad'
 import { useSession } from '../../shell/useSession'
 import { JudgmentDialog } from './JudgmentDialog'
+import { OutputEditor } from './OutputEditor'
 
 // SCR-08-1 판정 탭 (목업 v4.57 Detail #judge). docs/screens/SCR-08-1-판정.md
 // 판정 칩·거르기·판정 순서 표, 줄을 누르면 판정 상세 창과 오른쪽 패널. 여러 줄 한꺼번에 확정은 로드맵 7번 (SCR-08-1_공유.md).
@@ -152,7 +153,7 @@ export function JudgeTab({ run, tick, onChanged, head }: {
           <Panel runId={id} j={curRow} w={wOf(curRow)} items={items.data ?? []} log={log.data ?? []} docs={docs.data ?? []} canEdit={canEdit}
             edK={edK} edWhy={edWhy} edHint={edHint} wVal={wVal} wWhy={wWhy}
             setEdK={setEdK} setEdWhy={(v) => { setEdWhy(v); setEdHint(false) }} setWVal={setWVal} setWWhy={setWWhy}
-            onPrev={() => go(-1)} onNext={() => go(1)} onClose={() => setCur(-1)} onApply={apply} onSaveW={saveW} />
+            onPrev={() => go(-1)} onNext={() => go(1)} onClose={() => setCur(-1)} onApply={apply} onSaveW={saveW} onDone={done} />
         )}
       </div>
 
@@ -161,7 +162,7 @@ export function JudgeTab({ run, tick, onChanged, head }: {
           pos={(page - 1) * size + mdIdx + 1} total={total} canEdit={canEdit}
           onPrev={mdIdx > 0 ? () => { setMd(list[mdIdx - 1].judgment_id); setCur(list[mdIdx - 1].judgment_id) } : null}
           onNext={mdIdx < list.length - 1 ? () => { setMd(list[mdIdx + 1].judgment_id); setCur(list[mdIdx + 1].judgment_id) } : null}
-          onClose={() => setMd(null)}
+          onClose={() => setMd(null)} onDone={done}
           onEdit={() => { setMd(null); setTimeout(() => document.getElementById('newk')?.focus(), 0) }}
           onConfirm={() => act({ target: 'judgment', target_id: mdRow.judgment_id, action: 'CONFIRM' })} />
       )}
@@ -174,16 +175,17 @@ type PanelProps = {
   edK: string; edWhy: string; edHint: boolean; wVal: string; wWhy: string
   setEdK: (v: string) => void; setEdWhy: (v: string) => void; setWVal: (v: string) => void; setWWhy: (v: string) => void
   onPrev: () => void; onNext: () => void; onClose: () => void; onApply: () => void; onSaveW: (candidateId: number) => void
+  onDone: () => void
 }
 
 /** 오른쪽 패널: 원문, 판정 근거, 판정 출처, 보증값, 목록 문장, 판정 바꾸기 */
 function Panel({ runId, j, w, items, log, docs, canEdit, edK, edWhy, edHint, wVal, wWhy, setEdK, setEdWhy, setWVal, setWWhy,
-  onPrev, onNext, onClose, onApply, onSaveW }: PanelProps) {
+  onPrev, onNext, onClose, onApply, onSaveW, onDone }: PanelProps) {
   const req = useLoad(() => api.requirement(j.requirement_id, runId), [j.requirement_id, runId])
   const [a, m, b] = markSplit(req.data?.text_raw ?? '', j.req_value_raw)
   const sug = suggested(j, log)
   const conf = j.review_status === 'CONFIRMED' || j.review_status === 'EDITED' ? confirmedBy(j, log) : null
-  const draft = items.find((i) => i.sources.some((s) => s.judgment_id === j.judgment_id))
+  const draft = itemFor(items, j)
   const doc = docs.find((d) => d.file_no === j.locations[0]?.file_no)
   return (
     <aside className="panel" aria-label="원문과 판정">
@@ -233,14 +235,7 @@ function Panel({ runId, j, w, items, log, docs, canEdit, edK, edWhy, edHint, wVa
               )}
           </div>
         )}
-        {draft && (
-          <div>
-            <label className="lbl" htmlFor="draft" style={{ display: 'flex', justifyContent: 'space-between' }}>
-              {draft.list_kind === 'QUERY' ? '질의 문장' : '일탈 목록 문장'}
-              {draft.drafted_by === 'AI' && <span className="ai"><span className="ms" aria-hidden="true">auto_awesome</span>AI 초안</span>}</label>
-            <textarea className="ta" id="draft" value={draft.text_draft} readOnly />
-          </div>
-        )}
+        {draft && <OutputEditor key={`${draft.item_id}-${draft.text_draft}-${draft.status}`} runId={runId} item={draft} id="draft" canEdit={canEdit} onDone={onDone} />}
         <div style={{ borderTop: '1px solid #DCE3EC', paddingTop: 14 }}>
           <div className="lbl">판정 바꾸기</div>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>

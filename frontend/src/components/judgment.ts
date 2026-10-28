@@ -1,4 +1,4 @@
-import type { Judgment, Location, LogEntry, RunDocument, Warranty } from '../api'
+import type { Judgment, Location, LogEntry, OutputItem, RunDocument, Warranty } from '../api'
 import { num } from './format'
 import { locationText } from './labels'
 
@@ -68,4 +68,10 @@ export function confirmedBy(j: Judgment, log: LogEntry[]): LogEntry | null {
   const mine = log.filter((l) => l.target_table === 'judgment' && l.target_id === j.judgment_id
     && (l.action === 'CONFIRM' || l.action === 'EDIT'))
   return mine.length ? mine[mine.length - 1] : null
+}
+
+/** 판정에 이어진 목록 항목. 검산 질의처럼 판정 번호가 없는 항목은 같은 요구로 찾는다 */
+export function itemFor(items: OutputItem[], j: Judgment): OutputItem | undefined {
+  return items.find((i) => i.sources.some((s) => s.judgment_id === j.judgment_id))
+    ?? items.find((i) => i.sources.some((s) => s.judgment_id === null && s.requirement_id === j.requirement_id))
 }

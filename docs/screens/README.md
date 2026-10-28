@@ -11,7 +11,7 @@
 | `_템플릿.md` | 화면 명세 하나의 틀 |
 | `_디자인.md` | 목업 CSS 쓰는 법, 색·글꼴 토큰, 공통 부품 |
 | `SCR-xx_공유.md` | 목업과 피할 수 없이 다르게 만든 곳과 이유 (팀 공유용) |
-| `SCR-xx-<이름>.md` | 화면별 명세 (SCR-00, 06, 07, 08, 08-1, 08-3, 08-4, 08-5, 08-9, 08-10, 12 작성) |
+| `SCR-xx-<이름>.md` | 화면별 명세 (SCR-00, 06, 07, 08, 08-1, 08-3, 08-4, 08-5, 08-9, 08-10, 08-11, 12 작성) |
 
 ## 기준 목업
 
@@ -73,7 +73,7 @@
 | SCR-08-8 | 제출본 | 없음 | 예시 화면 |
 | SCR-08-9 | 이력 | FR-10 수정 이력 | 실제 |
 | SCR-08-10 | 결재 상신 창 | FR-10, `update-approval-flow` | 실제 + 예정 |
-| SCR-08-11 | 일탈 목록 초안 · 질의서 초안 창 | FR-09 | 실제 (표시). docx 내려받기는 없음 |
+| SCR-08-11 | 일탈 목록 초안 · 질의서 초안 (Word 내려받기, 문장 고치기) | FR-09, FR-10 | 실제 |
 
 ## 2. 화면–FR–API 연결표
 
@@ -93,7 +93,7 @@
 | SCR-08-5 | `GET /proposals`, `GET /judgments`, `POST /actions`, `GET /equipment`, `PUT /equipment/{group}/product` | — | — |
 | SCR-08-9 | `GET /history` | — | 시스템 처리 기록 |
 | SCR-08-10 | `GET /approval`, `GET /submission-check`, `GET /users` | 결재자·상신 의견 `POST /finish-review` (`update-approval-flow`) | 참조자, 첨부 |
-| SCR-08-11 | `GET /outputs` | — | docx 내려받기 |
+| SCR-08-11 | `GET /outputs`, `GET /outputs/export`, `POST /actions` | — | — |
 | SCR-09 | `GET /judgments`, `/documents` | — | 엑셀 내려받기, 제출본 기준 |
 | SCR-10 | `GET /warranty`, `/judgments` | 전체 개수 | 성적서 근거, 중복 칸, 엑셀, 영업에 넘기기 |
 | SCR-11 | `GET /runs/{id}` (`failed_step`, `error_message`), `/documents` | — | 멈춘 위치·원문, 이어서 재시도, 처리 기록 |

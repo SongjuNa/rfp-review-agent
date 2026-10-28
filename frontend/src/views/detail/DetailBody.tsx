@@ -8,7 +8,7 @@ import { BidTab } from './BidTab'
 import { ExampleTab } from './ExampleTab'
 import { JudgeTab } from './JudgeTab'
 import { LogTab } from './LogTab'
-import { OutputsDialog } from './OutputsDialog'
+import { useExport } from './ExportOverlay'
 import { LossTab } from './LossTab'
 import { RiskTab } from './RiskTab'
 
@@ -40,7 +40,7 @@ export function DetailBody({ run, tab, onChanged, onSubmit }: {
   const { user } = useSession()
   const id = run.run_id
   const [tick, setTick] = useState(0)
-  const [out, setOut] = useState<'DEVIATION' | 'QUERY' | null>(null)
+  const exporter = useExport(id)
   const changed = () => { setTick((t) => t + 1); onChanged() }
   const counts = useLoad(() => loadCounts(id), [id, tick])
   const empty = useLoad(() => api.warrantyPage(id, { status: 'EMPTY_REVIEW', limit: 1 }).then((p) => p.total), [id, tick])
@@ -51,8 +51,8 @@ export function DetailBody({ run, tab, onChanged, onSubmit }: {
   const legacy = { runId: id, actorId: user?.user_id ?? null, editable: run.stage === 'ENGINEER_REVIEW', onChanged: changed }
   const head = (
     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-      <button type="button" className="bo" onClick={() => setOut('DEVIATION')}>일탈 목록 초안</button>
-      <button type="button" className="bo" onClick={() => setOut('QUERY')}>질의서 초안</button>
+      <button type="button" className="bo" onClick={() => exporter.start('DEVIATION', c?.deviations ?? 0)}>일탈 목록 초안</button>
+      <button type="button" className="bo" onClick={() => exporter.start('QUERY', c?.queries ?? 0)}>질의서 초안</button>
       {SUBMIT_LABELS[run.stage] && (
         <button type="button" className={run.stage === 'ENGINEER_REVIEW' ? 'bp' : 'bo'} disabled={run.stage !== 'ENGINEER_REVIEW'}
           onClick={onSubmit}>{SUBMIT_LABELS[run.stage]}</button>
@@ -79,7 +79,7 @@ export function DetailBody({ run, tab, onChanged, onSubmit }: {
       {tab === 'bid' && <BidTab run={run} tick={tick} onChanged={changed} />}
       {(tab === 'comm' || tab === 'cmp' || tab === 'subm') && <ExampleTab tab={tab} />}
       {tab === 'log' && <LogTab run={run} tick={tick} />}
-      {out && <OutputsDialog run={run} user={user} kind={out} onClose={() => setOut(null)} onChanged={changed} />}
+      {exporter.view}
     </>
   )
 }

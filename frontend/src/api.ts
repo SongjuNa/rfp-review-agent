@@ -340,6 +340,13 @@ async function call<T>(path: string, init?: RequestInit): Promise<T> {
   return (await send(path, init)).json()
 }
 
+/** 내려받을 파일: 이름(Content-Disposition filename*)과 내용 */
+async function file(path: string): Promise<{ name: string; blob: Blob }> {
+  const res = await send(path)
+  const m = /filename\*=UTF-8''([^;]+)/.exec(res.headers.get('Content-Disposition') ?? '')
+  return { name: m ? decodeURIComponent(m[1]) : 'download', blob: await res.blob() }
+}
+
 /** 나눠 받는 목록과 거른 전체 개수(X-Total-Count 머리글). */
 export type Page<T> = { items: T[]; total: number }
 
@@ -407,6 +414,7 @@ export const api = {
   outputs: (id: number) => call<OutputItem[]>(`/runs/${id}/outputs`),
   submissionCheck: (id: number) => call<SubmissionCheck>(`/runs/${id}/submission-check`),
   proposals: (id: number) => call<Proposal[]>(`/runs/${id}/proposals`),
+  exportOutputs: (id: number, list_kind: 'DEVIATION' | 'QUERY') => file(`/runs/${id}/outputs/export?list_kind=${list_kind}`),
   act: (id: number, body: ActionBody) =>
     call<{ submission_check: SubmissionCheck | null }>(`/runs/${id}/actions`, json('POST', body)),
   history: (id: number) => call<LogEntry[]>(`/runs/${id}/history`),

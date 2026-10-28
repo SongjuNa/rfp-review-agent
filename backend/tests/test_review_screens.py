@@ -126,3 +126,36 @@ def test_history_target_labels(db, run, tmp_path):
     blanket = next(r for r in queries.run_risks(db, other) if r["risk_kind"] == "BLANKET")
     review.act(ctx, other, "risk_flag", blanket["risk_id"], "REJECT", reason="일반 조항")
     assert review.history(db, other)[-1]["target_label"] == blanket["expression"]
+
+
+def test_deviation_list_docx(db, run, db_url, monkeypatch):
+    """Scenario: 일탈 목록 초안 Word 파일."""
+    from io import BytesIO
+
+    from docx import Document
+    from fastapi.testclient import TestClient
+
+    from rfp_agent.api.main import app
+    from rfp_agent.config import get_settings
+
+    items = queries.run_outputs(db, run, "DEVIATION")
+    removed = items[0]
+    review.act(RunContext(db, VERSION, None, None), run, "output_item", removed["item_id"],
+               "REJECT", reason="목록에서 뺌")
+    monkeypatch.setenv("DATABASE_URL", db_url)
+    monkeypatch.delenv("GEMINI_API_KEY", raising=False)
+    get_settings.cache_clear()
+    try:
+        res = TestClient(app).get(f"/api/runs/{run}/outputs/export?list_kind=DEVIATION")
+        assert res.status_code == 200
+        assert "filename*=UTF-8''" in res.headers["content-disposition"]
+        doc = Document(BytesIO(res.content))
+        assert doc.paragraphs[0].text == "일탈 목록 초안"
+        rows = doc.tables[0].rows
+        assert [c.text for c in rows[0].cells] == ["No.", "원문 위치", "문장", "상태"]
+        assert len(rows) - 1 == len(items) - 1          # 뺀 항목은 넣지 않는다
+        assert all("행" in r.cells[1].text for r in rows[1:])
+        assert removed["text_draft"] not in [r.cells[2].text for r in rows[1:]]
+        assert TestClient(app).get(f"/api/runs/{run}/outputs/export?list_kind=X").status_code == 422
+    finally:
+        get_settings.cache_clear()

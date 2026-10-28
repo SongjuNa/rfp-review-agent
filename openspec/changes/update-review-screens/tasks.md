@@ -44,6 +44,15 @@
 - [x] 5.4 e2e: 판정 바꾼 이력 / 위험 조건 닫은 이력
 - [x] 5.5 목업 대조 스크린샷, `SCR-08-9_공유.md`
 
-## 6. 마무리
+## 6. 목록 초안 내려받기와 문장 고치기 (SCR-08-11)
 
-- [x] 6.1 `ruff`, `pytest`, `npm run lint`, `npm run build`, `openspec validate update-review-screens --strict`
+- [x] 6.1 화면 명세 `docs/screens/SCR-08-11-초안.md`
+- [x] 6.2 `pipeline/export.outputs_docx`와 `GET /outputs/export`, 테스트 "일탈 목록 초안 Word 파일"
+- [x] 6.3 화면: 진행 화면(.ldo) → 내려받기 → 알림, 예전 목록 창 뺌
+- [x] 6.4 화면: 패널·판정 상세 창·위험 조건 줄의 문장 확정·사유 적어 고치기·빼기 (`OutputEditor`)
+- [x] 6.5 e2e: 일탈 목록 초안 내려받기 / 사유 적어 문장 고치기
+- [x] 6.6 `SCR-08-11_공유.md`
+
+## 7. 마무리
+
+- [x] 7.1 `ruff`, `pytest`, `npm run lint`, `npm run build`, `openspec validate update-review-screens --strict`

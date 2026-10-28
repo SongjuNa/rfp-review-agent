@@ -1,19 +1,22 @@
 import { useEffect, useState } from 'react'
 import { api, type Judgment, type LogEntry, type OutputItem, type RunDocument, type Warranty } from '../../api'
 import { stamp } from '../../components/format'
-import { compareText, confirmedBy, itemName, markSplit, prodCell, reqText, suggested } from '../../components/judgment'
+import { compareText, confirmedBy, itemName, markSplit, prodCell, reqText, suggested, itemFor } from '../../components/judgment'
 import { RESULT_NAMES, RESULT_TONES, locationText } from '../../components/labels'
 import { useLoad } from '../../components/useLoad'
+import { OutputEditor } from './OutputEditor'
 
 // SCR-08-1 판정 상세 창 (목업 v4.57 Detail의 판정 줄을 누르면 뜨는 창 .mdw).
 // 번역, 비슷한 요구의 과거 결과, 지난 검토 수정 기록은 API가 없어 없다 (SCR-08-1_공유.md).
+// 목록 문장은 여기서 고치고 확정한다 (SCR-08-11).
 
 const LANGS: Record<string, string> = { en: 'EN · 영어', ko: 'KO · 한국어', image: '이미지' }
 
-export function JudgmentDialog({ runId, j, w, items, log, docs, pos, total, canEdit, onPrev, onNext, onClose, onEdit, onConfirm }: {
+export function JudgmentDialog({ runId, j, w, items, log, docs, pos, total, canEdit, onPrev, onNext, onClose, onEdit, onConfirm, onDone }: {
   runId: number; j: Judgment; w?: Warranty; items: OutputItem[]; log: LogEntry[]; docs: RunDocument[]
   pos: number; total: number; canEdit: boolean
   onPrev: (() => void) | null; onNext: (() => void) | null; onClose: () => void; onEdit: () => void; onConfirm: () => Promise<void>
+  onDone: () => void
 }) {
   const req = useLoad(() => api.requirement(j.requirement_id, runId), [j.requirement_id, runId])
   const [occ, setOcc] = useState(0)
@@ -22,6 +25,7 @@ export function JudgmentDialog({ runId, j, w, items, log, docs, pos, total, canE
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose()
+      if (e.target instanceof HTMLTextAreaElement || e.target instanceof HTMLInputElement) return   // 문장·사유 칸에서는 줄 이동 안 함
       if (e.key === 'ArrowUp' && onPrev) { e.preventDefault(); onPrev() }
       if (e.key === 'ArrowDown' && onNext) { e.preventDefault(); onNext() }
     }
@@ -35,7 +39,7 @@ export function JudgmentDialog({ runId, j, w, items, log, docs, pos, total, canE
   const p = prodCell(j, w)
   const sug = suggested(j, log)
   const conf = j.review_status === 'CONFIRMED' || j.review_status === 'EDITED' ? confirmedBy(j, log) : null
-  const draft = items.find((i) => i.sources.some((s) => s.judgment_id === j.judgment_id))
+  const draft = itemFor(items, j)
   const basis: [string, string][] = [
     ['적용 규칙', j.reason_text ?? '—'], ['비교', compareText(j, w)],
     ['제품값 출처', j.result === 'WARRANTY_TO_FILL' ? p.sub : j.product_code ? `${j.product_code} · 제품표` : '—'],
@@ -99,14 +103,7 @@ export function JudgmentDialog({ runId, j, w, items, log, docs, pos, total, canE
                 : <span className="pend">아직 확정 안 함</span>}</td></tr>
             </tbody></table>
 
-            {draft && (
-              <>
-                <label className="lbl" htmlFor="mdDraft" style={{ display: 'flex', justifyContent: 'space-between', marginTop: 18 }}>
-                  {draft.list_kind === 'QUERY' ? '질의 문장' : '일탈 목록 문장'}
-                  {draft.drafted_by === 'AI' && <span className="ai"><span className="ms" aria-hidden="true">auto_awesome</span>AI 초안</span>}</label>
-                <textarea className="ta" id="mdDraft" value={draft.text_draft} readOnly />
-              </>
-            )}
+            {draft && <div style={{ marginTop: 18 }}><OutputEditor key={`${draft.item_id}-${draft.text_draft}-${draft.status}`} runId={runId} item={draft} id="mdDraft" canEdit={canEdit} onDone={onDone} /></div>}
             {error && <p className="aphint" role="alert">{error}</p>}
           </section>
         </div>

@@ -6,6 +6,7 @@ import hashlib
 import re
 from datetime import date
 from pathlib import Path
+from urllib.parse import quote
 
 from fastapi import APIRouter, BackgroundTasks, Form, HTTPException, Query, Response, UploadFile
 from pydantic import BaseModel, Field
@@ -14,6 +15,7 @@ from rfp_agent.config import get_settings
 from rfp_agent.db.connection import connect
 from rfp_agent.pipeline import queries, review, review_info
 from rfp_agent.pipeline.assignments import build_assignments
+from rfp_agent.pipeline.export import outputs_docx
 from rfp_agent.pipeline.loss import recalculate
 from rfp_agent.pipeline.outputs import check_submission
 from rfp_agent.pipeline.proposals import build_proposals
@@ -21,6 +23,7 @@ from rfp_agent.pipeline.run import switch_product
 from rfp_agent.pipeline.service import make_context, run_to_end, start_run
 
 router = APIRouter(prefix="/api", tags=["검토 실행"])
+DOCX_TYPE = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
 
 
 class ReviewInfo(BaseModel):
@@ -331,6 +334,16 @@ def run_outputs(run_id: int, list_kind: str | None = None) -> list[dict]:
     _summary(run_id)
     with connect() as conn:
         return queries.run_outputs(conn, run_id, list_kind)
+
+
+@router.get("/runs/{run_id}/outputs/export")
+def export_outputs(run_id: int, list_kind: str = Query(pattern="^(DEVIATION|QUERY)$")) -> Response:
+    """일탈 목록·질의서 초안 Word 파일 (SCR-08-11)."""
+    _summary(run_id)
+    with connect() as conn:
+        name, body = outputs_docx(conn, run_id, list_kind)
+    return Response(body, media_type=DOCX_TYPE,
+                    headers={"Content-Disposition": f"attachment; filename*=UTF-8''{quote(name)}"})
 
 
 @router.get("/runs/{run_id}/submission-check")

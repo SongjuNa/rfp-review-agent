@@ -6,6 +6,7 @@ import { RISK_NAMES, STATUS_NAMES } from '../../components/labels'
 import { useLoad } from '../../components/useLoad'
 import { useSession } from '../../shell/useSession'
 import { ExampleBand } from './ExampleTab'
+import { OutputEditor } from './OutputEditor'
 
 // SCR-08-3 위험 조건 탭 (목업 v4.57 Detail #risk). docs/screens/SCR-08-3-위험조건.md
 // 위험 조건 표는 실제 데이터, "사람이 찾은 특이 요구"는 제안 API가 없어 예시 영역 (SCR-08-3_공유.md).
@@ -44,6 +45,7 @@ export function RiskTab({ run, tick, onChanged }: { run: RunSummary; tick: numbe
   const risks = useLoad(() => api.risks(id), [id, tick])
   const log = useLoad(() => api.history(id), [id, tick])
   const docs = useLoad(() => api.documents(id), [id])
+  const items = useLoad(() => api.outputs(id), [id, tick])
   const [open, setOpen] = useState<number | null>(null)
   const [closing, setClosing] = useState<number | null>(null)
   const [why, setWhy] = useState('')
@@ -116,6 +118,11 @@ export function RiskTab({ run, tick, onChanged }: { run: RunSummary; tick: numbe
                         </div>
                       )
                     })}
+                    {(items.data ?? []).filter((i) => i.sources.some((s) => s.risk_id === r.risk_id)).map((i) => (
+                      <div key={i.item_id} style={{ marginTop: 10, maxWidth: 640 }}>
+                        <OutputEditor key={`${i.item_id}-${i.text_draft}-${i.status}`} runId={id} item={i} id={`risk-draft-${i.item_id}`} canEdit={canEdit} onDone={onChanged} />
+                      </div>
+                    ))}
                   </td></tr>
                 )}
               </Fragment>
