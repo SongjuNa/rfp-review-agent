@@ -13,7 +13,7 @@ from pydantic import BaseModel, Field
 
 from rfp_agent.config import get_settings
 from rfp_agent.db.connection import connect
-from rfp_agent.pipeline import queries, read_checks, review, review_info
+from rfp_agent.pipeline import queries, read_checks, review, review_info, tbe
 from rfp_agent.pipeline.assignments import build_assignments
 from rfp_agent.pipeline.export import outputs_docx
 from rfp_agent.pipeline.loss import recalculate
@@ -24,6 +24,7 @@ from rfp_agent.pipeline.service import make_context, run_to_end, start_run
 
 router = APIRouter(prefix="/api", tags=["검토 실행"])
 DOCX_TYPE = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+XLSX_TYPE = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 
 
 class ReviewInfo(BaseModel):
@@ -351,6 +352,35 @@ def export_outputs(run_id: int, list_kind: str = Query(pattern="^(DEVIATION|QUER
         name, body = outputs_docx(conn, run_id, list_kind)
     return Response(body, media_type=DOCX_TYPE,
                     headers={"Content-Disposition": f"attachment; filename*=UTF-8''{quote(name)}"})
+
+
+@router.get("/runs/{run_id}/tbe")
+def get_tbe(run_id: int, include: str = Query("all", pattern="^(all|confirmed)$"),
+            lang: str = Query("en", pattern="^(en|ko|both)$"),
+            base: str = Query("now", pattern="^(now|v1)$")) -> dict:
+    """TBE 준수표 미리보기 (SCR-09). 엑셀과 같은 줄."""
+    _summary(run_id)
+    with connect() as conn:
+        try:
+            return tbe.tbe(conn, run_id, include, lang, base)
+        except tbe.NotApproved as exc:
+            raise HTTPException(409, str(exc)) from exc
+
+
+@router.get("/runs/{run_id}/tbe/export")
+def export_tbe(run_id: int, include: str = Query("all", pattern="^(all|confirmed)$"),
+               lang: str = Query("en", pattern="^(en|ko|both)$"),
+               base: str = Query("now", pattern="^(now|v1)$")) -> Response:
+    """TBE 준수표 엑셀 파일. X-Row-Count = 줄 수."""
+    _summary(run_id)
+    with connect() as conn:
+        try:
+            name, body, n = tbe.tbe_xlsx(conn, run_id, include, lang, base)
+        except tbe.NotApproved as exc:
+            raise HTTPException(409, str(exc)) from exc
+    return Response(body, media_type=XLSX_TYPE, headers={
+        "Content-Disposition": f"attachment; filename*=UTF-8''{quote(name)}",
+        "X-Row-Count": str(n), "Access-Control-Expose-Headers": "X-Row-Count"})
 
 
 @router.get("/runs/{run_id}/submission-check")

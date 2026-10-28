@@ -39,7 +39,7 @@
 | SCR-06 | `Main` | 검토 목록 | RFP 관리 | FR-10, `add-review-info` | 실제 + 예정 |
 | SCR-07 | `Register` | 검토 등록 | RFP 관리 | FR-01, `add-review-info` | 실제 + 예정. 자동 추출 확인(2단계)은 일부 예시 |
 | SCR-08 | `Detail` | 검토 상세 | RFP 관리 | 아래 SCR-08-x | 탭별로 다름 |
-| SCR-09 | `Tbe` | TBE 준수표 | 검토 상세 안 | FR-07, FR-09 | 실제 (표시). 엑셀 내려받기는 없음 |
+| SCR-09 | `Tbe` | TBE 준수표 | 검토 상세 안 | FR-07, FR-09, `add-tbe-export` | 실제 (미리보기·엑셀 내려받기) |
 | SCR-10 | `Datasheet` | 데이터시트 채우기 | 검토 상세 안 | FR-08 | 실제 (표시). 엑셀 내려받기·영업에 넘기기는 없음 |
 | SCR-11 | `Fail` | 분석 실패 상세 | RFP 관리 | CR-12, `review-run` AI 오류 처리 | 실제 (단계·오류 문장). 재시도 방법 고르기·처리 기록은 일부 예시 |
 | SCR-12 | `Wait` | 결재 대기 상세 | RFP 관리 | FR-10, `update-approval-flow` | 실제 + 예정 |
@@ -94,7 +94,7 @@
 | SCR-08-9 | `GET /history` | — | 시스템 처리 기록 |
 | SCR-08-10 | `GET /approval`, `GET /submission-check`, `GET /users` | 결재자·상신 의견 `POST /finish-review` (`update-approval-flow`) | 참조자, 첨부 |
 | SCR-08-11 | `GET /outputs`, `GET /outputs/export`, `POST /actions` | — | — |
-| SCR-09 | `GET /judgments`, `/documents` | — | 엑셀 내려받기, 제출본 기준 |
+| SCR-09 | `GET /runs/{id}`, `/tbe`, `/tbe/export` | — | — |
 | SCR-10 | `GET /warranty`, `/judgments` | 전체 개수 | 성적서 근거, 중복 칸, 엑셀, 영업에 넘기기 |
 | SCR-11 | `GET /runs/{id}` (`failed_step`, `error_message`), `/documents` | — | 멈춘 위치·원문, 이어서 재시도, 처리 기록 |
 | SCR-12 | `GET /approval`, `POST /approval`, `/outputs`, `/risks`, `/history` | 상신 정보·상신 취소 `POST /withdraw` (`update-approval-flow`) | 열람 시각, 다시 알림, 전자결재 번호 |

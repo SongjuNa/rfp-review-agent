@@ -10,7 +10,7 @@ import './shell.css'
 
 // 앱 틀: 왼쪽 메뉴(aside.sb) + 머리글(header.hd) + 본문(.ws). 목업 v4.57 Main의 마크업·클래스 그대로 (SCR-00).
 
-export type Crumb = { label: string; path?: string }
+export type Crumb = { label: string; path?: string; tail?: boolean }
 
 const MINI_KEY = 's2w.sbMini'
 
@@ -238,8 +238,11 @@ export function Shell({ active, crumbs, children }: { active: MenuKey; crumbs: C
   const [mini, setMini] = useState(readMini)
   const path = useHashPath()
   const [tail, setTail] = useState<{ path: string; label: string | null }>({ path, label: null })
+  // 화면이 알려 준 이름은 tail 표시가 있는 칸, 없으면 마지막 칸에 넣는다
+  const marked = crumbs.findIndex((c) => c.tail)
+  const at = marked >= 0 ? marked : crumbs.length - 1
   const shown = tail.label && tail.path === path
-    ? [...crumbs.slice(0, -1), { ...crumbs[crumbs.length - 1], label: tail.label }] : crumbs
+    ? crumbs.map((c, i) => (i === at ? { ...c, label: tail.label! } : c)) : crumbs
   const setLabel = useCallback((label: string | null) => setTail({ path: currentPath(), label }), [])
   const toggle = () => {
     const v = !mini

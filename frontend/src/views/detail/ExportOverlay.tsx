@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { api } from '../../api'
+import { saveFile } from '../../components/download'
 
 // SCR-08-11 일탈 목록·질의서 초안 내려받기 (목업 v4.57 Detail exDev/exQ: 로딩 화면 → .docx → 알림).
 // 진행 막대는 응답이 올 때까지 90 %에서 멈추고, 받으면 100 %가 된다.
@@ -11,17 +12,6 @@ function stages(kind: Kind, n: number): [number, string][] {
   return kind === 'DEVIATION'
     ? [[0, `일탈 후보 ${n}건 모으는 중`], [40, '원문 위치와 일탈 문장 붙이는 중'], [75, 'Word 문서 만드는 중']]
     : [[0, `질의 후보 ${n}건 모으는 중`], [40, '원문 위치와 질의 문장 붙이는 중'], [75, 'Word 문서 만드는 중']]
-}
-
-function save(name: string, blob: Blob) {
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = name
-  document.body.appendChild(a)       // 문서에 붙여야 브라우저가 파일 이름을 쓴다
-  a.click()
-  a.remove()
-  setTimeout(() => URL.revokeObjectURL(url), 1000)
 }
 
 export function useExport(runId: number) {
@@ -36,7 +26,7 @@ export function useExport(runId: number) {
     api.exportOutputs(runId, kind).then(({ name, blob }) => {
       clearInterval(timer.current)
       setJob((j) => j && { ...j, pct: 100 })
-      save(name, blob)
+      saveFile(name, blob)
       setTimeout(() => { setJob(null); setToast(`${name}를 만들었습니다.`) }, 350)
       setTimeout(() => setToast(''), 3350)
     }, (e: Error) => {

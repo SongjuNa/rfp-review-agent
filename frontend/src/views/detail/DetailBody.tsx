@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { api, type RunSummary } from '../../api'
 import { loadCounts, overRatio, ratioText } from '../../components/approval'
 import { useLoad } from '../../components/useLoad'
+import { href } from '../../shell/router'
 import { BidTab } from './BidTab'
 import { CmpTab } from './CmpTab'
 import { CommTab } from './CommTab'
@@ -56,6 +57,7 @@ export function DetailBody({ run, tab, onChanged, onSubmit }: {
     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
       <button type="button" className="bo" onClick={() => exporter.start('DEVIATION', c?.deviations ?? 0)}>일탈 목록 초안</button>
       <button type="button" className="bo" onClick={() => exporter.start('QUERY', c?.queries ?? 0)}>질의서 초안</button>
+      <a className="bo" href={href(`/reviews/${id}/tbe`)}>TBE 준수표</a>
       {SUBMIT_LABELS[run.stage] && (
         <button type="button" className={run.stage === 'ENGINEER_REVIEW' ? 'bp' : 'bo'} disabled={run.stage !== 'ENGINEER_REVIEW'}
           onClick={onSubmit}>{SUBMIT_LABELS[run.stage]}</button>

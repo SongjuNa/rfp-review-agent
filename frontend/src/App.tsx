@@ -8,6 +8,7 @@ import { ReviewList } from './views/ReviewList'
 import { Home } from './views/Home'
 import { Products } from './views/Products'
 import { Rules } from './views/Rules'
+import { Tbe } from './views/Tbe'
 import { Todo } from './views/Todo'
 
 /** 아직 만들지 않은 화면 자리. 목업 순서대로 하나씩 채운다 (docs/screens/README.md 1장). */
@@ -29,6 +30,12 @@ type Route = { menu: MenuKey; crumbs: Crumb[]; body: ReactNode }
 /** 화면 주소 → 화면 (docs/screens/SCR-00-앱틀.md 2장). */
 function route(path: string): Route {
   const home: Crumb = { label: '홈', path: '/' }
+  const tbe = path.match(/^\/reviews\/(\d+)\/tbe$/)
+  if (tbe) {
+    const id = Number(tbe[1])
+    return { menu: 'reviews', crumbs: [home, { label: 'RFP 검토', path: '/reviews' }, { label: '검토 상세', path: `/reviews/${id}`, tail: true },
+      { label: 'TBE 준수표' }], body: <Tbe runId={id} /> }
+  }
   const review = path.match(/^\/reviews\/(\d+)/)
   if (review) {
     const id = Number(review[1])

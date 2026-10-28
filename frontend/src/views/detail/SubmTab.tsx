@@ -2,6 +2,7 @@ import { api, type RunSummary } from '../../api'
 import { loadCounts } from '../../components/approval'
 import { stamp } from '../../components/format'
 import { useLoad } from '../../components/useLoad'
+import { href } from '../../shell/router'
 
 // SCR-08-8 제출본 탭 (목업 v4.57 Detail #subm). docs/screens/SCR-08-8-제출본.md
 // 승인된 실행은 판정을 고칠 수 없으므로(담당자 확인 단계에서만 고침) 승인 시점의 판정이 곧 제출본 v1이다.
@@ -14,13 +15,12 @@ export function SubmTab({ run }: { run: RunSummary }) {
   const a = screen.data?.approval
   const approved = run.stage === 'APPROVED' && a?.decision === 'APPROVED'
   const c = counts.data
-  const tip = 'TBE 준수표 내려받기는 다음 단계(add-tbe-export)에서 만듭니다'
 
   return (
     <section className="sec" id="subm">
       <div className="sech">
         <h2>제출본<span className="note">결재가 승인된 시점의 판정을 고정해 둔 것입니다. 고객에게 낸 내용의 기준이 됩니다.</span></h2>
-        <span title={tip}><button type="button" className="bo" disabled>이 판정으로 TBE 준수표 받기</button></span>
+        <a className="bo" href={href(`/reviews/${id}/tbe`)}>이 판정으로 TBE 준수표 받기</a>
       </div>
       {screen.error && <p role="alert">{screen.error} <button type="button" className="lnk" onClick={screen.reload}>다시 불러오기</button></p>}
       {approved && a && (

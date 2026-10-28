@@ -174,6 +174,17 @@ export type Warranty = {
   locations: Location[]
 }
 
+export type TbeRow = {
+  no: number; judgment_id: number; result: string; item: string; item_ko: string | null; requirement: string
+  verdict: string; offered: string; confirmed: boolean; assumed: boolean; status: string
+  file_name: string; where: string; source: string
+}
+export type Tbe = {
+  file_name: string; review_no: string; project_name: string | null; review_name: string | null; rows: TbeRow[]
+  counts: { rows: number; comply: number; deviation: number; query: number; review: number; candidates: number; no_location: number }
+}
+export type TbeQuery = { include: 'all' | 'confirmed'; lang: 'en' | 'ko' | 'both'; base: 'now' | 'v1' }
+
 export type EngineeringCheck = {
   check_id: number
   rule_code: string
@@ -469,6 +480,8 @@ export const api = {
   outputs: (id: number) => call<OutputItem[]>(`/runs/${id}/outputs`),
   submissionCheck: (id: number) => call<SubmissionCheck>(`/runs/${id}/submission-check`),
   proposals: (id: number) => call<Proposal[]>(`/runs/${id}/proposals`),
+  tbe: (id: number, q: TbeQuery) => call<Tbe>(`/runs/${id}/tbe?${query(q)}`),
+  exportTbe: (id: number, q: TbeQuery) => file(`/runs/${id}/tbe/export?${query(q)}`),
   exportOutputs: (id: number, list_kind: 'DEVIATION' | 'QUERY') => file(`/runs/${id}/outputs/export?list_kind=${list_kind}`),
   bulkConfirm: (id: number, ids: number[], actor_id: number) =>
     call<{ confirmed: number }>(`/runs/${id}/actions/bulk`, json('POST', { target: 'judgment', ids, action: 'CONFIRM', actor_id })),
