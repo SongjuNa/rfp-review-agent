@@ -11,6 +11,7 @@ import { findProject } from './examples/SCR-04'
 import { findBid } from './examples/SCR-14'
 import { BidView } from './views/examples/BidView'
 import { Bids } from './views/examples/Bids'
+import { Phrases } from './views/examples/Phrases'
 import { Project } from './views/examples/Project'
 import { Projects } from './views/examples/Projects'
 import { Products } from './views/Products'
@@ -84,6 +85,9 @@ function route(path: string): Route {
   }
   if (path === '/projects') {
     return { menu: 'projects', crumbs: [home, { label: 'RFP 관리' }, { label: '사업 현황' }], body: <Projects /> }
+  }
+  if (path === '/phrases') {
+    return { menu: 'phrases', crumbs: [home, { label: '지식 관리' }, { label: '표준 문구' }], body: <Phrases /> }
   }
   if (path === '/todo') {
     return { menu: 'todo', crumbs: [home, { label: '협조 요청 현황' }], body: <Todo /> }
