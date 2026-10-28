@@ -16,6 +16,7 @@ import { Files } from './views/examples/Files'
 import { Notice } from './views/examples/Notice'
 import { Phrases } from './views/examples/Phrases'
 import { Project } from './views/examples/Project'
+import { Settings } from './views/examples/Settings'
 import { SysNotice } from './views/examples/SysNotice'
 import { Team } from './views/examples/Team'
 import { Projects } from './views/examples/Projects'
@@ -108,6 +109,9 @@ function route(path: string): Route {
   }
   if (path === '/files') {
     return { menu: 'files', crumbs: [home, { label: '팀 공유' }, { label: '자료실' }], body: <Files /> }
+  }
+  if (path === '/settings') {
+    return { menu: 'settings', crumbs: [home, { label: '설정' }], body: <Settings /> }
   }
   if (path === '/todo') {
     return { menu: 'todo', crumbs: [home, { label: '협조 요청 현황' }], body: <Todo /> }
