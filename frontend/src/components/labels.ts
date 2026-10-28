@@ -70,3 +70,7 @@ export function locationText(loc: Location): string {
   const line = loc.line_start ? ` · ${loc.line_start}행` : ''
   return `파일 ${loc.file_no}${where ? ` · ${where}` : ''}${line}`
 }
+export const DOC_KIND_NAMES: Record<string, string> = {
+  BID_FORM: '입찰 양식', REQUIREMENT_SPEC: '요구 사양서', PURCHASE_SPEC: '구매 사양서', TEST_SPEC: '시험 사양서',
+  SUPPLIER_SPEC: '공급사 사양', UNKNOWN: '종류 모름',
+}

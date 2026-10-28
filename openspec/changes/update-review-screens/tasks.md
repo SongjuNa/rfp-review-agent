@@ -91,6 +91,14 @@
 - [x] 11.3 e2e: 처리 중인 검토
 - [x] 11.4 목업 대조 스크린샷, `SCR-02_공유.md`
 
-## 12. 마무리
+## 12. 분석 실패 화면 (SCR-11)
 
-- [x] 12.1 `ruff`, `pytest`, `npm run lint`, `npm run build`, `openspec validate update-review-screens --strict`
+- [x] 12.1 화면 명세 `docs/screens/SCR-11-분석실패.md`, 목업 Fail CSS(`frontend/src/mockup/Fail.css`)
+- [x] 12.2 화면: 멈춘 단계·오류, 진행 상황 다섯 묶음, 지금 볼 수 있는 것, 문서, 처리 기록, 문의용 정보 복사, 다른 실패 연결
+- [x] 12.3 화면: 계속하는 방법 고르기 (예시 영역)
+- [x] 12.4 e2e: 분석 실패 상세 / 계속하는 방법 예시
+- [x] 12.5 목업 대조 스크린샷, `SCR-11_공유.md`
+
+## 13. 마무리
+
+- [x] 13.1 `ruff`, `pytest`, `npm run lint`, `npm run build`, `openspec validate update-review-screens --strict`
