@@ -31,7 +31,7 @@
 | SCR | 목업 화면 키 | 화면 이름 | 메뉴 | 연결 FR·스펙 | 구현 방식 |
 |---|---|---|---|---|---|
 | SCR-00 | (모든 화면) | 앱 틀: 왼쪽 메뉴, 머리글, 화면 주소 | — | `review-workspace` 앱 틀 | 실제. 알림은 예시 (`SCR-00-앱틀.md`) |
-| SCR-01 | `Login` | 로그인 | — | 범위 밖 (로그인 없음, 사용자 고르기) | 예시 화면 |
+| SCR-01 | `Login` | 로그인 | — | 범위 밖 (로그인 없음, 사용자 고르기) | 예시 화면 (`add-example-screens`) |
 | SCR-02 | `Loading` | 처리 상태 | — | FR-01~06, `review-run` | 실제 |
 | SCR-03 | `Home` | 홈 | 홈 | FR-10, FR-11, `review-workspace` 홈 화면 | 실제 (내 업무·카드·실패 알림·팀 업무). 공지·자료실·행사는 예시 |
 | SCR-04 | `Projects` | 사업 현황 | RFP 관리 | 없음 (사업 단위는 `add-review-info` Non-Goal) | 예시 화면 (`add-example-screens`) |
