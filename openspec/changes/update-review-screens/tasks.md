@@ -70,6 +70,13 @@
 - [x] 8.3 e2e: 상업 조건 골라서 전달 예시 / 예시 탭
 - [x] 8.4 목업 대조 스크린샷, `SCR-08-6_공유.md`
 
-## 9. 마무리
+## 9. 지난 RFP 비교 예시 탭 (SCR-08-7)
 
-- [x] 9.1 `ruff`, `pytest`, `npm run lint`, `npm run build`, `openspec validate update-review-screens --strict`
+- [x] 9.1 화면 명세 `docs/screens/SCR-08-7-지난RFP비교.md`, 예시 데이터 `frontend/src/examples/SCR-08-7.ts`
+- [x] 9.2 화면: 비교 대상 고르기, 지난 입찰 요약, 건수 칸 거르기, 비교 표
+- [x] 9.3 e2e: 지난 RFP 비교 거르기 예시
+- [x] 9.4 목업 대조 스크린샷, `SCR-08-7_공유.md`
+
+## 10. 마무리
+
+- [x] 10.1 `ruff`, `pytest`, `npm run lint`, `npm run build`, `openspec validate update-review-screens --strict`
