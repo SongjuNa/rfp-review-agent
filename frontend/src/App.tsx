@@ -12,6 +12,7 @@ import { findBid } from './examples/SCR-14'
 import { BidView } from './views/examples/BidView'
 import { Bids } from './views/examples/Bids'
 import { Eval } from './views/examples/Eval'
+import { Files } from './views/examples/Files'
 import { Notice } from './views/examples/Notice'
 import { Phrases } from './views/examples/Phrases'
 import { Project } from './views/examples/Project'
@@ -104,6 +105,9 @@ function route(path: string): Route {
   }
   if (path === '/sysnotice') {
     return { menu: 'sysnotice', crumbs: [home, { label: '팀 공유' }, { label: '시스템 공지' }], body: <SysNotice /> }
+  }
+  if (path === '/files') {
+    return { menu: 'files', crumbs: [home, { label: '팀 공유' }, { label: '자료실' }], body: <Files /> }
   }
   if (path === '/todo') {
     return { menu: 'todo', crumbs: [home, { label: '협조 요청 현황' }], body: <Todo /> }

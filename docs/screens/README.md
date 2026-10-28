@@ -53,7 +53,7 @@
 | SCR-20 | `Team` | 팀 현황 | 팀 공유 | 범위 밖 | 예시 화면 (`add-example-screens`) |
 | SCR-21 | `Notice` | 공지사항 | 팀 공유 | 범위 밖 | 예시 화면 (`add-example-screens`) |
 | SCR-22 | `SysNotice` | 시스템 공지 | 팀 공유 | 범위 밖 | 예시 화면 (`add-example-screens`) |
-| SCR-23 | `Files` | 자료실 | 팀 공유 | 범위 밖 | 예시 화면 |
+| SCR-23 | `Files` | 자료실 | 팀 공유 | 범위 밖 | 예시 화면 (`add-example-screens`) |
 | SCR-24 | `Settings` | 설정 | 설정 | 범위 밖 | 예시 화면 |
 
 ### SCR-08 검토 상세의 탭
