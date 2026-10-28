@@ -8,6 +8,7 @@ import { useCrumbTail } from '../shell/crumb'
 import { usePageCss } from '../shell/pageCss'
 import { DetailBody, DetailTabs, type DetailTab } from './detail/DetailBody'
 import { ProductSeg } from './detail/ProductSeg'
+import { ProcessingView } from './ProcessingView'
 import { ReviewInfoDialog } from './ReviewInfoDialog'
 import { SubmitDialog } from './SubmitDialog'
 import { WaitView } from './WaitView'
@@ -20,7 +21,6 @@ function RunStatus({ run }: { run: RunSummary }) {
     <div className="status" role="status">
       <strong>검토 #{run.run_id}</strong>
       <Badge tone={run.stage === 'FAILED' ? 'bad' : run.stage === 'APPROVED' ? 'ok' : ''}>{STAGE_NAMES[run.stage]}</Badge>
-      {run.stage === 'PROCESSING' && <span>현재 단계: {STEP_NAMES[run.step ?? ''] ?? run.step}</span>}
       {run.stage === 'FAILED' && <span className="error">{run.error_message} (실패 단계: {STEP_NAMES[run.failed_step ?? ''] ?? run.failed_step})</span>}
       <span className="sub">문서 {run.documents} · 요구사항 {run.requirements} · 위험 조건 {run.risks} · 판정 {run.judgments}
         · 일탈 후보 {run.deviation_candidates} · 검산 위반 {run.check_violations} · 목록 {run.output_items} · 제안 {run.proposals}</span>
@@ -89,6 +89,7 @@ export function ReviewDetail({ runId }: { runId: number }) {
       {submitting && <SubmitDialog run={run} onClose={() => setSubmitting(false)} onDone={() => { setSubmitting(false); reload() }} />}
       {ready
         ? <DetailBody key={`${run.stage}-${version}`} run={run} tab={tab} onChanged={reload} onSubmit={() => setSubmitting(true)} />
+        : run.stage === 'PROCESSING' ? <ProcessingView run={run} />
         : <div className="legacy" style={{ marginTop: 20 }}><RunStatus run={run} /></div>}
     </main>
   )

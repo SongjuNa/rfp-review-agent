@@ -84,6 +84,13 @@
 - [x] 10.3 e2e: 승인된 실행의 제출본 / 승인 전 제출본 없음
 - [x] 10.4 목업 대조 스크린샷, `SCR-08-8_공유.md`
 
-## 11. 마무리
+## 11. 처리 상태 화면 (SCR-02)
 
-- [x] 11.1 `ruff`, `pytest`, `npm run lint`, `npm run build`, `openspec validate update-review-screens --strict`
+- [x] 11.1 화면 명세 `docs/screens/SCR-02-처리상태.md`
+- [x] 11.2 화면: 처리 중 검토의 진행 막대(단계 순서 백분율)·단계 문장, 끝나면 상세로
+- [x] 11.3 e2e: 처리 중인 검토
+- [x] 11.4 목업 대조 스크린샷, `SCR-02_공유.md`
+
+## 12. 마무리
+
+- [x] 12.1 `ruff`, `pytest`, `npm run lint`, `npm run build`, `openspec validate update-review-screens --strict`
