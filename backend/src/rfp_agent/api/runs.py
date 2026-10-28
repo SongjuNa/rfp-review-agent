@@ -13,7 +13,7 @@ from pydantic import BaseModel, Field
 
 from rfp_agent.config import get_settings
 from rfp_agent.db.connection import connect
-from rfp_agent.pipeline import queries, review, review_info
+from rfp_agent.pipeline import queries, read_checks, review, review_info
 from rfp_agent.pipeline.assignments import build_assignments
 from rfp_agent.pipeline.export import outputs_docx
 from rfp_agent.pipeline.loss import recalculate
@@ -411,7 +411,28 @@ def withdraw(run_id: int, body: Actor) -> dict:
 @router.get("/runs/{run_id}/approval")
 def get_approval(run_id: int) -> dict:
     with connect() as conn:
-        return _review(lambda: review.approval(conn, run_id))
+        screen = _review(lambda: review.approval(conn, run_id))
+        screen["read_unchecked"] = read_checks.unchecked(conn, run_id)   # 문서 읽기 점검 미확인
+        return screen
+
+
+@router.get("/runs/{run_id}/read-checks")
+def run_read_checks(run_id: int) -> list[dict]:
+    """문서 읽기 점검: 시스템이 제대로 읽지 못한 곳과 사람이 확인한 기록 (SCR-08-2)."""
+    with connect() as conn:
+        return _review(lambda: read_checks.read_checks(conn, run_id))
+
+
+@router.post("/runs/{run_id}/read-checks/{key}")
+def check_read(run_id: int, key: str, body: Actor) -> dict:
+    with connect() as conn:
+        return _review(lambda: read_checks.set_checked(conn, run_id, key, True, body.actor_id))
+
+
+@router.delete("/runs/{run_id}/read-checks/{key}")
+def uncheck_read(run_id: int, key: str, actor_id: int | None = None) -> dict:
+    with connect() as conn:
+        return _review(lambda: read_checks.set_checked(conn, run_id, key, False, actor_id))
 
 
 @router.post("/runs/{run_id}/approval")

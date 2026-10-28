@@ -53,6 +53,16 @@
 - [x] 6.5 e2e: 일탈 목록 초안 내려받기 / 사유 적어 문장 고치기
 - [x] 6.6 `SCR-08-11_공유.md`
 
-## 7. 마무리
+## 7. 문서 읽기 점검 탭 (SCR-08-2)
 
-- [x] 7.1 `ruff`, `pytest`, `npm run lint`, `npm run build`, `openspec validate update-review-screens --strict`
+- [x] 7.1 화면 명세 `docs/screens/SCR-08-2-문서읽기점검.md`
+- [x] 7.2 마이그레이션 0011: `doc_figure`(그림 위치), `read_check`(점검 확인), review_log 동작 UNDO
+- [x] 7.3 `docx_reader`·`document`: 그림 단락 찾아 저장, 테스트 "단선도 그림 위치"
+- [x] 7.4 `pipeline/read_checks.py`와 `GET /read-checks`, `POST`·`DELETE /read-checks/{key}`, 승인 화면 미확인 수, 이력 이름. 테스트 "읽지 못한 곳 목록", "점검 확인과 되돌리기", "담당자 확인 단계에서만 확인"
+- [x] 7.5 화면: 점검 탭, 탭 이름 옆 건수, 상신 전 확인 줄
+- [x] 7.6 e2e: 점검 줄 확인 / 점검 확인 되돌리기 / 고칠 수 없을 때 확인 단추 / 상신 창의 점검 미확인
+- [x] 7.7 목업 대조 스크린샷, `SCR-08-2_공유.md`
+
+## 8. 마무리
+
+- [ ] 8.1 `ruff`, `pytest`, `npm run lint`, `npm run build`, `openspec validate update-review-screens --strict`

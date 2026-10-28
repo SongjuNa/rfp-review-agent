@@ -36,6 +36,9 @@ export function historyText(l: LogEntry): string {
       return l.action === 'ADOPT' ? `제안 포인트 ${name} 채택` : l.action === 'DISCARD' ? `제안 포인트 ${name} 버림` : `제안 포인트 ${name} 문장 고침`
     case 'loss_calc':
       return `손실값 고침 (무부하 ${kw(a.loss_noload_kw)} · 부하 ${kw(a.loss_load_kw)} · 보조 ${kw(a.loss_aux_kw)} kW)`
+    case 'read_check':
+      // 목업: "문서 읽기 점검 확인: <위치> (<무엇>)"
+      return `문서 읽기 점검 ${l.action === 'UNDO' ? '확인 되돌림' : '확인'}: ${l.target_label ?? ''}`
     case 'run_product_choice':
       return `비교 제품 바꿈: ${v(b.product_code === null ? '자동' : b.product_code)} → ${v(a.product_code === null ? '자동' : a.product_code)}`
     case 'review_run': {

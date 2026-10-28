@@ -175,7 +175,8 @@ export function WaitView({ run, onChanged }: { run: RunSummary; onChanged: () =>
           <section className="fcard"><h2>상신한 내용<span className="note">상신 시점 기준</span></h2>
             <div className="wsum">{sum.map(([k, v]) => <div key={k}>{k}<b>{v}</b></div>)}</div>
             <h2 style={{ margin: '18px 0 8px', fontSize: 'var(--fs-body)' }}>상신 전 확인 결과</h2>
-            {ratio && <CheckList found={screen.data?.reasons ?? []} ratio={ratio} listed={screen.data?.submission_check?.deviation_listed} compact />}
+            {ratio && <CheckList found={screen.data?.reasons ?? []} ratio={ratio} listed={screen.data?.submission_check?.deviation_listed}
+              unread={screen.data?.read_unchecked} compact />}
             {a?.request_comment && <div className="wop">{a.request_comment}<span className="by">상신 의견 · {owner} · {sent}</span></div>}
           </section>
 

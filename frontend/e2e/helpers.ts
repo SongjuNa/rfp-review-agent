@@ -56,3 +56,6 @@ export const riskRun = (request: APIRequestContext, name: string) => upload(requ
  * 문서 목록 번호가 판정 데이터시트와 같으면 문서 판이 겹치므로 따로 넣는다:
  *   INSERT INTO document_catalog (file_no, file_key, bundle, language) VALUES (94, 'synthetic_loss', 'A', 'en'); */
 export const lossRun = (request: APIRequestContext, name: string) => upload(request, 'synthetic_loss.docx', name)
+
+/** 문서 읽기 점검 줄(표·그림·단위·위치 하나씩)이 나오는 합성 문서 (tests/docx_factory.build_read_spec) */
+export const readRun = (request: APIRequestContext, name: string) => upload(request, 'synthetic_read.docx', name)

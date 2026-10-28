@@ -36,8 +36,8 @@ const CHECKS: [string, string, string][] = [
 ]
 
 /** listed: 일탈 목록에 들어간 수 (누락 점검). 주면 AR-01 줄에 붙인다 */
-export function checkItems(found: Criterion[], ratio: Ratio, listed?: number) {
-  return CHECKS.map(([code, okText, sub]) => {
+export function checkItems(found: Criterion[], ratio: Ratio, listed?: number, unread?: number) {
+  const items = CHECKS.map(([code, okText, sub]) => {
     const hit = found.find((c) => c.ar_code === code)
     const pct = ratioText(ratio)
     const okLine = code === 'AR-03' ? `확인 필요 ${pct} (기준 ${Math.round(ratio.threshold * 100)} % 이하)` : okText
@@ -45,4 +45,11 @@ export function checkItems(found: Criterion[], ratio: Ratio, listed?: number) {
     const text = hit ? hit.detail + (code === 'AR-01' && listed !== undefined ? ` · 일탈 목록에 ${listed}건` : '') : okLine
     return { code, lv, text, sub: hit ? sub : '' }
   })
+  if (unread === undefined) return items
+  // 문서 읽기 점검 (SCR-08-2): 승인 기준은 아니지만 목업처럼 확인 비율 줄 다음에 둔다. 남아 있어도 상신할 수 있다
+  const read = unread
+    ? { code: 'READ', lv: 'warn', text: `문서 읽기 점검 미확인 ${unread}건`, sub: '빠진 요구사항이 있을 수 있습니다' }
+    : { code: 'READ', lv: 'ok', text: '문서 읽기 점검 모두 확인', sub: '' }
+  const at = items.findIndex((c) => c.code === 'AR-03') + 1
+  return [...items.slice(0, at), read, ...items.slice(at)]
 }

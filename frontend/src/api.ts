@@ -253,6 +253,12 @@ export type Proposal = {
 
 export type Criterion = { ar_code: string; detail: string; description?: string }
 
+/** 문서 읽기 점검 줄 (SCR-08-2). kind: 표·그림·단위·위치 */
+export type ReadCheck = {
+  key: string; kind: string; what: string; document_id: number; file_name: string; loc: string
+  line: number | null; problem: string; todo: string; checked_by: string | null; checked_at: string | null
+}
+
 export type ApprovalScreen = {
   stage: Stage
   approval: {
@@ -268,6 +274,7 @@ export type ApprovalScreen = {
     request_comment: string | null
   } | null
   reasons: Criterion[]
+  read_unchecked?: number           // 문서 읽기 점검 미확인 수
   preview: Criterion[] | null
   review_ratio: { review: number; total: number; threshold: number }
   submission_check: SubmissionCheck | null
@@ -419,6 +426,11 @@ export const api = {
     call<{ submission_check: SubmissionCheck | null }>(`/runs/${id}/actions`, json('POST', body)),
   history: (id: number) => call<LogEntry[]>(`/runs/${id}/history`),
   approval: (id: number) => call<ApprovalScreen>(`/runs/${id}/approval`),
+  readChecks: (id: number) => call<ReadCheck[]>(`/runs/${id}/read-checks`),
+  checkRead: (id: number, key: string, actor_id: number) =>
+    call<ReadCheck>(`/runs/${id}/read-checks/${encodeURIComponent(key)}`, json('POST', { actor_id })),
+  uncheckRead: (id: number, key: string, actor_id: number) =>
+    call<ReadCheck>(`/runs/${id}/read-checks/${encodeURIComponent(key)}?actor_id=${actor_id}`, { method: 'DELETE' }),
   /** 결재 상신: 결재자와 상신 의견은 필수 */
   submit: (id: number, approver_id: number, comment: string, actor_id: number) =>
     call<{ stage: Stage; criteria: Criterion[] }>(`/runs/${id}/finish-review`, json('POST', { approver_id, comment, actor_id })),

@@ -11,7 +11,7 @@
 | `_템플릿.md` | 화면 명세 하나의 틀 |
 | `_디자인.md` | 목업 CSS 쓰는 법, 색·글꼴 토큰, 공통 부품 |
 | `SCR-xx_공유.md` | 목업과 피할 수 없이 다르게 만든 곳과 이유 (팀 공유용) |
-| `SCR-xx-<이름>.md` | 화면별 명세 (SCR-00, 06, 07, 08, 08-1, 08-3, 08-4, 08-5, 08-9, 08-10, 08-11, 12 작성) |
+| `SCR-xx-<이름>.md` | 화면별 명세 (SCR-00, 06, 07, 08, 08-1, 08-2, 08-3, 08-4, 08-5, 08-9, 08-10, 08-11, 12 작성) |
 
 ## 기준 목업
 
@@ -64,7 +64,7 @@
 |---|---|---|---|
 | SCR-08 | 머리글, 요약 칸 | FR-07·09·13, `add-review-info` | 실제 + 예정 |
 | SCR-08-1 | 판정 (표 + 오른쪽 판정 상세) | FR-07, FR-08, FR-10, FR-12 | 실제. 번역·질의 보냄 표시는 없음 |
-| SCR-08-2 | 문서 읽기 점검 | FR-01·02 (읽지 못한 곳) | 일부 예시 (문서 단위 `readable`·`needs_review`만 실제) |
+| SCR-08-2 | 문서 읽기 점검 | FR-01·02 (읽지 못한 곳) | 실제 (표·그림·단위·위치, 확인 기록) |
 | SCR-08-3 | 위험 조건 | FR-06 | 실제. "사전에 추가 제안"은 예시 |
 | SCR-08-4 | 손실 환산 (참고) | FR-13 | 실제 |
 | SCR-08-5 | 입찰 영향 | FR-14, FR-15, FR-09 | 실제 |
@@ -87,7 +87,7 @@
 | SCR-07 | `POST /runs`, `GET /library`, `POST /runs/library` | 검토 정보 입력 칸 (`add-review-info`) | 문서 종류 미리 확인, 자동 추출, Lot 나누기, 사업 연결 |
 | SCR-08 | `GET /runs/{id}`, `/documents`, `/equipment`, `/losses`, `/approval`(preview) | 검토 정보 고치기 `PUT /runs/{id}/info` | 문서 추가, 상신 권장일 |
 | SCR-08-1 | `GET /judgments`, `/requirements/{id}`, `/checks`, `/risks`, `/outputs`, `/history`, `POST /actions`, `PUT /equipment/{group}/product` | 전체 개수 `X-Total-Count` | 번역, 질의 보냄 상태, 한꺼번에 확정 |
-| SCR-08-2 | `GET /documents` | — | 점검 항목 목록, "직접 확인함" |
+| SCR-08-2 | `GET /read-checks`, `POST`·`DELETE /read-checks/{key}` | — | — |
 | SCR-08-3 | `GET /risks`(`item_name`), `/history`, `/documents`, `POST /actions` | — | 사전 추가 제안 (예시 영역) |
 | SCR-08-4 | `GET /losses`, `PUT /losses/{id}` | — | 직접 협조 요청 |
 | SCR-08-5 | `GET /proposals`, `GET /judgments`, `POST /actions`, `GET /equipment`, `PUT /equipment/{group}/product` | — | — |

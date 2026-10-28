@@ -30,7 +30,8 @@ export function SubmitDialog({ run, onClose, onDone }: { run: RunSummary; onClos
   const approver = approvers.find((u) => u.user_id === approverId)
   const found = screen.data?.preview ?? []
   const ratio = screen.data?.review_ratio
-  const nWarn = ratio ? found.length : 0
+  const unread = screen.data?.read_unchecked
+  const nWarn = ratio ? found.length + (unread ? 1 : 0) : 0
   const ready = approverId !== null && comment.trim() !== '' && user?.role === 'ENGINEER'
   const c = counts.data
   const sum: [string, string, string][] = c && ratio ? [
@@ -82,7 +83,7 @@ export function SubmitDialog({ run, onClose, onDone }: { run: RunSummary; onClos
 
           <section className="aps"><h3>상신 전 확인<span className="apn">
             {ratio && (nWarn ? `확인할 항목 ${nWarn}건 · 남아 있어도 상신할 수 있습니다` : '모두 확인했습니다')}</span></h3>
-            {ratio && <CheckList found={found} ratio={ratio} />}
+            {ratio && <CheckList found={found} ratio={ratio} unread={unread} />}
           </section>
 
           <section className="aps"><h3>상신 의견<span className="auto2">필수</span></h3>

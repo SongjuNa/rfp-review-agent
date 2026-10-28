@@ -82,7 +82,7 @@ export function ReviewDetail({ runId }: { runId: number }) {
   const ready = !['PROCESSING', 'FAILED'].includes(run.stage)
   return (
     <main className="main">
-      {ready && <DetailTabs tab={tab} onTab={setTab} />}
+      {ready && <DetailTabs run={run} tab={tab} onTab={setTab} />}
       <ReviewHeader run={run} approver={latest && latest.decision !== null ? latest.approver : null} onEdit={() => setEditing(true)}
         onSwitched={ready ? () => { setVersion((v) => v + 1); reload() } : undefined} />
       {editing && <ReviewInfoDialog run={run} onClose={() => setEditing(false)} onSaved={() => { setEditing(false); reload() }} />}

@@ -451,6 +451,7 @@ LABEL_SQL = {
     "output_item": "SELECT item_id, left(text_draft, 40) FROM output_item WHERE item_id = ANY(%s)",
     "proposal_point": "SELECT point_id, basis FROM proposal_point WHERE point_id = ANY(%s)",
     "loss_calc": "SELECT loss_calc_id, product_code FROM loss_calc WHERE loss_calc_id = ANY(%s)",
+    "read_check": "SELECT read_check_id, label FROM read_check WHERE read_check_id = ANY(%s)",
 }
 
 

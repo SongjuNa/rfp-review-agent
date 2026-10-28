@@ -4,6 +4,9 @@
 반복 머리글, "- …" 하위 항목, [REDACTED], 계산식, 한 단락 속 값 두 개, 장소가 다른 UPS 용량.
 """
 
+import struct
+import zlib
+from io import BytesIO
 from pathlib import Path
 
 from docx import Document
@@ -151,6 +154,43 @@ def build_loss_spec(path: Path) -> Path:
         ["3", "Capitalisation of no-load loss", "$/kW", "4500", ""],
         ["4", "Capitalisation of load loss", "$/kW", "3200", ""],
         ["5", "Capitalisation of auxiliary loss", "$/kW", "1300", ""],
+    ])
+    doc.save(str(path))
+    return path
+
+
+def _png() -> BytesIO:
+    """1×1 흰 점 PNG (그림 단락용)."""
+    def chunk(kind: bytes, data: bytes) -> bytes:
+        return (struct.pack(">I", len(data)) + kind + data
+                + struct.pack(">I", zlib.crc32(kind + data) & 0xFFFFFFFF))
+    raw = (b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", struct.pack(">IIBBBBB", 1, 1, 8, 2, 0, 0, 0))
+           + chunk(b"IDAT", zlib.compress(b"\x00\xff\xff\xff")) + chunk(b"IEND", b""))
+    return BytesIO(raw)
+
+
+def build_read_spec(path: Path) -> Path:
+    """문서 읽기 점검용 판정 데이터시트.
+
+    단위 없는 값, 그림과 설명, 머리글 없는 표, 두 번 나온 절 번호가 하나씩 있다.
+    """
+    build_judgment_spec(path)
+    doc = Document(str(path))
+    doc.add_paragraph("2. GENERAL ARRANGEMENT")
+    doc.add_paragraph("2.1 Ratings")
+    doc.add_paragraph("The ratings shall be as shown in the single line diagram.")
+    doc.add_paragraph().add_run().add_picture(_png())
+    doc.add_paragraph("Fig. 1 Single Line Diagram")
+    doc.add_paragraph("2.1 Insulation")
+    doc.add_paragraph("The insulation shall be coordinated with the system.")
+    table = doc.add_table(rows=0, cols=2)
+    for values in (["Revision", "Remarks"], ["A", "First issue"], ["B", "Second issue"]):
+        for cell, value in zip(table.add_row().cells, values, strict=True):
+            cell.text = value
+    doc.add_paragraph("3. ADDITIONAL DATA")
+    _datasheet(doc, "TS-115-GIS-B", [
+        ["11", "Rated power frequency withstand factor", "", "1.2", ""],
+        ["12", "Rated lightning impulse factor", "", "2.5", ""],
     ])
     doc.save(str(path))
     return path
