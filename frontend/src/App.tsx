@@ -11,6 +11,7 @@ import { findProject } from './examples/SCR-04'
 import { findBid } from './examples/SCR-14'
 import { BidView } from './views/examples/BidView'
 import { Bids } from './views/examples/Bids'
+import { Eval } from './views/examples/Eval'
 import { Phrases } from './views/examples/Phrases'
 import { Project } from './views/examples/Project'
 import { Projects } from './views/examples/Projects'
@@ -88,6 +89,9 @@ function route(path: string): Route {
   }
   if (path === '/phrases') {
     return { menu: 'phrases', crumbs: [home, { label: '지식 관리' }, { label: '표준 문구' }], body: <Phrases /> }
+  }
+  if (path === '/eval') {
+    return { menu: 'eval', crumbs: [home, { label: '지식 관리' }, { label: '정답지·채점' }], body: <Eval /> }
   }
   if (path === '/todo') {
     return { menu: 'todo', crumbs: [home, { label: '협조 요청 현황' }], body: <Todo /> }
