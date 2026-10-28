@@ -11,7 +11,7 @@
 | `_템플릿.md` | 화면 명세 하나의 틀 |
 | `_디자인.md` | 목업 CSS 쓰는 법, 색·글꼴 토큰, 공통 부품 |
 | `SCR-xx_공유.md` | 목업과 피할 수 없이 다르게 만든 곳과 이유 (팀 공유용) |
-| `SCR-xx-<이름>.md` | 화면별 명세 (SCR-00, 02, 06, 07, 08, 08-1, 08-2, 08-3, 08-4, 08-5, 08-6, 08-7, 08-8, 08-9, 08-10, 08-11, 11, 12, 13 작성) |
+| `SCR-xx-<이름>.md` | 화면별 명세 (SCR-00, 02, 03, 06, 07, 08, 08-1, 08-2, 08-3, 08-4, 08-5, 08-6, 08-7, 08-8, 08-9, 08-10, 08-11, 11, 12, 13 작성) |
 
 ## 기준 목업
 
@@ -33,7 +33,7 @@
 | SCR-00 | (모든 화면) | 앱 틀: 왼쪽 메뉴, 머리글, 화면 주소 | — | `review-workspace` 앱 틀 | 실제. 알림은 예시 (`SCR-00-앱틀.md`) |
 | SCR-01 | `Login` | 로그인 | — | 범위 밖 (로그인 없음, 사용자 고르기) | 예시 화면 |
 | SCR-02 | `Loading` | 처리 상태 | — | FR-01~06, `review-run` | 실제 |
-| SCR-03 | `Home` | 홈 | 홈 | FR-10, FR-11, `review-workspace` 내 할 일 | 실제 + 예정 (검토 정보·마감). 팀 공유·교육 영역은 일부 예시 |
+| SCR-03 | `Home` | 홈 | 홈 | FR-10, FR-11, `review-workspace` 홈 화면 | 실제 (내 업무·카드·실패 알림·팀 업무). 공지·자료실·행사는 예시 |
 | SCR-04 | `Projects` | 사업 현황 | RFP 관리 | 없음 (사업 단위는 `add-review-info` Non-Goal) | 예시 화면 |
 | SCR-05 | `Project` | 사업 상세 | RFP 관리 | 없음 | 예시 화면 |
 | SCR-06 | `Main` | 검토 목록 | RFP 관리 | FR-10, `add-review-info` | 실제 + 예정 |
@@ -82,7 +82,7 @@
 | SCR | 지금 있는 API | 예정 API | 없음 (예시 데이터 또는 빼기) |
 |---|---|---|---|
 | SCR-02 | `GET /runs/{id}` (`stage`, `step`) | — | 진행률 %, 남은 시간 |
-| SCR-03 | `GET /tasks?user_id=`, `GET /runs` | 검토 정보·마감 (`add-review-info`), 승인자에게 온 검토만 (`update-approval-flow`) | 판정 기준 변경 영향, 팀 업무, 교육·행사 |
+| SCR-03 | `GET /runs`, `GET /assignments?role=`, `GET /users` | — | 판정 기준 변경 영향, 재시도, 게시판, 행사, 접속 상태 |
 | SCR-06 | `GET /runs` | 검토 번호·검토 정보·개수·담당 (`add-review-info`) | 같은 입찰 묶기 |
 | SCR-07 | `POST /runs`, `GET /library`, `POST /runs/library` | 검토 정보 입력 칸 (`add-review-info`) | 문서 종류 미리 확인, 자동 추출, Lot 나누기, 사업 연결 |
 | SCR-08 | `GET /runs/{id}`, `/documents`, `/equipment`, `/losses`, `/approval`(preview) | 검토 정보 고치기 `PUT /runs/{id}/info` | 문서 추가, 상신 권장일 |

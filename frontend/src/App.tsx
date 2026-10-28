@@ -5,6 +5,7 @@ import { Shell, type Crumb } from './shell/Shell'
 import { Register } from './views/Register'
 import { ReviewDetail } from './views/ReviewDetail'
 import { ReviewList } from './views/ReviewList'
+import { Home } from './views/Home'
 import { Todo } from './views/Todo'
 
 /** 아직 만들지 않은 화면 자리. 목업 순서대로 하나씩 채운다 (docs/screens/README.md 1장). */
@@ -36,6 +37,9 @@ function route(path: string): Route {
   }
   if (path === '/register') {
     return { menu: 'register', crumbs: [home, { label: 'RFP 검토', path: '/reviews' }, { label: '검토 등록' }], body: <Register /> }
+  }
+  if (path === '/' || path === '') {
+    return { menu: 'home', crumbs: [{ label: '홈' }], body: <Home /> }
   }
   if (path === '/todo') {
     return { menu: 'todo', crumbs: [home, { label: '협조 요청 현황' }], body: <Todo /> }

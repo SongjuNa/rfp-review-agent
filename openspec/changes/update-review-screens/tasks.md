@@ -108,6 +108,14 @@
 - [x] 13.5 e2e: 수신 부서별 요청 현황 / 24시간 넘게 미확인 / 받는 담당자의 확인 / 요청하기 예시
 - [x] 13.6 목업 대조 스크린샷, `SCR-13_공유.md`
 
-## 14. 마무리
+## 14. 홈 (SCR-03)
 
-- [x] 14.1 `ruff`, `pytest`, `npm run lint`, `npm run build`, `openspec validate update-review-screens --strict`
+- [x] 14.1 화면 명세 `docs/screens/SCR-03-홈.md`, 목업 Home CSS(`frontend/src/mockup/Home.css`), 예시 데이터 `frontend/src/examples/SCR-03.ts`
+- [x] 14.2 화면: 분석 실패 알림, 내 업무 네 칸과 강조, 단계별·사업별 카드
+- [x] 14.3 화면: 팀 업무(실제), 공지·시스템 공지·자료실·행사(예시 영역)
+- [x] 14.4 e2e: 내 업무와 단계별 카드(강조·사업별 포함) / 분석 실패 알림 / 팀 공유와 행사 예시
+- [x] 14.5 목업 대조 스크린샷, `SCR-03_공유.md`
+
+## 15. 마무리
+
+- [x] 15.1 `ruff`, `pytest`, `npm run lint`, `npm run build`, `openspec validate update-review-screens --strict`
