@@ -10,6 +10,7 @@ import { Datasheet } from './views/Datasheet'
 import { findBid } from './examples/SCR-14'
 import { BidView } from './views/examples/BidView'
 import { Bids } from './views/examples/Bids'
+import { Projects } from './views/examples/Projects'
 import { Products } from './views/Products'
 import { Rules } from './views/Rules'
 import { Tbe } from './views/Tbe'
@@ -73,6 +74,9 @@ function route(path: string): Route {
   }
   if (path === '/bids') {
     return { menu: 'bids', crumbs: [home, { label: '입찰 이력' }], body: <Bids /> }
+  }
+  if (path === '/projects') {
+    return { menu: 'projects', crumbs: [home, { label: 'RFP 관리' }, { label: '사업 현황' }], body: <Projects /> }
   }
   if (path === '/todo') {
     return { menu: 'todo', crumbs: [home, { label: '협조 요청 현황' }], body: <Todo /> }
