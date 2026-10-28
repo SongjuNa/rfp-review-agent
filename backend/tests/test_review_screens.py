@@ -111,3 +111,18 @@ def test_loss_amounts(db, tmp_path):
     [loss] = queries.run_losses(db, run_id)
     assert loss["amounts"] == {"noload": 270_000, "load": 960_000, "aux": 10_400}
     assert float(loss["total_usd"]) == sum(loss["amounts"].values())
+
+
+def test_history_target_labels(db, run, tmp_path):
+    """Scenario: 이력 대상 이름."""
+    ctx = RunContext(db, VERSION, None, None)
+    [j] = queries.run_judgments(db, run, result="QUERY_CANDIDATE", limit=1)
+    review.act(ctx, run, "judgment", j["judgment_id"], "EDIT", {"result": "COMPLY"}, "회신 확인")
+    log = review.history(db, run)
+    assert log[-1]["target_label"] == (j["item_name"] or j["item_name_raw"])
+
+    other = create_run(db, VERSION, None)
+    execute_run(ctx, other, [build_gis_spec(tmp_path / "synthetic_154kV_GIS_spec.docx")])
+    blanket = next(r for r in queries.run_risks(db, other) if r["risk_kind"] == "BLANKET")
+    review.act(ctx, other, "risk_flag", blanket["risk_id"], "REJECT", reason="일반 조항")
+    assert review.history(db, other)[-1]["target_label"] == blanket["expression"]

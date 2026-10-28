@@ -23,7 +23,7 @@ test('탭으로 내용 바꾸기', async ({ page, request }) => {
     '상업 조건', '지난 RFP 비교', '제출본', '이력'])
   await tabs.getByRole('tab', { name: '이력' }).click()
   await expect(tabs.getByRole('tab', { name: '이력' })).toHaveAttribute('aria-selected', 'true')
-  await expect(page.getByRole('cell', { name: '시험용 일탈' })).toBeVisible()
+  await expect(page.locator('#log')).toContainText('사유: 시험용 일탈')
 })
 
 test('예시 탭', async ({ page, request }) => {

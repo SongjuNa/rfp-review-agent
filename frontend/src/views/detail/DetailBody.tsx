@@ -3,17 +3,17 @@ import { api, type RunSummary } from '../../api'
 import { loadCounts, overRatio, ratioText } from '../../components/approval'
 import { useLoad } from '../../components/useLoad'
 import { useSession } from '../../shell/useSession'
-import { History } from '../Approval'
 import { Requirements } from '../Findings'
 import { BidTab } from './BidTab'
 import { ExampleTab } from './ExampleTab'
 import { JudgeTab } from './JudgeTab'
+import { LogTab } from './LogTab'
 import { OutputsDialog } from './OutputsDialog'
 import { LossTab } from './LossTab'
 import { RiskTab } from './RiskTab'
 
 // SCR-08 검토 상세 본문: 요약 칸 5개와 탭 9개 (목업 v4.57 Detail .kpis, .pgtabs).
-// 판정·위험 조건·손실 환산·입찰 영향 탭은 목업대로 만들었고, 나머지 탭은 다음 묶음에서 바꿀 때까지 예전 화면을 둔다.
+// 판정·위험 조건·손실 환산·입찰 영향·이력 탭은 목업대로 만들었고, 나머지 탭은 다음 묶음에서 바꿀 때까지 예전 화면을 둔다.
 
 const TABS = [
   ['judge', '판정'], ['read', '문서 읽기 점검'], ['risk', '위험 조건'], ['loss', '손실 환산 (참고)'], ['bid', '입찰 영향'],
@@ -78,7 +78,7 @@ export function DetailBody({ run, tab, onChanged, onSubmit }: {
       {tab === 'loss' && <LossTab run={run} tick={tick} onChanged={changed} />}
       {tab === 'bid' && <BidTab run={run} tick={tick} onChanged={changed} />}
       {(tab === 'comm' || tab === 'cmp' || tab === 'subm') && <ExampleTab tab={tab} />}
-      {tab === 'log' && <section className="sec legacy"><History runId={id} /></section>}
+      {tab === 'log' && <LogTab run={run} tick={tick} />}
       {out && <OutputsDialog run={run} user={user} kind={out} onClose={() => setOut(null)} onChanged={changed} />}
     </>
   )

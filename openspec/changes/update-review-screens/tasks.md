@@ -36,6 +36,14 @@
 - [x] 4.4 e2e: 제안 포인트 채택 / 사유 없이 버리기 / 불리한 점 목록 / 비교 제품 보기 / 비교 제품 바꾸기
 - [x] 4.5 목업 대조 스크린샷, `SCR-08-5_공유.md`
 
-## 5. 마무리
+## 5. 이력 탭 (SCR-08-9)
 
-- [x] 5.1 `ruff`, `pytest`, `npm run lint`, `npm run build`, `openspec validate update-review-screens --strict`
+- [x] 5.1 화면 명세 `docs/screens/SCR-08-9-이력.md`
+- [x] 5.2 `review.history`: 대상 이름(`target_label`), 테스트 "이력 대상 이름"
+- [x] 5.3 화면: 시각·사람·문장·사유 표, 시스템 판정 생성 줄 (`components/history.ts`)
+- [x] 5.4 e2e: 판정 바꾼 이력 / 위험 조건 닫은 이력
+- [x] 5.5 목업 대조 스크린샷, `SCR-08-9_공유.md`
+
+## 6. 마무리
+
+- [x] 6.1 `ruff`, `pytest`, `npm run lint`, `npm run build`, `openspec validate update-review-screens --strict`

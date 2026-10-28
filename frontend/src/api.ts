@@ -283,6 +283,8 @@ export type LogEntry = {
   reason: string | null
   actor: string
   acted_at: string
+  /** 바뀐 대상의 이름 (항목 이름, 위험 표현, 근거 등). 검토 실행·비교 제품은 null */
+  target_label?: string | null
 }
 
 export type Assignment = {

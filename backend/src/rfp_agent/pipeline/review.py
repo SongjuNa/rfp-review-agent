@@ -413,13 +413,58 @@ def approval(conn: psycopg.Connection, run_id: int) -> dict:
 def history(conn: psycopg.Connection, run_id: int, target: str | None = None,
             target_id: int | None = None) -> list[dict]:
     with conn.cursor(row_factory=dict_row) as cur:
-        return cur.execute(
+        rows = cur.execute(
             """SELECT l.log_id, l.target_table, l.target_id, l.action, l.before_value,
                       l.after_value, l.reason, u.user_name AS actor, l.acted_at
                FROM review_log l JOIN app_user u ON u.user_id = l.actor_id
                WHERE l.run_id = %s AND (%s::text IS NULL OR l.target_table = %s)
                  AND (%s::int IS NULL OR l.target_id = %s)
                ORDER BY l.log_id""", (run_id, target, target, target_id, target_id)).fetchall()
+    labels = _target_labels(conn, rows)
+    for r in rows:
+        r["target_label"] = labels.get((r["target_table"], r["target_id"]))
+    return rows
+
+
+# 이력 탭 문장에 쓰는 대상 이름 (항목 이름, 위험 표현, 근거 등). 대상 표마다 한 번에 찾는다.
+LABEL_SQL = {
+    "judgment": """
+        SELECT j.judgment_id, COALESCE(k.name_ko, tr.item_name_raw, left(q.text_raw, 40))
+        FROM judgment j JOIN requirement q USING (requirement_id)
+        LEFT JOIN table_row tr ON tr.row_id = q.row_id
+        LEFT JOIN req_value v ON v.value_id = j.value_id
+        LEFT JOIN item_key k ON k.item_key = v.item_key
+        WHERE j.judgment_id = ANY(%s)""",
+    "warranty_candidate": """
+        SELECT w.candidate_id, COALESCE(k.name_ko, tr.item_name_raw, left(q.text_raw, 40))
+        FROM warranty_candidate w JOIN judgment j USING (judgment_id)
+        JOIN requirement q ON q.requirement_id = j.requirement_id
+        LEFT JOIN table_row tr ON tr.row_id = q.row_id
+        LEFT JOIN req_value v ON v.value_id = j.value_id
+        LEFT JOIN item_key k ON k.item_key = v.item_key
+        WHERE w.candidate_id = ANY(%s)""",
+    "risk_flag": """
+        SELECT f.risk_id, COALESCE(e.expression, k.name_ko, f.item_key)
+        FROM risk_flag f LEFT JOIN risk_expression e USING (expr_id)
+        LEFT JOIN item_key k ON k.item_key = f.item_key
+        WHERE f.risk_id = ANY(%s)""",
+    "output_item": "SELECT item_id, left(text_draft, 40) FROM output_item WHERE item_id = ANY(%s)",
+    "proposal_point": "SELECT point_id, basis FROM proposal_point WHERE point_id = ANY(%s)",
+    "loss_calc": "SELECT loss_calc_id, product_code FROM loss_calc WHERE loss_calc_id = ANY(%s)",
+}
+
+
+def _target_labels(conn: psycopg.Connection, rows: list[dict]) -> dict[tuple[str, int], str]:
+    ids: dict[str, set[int]] = {}
+    for r in rows:
+        if r["target_table"] in LABEL_SQL:
+            ids.setdefault(r["target_table"], set()).add(r["target_id"])
+    out = {}
+    for table, wanted in ids.items():
+        for target_id, label in conn.execute(LABEL_SQL[table], (list(wanted),)):
+            if label:
+                out[(table, target_id)] = label
+    return out
 
 
 def deliverables(conn: psycopg.Connection, run_id: int) -> dict:
