@@ -8,6 +8,15 @@ export const RESULT_NAMES: Record<string, string> = {
   NEEDS_REVIEW: '확인 필요',
   WARRANTY_TO_FILL: '보증값 작성',
 }
+/** 판정 배지 색과 칩 점 색 (목업 K) */
+export const RESULT_TONES: Record<string, string> = {
+  DEVIATION_CANDIDATE: 'c-red', QUERY_CANDIDATE: 'c-ora', NEEDS_REVIEW: 'c-ora', WARRANTY_TO_FILL: 'c-blue', COMPLY: 'c-green',
+}
+export const RESULT_DOTS: Record<string, string> = {
+  DEVIATION_CANDIDATE: '#B42318', QUERY_CANDIDATE: '#B54708', NEEDS_REVIEW: '#FDB022', WARRANTY_TO_FILL: '#0569A0', COMPLY: '#067647',
+}
+/** 판정 순서: 일탈 → 질의 → 확인 필요 → 보증값 작성 → 준수 */
+export const RESULT_ORDER = ['DEVIATION_CANDIDATE', 'QUERY_CANDIDATE', 'NEEDS_REVIEW', 'WARRANTY_TO_FILL', 'COMPLY']
 export const STAGE_NAMES: Record<string, string> = {
   PROCESSING: '처리 중',
   ENGINEER_REVIEW: '담당자 확인',

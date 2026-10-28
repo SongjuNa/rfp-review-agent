@@ -233,14 +233,26 @@ def run_risks(run_id: int) -> list[dict]:
 
 @router.get("/runs/{run_id}/judgments")
 def run_judgments(run_id: int, response: Response, result: str | None = None,
-                  group: str | None = None, limit: int = Query(100, le=500),
-                  offset: int = 0) -> list[dict]:
+                  group: str | None = None, type_code: str | None = None,
+                  q: str | None = None, unconfirmed: bool = False,
+                  order: str | None = Query(None, pattern="^priority$"),
+                  limit: int = Query(100, le=500), offset: int = 0) -> list[dict]:
+    """판정 목록. order=priority면 일탈 → 질의 → 확인 필요 → 작성 필요 → 준수 순서."""
+    _summary(run_id)
+    filters = {"result": result, "group": group, "type_code": type_code, "q": q,
+               "unconfirmed": unconfirmed}
+    with connect() as conn:
+        response.headers["X-Total-Count"] = str(queries.count_judgments(conn, run_id, **filters))
+        return queries.run_judgments(conn, run_id, **filters, priority=order == "priority",
+                                     limit=limit, offset=offset)
+
+
+@router.get("/runs/{run_id}/judgment-counts")
+def judgment_counts(run_id: int) -> dict:
+    """판정 칩 건수 (판정 값마다, 확정 안 한 수, 그중 준수)."""
     _summary(run_id)
     with connect() as conn:
-        response.headers["X-Total-Count"] = str(queries.count_judgments(
-            conn, run_id, result=result, group=group))
-        return queries.run_judgments(conn, run_id, result=result, group=group, limit=limit,
-                                     offset=offset)
+        return queries.judgment_counts(conn, run_id)
 
 
 @router.get("/runs/{run_id}/equipment")

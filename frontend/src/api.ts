@@ -61,6 +61,7 @@ export type Location = {
 export type Requirement = {
   requirement_id: number
   file_no: number
+  file_name: string
   text_raw: string
   source_kind: string
   extracted_by: string
@@ -126,7 +127,17 @@ export type Judgment = {
   item_key: string | null
   item_name: string | null
   item_name_raw: string | null
+  type_code: string | null
+  type_name: string | null
   locations: Location[]
+}
+
+/** 판정 칩 건수 (GET /judgment-counts) */
+export type JudgmentCounts = { by_result: Record<string, number>; total: number; unconfirmed: number; unconfirmed_comply: number }
+
+export type JudgmentQuery = {
+  result?: string; group?: string; type_code?: string; q?: string; unconfirmed?: boolean; order?: 'priority'
+  offset?: number; limit?: number
 }
 
 export type Equipment = {
@@ -144,6 +155,7 @@ export type Equipment = {
 
 export type Warranty = {
   candidate_id: number
+  judgment_id: number
   requirement_id: number
   equipment_group: string
   item_key: string | null
@@ -364,8 +376,8 @@ export const api = {
   /** 보낸 칸만 바꾼다. 빈 문자열은 비우기 */
   updateInfo: (id: number, info: Partial<Record<keyof ReviewInfo, string | number | null>>, actor_id: number | null) =>
     call<RunSummary>(`/runs/${id}/info`, json('PUT', { ...info, actor_id })),
-  judgmentPage: (id: number, params: { result?: string; group?: string; offset?: number; limit?: number }) =>
-    page<Judgment>(`/runs/${id}/judgments?${query(params)}`),
+  judgmentPage: (id: number, params: JudgmentQuery) => page<Judgment>(`/runs/${id}/judgments?${query(params)}`),
+  judgmentCounts: (id: number) => call<JudgmentCounts>(`/runs/${id}/judgment-counts`),
   run: (id: number) => call<RunSummary>(`/runs/${id}`),
   documents: (id: number) => call<RunDocument[]>(`/runs/${id}/documents`),
   requirements: (id: number, params: { type_code?: string; offset?: number; limit?: number }) =>
@@ -380,6 +392,8 @@ export const api = {
       json('PUT', { product_code })),
   warranty: (id: number, params: { status?: string; offset?: number; limit?: number }) =>
     call<Warranty[]>(`/runs/${id}/warranty?${query(params)}`),
+  warrantyPage: (id: number, params: { status?: string; offset?: number; limit?: number }) =>
+    page<Warranty>(`/runs/${id}/warranty?${query(params)}`),
   losses: (id: number) => call<Loss[]>(`/runs/${id}/losses`),
   checks: (id: number) => call<EngineeringCheck[]>(`/runs/${id}/checks`),
   updateLoss: (id: number, lossId: number, values: Record<string, number | null>) =>
@@ -403,10 +417,10 @@ export const api = {
   reopen: (id: number, actor_id: number) => call<{ stage: Stage }>(`/runs/${id}/reopen`, json('POST', { actor_id })),
 }
 
-function query(params: Record<string, string | number | undefined>): string {
+function query(params: Record<string, string | number | boolean | undefined>): string {
   const q = new URLSearchParams()
   Object.entries(params).forEach(([k, v]) => {
-    if (v !== undefined && v !== '') q.set(k, String(v))
+    if (v !== undefined && v !== '' && v !== false) q.set(k, String(v))
   })
   return q.toString()
 }

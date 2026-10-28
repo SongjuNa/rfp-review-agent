@@ -37,7 +37,7 @@ export function SubmitDialog({ run, onClose, onDone }: { run: RunSummary; onClos
     ['일탈 후보', String(c.deviations), c.deviations ? 'c-red' : ''],
     ['질의 후보', String(c.queries), c.queries ? 'c-ora' : ''],
     ['확인 필요 비율', ratioText(ratio), overRatio(ratio) ? 'c-ora' : 'c-green'],
-    ['작성 필요', String(c.toFill), c.toFill ? 'c-blue' : ''],
+    ['보증값 작성', String(c.toFill), c.toFill ? 'c-blue' : ''],
     ['손실 환산 참고값액', c.loss, ''],
   ] : []
 

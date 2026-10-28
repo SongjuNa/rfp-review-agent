@@ -1,0 +1,81 @@
+"""판정 목록 거르기·판정 순서·칩 건수. 명세 review-run의 Scenario (change update-review-screens)."""
+
+import pytest
+
+from rfp_agent.pipeline import queries, review
+from rfp_agent.pipeline.run import RunContext, create_run, execute_run
+
+VERSION = "test-dict-v1"
+ORDER = ["DEVIATION_CANDIDATE", "QUERY_CANDIDATE", "NEEDS_REVIEW", "WARRANTY_TO_FILL", "COMPLY"]
+
+
+@pytest.fixture
+def run(db, spec):
+    run_id = create_run(db, VERSION, None)
+    assert execute_run(RunContext(db, VERSION, None, None), run_id, [spec]) == "ENGINEER_REVIEW"
+    return run_id
+
+
+def test_unconfirmed_deviations_only(db, run):
+    """Scenario: 확정 안 한 일탈 후보만."""
+    devs = queries.run_judgments(db, run, result="DEVIATION_CANDIDATE")
+    assert len(devs) == 4
+    review.act(RunContext(db, VERSION, None, None), run, "judgment", devs[0]["judgment_id"],
+               "CONFIRM")
+    left = queries.run_judgments(db, run, result="DEVIATION_CANDIDATE", unconfirmed=True)
+    assert len(left) == 3 and devs[0]["judgment_id"] not in [j["judgment_id"] for j in left]
+    assert queries.count_judgments(db, run, result="DEVIATION_CANDIDATE", unconfirmed=True) == 3
+
+
+def test_priority_order(db, run):
+    """Scenario: 판정 순서로 받기."""
+    rows = queries.run_judgments(db, run, priority=True, limit=500)
+    ranks = [ORDER.index(j["result"]) for j in rows]
+    assert ranks == sorted(ranks) and rows[0]["result"] == "DEVIATION_CANDIDATE"
+    assert rows[-1]["result"] == "COMPLY"
+    assert all("type_name" in j for j in rows)
+
+
+def test_search_filter(db, run):
+    """Scenario: 검색어로 거르기."""
+    rows = queries.run_judgments(db, run, q="busbar", limit=500)
+    assert rows and all("busbar" in (j["item_name_raw"] or "").lower() for j in rows)
+    assert queries.count_judgments(db, run, q="BUSBAR") == len(rows)
+    assert queries.run_judgments(db, run, q="없는검색어") == []
+
+
+def test_chip_counts(db, run):
+    """Scenario: 칩 건수."""
+    counts = queries.judgment_counts(db, run)
+    assert sum(counts["by_result"].values()) == counts["total"]
+    assert counts["total"] == queries.count_judgments(db, run)
+    assert counts["unconfirmed"] == counts["total"]
+    j = queries.run_judgments(db, run, result="COMPLY")[0]
+    review.act(RunContext(db, VERSION, None, None), run, "judgment", j["judgment_id"], "CONFIRM")
+    after = queries.judgment_counts(db, run)
+    assert after["unconfirmed"] == counts["total"] - 1
+    assert after["unconfirmed_comply"] == counts["unconfirmed_comply"] - 1
+
+
+def test_judgment_filters_api(db, run, db_url, monkeypatch):
+    """판정 목록 API의 거르기·정렬과 칩 건수 API."""
+    from fastapi.testclient import TestClient
+
+    from rfp_agent.api.main import app
+    from rfp_agent.config import get_settings
+
+    monkeypatch.setenv("DATABASE_URL", db_url)
+    monkeypatch.delenv("GEMINI_API_KEY", raising=False)
+    get_settings.cache_clear()
+    try:
+        client = TestClient(app)
+        url = f"/api/runs/{run}"
+        res = client.get(f"{url}/judgments", params={"order": "priority", "limit": 3,
+                                                     "unconfirmed": "true"})
+        assert res.status_code == 200 and res.headers["X-Total-Count"]
+        assert res.json()[0]["result"] == "DEVIATION_CANDIDATE"
+        assert client.get(f"{url}/judgments", params={"order": "name"}).status_code == 422
+        counts = client.get(f"{url}/judgment-counts").json()
+        assert counts["by_result"]["DEVIATION_CANDIDATE"] == 4
+    finally:
+        get_settings.cache_clear()

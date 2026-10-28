@@ -188,32 +188,69 @@ JUDGMENTS = """
            j.reason_text, j.product_code, j.product_selected_by, j.product_value_raw,
            j.product_value_unit, j.margin_value, j.margin_kind, j.margin_direction,
            j.is_assumed, j.review_status, v.raw_text AS req_value_raw, v.num_value AS req_num,
-           v.unit_raw, v.cond_time_s, v.item_key, k.name_ko AS item_name, tr.item_name_raw
+           v.unit_raw, v.cond_time_s, v.item_key, k.name_ko AS item_name, tr.item_name_raw,
+           tt.type_code, rt.type_name
     FROM judgment j
     JOIN req_value v ON v.value_id = j.value_id
     JOIN requirement q ON q.requirement_id = j.requirement_id
     LEFT JOIN table_row tr ON tr.row_id = q.row_id
-    LEFT JOIN item_key k ON k.item_key = v.item_key"""
+    LEFT JOIN item_key k ON k.item_key = v.item_key
+    LEFT JOIN requirement_type_tag tt ON tt.requirement_id = j.requirement_id AND tt.is_primary
+    LEFT JOIN requirement_type rt ON rt.type_code = tt.type_code"""
 
-
+# 거르기: 판정 값, 설비 묶음, 주 유형, 검색어(항목 이름·영문 항목명·원문 문장), 확정 안 한 것만
 JUDGMENTS_WHERE = """
         WHERE j.run_id = %(run)s AND j.is_current
           AND (%(result)s::text IS NULL OR j.result = %(result)s)
-          AND (%(group)s::text IS NULL OR j.equipment_group = %(group)s)"""
+          AND (%(group)s::text IS NULL OR j.equipment_group = %(group)s)
+          AND (%(type)s::text IS NULL OR tt.type_code = %(type)s)
+          AND (%(q)s::text IS NULL OR k.name_ko ILIKE %(q)s OR tr.item_name_raw ILIKE %(q)s
+               OR q.text_raw ILIKE %(q)s)
+          AND (NOT %(unconfirmed)s OR j.review_status = 'CANDIDATE')"""
+
+# 판정 순서: 일탈 후보 → 질의 후보 → 확인 필요 → 작성 필요 → 준수
+PRIORITY = """CASE j.result WHEN 'DEVIATION_CANDIDATE' THEN 1 WHEN 'QUERY_CANDIDATE' THEN 2
+    WHEN 'NEEDS_REVIEW' THEN 3 WHEN 'WARRANTY_TO_FILL' THEN 4 ELSE 5 END"""
+
+
+def _judgment_params(run_id: int, result: str | None, group: str | None, type_code: str | None,
+                     q: str | None, unconfirmed: bool) -> dict:
+    text = (q or "").strip()
+    return {"run": run_id, "result": result, "group": group, "type": type_code,
+            "q": f"%{text}%" if text else None, "unconfirmed": unconfirmed}
 
 
 def run_judgments(conn: psycopg.Connection, run_id: int, *, result: str | None = None,
-                  group: str | None = None, limit: int = 100, offset: int = 0) -> list[dict]:
-    rows = _rows(conn, JUDGMENTS + JUDGMENTS_WHERE + """
-        ORDER BY j.judgment_id LIMIT %(limit)s OFFSET %(offset)s""",
-        {"run": run_id, "result": result, "group": group, "limit": limit, "offset": offset})
+                  group: str | None = None, type_code: str | None = None, q: str | None = None,
+                  unconfirmed: bool = False, priority: bool = False, limit: int = 100,
+                  offset: int = 0) -> list[dict]:
+    order = f"{PRIORITY}, j.judgment_id" if priority else "j.judgment_id"
+    rows = _rows(conn, JUDGMENTS + JUDGMENTS_WHERE + f"""
+        ORDER BY {order} LIMIT %(limit)s OFFSET %(offset)s""",
+        _judgment_params(run_id, result, group, type_code, q, unconfirmed)
+        | {"limit": limit, "offset": offset})
     return _with_locations(conn, rows, run_id)
 
 
 def count_judgments(conn: psycopg.Connection, run_id: int, *, result: str | None = None,
-                    group: str | None = None) -> int:
-    return _rows(conn, "SELECT count(*) AS n FROM judgment j" + JUDGMENTS_WHERE,
-                 {"run": run_id, "result": result, "group": group})[0]["n"]
+                    group: str | None = None, type_code: str | None = None,
+                    q: str | None = None, unconfirmed: bool = False) -> int:
+    sql = JUDGMENTS.split("FROM judgment j", 1)[1]
+    return _rows(conn, "SELECT count(*) AS n FROM judgment j" + sql + JUDGMENTS_WHERE,
+                 _judgment_params(run_id, result, group, type_code, q, unconfirmed))[0]["n"]
+
+
+def judgment_counts(conn: psycopg.Connection, run_id: int) -> dict:
+    """판정 칩 건수: 판정 값마다, 확정 안 한 수, 그중 준수. 반려한 판정은 세지 않는다."""
+    rows = _rows(conn, """
+        SELECT result, count(*) AS n,
+               count(*) FILTER (WHERE review_status = 'CANDIDATE') AS open
+        FROM judgment WHERE run_id = %s AND is_current AND review_status <> 'REJECTED'
+        GROUP BY result""", (run_id,))
+    by_result = {r["result"]: r["n"] for r in rows}
+    return {"by_result": by_result, "total": sum(by_result.values()),
+            "unconfirmed": sum(r["open"] for r in rows),
+            "unconfirmed_comply": sum(r["open"] for r in rows if r["result"] == "COMPLY")}
 
 
 def run_equipment(conn: psycopg.Connection, run_id: int) -> list[dict]:
@@ -250,7 +287,7 @@ def run_equipment(conn: psycopg.Connection, run_id: int) -> list[dict]:
 def run_warranty(conn: psycopg.Connection, run_id: int, *, status: str | None = None,
                  limit: int = 100, offset: int = 0) -> list[dict]:
     rows = _rows(conn, """
-        SELECT w.candidate_id, j.requirement_id, j.equipment_group, v.item_key,
+        SELECT w.candidate_id, w.judgment_id, j.requirement_id, j.equipment_group, v.item_key,
                k.name_ko AS item_name, tr.item_name_raw, w.candidate_value, w.candidate_unit,
                w.source_kind, w.product_code, w.pm_column, w.fixed_key, w.status,
                w.reason_code, w.is_assumed
