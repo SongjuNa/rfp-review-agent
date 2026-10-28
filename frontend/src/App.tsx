@@ -7,9 +7,11 @@ import { ReviewDetail } from './views/ReviewDetail'
 import { ReviewList } from './views/ReviewList'
 import { Home } from './views/Home'
 import { Datasheet } from './views/Datasheet'
+import { findProject } from './examples/SCR-04'
 import { findBid } from './examples/SCR-14'
 import { BidView } from './views/examples/BidView'
 import { Bids } from './views/examples/Bids'
+import { Project } from './views/examples/Project'
 import { Projects } from './views/examples/Projects'
 import { Products } from './views/Products'
 import { Rules } from './views/Rules'
@@ -74,6 +76,11 @@ function route(path: string): Route {
   }
   if (path === '/bids') {
     return { menu: 'bids', crumbs: [home, { label: '입찰 이력' }], body: <Bids /> }
+  }
+  const project = path.match(/^\/projects\/([^/]+)$/)
+  if (project) {
+    const p = findProject(decodeURIComponent(project[1]))
+    return { menu: 'projects', crumbs: [home, { label: 'RFP 관리' }, { label: '사업 현황', path: '/projects' }, { label: '사업 상세' }], body: <Project key={p.id} project={p} /> }
   }
   if (path === '/projects') {
     return { menu: 'projects', crumbs: [home, { label: 'RFP 관리' }, { label: '사업 현황' }], body: <Projects /> }

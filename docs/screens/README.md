@@ -35,7 +35,7 @@
 | SCR-02 | `Loading` | 처리 상태 | — | FR-01~06, `review-run` | 실제 |
 | SCR-03 | `Home` | 홈 | 홈 | FR-10, FR-11, `review-workspace` 홈 화면 | 실제 (내 업무·카드·실패 알림·팀 업무). 공지·자료실·행사는 예시 |
 | SCR-04 | `Projects` | 사업 현황 | RFP 관리 | 없음 (사업 단위는 `add-review-info` Non-Goal) | 예시 화면 (`add-example-screens`) |
-| SCR-05 | `Project` | 사업 상세 | RFP 관리 | 없음 | 예시 화면 |
+| SCR-05 | `Project` | 사업 상세 | RFP 관리 | 없음 | 예시 화면 (`add-example-screens`) |
 | SCR-06 | `Main` | 검토 목록 | RFP 관리 | FR-10, `add-review-info` | 실제 + 예정 |
 | SCR-07 | `Register` | 검토 등록 | RFP 관리 | FR-01, `add-review-info` | 실제 + 예정. 자동 추출 확인(2단계)은 일부 예시 |
 | SCR-08 | `Detail` | 검토 상세 | RFP 관리 | 아래 SCR-08-x | 탭별로 다름 |

@@ -359,3 +359,8 @@ export const EXAMPLE_PROJECTS: Project[] = [
     hist: [['BD-2026-012', '예시 사업장 A · 중전압 스위치기어·배전', '10-24', '2026', '결과 대기', 'st c-blue'], ['BD-2025-027', '예시 사업장 O · 154 kV 주변압기', '09-11', '2025', '유찰', 'st c-grey'], ['BD-2025-015', '예시 사업장 U · 145 kV 변전소 GIS', '05-28', '2025', '실주', 'st c-red']],
   },
 ]
+
+/** 주소의 사업 번호. 없는 번호면 목업처럼 첫 사업을 연다. */
+export function findProject(id: string): Project {
+  return EXAMPLE_PROJECTS.find((x) => x.id === id) ?? EXAMPLE_PROJECTS[0]
+}
