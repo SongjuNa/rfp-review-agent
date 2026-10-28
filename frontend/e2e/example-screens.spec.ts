@@ -9,7 +9,9 @@ test('예시 띠', async ({ page }) => {
   const calls: string[] = []
   page.on('request', (r) => { if (r.url().includes('/api/runs')) calls.push(r.url()) })
   await page.goto('/#/')
-  await page.getByRole('navigation', { name: '메뉴' }).getByRole('link', { name: '입찰 이력' }).click()
+  const nav = page.getByRole('navigation', { name: '메뉴' })
+  await nav.getByRole('button', { name: 'RFP 관리' }).click()   // 홈에서는 목업처럼 묶음이 모두 접혀 있다
+  await nav.getByRole('link', { name: '입찰 이력' }).click()
   await expect(page).toHaveURL(/#\/bids$/)
   await expect(page.getByRole('note').filter({ hasText: BAND })).toBeVisible()
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('입찰 이력')

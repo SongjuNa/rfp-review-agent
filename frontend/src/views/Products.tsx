@@ -68,20 +68,22 @@ export function Products() {
   const [page, setPage] = useState(1)
   const [size, setSize] = useState(10)
   const [sel, setSel] = useState<string[]>([])
-  const [cur, setCur] = useState<string | null>(null)
+  // 목업처럼 처음에는 목록 첫 제품의 패널을 펼친다. 닫으면(null) 다시 열지 않는다
+  const [picked, setCur] = useState<string | null | undefined>(undefined)
   const [ptab, setPtab] = useState<'graph' | 'vals'>('graph')
   const [diffOnly, setDiffOnly] = useState(false)
   const fams = useLoad(() => api.productFamilies(), [])
   const items = useLoad(() => api.ruleItems(), [])
   const list = useLoad(() => api.products({ family: fam === 'all' ? undefined : fam, q: q.trim() || undefined, offset: (page - 1) * size, limit: size, cards: cards ? undefined : 'false' }),
     [fam, q, page, size, cards])
-  const detail = useLoad(() => (cur ? api.product(cur) : Promise.resolve(null)), [cur])
   const cmp = useLoad(() => Promise.all(sel.map((c) => api.product(c))), [sel.join(',')])
 
   const all = fams.data ?? []
   const total = all.reduce((n, f) => n + f.products, 0)
   const sum = (k: 'empty_cells' | 'assumed' | 'design_cards' | 'with_empty') => all.reduce((n, f) => n + f[k], 0)
   const rows = list.data?.items ?? []
+  const cur = picked === undefined ? rows[0]?.product_code ?? null : picked
+  const detail = useLoad(() => (cur ? api.product(cur) : Promise.resolve(null)), [cur])
   const toggle = (code: string) => setSel(sel.includes(code) ? sel.filter((c) => c !== code) : [...sel, code])
 
   return (

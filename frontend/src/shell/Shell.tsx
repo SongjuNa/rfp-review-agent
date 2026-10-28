@@ -33,9 +33,9 @@ function NavLink({ item, active }: { item: MenuItem; active: MenuKey }) {
 
 function SideNav({ active }: { active: MenuKey }) {
   const has = groupOf(active)
-  // 목업처럼 한 묶음만 펼친다. 처음에는 지금 화면이 든 묶음(없으면 RFP 관리)을 펼친다.
+  // 목업처럼 한 묶음만 펼친다. 처음에는 지금 화면이 든 묶음을 펼친다(홈·설정처럼 묶음이 없으면 모두 접는다).
   // 다른 화면으로 옮기면 그 화면이 든 묶음을 펼친다.
-  const [st, setSt] = useState<{ at: MenuKey; open: GroupKey | null }>({ at: active, open: has ?? 'rfp' })
+  const [st, setSt] = useState<{ at: MenuKey; open: GroupKey | null }>({ at: active, open: has ?? null })
   const open = st.at === active ? st.open : (has ?? st.open)
   const setOpen = (g: GroupKey | null) => setSt({ at: active, open: g })
   return (

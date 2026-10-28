@@ -15,3 +15,4 @@ dist/
 # 화면 E2E 결과
 frontend/test-results/
 frontend/playwright-report/
+frontend/compare-out/
