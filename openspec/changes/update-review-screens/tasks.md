@@ -28,6 +28,14 @@
 - [x] 3.4 e2e: 손실 환산 표 / 손실값 넣어 다시 계산 / 조항 없는 RFP (합성 `synthetic_loss.docx`, 로컬 문서 목록 94번)
 - [x] 3.5 목업 대조 스크린샷, `SCR-08-4_공유.md`
 
-## 4. 마무리
+## 4. 입찰 영향 탭과 비교 제품 (SCR-08-5, SCR-08 머리글)
 
-- [x] 4.1 `ruff`, `pytest`, `npm run lint`, `npm run build`, `openspec validate update-review-screens --strict`
+- [x] 4.1 화면 명세 `docs/screens/SCR-08-5-입찰영향.md`, SCR-08 머리글 비교 제품
+- [x] 4.2 화면: 유리한 점(제안 포인트 채택·사유 적어 버림), 불리한 점(일탈·질의 후보와 대응)
+- [x] 4.3 화면: 머리글 비교 제품 단추(설비 묶음마다), 바꾸면 다시 판정하고 탭 본문 새로 불러오기
+- [x] 4.4 e2e: 제안 포인트 채택 / 사유 없이 버리기 / 불리한 점 목록 / 비교 제품 보기 / 비교 제품 바꾸기
+- [x] 4.5 목업 대조 스크린샷, `SCR-08-5_공유.md`
+
+## 5. 마무리
+
+- [x] 5.1 `ruff`, `pytest`, `npm run lint`, `npm run build`, `openspec validate update-review-screens --strict`

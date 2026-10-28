@@ -11,7 +11,7 @@
 | `_템플릿.md` | 화면 명세 하나의 틀 |
 | `_디자인.md` | 목업 CSS 쓰는 법, 색·글꼴 토큰, 공통 부품 |
 | `SCR-xx_공유.md` | 목업과 피할 수 없이 다르게 만든 곳과 이유 (팀 공유용) |
-| `SCR-xx-<이름>.md` | 화면별 명세 (SCR-00, 06, 07, 08, 08-1, 08-3, 08-4, 08-10, 12 작성) |
+| `SCR-xx-<이름>.md` | 화면별 명세 (SCR-00, 06, 07, 08, 08-1, 08-3, 08-4, 08-5, 08-10, 12 작성) |
 
 ## 기준 목업
 
@@ -90,7 +90,7 @@
 | SCR-08-2 | `GET /documents` | — | 점검 항목 목록, "직접 확인함" |
 | SCR-08-3 | `GET /risks`(`item_name`), `/history`, `/documents`, `POST /actions` | — | 사전 추가 제안 (예시 영역) |
 | SCR-08-4 | `GET /losses`, `PUT /losses/{id}` | — | 직접 협조 요청 |
-| SCR-08-5 | `GET /proposals`, `GET /outputs`, `POST /actions` | — | — |
+| SCR-08-5 | `GET /proposals`, `GET /judgments`, `POST /actions`, `GET /equipment`, `PUT /equipment/{group}/product` | — | — |
 | SCR-08-9 | `GET /history` | — | 시스템 처리 기록 |
 | SCR-08-10 | `GET /approval`, `GET /submission-check`, `GET /users` | 결재자·상신 의견 `POST /finish-review` (`update-approval-flow`) | 참조자, 첨부 |
 | SCR-08-11 | `GET /outputs` | — | docx 내려받기 |

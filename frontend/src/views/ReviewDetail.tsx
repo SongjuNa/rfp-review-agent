@@ -7,6 +7,7 @@ import { useLoad } from '../components/useLoad'
 import { useCrumbTail } from '../shell/crumb'
 import { usePageCss } from '../shell/pageCss'
 import { DetailBody, DetailTabs, type DetailTab } from './detail/DetailBody'
+import { ProductSeg } from './detail/ProductSeg'
 import { ReviewInfoDialog } from './ReviewInfoDialog'
 import { SubmitDialog } from './SubmitDialog'
 import { WaitView } from './WaitView'
@@ -28,7 +29,9 @@ function RunStatus({ run }: { run: RunSummary }) {
 }
 
 /** 머리글: 검토 번호·단계·마감, 제목(사업명 · 검토명), 사업·문서·고객사·담당 줄, 검토 정보 고치기 */
-function ReviewHeader({ run, approver, onEdit }: { run: RunSummary; approver: string | null; onEdit: () => void }) {
+function ReviewHeader({ run, approver, onEdit, onSwitched }: {
+  run: RunSummary; approver: string | null; onEdit: () => void; onSwitched?: () => void
+}) {
   const due = run.due_date ? dday(run.due_date) : null
   const place = [run.customer_name, run.country].filter(Boolean).join(' · ')
   return (
@@ -52,6 +55,7 @@ function ReviewHeader({ run, approver, onEdit }: { run: RunSummary; approver: st
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
           <button type="button" className="bo" onClick={onEdit}>
             <span className="ms" aria-hidden="true" style={{ fontSize: 'var(--ic-s)' }}>edit</span>검토 정보 고치기</button>
+          {onSwitched && <ProductSeg run={run} onSwitched={onSwitched} />}
         </div>
       </div>
     </>
@@ -64,6 +68,7 @@ export function ReviewDetail({ runId }: { runId: number }) {
   const [editing, setEditing] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [tab, setTab] = useState<DetailTab>('judge')
+  const [version, setVersion] = useState(0)          // 비교 제품을 바꾸면 탭 본문을 새로 불러온다
   usePageCss(run?.stage === 'APPROVAL' ? 'Wait' : 'Detail')
   useCrumbTail(run?.review_no)
   useEffect(() => {
@@ -78,11 +83,12 @@ export function ReviewDetail({ runId }: { runId: number }) {
   return (
     <main className="main">
       {ready && <DetailTabs tab={tab} onTab={setTab} />}
-      <ReviewHeader run={run} approver={latest && latest.decision !== null ? latest.approver : null} onEdit={() => setEditing(true)} />
+      <ReviewHeader run={run} approver={latest && latest.decision !== null ? latest.approver : null} onEdit={() => setEditing(true)}
+        onSwitched={ready ? () => { setVersion((v) => v + 1); reload() } : undefined} />
       {editing && <ReviewInfoDialog run={run} onClose={() => setEditing(false)} onSaved={() => { setEditing(false); reload() }} />}
       {submitting && <SubmitDialog run={run} onClose={() => setSubmitting(false)} onDone={() => { setSubmitting(false); reload() }} />}
       {ready
-        ? <DetailBody key={run.stage} run={run} tab={tab} onChanged={reload} onSubmit={() => setSubmitting(true)} />
+        ? <DetailBody key={`${run.stage}-${version}`} run={run} tab={tab} onChanged={reload} onSubmit={() => setSubmitting(true)} />
         : <div className="legacy" style={{ marginTop: 20 }}><RunStatus run={run} /></div>}
     </main>
   )
