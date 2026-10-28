@@ -29,9 +29,9 @@
 
 ## 6. 테스트 (Scenario마다 하나 이상, 이름에 Scenario 이름)
 
-- [ ] 6.1 예시 띠 / 저장하지 않음 / 금액 가림
+- [x] 6.1 예시 띠 / 저장하지 않음 / 금액 가림
 
 ## 7. 마무리
 
-- [ ] 7.1 `npm run lint`, `npm run build`, e2e 통과
-- [ ] 7.2 `openspec validate add-example-screens --strict` 통과 후 archive
+- [x] 7.1 `npm run lint`, `npm run build`, e2e 통과
+- [x] 7.2 `openspec validate add-example-screens --strict` 통과 후 archive

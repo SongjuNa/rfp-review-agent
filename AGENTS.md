@@ -54,6 +54,7 @@ openspec/
 | 15 | `archive/2026-10-28-add-bulk-confirm` | 판정 여러 줄 한꺼번에 확정 (완료) |
 | 16 | `archive/2026-10-28-add-tbe-export` | TBE 준수표 화면과 엑셀 내려받기 (완료) |
 | 17 | `archive/2026-10-28-add-datasheet-export` | 데이터시트 채우기 화면과 엑셀 내려받기 (완료) |
+| 18 | `archive/2026-10-28-add-example-screens` | 백엔드 없는 메뉴 화면 12개를 예시 데이터로 (완료) |
 
 ## 3. 작업 흐름
 
