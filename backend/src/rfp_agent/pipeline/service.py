@@ -18,9 +18,9 @@ def make_context(conn: psycopg.Connection) -> RunContext:
                       make_llm(settings.gemini_api_key, settings.gemini_model), txt_dir)
 
 
-def start_run(conn: psycopg.Connection) -> int:
+def start_run(conn: psycopg.Connection, started_by: int | None = None) -> int:
     ctx = make_context(conn)
-    return create_run(conn, ctx.version, ctx.llm)
+    return create_run(conn, ctx.version, ctx.llm, started_by)
 
 
 def run_to_end(run_id: int, paths: list[Path]) -> str:

@@ -5,16 +5,25 @@ import { expect, test } from '@playwright/test'
 const FILE_1 = '1. Bidding Forms_Draft'
 
 test('파일 1을 올려 확인·승인까지', async ({ page }) => {
-  await page.goto('/#/reviews')
-  const library = page.getByLabel('서버에 둔 RFP')
-  await library.waitFor({ timeout: 10_000 }).catch(() => undefined)
-  const file = (await library.locator('option').allTextContents()).find((f) => f.includes(FILE_1))
+  await page.goto('/#/register')
+  const more = page.getByRole('button', { name: '서버에 둔 RFP에서 고르기' })
+  await more.waitFor({ timeout: 10_000 }).catch(() => undefined)
+  test.skip(!(await more.isVisible()), '서버에 둔 RFP 원문이 없음')
+  await more.click()
+  const library = page.getByRole('table', { name: '서버에 둔 RFP' })
+  const file = (await library.locator('td:nth-child(2)').allTextContents()).find((f) => f.includes(FILE_1))
   test.skip(!file, '서버에 파일 1 원문이 없음')
-  await library.selectOption(file!)
-  await page.getByRole('button', { name: '골라서 시작' }).click()
+  await library.getByRole('checkbox', { name: file! }).check()
+  await page.getByRole('button', { name: /다음/ }).click()
+  await page.getByLabel('제출 마감일').fill('2026-12-31')
+  await page.getByRole('button', { name: /다음/ }).click()
+  await page.getByRole('button', { name: /등록하고 분석 시작/ }).click()
+  const reviewNo = (await page.getByRole('status').textContent())!.match(/RV-\d{4}-\d{3}/)![0]
+  await page.goto('/#/reviews')
+  await page.locator('tr', { hasText: reviewNo }).getByRole('link').first().click()
 
   // Scenario: 처리 중 — 실행이 시작되고 현재 단계가 보인다
-  const status = page.getByRole('status').first()
+  const status = page.locator('.legacy [role=status]').first()
   await expect(status).toContainText(/처리 중|담당자 확인/)
   await expect(status).toContainText('담당자 확인', { timeout: 240_000 })
 

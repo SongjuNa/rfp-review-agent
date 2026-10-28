@@ -16,6 +16,11 @@ export const STAGE_NAMES: Record<string, string> = {
   REJECTED: '반려됨',
   FAILED: '처리 실패',
 }
+/** 단계 배지 색 (목업 .st.c-*) */
+export const STAGE_TONES: Record<string, string> = {
+  PROCESSING: 'c-grey', ENGINEER_REVIEW: 'c-blue', APPROVAL: 'c-grey', APPROVED: 'c-green', REJECTED: 'c-grey',
+  FAILED: 'c-red',
+}
 export const STEP_NAMES: Record<string, string> = {
   created: '시작', documents: '문서 읽기', pairs: '같은 문서 찾기', risks: '위험 조건 찾기',
   judge: '제품 비교 판정', check: '공학 규칙 검산', warranty: '보증값 후보', loss: '손실 환산', outputs: '일탈·질의 목록',

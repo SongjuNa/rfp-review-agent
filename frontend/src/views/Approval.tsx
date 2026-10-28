@@ -72,7 +72,8 @@ function show(value: Record<string, unknown> | null, keys: string[]): string {
   return keys.filter((k) => value[k] !== undefined && value[k] !== null).map((k) => `${k}: ${String(value[k])}`).join(', ')
 }
 
-const SHOWN = ['result', 'status', 'candidate_value', 'text_draft', 'stage', 'product_code', 'total_usd', 'review_status']
+const SHOWN = ['result', 'status', 'candidate_value', 'text_draft', 'stage', 'product_code', 'total_usd', 'review_status',
+  'project_name', 'review_name', 'customer_name', 'country', 'due_date', 'engineer_id']
 
 export function History({ runId }: { runId: number }) {
   const { data, error } = useLoad(() => api.history(runId), [runId])

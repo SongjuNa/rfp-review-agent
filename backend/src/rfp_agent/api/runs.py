@@ -4,14 +4,15 @@
 
 import hashlib
 import re
+from datetime import date
 from pathlib import Path
 
-from fastapi import APIRouter, BackgroundTasks, HTTPException, Query, UploadFile
+from fastapi import APIRouter, BackgroundTasks, Form, HTTPException, Query, Response, UploadFile
 from pydantic import BaseModel, Field
 
 from rfp_agent.config import get_settings
 from rfp_agent.db.connection import connect
-from rfp_agent.pipeline import queries, review
+from rfp_agent.pipeline import queries, review, review_info
 from rfp_agent.pipeline.assignments import build_assignments
 from rfp_agent.pipeline.loss import recalculate
 from rfp_agent.pipeline.outputs import check_submission
@@ -22,7 +23,21 @@ from rfp_agent.pipeline.service import make_context, run_to_end, start_run
 router = APIRouter(prefix="/api", tags=["검토 실행"])
 
 
-class LibraryRun(BaseModel):
+class ReviewInfo(BaseModel):
+    """검토 정보. 보낸 칸만 바꾸고 빈 문자열은 비우기로 본다 (add-review-info)."""
+    project_name: str | None = Field(None, max_length=200)
+    review_name: str | None = Field(None, max_length=200)
+    customer_name: str | None = Field(None, max_length=200)
+    country: str | None = Field(None, max_length=60)
+    due_date: date | str | None = None
+    engineer_id: int | None = None
+    actor_id: int | None = None
+
+    def info(self) -> dict:
+        return self.model_dump(exclude_unset=True, exclude={"actor_id"})
+
+
+class LibraryRun(ReviewInfo):
     files: list[str]
 
 
@@ -76,9 +91,14 @@ def _summary(run_id: int) -> dict:
     return summary
 
 
-def _start(paths: list[Path], background: BackgroundTasks) -> dict:
+def _start(paths: list[Path], background: BackgroundTasks, info: dict,
+           actor_id: int | None) -> dict:
     with connect() as conn:
-        run_id = start_run(conn)
+        # 검토 정보가 틀리면 실행을 만들기 전에 막는다
+        _review(lambda: review_info.clean(info))
+        _review(lambda: review_info.check_engineer(conn, info.get("engineer_id") or None))
+        run_id = start_run(conn, actor_id)
+        _review(lambda: review_info.save_on_start(conn, run_id, info, actor_id))
     background.add_task(run_to_end, run_id, paths)
     return _summary(run_id)
 
@@ -127,12 +147,16 @@ def run_library(body: LibraryRun, background: BackgroundTasks) -> dict:
     missing = [p.name for p in paths if not p.exists()]
     if not paths or missing:
         raise HTTPException(400, f"없는 파일: {', '.join(missing) or '(파일 없음)'}")
-    return _start(paths, background)
+    return _start(paths, background, body.info(), body.actor_id)
 
 
 @router.post("/runs", status_code=202)
-async def run_upload(files: list[UploadFile], background: BackgroundTasks) -> dict:
-    """올린 docx로 검토를 시작한다.
+async def run_upload(files: list[UploadFile], background: BackgroundTasks,
+                     project_name: str | None = Form(None), review_name: str | None = Form(None),
+                     customer_name: str | None = Form(None), country: str | None = Form(None),
+                     due_date: str | None = Form(None), engineer_id: int | None = Form(None),
+                     actor_id: int | None = Form(None)) -> dict:
+    """올린 docx로 검토를 시작한다. 검토 정보 칸은 모두 고를 수 있다.
 
     파일은 내용 해시 폴더에 저장해 같은 파일이면 다시 처리하지 않는다.
     """
@@ -148,11 +172,23 @@ async def run_upload(files: list[UploadFile], background: BackgroundTasks) -> di
         paths.append(target)
     if not paths:
         raise HTTPException(400, "파일이 없습니다.")
-    return _start(paths, background)
+    sent = {"project_name": project_name, "review_name": review_name,
+            "customer_name": customer_name, "country": country, "due_date": due_date,
+            "engineer_id": engineer_id}
+    return _start(paths, background, {k: v for k, v in sent.items() if v is not None}, actor_id)
 
 
 @router.get("/runs/{run_id}")
 def run_status(run_id: int) -> dict:
+    return _summary(run_id)
+
+
+@router.put("/runs/{run_id}/info")
+def update_info(run_id: int, body: ReviewInfo) -> dict:
+    """검토 정보를 고친다. 단계와 관계없이 고칠 수 있고 바뀐 칸은 이력에 남는다."""
+    _summary(run_id)
+    with connect() as conn:
+        _review(lambda: review_info.update(conn, run_id, body.info(), body.actor_id))
     return _summary(run_id)
 
 
@@ -171,10 +207,13 @@ def run_pairs(run_id: int) -> list[dict]:
 
 
 @router.get("/runs/{run_id}/requirements")
-def run_requirements(run_id: int, document_id: int | None = None, type_code: str | None = None,
-                     limit: int = Query(100, le=500), offset: int = 0) -> list[dict]:
+def run_requirements(run_id: int, response: Response, document_id: int | None = None,
+                     type_code: str | None = None, limit: int = Query(100, le=500),
+                     offset: int = 0) -> list[dict]:
     _summary(run_id)
     with connect() as conn:
+        response.headers["X-Total-Count"] = str(queries.count_requirements(
+            conn, run_id, document_id=document_id, type_code=type_code))
         return queries.run_requirements(conn, run_id, document_id=document_id,
                                         type_code=type_code, limit=limit, offset=offset)
 
@@ -187,10 +226,13 @@ def run_risks(run_id: int) -> list[dict]:
 
 
 @router.get("/runs/{run_id}/judgments")
-def run_judgments(run_id: int, result: str | None = None, group: str | None = None,
-                  limit: int = Query(100, le=500), offset: int = 0) -> list[dict]:
+def run_judgments(run_id: int, response: Response, result: str | None = None,
+                  group: str | None = None, limit: int = Query(100, le=500),
+                  offset: int = 0) -> list[dict]:
     _summary(run_id)
     with connect() as conn:
+        response.headers["X-Total-Count"] = str(queries.count_judgments(
+            conn, run_id, result=result, group=group))
         return queries.run_judgments(conn, run_id, result=result, group=group, limit=limit,
                                      offset=offset)
 
@@ -229,10 +271,12 @@ def choose_product(run_id: int, group: str, body: ProductChoice) -> dict:
 
 
 @router.get("/runs/{run_id}/warranty")
-def run_warranty(run_id: int, status: str | None = None, limit: int = Query(100, le=500),
-                 offset: int = 0) -> list[dict]:
+def run_warranty(run_id: int, response: Response, status: str | None = None,
+                 limit: int = Query(100, le=500), offset: int = 0) -> list[dict]:
     _summary(run_id)
     with connect() as conn:
+        response.headers["X-Total-Count"] = str(queries.count_warranty(conn, run_id,
+                                                                      status=status))
         return queries.run_warranty(conn, run_id, status=status, limit=limit, offset=offset)
 
 

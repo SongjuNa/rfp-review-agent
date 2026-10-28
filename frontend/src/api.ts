@@ -11,8 +11,20 @@ export type User = { user_id: number; user_name: string; role: string }
 
 export type Stage = 'PROCESSING' | 'ENGINEER_REVIEW' | 'APPROVAL' | 'APPROVED' | 'REJECTED' | 'FAILED'
 
-export type RunSummary = {
+/** 사람이 넣는 검토 정보 (add-review-info). 비어 있으면 null */
+export type ReviewInfo = {
+  project_name: string | null
+  review_name: string | null
+  customer_name: string | null
+  country: string | null
+  due_date: string | null      // YYYY-MM-DD
+  engineer_id: number | null
+}
+
+export type RunSummary = ReviewInfo & {
   run_id: number
+  review_no: string            // RV-<시작 연도>-<실행 번호 세 자리>
+  engineer_name: string | null
   stage: Stage
   step: string | null
   failed_step: string | null
@@ -30,7 +42,9 @@ export type RunSummary = {
   llm_model: string | null
 }
 
-export type RunListItem = Pick<RunSummary, 'run_id' | 'stage' | 'step' | 'started_at' | 'error_message'> & {
+export type RunListItem = ReviewInfo & Pick<RunSummary, 'run_id' | 'review_no' | 'engineer_name' | 'stage'
+  | 'step' | 'failed_step' | 'started_at' | 'finished_at' | 'error_message' | 'requirements' | 'risks'
+  | 'deviation_candidates' | 'proposals'> & {
   files: string | null
 }
 
@@ -284,7 +298,7 @@ export type ActionBody = {
   actor_id?: number
 }
 
-async function call<T>(path: string, init?: RequestInit): Promise<T> {
+async function send(path: string, init?: RequestInit): Promise<Response> {
   const res = await fetch(`/api${path}`, init)
   if (!res.ok) {
     let message = `API ${res.status}`
@@ -296,7 +310,31 @@ async function call<T>(path: string, init?: RequestInit): Promise<T> {
     }
     throw new Error(message)
   }
-  return res.json()
+  return res
+}
+
+async function call<T>(path: string, init?: RequestInit): Promise<T> {
+  return (await send(path, init)).json()
+}
+
+/** 나눠 받는 목록과 거른 전체 개수(X-Total-Count 머리글). */
+export type Page<T> = { items: T[]; total: number }
+
+async function page<T>(path: string): Promise<Page<T>> {
+  const res = await send(path)
+  const items: T[] = await res.json()
+  return { items, total: Number(res.headers.get('X-Total-Count') ?? items.length) }
+}
+
+/** 검토 시작 때 함께 보내는 검토 정보. 빈 칸은 보내지 않는다 */
+export type StartInfo = Partial<Omit<ReviewInfo, 'engineer_id'>> & { engineer_id?: number | null; actor_id?: number | null }
+
+function filled(info: StartInfo): Record<string, string | number> {
+  const out: Record<string, string | number> = {}
+  Object.entries(info).forEach(([k, v]) => {
+    if (v !== undefined && v !== null && v !== '') out[k] = v
+  })
+  return out
 }
 
 const json = (method: string, body: unknown): RequestInit => ({
@@ -308,14 +346,21 @@ const json = (method: string, body: unknown): RequestInit => ({
 export const api = {
   health: () => call<Health>('/health'),
   users: () => call<User[]>('/users'),
-  runs: () => call<RunListItem[]>('/runs'),
+  runs: (limit = 200) => call<RunListItem[]>(`/runs?limit=${limit}`),
   library: () => call<string[]>('/library'),
-  startLibrary: (files: string[]) => call<RunSummary>('/runs/library', json('POST', { files })),
-  upload: (files: File[]) => {
+  startLibrary: (files: string[], info: StartInfo = {}) =>
+    call<RunSummary>('/runs/library', json('POST', { files, ...filled(info) })),
+  upload: (files: File[], info: StartInfo = {}) => {
     const form = new FormData()
     files.forEach((f) => form.append('files', f))
+    Object.entries(filled(info)).forEach(([k, v]) => form.append(k, String(v)))
     return call<RunSummary>('/runs', { method: 'POST', body: form })
   },
+  /** 보낸 칸만 바꾼다. 빈 문자열은 비우기 */
+  updateInfo: (id: number, info: Partial<Record<keyof ReviewInfo, string | number | null>>, actor_id: number | null) =>
+    call<RunSummary>(`/runs/${id}/info`, json('PUT', { ...info, actor_id })),
+  judgmentPage: (id: number, params: { result?: string; group?: string; offset?: number; limit?: number }) =>
+    page<Judgment>(`/runs/${id}/judgments?${query(params)}`),
   run: (id: number) => call<RunSummary>(`/runs/${id}`),
   documents: (id: number) => call<RunDocument[]>(`/runs/${id}/documents`),
   requirements: (id: number, params: { type_code?: string; offset?: number; limit?: number }) =>

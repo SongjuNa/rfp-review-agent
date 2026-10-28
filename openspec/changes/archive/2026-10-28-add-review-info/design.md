@@ -9,7 +9,7 @@
 ## Decisions
 
 ### 1. 저장 위치: `review_run`에 칸 추가
-- 마이그레이션 다음 번호(현재 0009): `review_name VARCHAR(200)`, `customer_name VARCHAR(200)`, `country VARCHAR(60)`,
+- 마이그레이션 다음 번호(현재 0009): `project_name VARCHAR(200)`(사업명), `review_name VARCHAR(200)`(검토명 = 설비 범위), `customer_name VARCHAR(200)`, `country VARCHAR(60)`,
   `due_date DATE`, `engineer_id INT REFERENCES app_user(user_id)`. 모두 NULL 허용.
 - 대안: `project` 표를 넓혀 실행과 잇기 → `project`는 문서 묶음 판단(파일 3~8 확인 전 등)에 쓰이고 있어 뜻이 섞인다.
   사업 단위 화면은 Non-Goal이라 지금은 실행에 바로 둔다. 나중에 사업 화면을 만들면 그때 `project`와 잇는다.
@@ -20,12 +20,12 @@
 - 언어 모델·규칙이 문서에서 채우는 일은 하지 않는다(Non-Goal). 자동 추출을 만들면 그때 위치·신뢰도 칸을 함께 둔다.
 
 ### 3. API
-- `POST /api/runs`: 지금 `files`만 받는 multipart 폼에 `review_name`, `customer_name`, `country`, `due_date`(YYYY-MM-DD),
+- `POST /api/runs`: 지금 `files`만 받는 multipart 폼에 `project_name`, `review_name`, `customer_name`, `country`, `due_date`(YYYY-MM-DD),
   `engineer_id`, `actor_id`를 선택 칸으로 더한다.
 - `POST /api/runs/library`: 본문(`LibraryRun`)에 같은 칸을 더한다.
-- `PUT /api/runs/{id}/info`: 본문 `ReviewInfo`(다섯 칸 + `actor_id`). 보낸 칸만 바꾸고, 빈 문자열은 비우기로 본다.
+- `PUT /api/runs/{id}/info`: 본문 `ReviewInfo`(여섯 칸 + `actor_id`). 보낸 칸만 바꾸고, 빈 문자열은 비우기로 본다.
   바뀐 칸만 `review_log`에 `target_table='review_run'`, `action='EDIT'`, `before_value`/`after_value`로 남긴다. 사유는 받지 않는다(판정 수정이 아님).
-- 응답(`RunSummary`, `RunListItem`): `review_no`, `review_name`, `customer_name`, `country`, `due_date`, `engineer_id`, `engineer_name`.
+- 응답(`RunSummary`, `RunListItem`): `review_no`, `project_name`, `review_name`, `customer_name`, `country`, `due_date`, `engineer_id`, `engineer_name`.
   `RunListItem`에는 `requirements`, `risks`, `deviation_candidates`, `proposals`를 더한다. 개수 SQL은 요약과 같은 식을 함수 하나로 모아 같이 쓴다.
 - 검토 번호는 저장하지 않고 응답 때 만든다: `RV-{started_at 연도}-{run_id:03d}`. 실행 번호가 1000을 넘으면 네 자리 그대로.
 - 전체 개수: `GET /requirements`, `/judgments`, `/warranty`는 응답 본문(배열)은 그대로 두고 `X-Total-Count` 머리글을 더한다.
@@ -48,6 +48,8 @@
 - `project`와 따로 두어 나중에 사업 화면을 만들 때 옮기는 작업이 생긴다. 칸 5개라 옮기기 비용은 작다.
 - `X-Total-Count`는 본문만 보는 클라이언트가 모를 수 있다 → `api.ts`에 머리글을 읽는 함수를 따로 둔다.
 
-## Open Questions
+## 결정 기록
 
-- 검토명을 목업처럼 "사업명 · 설비 범위" 두 칸으로 나눌지. 지금은 한 칸으로 시작한다 [제안].
+- 2026-10-28 (구현 중): 목업 v4.57은 검토 목록에 "사업명"과 "설비 범위"를 따로 두고, 등록 화면에서 검토명을 "사업명 · 설비 범위"로 만든다.
+  목업과 같게 하려고 `project_name`(사업명)을 더하고 `review_name`은 설비 범위로 쓴다. 화면 제목은 `사업명 · 검토명`(한쪽이 비면 있는 쪽만). [결정]
+  사업명은 자유 글자이고 `project` 표와 잇지 않는다(사업 화면은 Non-Goal).

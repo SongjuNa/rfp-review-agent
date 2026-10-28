@@ -1,0 +1,5 @@
+/* 목업 Detail CSS에 없는 것만 (SCR-08_공유.md): 검토 정보 고치기 창의 칸 배치 */
+.infog{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 16px}
+.infog label{display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:500;color:#344054}
+.infog .fi{width:100%;box-sizing:border-box}
+@media (max-width:640px){.infog{grid-template-columns:1fr}}

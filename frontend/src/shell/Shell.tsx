@@ -1,9 +1,10 @@
-import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
+import { useCallback, useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { api, type RunListItem } from '../api'
 import { ROLE_NAMES, STAGE_NAMES } from '../components/labels'
 import { EXAMPLE_NOTICES, EXAMPLE_UNREAD } from '../examples/header'
 import { GROUPS, HOME, SETTINGS, groupOf, type GroupKey, type MenuItem, type MenuKey } from './menu'
-import { href } from './router'
+import { CrumbContext } from './crumb'
+import { currentPath, href, useHashPath } from './router'
 import { useSession } from './useSession'
 import './shell.css'
 
@@ -235,6 +236,11 @@ function Header({ crumbs, mini, onToggleMini }: { crumbs: Crumb[]; mini: boolean
 /** 화면 하나. active는 왼쪽 메뉴에서 켤 항목, crumbs는 머리글 위치 (마지막이 지금 화면). */
 export function Shell({ active, crumbs, children }: { active: MenuKey; crumbs: Crumb[]; children: ReactNode }) {
   const [mini, setMini] = useState(readMini)
+  const path = useHashPath()
+  const [tail, setTail] = useState<{ path: string; label: string | null }>({ path, label: null })
+  const shown = tail.label && tail.path === path
+    ? [...crumbs.slice(0, -1), { ...crumbs[crumbs.length - 1], label: tail.label }] : crumbs
+  const setLabel = useCallback((label: string | null) => setTail({ path: currentPath(), label }), [])
   const toggle = () => {
     const v = !mini
     try { localStorage.setItem(MINI_KEY, v ? '1' : '0') } catch { /* 기억하지 못해도 접기는 된다 */ }
@@ -244,8 +250,8 @@ export function Shell({ active, crumbs, children }: { active: MenuKey; crumbs: C
     <div className={'app fs-s' + (mini ? ' mini' : '')}>
       <SideNav active={active} />
       <div className="wk">
-        <Header crumbs={crumbs} mini={mini} onToggleMini={toggle} />
-        <div className="ws">{children}</div>
+        <Header crumbs={shown} mini={mini} onToggleMini={toggle} />
+        <CrumbContext.Provider value={setLabel}><div className="ws">{children}</div></CrumbContext.Provider>
       </div>
     </div>
   )

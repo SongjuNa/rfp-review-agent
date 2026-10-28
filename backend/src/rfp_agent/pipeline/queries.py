@@ -9,22 +9,35 @@ def _rows(conn: psycopg.Connection, sql: str, params) -> list[dict]:
         return cur.execute(sql, params).fetchall()
 
 
-def run_summary(conn: psycopg.Connection, run_id: int) -> dict | None:
-    rows = _rows(conn, """
-        SELECT r.run_id, r.stage, r.dict_version, r.llm_model, r.failed_step, r.error_message,
-               r.started_at, r.finished_at, r.graph_state->>'step' AS step,
-               (SELECT count(*) FROM run_document WHERE run_id = r.run_id) AS documents,
+# 실행 요약과 실행 목록이 같이 쓰는 개수 (add-review-info: 목록 개수는 요약과 같아야 한다)
+COUNTS = """
                (SELECT count(*) FROM requirement q JOIN run_document rd USING (document_id)
                  WHERE rd.run_id = r.run_id AND q.req_kind = 'REQUIREMENT') AS requirements,
                (SELECT count(*) FROM risk_flag WHERE run_id = r.run_id) AS risks,
-               (SELECT count(*) FROM judgment WHERE run_id = r.run_id AND is_current)
-                   AS judgments,
                (SELECT count(*) FROM judgment WHERE run_id = r.run_id AND is_current
                   AND result = 'DEVIATION_CANDIDATE') AS deviation_candidates,
+               (SELECT count(*) FROM proposal_point WHERE run_id = r.run_id) AS proposals"""
+
+# 사람이 넣은 검토 정보와 검토 번호 RV-<시작 연도>-<실행 번호 세 자리>
+REVIEW_INFO = """
+               'RV-' || extract(year FROM r.started_at)::int || '-' || lpad(r.run_id::text, 3, '0')
+                   AS review_no,
+               r.project_name, r.review_name, r.customer_name, r.country, r.due_date,
+               r.engineer_id, (SELECT user_name FROM app_user WHERE user_id = r.engineer_id)
+                   AS engineer_name"""
+
+
+def run_summary(conn: psycopg.Connection, run_id: int) -> dict | None:
+    rows = _rows(conn, f"""
+        SELECT r.run_id, r.stage, r.dict_version, r.llm_model, r.failed_step, r.error_message,
+               r.started_at, r.finished_at, r.graph_state->>'step' AS step, {REVIEW_INFO},
+               (SELECT count(*) FROM run_document WHERE run_id = r.run_id) AS documents,
+               {COUNTS},
+               (SELECT count(*) FROM judgment WHERE run_id = r.run_id AND is_current)
+                   AS judgments,
                (SELECT count(*) FROM output_item WHERE run_id = r.run_id) AS output_items,
                (SELECT count(*) FROM engineering_check WHERE run_id = r.run_id
-                  AND result = 'VIOLATION') AS check_violations,
-               (SELECT count(*) FROM proposal_point WHERE run_id = r.run_id) AS proposals
+                  AND result = 'VIOLATION') AS check_violations
         FROM review_run r WHERE r.run_id = %s""", (run_id,))
     return rows[0] if rows else None
 
@@ -77,13 +90,7 @@ def _attach(conn: psycopg.Connection, items: list[dict], run_id: int | None = No
     return list(by_id.values())
 
 
-def run_requirements(conn: psycopg.Connection, run_id: int, *, document_id: int | None = None,
-                     type_code: str | None = None, limit: int = 100,
-                     offset: int = 0) -> list[dict]:
-    items = _rows(conn, """
-        SELECT q.requirement_id, d.file_no, q.source_kind, q.req_kind, q.text_raw,
-               q.extracted_by, q.confidence, q.is_assumed, q.rule_id, q.supplier_mark,
-               q.dedup_of
+REQUIREMENTS_FROM = """
         FROM requirement q
         JOIN run_document rd ON rd.document_id = q.document_id AND rd.run_id = %(run)s
         JOIN document d ON d.document_id = q.document_id
@@ -94,12 +101,28 @@ def run_requirements(conn: psycopg.Connection, run_id: int, *, document_id: int 
           AND (%(doc)s::int IS NULL OR q.document_id = %(doc)s)
           AND (%(type)s::text IS NULL OR EXISTS (
                 SELECT 1 FROM requirement_type_tag t
-                WHERE t.requirement_id = q.requirement_id AND t.type_code = %(type)s))
+                WHERE t.requirement_id = q.requirement_id AND t.type_code = %(type)s))"""
+
+
+def run_requirements(conn: psycopg.Connection, run_id: int, *, document_id: int | None = None,
+                     type_code: str | None = None, limit: int = 100,
+                     offset: int = 0) -> list[dict]:
+    items = _rows(conn, """
+        SELECT q.requirement_id, d.file_no, q.source_kind, q.req_kind, q.text_raw,
+               q.extracted_by, q.confidence, q.is_assumed, q.rule_id, q.supplier_mark,
+               q.dedup_of""" + REQUIREMENTS_FROM + """
         ORDER BY d.file_no, q.requirement_id
         LIMIT %(limit)s OFFSET %(offset)s""",
         {"run": run_id, "doc": document_id, "type": type_code, "limit": limit,
          "offset": offset})
     return _attach(conn, items, run_id)
+
+
+def count_requirements(conn: psycopg.Connection, run_id: int, *, document_id: int | None = None,
+                       type_code: str | None = None) -> int:
+    """거름 조건을 적용한 요구사항 전체 개수 (목록 API의 X-Total-Count)."""
+    return _rows(conn, "SELECT count(*) AS n" + REQUIREMENTS_FROM,
+                 {"run": run_id, "doc": document_id, "type": type_code})[0]["n"]
 
 
 def run_pairs(conn: psycopg.Connection, run_id: int) -> list[dict]:
@@ -173,15 +196,24 @@ JUDGMENTS = """
     LEFT JOIN item_key k ON k.item_key = v.item_key"""
 
 
-def run_judgments(conn: psycopg.Connection, run_id: int, *, result: str | None = None,
-                  group: str | None = None, limit: int = 100, offset: int = 0) -> list[dict]:
-    rows = _rows(conn, JUDGMENTS + """
+JUDGMENTS_WHERE = """
         WHERE j.run_id = %(run)s AND j.is_current
           AND (%(result)s::text IS NULL OR j.result = %(result)s)
-          AND (%(group)s::text IS NULL OR j.equipment_group = %(group)s)
+          AND (%(group)s::text IS NULL OR j.equipment_group = %(group)s)"""
+
+
+def run_judgments(conn: psycopg.Connection, run_id: int, *, result: str | None = None,
+                  group: str | None = None, limit: int = 100, offset: int = 0) -> list[dict]:
+    rows = _rows(conn, JUDGMENTS + JUDGMENTS_WHERE + """
         ORDER BY j.judgment_id LIMIT %(limit)s OFFSET %(offset)s""",
         {"run": run_id, "result": result, "group": group, "limit": limit, "offset": offset})
     return _with_locations(conn, rows, run_id)
+
+
+def count_judgments(conn: psycopg.Connection, run_id: int, *, result: str | None = None,
+                    group: str | None = None) -> int:
+    return _rows(conn, "SELECT count(*) AS n FROM judgment j" + JUDGMENTS_WHERE,
+                 {"run": run_id, "result": result, "group": group})[0]["n"]
 
 
 def run_equipment(conn: psycopg.Connection, run_id: int) -> list[dict]:
@@ -232,6 +264,13 @@ def run_warranty(conn: psycopg.Connection, run_id: int, *, status: str | None = 
         ORDER BY w.candidate_id LIMIT %(limit)s OFFSET %(offset)s""",
         {"run": run_id, "status": status, "limit": limit, "offset": offset})
     return _with_locations(conn, rows, run_id)
+
+
+def count_warranty(conn: psycopg.Connection, run_id: int, *, status: str | None = None) -> int:
+    return _rows(conn, """
+        SELECT count(*) AS n FROM warranty_candidate w
+        WHERE w.run_id = %(run)s AND (%(status)s::text IS NULL OR w.status = %(status)s)""",
+        {"run": run_id, "status": status})[0]["n"]
 
 
 def run_losses(conn: psycopg.Connection, run_id: int) -> list[dict]:
@@ -329,12 +368,13 @@ def users(conn: psycopg.Connection) -> list[dict]:
 
 
 def run_list(conn: psycopg.Connection, limit: int = 50) -> list[dict]:
-    return _rows(conn, """
+    return _rows(conn, f"""
         SELECT r.run_id, r.stage, r.started_at, r.finished_at, r.graph_state->>'step' AS step,
-               r.failed_step, r.error_message,
+               r.failed_step, r.error_message, {REVIEW_INFO},
                (SELECT string_agg(d.file_name, ', ' ORDER BY d.file_no)
                   FROM run_document rd JOIN document d USING (document_id)
-                 WHERE rd.run_id = r.run_id) AS files
+                 WHERE rd.run_id = r.run_id) AS files,
+               {COUNTS}
         FROM review_run r ORDER BY r.run_id DESC LIMIT %s""", (limit,))
 
 
