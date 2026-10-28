@@ -5,7 +5,7 @@ import { expect, test } from '@playwright/test'
 const FILE_1 = '1. Bidding Forms_Draft'
 
 test('파일 1을 올려 확인·승인까지', async ({ page }) => {
-  await page.goto('/')
+  await page.goto('/#/reviews')
   const library = page.getByLabel('서버에 둔 RFP')
   await library.waitFor({ timeout: 10_000 }).catch(() => undefined)
   const file = (await library.locator('option').allTextContents()).find((f) => f.includes(FILE_1))
@@ -56,7 +56,8 @@ test('파일 1을 올려 확인·승인까지', async ({ page }) => {
   await expect(page.getByText(/일탈 후보 \d+건/).first()).toBeVisible()
   await expect(page.getByText(/빠진 일탈 \d+건/)).toBeVisible()
 
-  await page.getByLabel('사용자').selectOption({ label: '기본 승인자 (APPROVER)' })
+  await page.getByRole('button', { name: '사용자 바꾸기' }).click()
+  await page.getByRole('button', { name: /기본 승인자/ }).click()
   await page.getByLabel('의견').fill('일탈 4,000 A 사유 확인함')
   await page.getByRole('button', { name: '승인', exact: true }).click()
   await expect(status).toContainText('승인됨')

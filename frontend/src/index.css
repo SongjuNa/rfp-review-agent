@@ -1,71 +1,69 @@
-:root {
-  font-family: system-ui, 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
+/* 예전 탭 화면(views/*)의 모양. 화면을 목업대로 다시 만들면서 줄여 간다. */
+.legacy {
   font-size: 14px;
   color: #1f2328;
-  background: #f6f8fa;
   --line: #d0d7de;
   --ok: #1a7f37;
   --bad: #cf222e;
   --warn: #9a6700;
   --accent: #0969da;
 }
-body { margin: 0; }
-h1 { font-size: 20px; margin: 0; }
-h2 { font-size: 16px; }
-h3 { font-size: 15px; margin: 20px 0 8px; }
-.top { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 12px 20px;
+.legacy h1 { font-size: 20px; margin: 0; }
+.legacy h2 { font-size: 16px; }
+.legacy h3 { font-size: 15px; margin: 20px 0 8px; }
+.legacy .top { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 12px 20px;
   background: #fff; border-bottom: 1px solid var(--line); }
-.top .user { margin-left: auto; }
-.tagline { color: #57606a; }
-.layout { display: grid; grid-template-columns: 300px 1fr; gap: 16px; padding: 16px 20px; }
-aside, main { background: #fff; border: 1px solid var(--line); border-radius: 6px; padding: 12px 16px; min-width: 0; }
-aside form { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
-aside select { width: 100%; }
-.runs { list-style: none; padding: 0; margin: 0; }
-.runs button { width: 100%; text-align: left; display: flex; flex-wrap: wrap; gap: 4px; padding: 6px;
+.legacy .top .user { margin-left: auto; }
+.legacy .tagline { color: #57606a; }
+.legacy .lgrid { display: grid; grid-template-columns: 300px 1fr; gap: 16px; padding: 16px 20px; }
+.legacy aside, .legacy main { background: #fff; border: 1px solid var(--line); border-radius: 6px; padding: 12px 16px; min-width: 0; }
+.legacy aside form { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
+.legacy aside select { width: 100%; }
+.legacy .runs { list-style: none; padding: 0; margin: 0; }
+.legacy .runs a.run { color: inherit; text-decoration: none; box-sizing: border-box; width: 100%; text-align: left; display: flex; flex-wrap: wrap; gap: 4px; padding: 6px;
   border: 1px solid transparent; background: none; cursor: pointer; border-radius: 4px; }
-.runs button.active, .runs button:hover { border-color: var(--line); background: #f6f8fa; }
-.runs .sub { width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.status { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; padding-bottom: 8px;
+.legacy .runs a.run.active, .legacy .runs a.run:hover { border-color: var(--line); background: #f6f8fa; }
+.legacy .runs .sub { width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.legacy .status { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; padding-bottom: 8px;
   border-bottom: 1px solid var(--line); }
-.tabs { display: flex; flex-wrap: wrap; gap: 4px; margin: 12px 0; }
-.tabs button { padding: 6px 12px; border: 1px solid var(--line); background: #fff; border-radius: 4px; cursor: pointer; }
-.tabs button.active { background: var(--accent); color: #fff; border-color: var(--accent); }
-table { border-collapse: collapse; width: 100%; margin: 8px 0; }
-th, td { border-bottom: 1px solid var(--line); padding: 6px; text-align: left; vertical-align: top; }
-th { background: #f6f8fa; font-weight: 600; }
-td.text { max-width: 480px; white-space: pre-wrap; }
-.sub { color: #57606a; font-size: 12px; }
-.badge { display: inline-block; padding: 1px 6px; margin: 0 4px 2px 0; border: 1px solid var(--line);
+.legacy .tabs { display: flex; flex-wrap: wrap; gap: 4px; margin: 12px 0; }
+.legacy .tabs button { padding: 6px 12px; border: 1px solid var(--line); background: #fff; border-radius: 4px; cursor: pointer; }
+.legacy .tabs button.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+.legacy table { border-collapse: collapse; width: 100%; margin: 8px 0; }
+.legacy th, .legacy td { border-bottom: 1px solid var(--line); padding: 6px; text-align: left; vertical-align: top; }
+.legacy th { background: #f6f8fa; font-weight: 600; }
+.legacy td.text { max-width: 480px; white-space: pre-wrap; }
+.legacy .sub { color: #57606a; font-size: 12px; }
+.legacy .badge { display: inline-block; padding: 1px 6px; margin: 0 4px 2px 0; border: 1px solid var(--line);
   border-radius: 10px; font-size: 12px; background: #fff; }
-.badge.ok { color: var(--ok); border-color: var(--ok); }
-.badge.bad { color: var(--bad); border-color: var(--bad); }
-.badge.warn { color: var(--warn); border-color: var(--warn); }
-.badge.primary { background: #ddf4ff; }
-.badge.assumed { background: #fff8c5; border-color: var(--warn); color: var(--warn); font-weight: 600; }
-.error { color: var(--bad); }
-.cards { list-style: none; padding: 0; display: grid; gap: 8px; }
-.card { border: 1px solid var(--line); border-radius: 6px; padding: 10px 12px; }
-.card header { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
-.card.removed { opacity: 0.55; }
-.total { font-size: 18px; font-weight: 600; margin: 6px 0; }
-.formula { font-family: ui-monospace, monospace; }
-.ai { color: #57606a; font-style: italic; }
-.evidence .link { background: none; border: none; color: var(--accent); cursor: pointer; padding: 0; text-align: left; }
-.evidence .source { margin-top: 4px; padding: 6px 8px; background: #f6f8fa; border-radius: 4px; }
-blockquote { margin: 0 0 6px; white-space: pre-wrap; }
-.plain { list-style: none; padding: 0; margin: 4px 0; }
-.actions { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
-.actions > button, .action-form button, .start button, main > div > button, section > button {
+.legacy .badge.ok { color: var(--ok); border-color: var(--ok); }
+.legacy .badge.bad { color: var(--bad); border-color: var(--bad); }
+.legacy .badge.warn { color: var(--warn); border-color: var(--warn); }
+.legacy .badge.primary { background: #ddf4ff; }
+.legacy .badge.assumed { background: #fff8c5; border-color: var(--warn); color: var(--warn); font-weight: 600; }
+.legacy .error { color: var(--bad); }
+.legacy .cards { list-style: none; padding: 0; display: grid; gap: 8px; }
+.legacy .card { border: 1px solid var(--line); border-radius: 6px; padding: 10px 12px; }
+.legacy .card header { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+.legacy .card.removed { opacity: 0.55; }
+.legacy .total { font-size: 18px; font-weight: 600; margin: 6px 0; }
+.legacy .formula { font-family: ui-monospace, monospace; }
+.legacy .ai { color: #57606a; font-style: italic; }
+.legacy .evidence .link { background: none; border: none; color: var(--accent); cursor: pointer; padding: 0; text-align: left; }
+.legacy .evidence .source { margin-top: 4px; padding: 6px 8px; background: #f6f8fa; border-radius: 4px; }
+.legacy blockquote { margin: 0 0 6px; white-space: pre-wrap; }
+.legacy .plain { list-style: none; padding: 0; margin: 4px 0; }
+.legacy .actions { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+.legacy .actions > button, .legacy .action-form button, .legacy .start button, .legacy main > div > button, .legacy section > button {
   padding: 3px 10px; border: 1px solid var(--line); border-radius: 4px; background: #fff; cursor: pointer; }
-.actions > button.active { border-color: var(--accent); color: var(--accent); }
-.action-form { display: flex; flex-wrap: wrap; gap: 6px; align-items: flex-end; width: 100%; margin-top: 6px; }
-.action-form label { display: flex; flex-direction: column; gap: 2px; }
-.action-form .wide { flex: 1 1 100%; }
-.action-form textarea, .action-form .wide input { width: 100%; box-sizing: border-box; }
-.check { display: flex; flex-wrap: wrap; gap: 12px; padding: 8px 12px; border-radius: 6px; margin: 8px 0;
+.legacy .actions > button.active { border-color: var(--accent); color: var(--accent); }
+.legacy .action-form { display: flex; flex-wrap: wrap; gap: 6px; align-items: flex-end; width: 100%; margin-top: 6px; }
+.legacy .action-form label { display: flex; flex-direction: column; gap: 2px; }
+.legacy .action-form .wide { flex: 1 1 100%; }
+.legacy .action-form textarea, .legacy .action-form .wide input { width: 100%; box-sizing: border-box; }
+.legacy .check { display: flex; flex-wrap: wrap; gap: 12px; padding: 8px 12px; border-radius: 6px; margin: 8px 0;
   border: 1px solid var(--ok); }
-.check.bad { border-color: var(--bad); background: #ffebe9; }
-details summary { cursor: pointer; font-weight: 600; margin: 8px 0; }
-.more { margin: 8px 0; }
-@media (max-width: 900px) { .layout { grid-template-columns: 1fr; } }
+.legacy .check.bad { border-color: var(--bad); background: #ffebe9; }
+.legacy details summary { cursor: pointer; font-weight: 600; margin: 8px 0; }
+.legacy .more { margin: 8px 0; }
+@media (max-width: 900px) { .legacy .lgrid { grid-template-columns: 1fr; } }

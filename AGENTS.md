@@ -46,6 +46,8 @@ openspec/
 | 7 | `archive/2026-10-24-add-engineering-check` | FR-12 공학 규칙 검산 (완료) |
 | 8 | `archive/2026-10-24-add-role-assignment` | FR-11 유형별 담당자 전달, "내 할 일" 화면 (완료) |
 | 9 | `archive/2026-10-25-update-risk-dictionary` | FR-06 위험 표현 사전에 "but not limited to" 추가 (완료) |
+| 10 | `archive/2026-10-28-update-app-shell` | 목업 v4.57 앱 틀: 왼쪽 메뉴, 머리글, 화면 주소 (완료) |
+| 11 | `add-review-info` → `update-approval-flow` → `add-reference-views` | 검토 정보, 결재 흐름, 제품표·규칙 화면 (준비됨) |
 
 ## 3. 작업 흐름
 
