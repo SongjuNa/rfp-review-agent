@@ -6,6 +6,7 @@
 import pytest
 
 from rfp_agent.pipeline import queries, review
+from rfp_agent.pipeline.loss import recalculate
 from rfp_agent.pipeline.run import RunContext, create_run, execute_run
 from tests.docx_factory import build_gis_spec
 
@@ -94,3 +95,19 @@ def test_mismatch_item_name(seeded_db, tmp_path):
     names = {r["risk_kind"]: r["item_name"] for r in queries.run_risks(seeded_db, run_id)}
     assert names["VALUE_MISMATCH"] == "가스 누설률"
     assert names["BLANKET"] is None
+
+
+def test_loss_amounts(db, tmp_path):
+    """Scenario: 종류별 가산액과 단가 위치."""
+    from tests.docx_factory import build_loss_spec
+
+    run_id = create_run(db, VERSION, None)
+    path = build_loss_spec(tmp_path / "synthetic_judgment_loss.docx")
+    assert execute_run(RunContext(db, VERSION, None, None), run_id, [path]) == "ENGINEER_REVIEW"
+    [loss] = queries.run_losses(db, run_id)
+    assert loss["amounts"] == {"noload": None, "load": None, "aux": None}
+    assert [p["item_no"] for p in loss["price_locations"]] == ["3", "4", "5"]
+    recalculate(db, loss["loss_calc_id"], 60, 300, 8)
+    [loss] = queries.run_losses(db, run_id)
+    assert loss["amounts"] == {"noload": 270_000, "load": 960_000, "aux": 10_400}
+    assert float(loss["total_usd"]) == sum(loss["amounts"].values())

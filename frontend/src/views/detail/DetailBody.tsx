@@ -4,16 +4,17 @@ import { loadCounts, overRatio, ratioText } from '../../components/approval'
 import { useLoad } from '../../components/useLoad'
 import { useSession } from '../../shell/useSession'
 import { History } from '../Approval'
-import { Checks, Losses } from '../Compliance'
+import { Checks } from '../Compliance'
 import { Requirements } from '../Findings'
 import { Proposals } from '../Outputs'
 import { ExampleTab } from './ExampleTab'
 import { JudgeTab } from './JudgeTab'
 import { OutputsDialog } from './OutputsDialog'
+import { LossTab } from './LossTab'
 import { RiskTab } from './RiskTab'
 
 // SCR-08 검토 상세 본문: 요약 칸 5개와 탭 9개 (목업 v4.57 Detail .kpis, .pgtabs).
-// 판정·위험 조건 탭은 목업대로 만들었고, 나머지 탭은 다음 묶음에서 바꿀 때까지 예전 화면을 둔다.
+// 판정·위험 조건·손실 환산 탭은 목업대로 만들었고, 나머지 탭은 다음 묶음에서 바꿀 때까지 예전 화면을 둔다.
 
 const TABS = [
   ['judge', '판정'], ['read', '문서 읽기 점검'], ['risk', '위험 조건'], ['loss', '손실 환산 (참고)'], ['bid', '입찰 영향'],
@@ -41,7 +42,7 @@ export function DetailBody({ run, tab, onChanged, onSubmit }: {
   const id = run.run_id
   const [tick, setTick] = useState(0)
   const [out, setOut] = useState<'DEVIATION' | 'QUERY' | null>(null)
-  const changed = () => { setTick(tick + 1); onChanged() }
+  const changed = () => { setTick((t) => t + 1); onChanged() }
   const counts = useLoad(() => loadCounts(id), [id, tick])
   const empty = useLoad(() => api.warrantyPage(id, { status: 'EMPTY_REVIEW', limit: 1 }).then((p) => p.total), [id, tick])
   const screen = useLoad(() => api.approval(id), [id, tick])
@@ -75,7 +76,7 @@ export function DetailBody({ run, tab, onChanged, onSubmit }: {
       {tab === 'judge' && <JudgeTab run={run} tick={tick} onChanged={changed} head={head} />}
       {tab === 'read' && <section className="sec legacy"><Requirements {...legacy} /></section>}
       {tab === 'risk' && <RiskTab run={run} tick={tick} onChanged={changed} />}
-      {tab === 'loss' && <section className="sec legacy"><Losses {...legacy} /></section>}
+      {tab === 'loss' && <LossTab run={run} tick={tick} onChanged={changed} />}
       {tab === 'bid' && <section className="sec legacy"><Proposals {...legacy} /><Checks {...legacy} /></section>}
       {(tab === 'comm' || tab === 'cmp' || tab === 'subm') && <ExampleTab tab={tab} />}
       {tab === 'log' && <section className="sec legacy"><History runId={id} /></section>}

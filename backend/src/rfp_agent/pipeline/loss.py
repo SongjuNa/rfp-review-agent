@@ -35,15 +35,21 @@ def price_kind(name: str) -> str | None:
     return next((kind for kind, pattern in KINDS if pattern.search(name or "")), None)
 
 
+def amounts(prices: dict[str, float], losses: dict[str, float | None]) -> dict[str, float | None]:
+    """종류별 가산액 (단가 × 손실값). 손실값이 없는 종류는 None."""
+    return {k: prices[k] * losses[k] if losses[k] is not None else None
+            for k in ("noload", "load", "aux")}
+
+
 def compute(prices: dict[str, float], losses: dict[str, float | None]) -> tuple[float | None, str]:
     """종류별 가산액 합계와 계산식. 손실값이 하나라도 없으면 합계는 None."""
     parts = [f"{fmt(prices[k])} × {fmt(losses[k]) if losses[k] is not None else '?'}"
              for k in ("noload", "load", "aux")]
     if any(losses[k] is None for k in ("noload", "load", "aux")):
         return None, " + ".join(parts) + " (손실값 없음)"
-    amounts = [prices[k] * losses[k] for k in ("noload", "load", "aux")]
-    total = sum(amounts)
-    return total, (" + ".join(parts) + " = " + " + ".join(fmt(a) for a in amounts)
+    parts_usd = list(amounts(prices, losses).values())
+    total = sum(parts_usd)
+    return total, (" + ".join(parts) + " = " + " + ".join(fmt(a) for a in parts_usd)
                    + f" = {fmt(total)} $")
 
 

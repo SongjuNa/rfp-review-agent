@@ -3,6 +3,8 @@
 import psycopg
 from psycopg.rows import dict_row
 
+from rfp_agent.pipeline.loss import amounts
+
 
 def _rows(conn: psycopg.Connection, sql: str, params) -> list[dict]:
     with conn.cursor(row_factory=dict_row) as cur:
@@ -318,7 +320,23 @@ def run_losses(conn: psycopg.Connection, run_id: int) -> list[dict]:
                loss_aux_kw, total_usd, formula, status, reason_code, is_assumed,
                price_requirement_ids
         FROM loss_calc WHERE run_id = %s ORDER BY loss_calc_id""", (run_id,))
+    prices = _locations(conn, [i for r in rows for i in r["price_requirement_ids"] or []], run_id)
+    for r in rows:
+        # 종류별 가산액과 단가 행 위치 (손실 환산 탭 표, CR-01: 계산은 여기서)
+        r["amounts"] = amounts(
+            {"noload": float(r["price_noload"]), "load": float(r["price_load"]),
+             "aux": float(r["price_aux"])},
+            {"noload": _float(r["loss_noload_kw"]), "load": _float(r["loss_load_kw"]),
+             "aux": _float(r["loss_aux_kw"])})
+        if r["reason_code"] == "PRICE_UNIT":           # 단위가 $/kW가 아니면 곱하지 않는다 (CR-10)
+            r["amounts"] = {k: None for k in r["amounts"]}
+        r["price_locations"] = [loc for i in r["price_requirement_ids"] or []
+                                for loc in prices.get(i, [])]
     return _with_locations(conn, rows, run_id)
+
+
+def _float(value) -> float | None:
+    return None if value is None else float(value)
 
 
 def run_checks(conn: psycopg.Connection, run_id: int) -> list[dict]:

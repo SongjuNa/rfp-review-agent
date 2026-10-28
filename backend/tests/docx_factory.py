@@ -135,3 +135,22 @@ def build_feeder_copy(path: Path) -> Path:
     _datasheet(doc, "TS-115-GIS", [GIS_115_ROWS[0], GIS_115_ROWS[1], FEEDER_QUERY_ROW])
     doc.save(str(path))
     return path
+
+
+def build_loss_spec(path: Path) -> Path:
+    """판정 데이터시트 + 변압기 손실 환산 단가 표 (조항 + $/kW 행 셋).
+
+    비교 제품이 없어 손실값이 비어 있다.
+    """
+    build_judgment_spec(path)
+    doc = Document(str(path))
+    doc.add_paragraph("2. LOSS EVALUATION")
+    _datasheet(doc, "TS-POWER-TRANSFORMER", [
+        ["1", "Rated power", "MVA", "100", ""],
+        ["2", "Losses shall be capitalised at the following rates", "", "", ""],
+        ["3", "Capitalisation of no-load loss", "$/kW", "4500", ""],
+        ["4", "Capitalisation of load loss", "$/kW", "3200", ""],
+        ["5", "Capitalisation of auxiliary loss", "$/kW", "1300", ""],
+    ])
+    doc.save(str(path))
+    return path

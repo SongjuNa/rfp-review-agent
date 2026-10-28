@@ -20,6 +20,14 @@
 - [x] 2.5 e2e: 위험 조건 건수 / 문제 없음으로 닫기 / 사유 없이 닫기 / 위험으로 확정 / 특이 요구 제안은 예시
 - [x] 2.6 목업 대조 스크린샷, `SCR-08-3_공유.md`
 
-## 3. 마무리
+## 3. 손실 환산 탭 (SCR-08-4)
 
-- [x] 3.1 `ruff`, `pytest`, `npm run lint`, `npm run build`, `openspec validate update-review-screens --strict`
+- [x] 3.1 화면 명세 `docs/screens/SCR-08-4-손실환산.md`
+- [x] 3.2 `queries.run_losses`: 종류별 가산액(`loss.amounts`)과 단가 행 위치, 테스트 "종류별 가산액과 단가 위치"
+- [x] 3.3 화면: 안내, 단가·손실값·가산액 표, 합계, 손실값 넣어 다시 계산, 팀 가정, 협조 요청 단추(비활성)
+- [x] 3.4 e2e: 손실 환산 표 / 손실값 넣어 다시 계산 / 조항 없는 RFP (합성 `synthetic_loss.docx`, 로컬 문서 목록 94번)
+- [x] 3.5 목업 대조 스크린샷, `SCR-08-4_공유.md`
+
+## 4. 마무리
+
+- [x] 4.1 `ruff`, `pytest`, `npm run lint`, `npm run build`, `openspec validate update-review-screens --strict`

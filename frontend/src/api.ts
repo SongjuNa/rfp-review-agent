@@ -208,6 +208,9 @@ export type Loss = {
   reason_code: string | null
   is_assumed: boolean
   locations: Location[]
+  /** 종류별 가산액 (단가 × 손실값). 손실값이 없으면 null */
+  amounts: { noload: number | null; load: number | null; aux: number | null }
+  price_locations: Location[]
 }
 
 export type OutputItem = {
