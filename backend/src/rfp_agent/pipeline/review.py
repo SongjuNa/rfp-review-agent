@@ -535,11 +535,12 @@ def _review_cards(conn: psycopg.Connection, stage: str,
 def assignments_for(conn: psycopg.Connection, role: str, run_id: int | None = None) -> list[dict]:
     with conn.cursor(row_factory=dict_row) as cur:
         rows = cur.execute(
-            """SELECT a.assignment_id, a.run_id, a.assignee_role, a.status, a.repeat_count,
+            f"""SELECT a.assignment_id, a.run_id, a.assignee_role, a.status, a.repeat_count,
                       a.sent_at, a.updated_at, a.requirement_id, a.requirement_ids, a.point_id,
                       a.type_code, t.type_name, u.user_name AS assignee,
                       COALESCE(q.text_raw, p.text_draft) AS text, p.point_kind,
-                      p.requirement_id AS point_requirement_id, p.is_assumed, r.stage
+                      p.requirement_id AS point_requirement_id, p.is_assumed, r.stage,
+                      {queries.REVIEW_INFO}
                FROM assignment a JOIN review_run r ON r.run_id = a.run_id
                LEFT JOIN requirement_type t ON t.type_code = a.type_code
                LEFT JOIN app_user u ON u.user_id = a.assignee_id
@@ -550,11 +551,17 @@ def assignments_for(conn: psycopg.Connection, role: str, run_id: int | None = No
                  AND (%s::int IS NULL OR a.run_id = %s)
                ORDER BY a.run_id DESC, a.point_id IS NULL, a.assignment_id""",
             (role, list(VISIBLE_STAGES), run_id, run_id)).fetchall()
+        files = {(f["run_id"], f["file_no"]): f["file_name"] for f in cur.execute(
+            """SELECT rd.run_id, d.file_no, d.file_name FROM run_document rd
+               JOIN document d USING (document_id) WHERE rd.run_id = ANY(%s)""",
+            (list({r["run_id"] for r in rows}),))}
     out = []
     for r in rows:
         ids = r["requirement_ids"] or [r["point_requirement_id"]]
         locations = queries._locations(conn, ids, r["run_id"])
         r["locations"] = [loc for i in ids for loc in locations.get(i, [])]
+        r["file_name"] = files.get((r["run_id"], r["locations"][0]["file_no"])) \
+            if r["locations"] else None
         r["requirement_id"] = r["requirement_id"] or r["point_requirement_id"]
         if r["locations"]:                      # 원문 위치가 없으면 보내지 않는다 (CR-02)
             out.append(r)

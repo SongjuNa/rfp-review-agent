@@ -1,23 +1,11 @@
 import { type ReactNode } from 'react'
 import { ALL_ITEMS, itemOf, type MenuKey } from './shell/menu'
-import { navigate, useHashPath } from './shell/router'
-import { useSession } from './shell/useSession'
+import { useHashPath } from './shell/router'
 import { Shell, type Crumb } from './shell/Shell'
 import { Register } from './views/Register'
 import { ReviewDetail } from './views/ReviewDetail'
 import { ReviewList } from './views/ReviewList'
-import { MyTasks } from './views/Tasks'
-
-/** 협조 요청(내 할 일): 예전 화면을 새 틀 안에 그대로 둔다. SCR-13을 목업대로 만들 때 바꾼다. */
-function Todo() {
-  const { user } = useSession()
-  return (
-    <div className="legacy">
-      <div className="ttl"><h1>협조 요청</h1></div>
-      <main><MyTasks user={user} onOpen={(id) => navigate(`/reviews/${id}`)} /></main>
-    </div>
-  )
-}
+import { Todo } from './views/Todo'
 
 /** 아직 만들지 않은 화면 자리. 목업 순서대로 하나씩 채운다 (docs/screens/README.md 1장). */
 function NotYet({ menu }: { menu: MenuKey }) {
@@ -50,7 +38,7 @@ function route(path: string): Route {
     return { menu: 'register', crumbs: [home, { label: 'RFP 검토', path: '/reviews' }, { label: '검토 등록' }], body: <Register /> }
   }
   if (path === '/todo') {
-    return { menu: 'todo', crumbs: [home, { label: '협조 요청' }], body: <Todo /> }
+    return { menu: 'todo', crumbs: [home, { label: '협조 요청 현황' }], body: <Todo /> }
   }
   const item = ALL_ITEMS.find((i) => i.path === path) ?? itemOf('home')
   const crumbs = item.key === 'home' ? [{ label: '홈' }] : [home, { label: item.label }]

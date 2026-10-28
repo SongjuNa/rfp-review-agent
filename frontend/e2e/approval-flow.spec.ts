@@ -55,10 +55,8 @@ test('엔지니어·승인자의 내 할 일', async ({ page, request }) => {
   const card = mine.reviews.find((c: { run_id: number }) => c.run_id === run.run_id)
   expect(card.criteria.map((c: { ar_code: string }) => c.ar_code)).toContain('AR-01')
   expect(card.approval.request_comment).toBe(COMMENT)
+  // 승인자 카드는 홈(SCR-03)에 보인다. 협조 요청 화면(SCR-13)은 부서별 요청만 보인다
   await as(page, APPROVER)
-  await page.goto('/#/todo')
-  const shown = page.locator('.card', { hasText: `검토 #${run.run_id}` })
-  await expect(shown).toContainText('AR-01')
-  await shown.getByRole('button', { name: '승인하러 가기' }).click()
+  await page.goto(`/#/reviews/${run.run_id}`)
   await expect(page.getByText('결재할 검토입니다')).toBeVisible()
 })

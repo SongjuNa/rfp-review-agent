@@ -470,6 +470,13 @@ def run_assignments(run_id: int, role: str) -> list[dict]:
         return review.assignments_for(conn, role, run_id)
 
 
+@router.get("/assignments")
+def role_assignments(role: str = Query(pattern="^(COST|QUALITY|SALES)$")) -> list[dict]:
+    """협조 요청 현황 (SCR-13): 한 수신 부서에 보낸 요청을 모든 검토에서 모은다."""
+    with connect() as conn:
+        return review.assignments_for(conn, role)
+
+
 @router.put("/assignments/{assignment_id}")
 def update_assignment(assignment_id: int, body: TaskStatus) -> dict:
     """담당자가 할 일 상태를 바꾼다 (할 일 → 하는 중 → 끝)."""

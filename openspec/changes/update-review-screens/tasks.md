@@ -99,6 +99,15 @@
 - [x] 12.4 e2e: 분석 실패 상세 / 계속하는 방법 예시
 - [x] 12.5 목업 대조 스크린샷, `SCR-11_공유.md`
 
-## 13. 마무리
+## 13. 협조 요청 현황 (SCR-13)
 
-- [x] 13.1 `ruff`, `pytest`, `npm run lint`, `npm run build`, `openspec validate update-review-screens --strict`
+- [x] 13.1 백엔드: 부서별 요청 목록 `GET /assignments?role=`(검토 번호·파일 이름·보낸 사람 포함)
+- [x] 13.2 화면 명세 `docs/screens/SCR-13-협조요청.md`, 목업 Todo CSS(`frontend/src/mockup/Todo.css`)
+- [x] 13.3 화면: 수신 부서 탭, 요약 줄, 요청 표, 상세 창(받는 담당자의 확인함·처리 끝), 요청하기 예시 창
+- [x] 13.4 예전 "내 할 일" 화면(`views/Tasks.tsx`) 지우기
+- [x] 13.5 e2e: 수신 부서별 요청 현황 / 24시간 넘게 미확인 / 받는 담당자의 확인 / 요청하기 예시
+- [x] 13.6 목업 대조 스크린샷, `SCR-13_공유.md`
+
+## 14. 마무리
+
+- [x] 14.1 `ruff`, `pytest`, `npm run lint`, `npm run build`, `openspec validate update-review-screens --strict`

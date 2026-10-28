@@ -11,7 +11,7 @@
 | `_템플릿.md` | 화면 명세 하나의 틀 |
 | `_디자인.md` | 목업 CSS 쓰는 법, 색·글꼴 토큰, 공통 부품 |
 | `SCR-xx_공유.md` | 목업과 피할 수 없이 다르게 만든 곳과 이유 (팀 공유용) |
-| `SCR-xx-<이름>.md` | 화면별 명세 (SCR-00, 02, 06, 07, 08, 08-1, 08-2, 08-3, 08-4, 08-5, 08-6, 08-7, 08-8, 08-9, 08-10, 08-11, 11, 12 작성) |
+| `SCR-xx-<이름>.md` | 화면별 명세 (SCR-00, 02, 06, 07, 08, 08-1, 08-2, 08-3, 08-4, 08-5, 08-6, 08-7, 08-8, 08-9, 08-10, 08-11, 11, 12, 13 작성) |
 
 ## 기준 목업
 
@@ -43,7 +43,7 @@
 | SCR-10 | `Datasheet` | 데이터시트 채우기 | 검토 상세 안 | FR-08 | 실제 (표시). 엑셀 내려받기·영업에 넘기기는 없음 |
 | SCR-11 | `Fail` | 분석 실패 상세 | RFP 관리 | CR-12, `review-run` AI 오류 처리 | 실제 (단계·오류 문장). 재시도 방법 고르기·처리 기록은 일부 예시 |
 | SCR-12 | `Wait` | 결재 대기 상세 | RFP 관리 | FR-10, `update-approval-flow` | 실제 + 예정 |
-| SCR-13 | `Todo` | 협조 요청 | RFP 관리 | FR-11, `role-assignment` | 실제. 재요청·회신은 없음 |
+| SCR-13 | `Todo` | 협조 요청 | RFP 관리 | FR-11, `role-assignment` | 실제 (부서별 요청·확인). 재요청·회신·내보내기는 잠김, 요청하기는 예시 창 |
 | SCR-14 | `Bids` | 입찰 이력 | RFP 관리 | 범위 밖 (금액은 가격 범위) | 예시 화면 |
 | SCR-15 | `BidView` | 입찰 상세 | RFP 관리 | 범위 밖 | 예시 화면 |
 | SCR-16 | `Products` | 제품표 | 지식 관리 | `reference-data`, FR-07 근거, FR-13, FR-15, `add-reference-views` | 실제 + 예정 (읽기 전용, 2026-10-28 결정) |
@@ -98,7 +98,7 @@
 | SCR-10 | `GET /warranty`, `/judgments` | 전체 개수 | 성적서 근거, 중복 칸, 엑셀, 영업에 넘기기 |
 | SCR-11 | `GET /runs/{id}` (`failed_step`, `error_message`), `/documents` | — | 멈춘 위치·원문, 이어서 재시도, 처리 기록 |
 | SCR-12 | `GET /approval`, `POST /approval`, `/outputs`, `/risks`, `/history` | 상신 정보·상신 취소 `POST /withdraw` (`update-approval-flow`) | 열람 시각, 다시 알림, 전자결재 번호 |
-| SCR-13 | `GET /tasks`, `PUT /assignments/{id}`, `GET /runs/{id}/assignments` | — | 재요청, 직접 요청, 회신, 내보내기 |
+| SCR-13 | `GET /assignments?role=`, `PUT /assignments/{id}` | — | 재요청, 직접 요청, 회신, 내보내기 |
 | SCR-16 | — | `GET /products`, `GET /products/{code}` (`add-reference-views`) | 엑셀 가져오기, 요구 조건으로 찾기, 고치기 |
 | SCR-17 | — | `GET /rules/compare`, `/rules/items`, `/rules/risk-expressions` (`add-reference-views`) | 단위 사전, 수정 요청, 규칙 추가, 수정자·수정일 |
 | 그 밖 (예시 화면) | — | — | 화면 전체 |

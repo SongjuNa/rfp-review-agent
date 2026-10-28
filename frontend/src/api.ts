@@ -313,6 +313,9 @@ export type Assignment = {
   is_assumed: boolean | null
   stage: Stage
   locations: Location[]
+  review_no: string
+  engineer_name: string | null
+  file_name: string | null
 }
 
 export type ReviewCard = RunListItem & { summary: RunSummary; criteria: Criterion[]; approval?: ApprovalScreen['approval'] }
@@ -438,6 +441,7 @@ export const api = {
   decide: (id: number, decision: string, comment: string, actor_id: number) =>
     call<ApprovalScreen>(`/runs/${id}/approval`, json('POST', { decision, comment, actor_id })),
   tasks: (user_id: number) => call<MyTasks>(`/tasks?user_id=${user_id}`),
+  assignments: (role: string) => call<Assignment[]>(`/assignments?role=${role}`),
   setTaskStatus: (assignmentId: number, status: string, actor_id: number) =>
     call<{ status: string }>(`/assignments/${assignmentId}`, json('PUT', { status, actor_id })),
   reopen: (id: number, actor_id: number) => call<{ stage: Stage }>(`/runs/${id}/reopen`, json('POST', { actor_id })),
