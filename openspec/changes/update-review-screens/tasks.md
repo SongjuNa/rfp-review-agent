@@ -63,6 +63,13 @@
 - [x] 7.6 e2e: 점검 줄 확인 / 점검 확인 되돌리기 / 고칠 수 없을 때 확인 단추 / 상신 창의 점검 미확인
 - [x] 7.7 목업 대조 스크린샷, `SCR-08-2_공유.md`
 
-## 8. 마무리
+## 8. 상업 조건 예시 탭 (SCR-08-6)
 
-- [ ] 8.1 `ruff`, `pytest`, `npm run lint`, `npm run build`, `openspec validate update-review-screens --strict`
+- [x] 8.1 화면 명세 `docs/screens/SCR-08-6-상업조건.md`
+- [x] 8.2 화면: 목업 데이터로 상업 조항·상업 영향 표, 고르기·담당·골라서 전달(저장 안 함), 알림
+- [x] 8.3 e2e: 상업 조건 골라서 전달 예시 / 예시 탭
+- [x] 8.4 목업 대조 스크린샷, `SCR-08-6_공유.md`
+
+## 9. 마무리
+
+- [x] 9.1 `ruff`, `pytest`, `npm run lint`, `npm run build`, `openspec validate update-review-screens --strict`

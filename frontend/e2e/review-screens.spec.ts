@@ -31,7 +31,14 @@ test('예시 탭', async ({ page, request }) => {
   await page.goto(`/#/reviews/${run.run_id}`)
   await page.getByRole('tab', { name: '상업 조건' }).click()
   await expect(page.getByRole('note')).toContainText('예시 화면 · 실제 데이터와 연결되지 않음')
-  await expect(page.locator('main section.sec button')).toHaveCount(0)
+  const note = page.locator('#comm .sech .note')
+  const before = await note.textContent()
+  await page.getByRole('checkbox', { name: '책임 한도 선택' }).check()
+  await page.getByRole('button', { name: '골라서 전달' }).click()
+  await expect(note).not.toHaveText(before!)
+  await page.reload()                                  // 저장하지 않는다
+  await page.getByRole('tab', { name: '상업 조건' }).click()
+  await expect(note).toHaveText(before!)
 })
 
 test('판정 칩으로 거르기', async ({ page, request }) => {

@@ -3,6 +3,7 @@ import { api, type RunSummary } from '../../api'
 import { loadCounts, overRatio, ratioText } from '../../components/approval'
 import { useLoad } from '../../components/useLoad'
 import { BidTab } from './BidTab'
+import { CommTab } from './CommTab'
 import { ExampleTab } from './ExampleTab'
 import { JudgeTab } from './JudgeTab'
 import { LogTab } from './LogTab'
@@ -78,7 +79,8 @@ export function DetailBody({ run, tab, onChanged, onSubmit }: {
       {tab === 'risk' && <RiskTab run={run} tick={tick} onChanged={changed} />}
       {tab === 'loss' && <LossTab run={run} tick={tick} onChanged={changed} />}
       {tab === 'bid' && <BidTab run={run} tick={tick} onChanged={changed} />}
-      {(tab === 'comm' || tab === 'cmp' || tab === 'subm') && <ExampleTab tab={tab} />}
+      {tab === 'comm' && <CommTab />}
+      {(tab === 'cmp' || tab === 'subm') && <ExampleTab tab={tab} />}
       {tab === 'log' && <LogTab run={run} tick={tick} />}
       {exporter.view}
     </>
