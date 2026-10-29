@@ -21,3 +21,5 @@ file_no,file_key,bundle,language,project_key,note
 20,제Ⅳ편 제2장_계통설명서,D,ko,P-D,계통 설명
 21,제Ⅳ편 제3장_일반사항,D,ko,P-D,"공통 규칙, 성능 보증"
 22,제Ⅳ편 제8장_154kV 송변전설비,D,ko,P-D,설비 14종 반복 (UPS 30 kVA)
+23,RFP_product_master_based_EN,B,en,,Product-master based demonstration RFP for GIS and power equipment
+24,RFP_Product_Master_Evaluat,B,en,,Product-master based evaluative RFP

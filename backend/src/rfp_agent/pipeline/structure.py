@@ -152,7 +152,7 @@ def find_sections(blocks: list[Block]) -> list[Section]:
 
     body = [s for s in sections if not s.is_toc]
     last_line = blocks[-1].last_line if blocks else 0
-    for cur, nxt in zip(body, body[1:] + [None], strict=True):
+    for cur, nxt in zip(body, body[1:] + [None], strict=False):
         cur.line_end = (nxt.line_start - 1) if nxt else last_line
     return sections
 

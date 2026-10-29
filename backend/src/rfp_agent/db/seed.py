@@ -55,7 +55,11 @@ PRODUCT_COLUMNS = [
     "has_firmware", "fw_latest", "warranty_months", "lifecycle_status", "std_lead_time_weeks",
     "moq", "list_price_usd", "weight_kg", "dimensions_mm", "ip_rating", "operating_temp",
     "tech_support_dept", "doc_ids", "rated_voltage_kv", "rated_current_a", "short_circuit_ka",
-    "is_assumed", "source_doc", "market",
+    "lightning_impulse_kv", "power_freq_withstand_kv", "switching_impulse_kv",
+    "peak_current_ka", "making_current_ka", "breaking_time_ms", "closing_time_ms",
+    "gas_leakage_percent", "partial_discharge_pc", "cooling_type", "insulation_medium",
+    "maintenance_months", "service_life_years", "comparison_values_assumed",
+    "comparison_values_source", "is_assumed", "source_doc", "market",
 ]
 LOSS_COLUMNS = {"no_load_loss_kw": "noload_loss_kw", "load_loss_kw": "load_loss_kw",
                 "aux_loss_kw": "aux_loss_kw"}

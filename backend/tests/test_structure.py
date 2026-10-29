@@ -5,7 +5,7 @@
 
 import pytest
 
-from rfp_agent.pipeline.docx_reader import read_blocks
+from rfp_agent.pipeline.docx_reader import Block, read_blocks
 from rfp_agent.pipeline.extract import extract
 from rfp_agent.pipeline.structure import build_tables, find_sections, heading_of
 from tests.docx_factory import build_gis_spec
@@ -20,6 +20,19 @@ def doc(tmp_path_factory):
     sections = find_sections(blocks)
     tables = build_tables(blocks, ROLES)
     return blocks, sections, tables
+
+
+def test_find_sections_assigns_last_section_to_document_end():
+    blocks = [
+        Block(seq=0, kind="P", text="1. 일반사항", line_no=1, line_count=1),
+        Block(seq=1, kind="P", text="본문", line_no=2, line_count=1),
+        Block(seq=2, kind="P", text="2. 요구사항", line_no=3, line_count=1),
+        Block(seq=3, kind="P", text="마지막 본문", line_no=4, line_count=1),
+    ]
+
+    sections = find_sections(blocks)
+
+    assert [section.line_end for section in sections] == [2, 4]
 
 
 def test_heading_patterns():

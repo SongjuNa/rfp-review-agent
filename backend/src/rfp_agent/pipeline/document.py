@@ -3,6 +3,7 @@
 같은 파일·같은 사전 판으로 이미 처리했으면 다시 하지 않고 저장된 결과를 쓴다 (NFR-05).
 """
 
+import logging
 import re
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -12,7 +13,7 @@ import psycopg
 from psycopg.types.json import Jsonb
 
 from rfp_agent.llm import tasks
-from rfp_agent.llm.client import LLM
+from rfp_agent.llm.client import LLM, LLMFailure
 from rfp_agent.pipeline import classify as cls
 from rfp_agent.pipeline.dictionaries import PipelineDicts
 from rfp_agent.pipeline.docx_reader import find_figures, read_blocks
@@ -31,6 +32,7 @@ from rfp_agent.pipeline.values import normalize_candidate, target_of
 # 세부 진행 알림: (세부 일, 끝난 줄 수, 전체 줄 수)
 # 세부 일은 classify·structure·extract·label·save·type
 Report = Callable[[str, int | None, int | None], None]
+log = logging.getLogger(__name__)
 
 
 def _no_report(part: str, done: int | None = None, total: int | None = None) -> None:
@@ -161,17 +163,26 @@ def process_document(conn: psycopg.Connection, path: Path, dicts: PipelineDicts,
         if c.classify_by == "HUMAN":
             # 규칙과 다른 분류는 다른 처리 판으로 둔다. 같은 파일의 다른 검토 결과를 바꾸지 않는다.
             key = f"{key}|H:{c.bundle}:{c.doc_kind}"
-    existing = conn.execute(
-        "SELECT document_id, file_no FROM document WHERE source_path = %s "
-        "AND processing_key = %s", (str(path), key)).fetchone()
+    if c.file_no is not None:
+        existing = conn.execute(
+            "SELECT document_id, file_no FROM document WHERE file_no = %s "
+            "AND processing_key = %s", (c.file_no, key)).fetchone()
+    else:
+        # 파일 목록에 없는 문서는 파일 경로로 찾는다.
+        existing = conn.execute(
+            "SELECT document_id, file_no FROM document WHERE source_path = %s "
+            "AND processing_key = %s", (str(path), key)).fetchone()
     if existing:
         count = conn.execute("SELECT count(*) FROM requirement WHERE document_id = %s",
                              (existing[0],)).fetchone()[0]
         return DocumentResult(existing[0], existing[1], True, c.readable, count)
 
     if llm is not None and c.readable and c.classify_by != "HUMAN":
-        c = cls.apply_ai_kind(c, tasks.classify_document(llm, path.name,
-                                                         cls.first_page_text(blocks)))
+        try:
+            c = cls.apply_ai_kind(c, tasks.classify_document(llm, path.name,
+                                                             cls.first_page_text(blocks)))
+        except LLMFailure as exc:
+            log.warning("AI 문서 분류를 건너뜀: %s", exc)
 
     with conn.transaction():
         doc_id, file_no = _insert_document(conn, path, c, dicts, line_basis, key)
@@ -198,7 +209,10 @@ def process_document(conn: psycopg.Connection, path: Path, dicts: PipelineDicts,
         report("extract")
         candidates = extract(blocks, sections, tables)
         if llm is not None:
-            _refine_with_ai(llm, candidates, report)
+            try:
+                _refine_with_ai(llm, candidates, report)
+            except LLMFailure as exc:
+                log.warning("AI 문장 분류를 건너뜀: %s", exc)
 
         report("save")
 
@@ -279,13 +293,16 @@ def process_document(conn: psycopg.Connection, path: Path, dicts: PipelineDicts,
 
         if llm is not None and unclassified:
             report("type", 0, len(unclassified))
-            ai_types = tasks.type_unclassified(llm, [cand.text for _, cand in unclassified],
-                                               lambda done, total: report("type", done, total))
-            for (req_id, _), code in zip(unclassified, ai_types, strict=True):
-                if code != "NONE":
-                    conn.execute(
-                        "INSERT INTO requirement_type_tag (requirement_id, type_code, is_primary, "
-                        "decided_by) VALUES (%s, %s, TRUE, 'AI')", (req_id, code))
+            try:
+                ai_types = tasks.type_unclassified(llm, [cand.text for _, cand in unclassified],
+                                                   lambda done, total: report("type", done, total))
+                for (req_id, _), code in zip(unclassified, ai_types, strict=True):
+                    if code != "NONE":
+                        conn.execute(
+                            "INSERT INTO requirement_type_tag (requirement_id, type_code, "
+                            "is_primary, decided_by) VALUES (%s, %s, TRUE, 'AI')", (req_id, code))
+            except LLMFailure as exc:
+                log.warning("AI 요구사항 유형 분류를 건너뜀: %s", exc)
 
     return DocumentResult(doc_id, file_no, False, True, saved)
 

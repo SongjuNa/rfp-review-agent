@@ -8,7 +8,15 @@ from psycopg.rows import dict_row
 
 # 칸 → 단위 (원문 단위 그대로, CR-10)
 COLUMN_UNITS = {"rated_voltage_kv": "kV", "rated_current_a": "A", "short_circuit_ka": "kA",
-                "weight_kg": "kg", "rated_frequency": "Hz"}
+                "weight_kg": "kg", "rated_frequency": "Hz",
+                "lightning_impulse_kv": "kV", "power_freq_withstand_kv": "kV",
+                "switching_impulse_kv": "kV", "peak_current_ka": "kA",
+                "making_current_ka": "kA", "breaking_time_ms": "ms",
+                "closing_time_ms": "ms", "gas_leakage_percent": "%",
+                "partial_discharge_pc": "pC", "warranty_months": "개월",
+                "std_lead_time_weeks": "주", "moq": "ea",
+                "list_price_usd": "USD", "maintenance_months": "개월",
+                "service_life_years": "년"}
 # 단시간 전류의 시간: "정격 단시간 전류 40 kA (3초)", "단시간전류 25kA/3s", "단시간 전류 40 kA 3초"
 SHORT_TIME = re.compile(r"단시간\s*전류\s*(?:[\d.]+/)?[\d.]+\s*kA\s*[(/]?\s*(\d+(?:\.\d+)?)\s*"
                         r"(?:초|s(?![a-z]))")
