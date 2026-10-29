@@ -23,3 +23,12 @@
 .pseg .seg{display:flex;flex-wrap:wrap;gap:2px;justify-self:start}
 .pseg .seg button{white-space:nowrap}
 @media (max-width:760px){.pseg-row{grid-template-columns:1fr}}
+/* 문서 표 창 (DocumentsDialog) */
+.apw.docw{width:min(1040px,100%)}
+.docsum{margin:8px 0 10px;font-size:var(--fs-sm);color:#344054}
+.doct tbody tr{cursor:default}
+.doct tr.skip td{background:#FEF3F2}
+.doct .docn{word-break:break-all;min-width:200px}
+.docwhy{margin-top:4px;font-size:var(--fs-xs);color:#B42318}
+.hdoc.lnk{font-size:inherit}
+.hbun.warn{color:#B42318;font-weight:600}
