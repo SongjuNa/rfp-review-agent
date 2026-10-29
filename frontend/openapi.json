@@ -2841,6 +2841,29 @@
         }
       }
     },
+    "/api/rules/doc-kinds": {
+      "get": {
+        "summary": "Doc Kind Rules",
+        "description": "문서 종류 규칙 사전 (순서대로). 고치기는 data/seed를 고쳐 다시 적재한다.",
+        "operationId": "doc_kind_rules_api_rules_doc_kinds_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/DocKindRule"
+                  },
+                  "type": "array",
+                  "title": "Response Doc Kind Rules Api Rules Doc Kinds Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/health": {
       "get": {
         "summary": "Health",
@@ -4327,6 +4350,73 @@
           "warranty"
         ],
         "title": "Deliverables"
+      },
+      "DocKindRule": {
+        "properties": {
+          "doc_kind_rule_id": {
+            "type": "integer",
+            "title": "Doc Kind Rule Id"
+          },
+          "priority": {
+            "type": "integer",
+            "title": "Priority"
+          },
+          "doc_kind": {
+            "type": "string",
+            "enum": [
+              "BID_FORM",
+              "REQUIREMENT_SPEC",
+              "PURCHASE_SPEC",
+              "TEST_SPEC",
+              "SUPPLIER_SPEC",
+              "UNKNOWN"
+            ],
+            "title": "Doc Kind"
+          },
+          "name_pattern": {
+            "type": "string",
+            "title": "Name Pattern"
+          },
+          "page_pattern": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Page Pattern"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "used": {
+            "type": "integer",
+            "title": "Used"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "doc_kind_rule_id",
+          "priority",
+          "doc_kind",
+          "name_pattern",
+          "page_pattern",
+          "note",
+          "used"
+        ],
+        "title": "DocKindRule",
+        "description": "문서 종류 규칙 한 줄. used는 그 종류로 규칙이 분류한 문서 수."
       },
       "DocumentChoice": {
         "properties": {

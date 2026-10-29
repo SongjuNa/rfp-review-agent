@@ -19,13 +19,14 @@ def _catalog(conn: psycopg.Connection) -> list[cls.CatalogEntry]:
 
 def preview(conn: psycopg.Connection, paths: list[Path]) -> list[dict]:
     catalog = _catalog(conn)
+    kind_rules = cls.load_kind_rules(conn)
     out = []
     for path in paths:
         try:
             blocks = read_blocks(path)
         except Exception as exc:          # python-docx는 여러 종류의 예외를 낸다
             raise UnreadableFile(path.name) from exc
-        c = cls.classify(path.name, blocks, catalog)
+        c = cls.classify(path.name, blocks, catalog, kind_rules)
         in_catalog = c.file_no is not None
         bundle, reason = cls.suggest_bundle(c, in_catalog)
         out.append(dict(
