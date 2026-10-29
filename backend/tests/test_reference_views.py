@@ -106,7 +106,7 @@ def test_item_aliases(db):
 
 
 def test_reference_api(db, db_url, monkeypatch):
-    """읽기 API: 목록 머리글 X-Total-Count, 없는 제품 404, 규칙 사전 세 가지."""
+    """읽기 API: 목록 머리글 X-Total-Count, 없는 제품 404, 규칙 사전 네 가지."""
     from fastapi.testclient import TestClient
 
     from rfp_agent.api.main import app
@@ -122,7 +122,8 @@ def test_reference_api(db, db_url, monkeypatch):
         assert int(res.headers["X-Total-Count"]) >= 2
         assert client.get("/api/products/families").json()
         assert client.get("/api/products/NO-SUCH").status_code == 404
-        for path in ("/api/rules/compare", "/api/rules/items", "/api/rules/risk-expressions"):
+        for path in ("/api/rules/compare", "/api/rules/items", "/api/rules/risk-expressions",
+                     "/api/rules/doc-kinds"):
             assert client.get(path).json()
     finally:
         get_settings.cache_clear()

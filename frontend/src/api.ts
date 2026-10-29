@@ -6,14 +6,14 @@ import type {
 } from './api.gen'
 
 export type {
-  ApprovalScreen, Assignment, CompareRule, Criterion, Datasheet, DatasheetInfo, DatasheetRow, DocumentChoice,
-  DocumentPreview, EngineeringCheck,
+  ApprovalScreen, Assignment, CompareRule, Criterion, Datasheet, DatasheetInfo, DatasheetRow, DocKindRule,
+  DocumentChoice, DocumentPreview, EngineeringCheck,
   Equipment, Health, ItemKey, Judgment, JudgmentCounts, Location, LogEntry, Loss, MyTasks, OutputItem, Product,
   ProductDetail, ProductFamily, Proposal, ReadCheck, Requirement, ReviewCard, Risk, RiskExpression, RunDocument,
   RunListItem, RunSummary, SubmissionCheck, Tbe, TbeRow, User, Warranty,
 } from './api.gen'
 import type {
-  CompareRule, DatasheetInfo, Datasheet, EngineeringCheck, Equipment, Health, ItemKey, Judgment, JudgmentCounts,
+  CompareRule, DatasheetInfo, Datasheet, DocKindRule, EngineeringCheck, Equipment, Health, ItemKey, Judgment, JudgmentCounts,
   LogEntry, Loss, MyTasks, OutputItem, Product, ProductDetail, ProductFamily, Proposal, ReadCheck, Requirement,
   Risk, RiskExpression, RunDocument, RunListItem, SubmissionCheck, Tbe, User, Warranty, Assignment,
 } from './api.gen'
@@ -172,6 +172,7 @@ export const api = {
   compareRules: () => call<CompareRule[]>('/rules/compare'),
   ruleItems: () => call<ItemKey[]>('/rules/items'),
   riskExpressions: () => call<RiskExpression[]>('/rules/risk-expressions'),
+  docKindRules: () => call<DocKindRule[]>('/rules/doc-kinds'),
   assignments: (role: string) => call<Assignment[]>(`/assignments?role=${role}`),
   setTaskStatus: (assignmentId: number, status: string, actor_id: number) =>
     call<AssignmentStatus>(`/assignments/${assignmentId}`, json('PUT', { status, actor_id })),

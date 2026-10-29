@@ -218,6 +218,17 @@ export type DeliverableWarranty = {
   source_kind: string | null
 }
 
+/** 문서 종류 규칙 한 줄. used는 그 종류로 규칙이 분류한 문서 수. */
+export type DocKindRule = {
+  doc_kind_rule_id: number
+  priority: number
+  doc_kind: 'BID_FORM' | 'REQUIREMENT_SPEC' | 'PURCHASE_SPEC' | 'TEST_SPEC' | 'SUPPLIER_SPEC' | 'UNKNOWN'
+  name_pattern: string
+  page_pattern: string | null
+  note: string | null
+  used: number
+}
+
 /** 등록 화면에서 사람이 정한 문서 분류. 비운 칸은 규칙 결과를 쓴다. */
 export type DocumentChoice = {
   bundle?: 'A' | 'B' | 'C' | 'D' | null

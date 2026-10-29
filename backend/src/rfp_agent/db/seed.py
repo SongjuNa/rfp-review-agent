@@ -261,6 +261,33 @@ def seed_type_rules(conn: psycopg.Connection, rows: list[dict[str, str]], report
     report.counts["type_rule"] = len(rows)
 
 
+DOC_KINDS = {"BID_FORM", "REQUIREMENT_SPEC", "PURCHASE_SPEC", "TEST_SPEC", "SUPPLIER_SPEC"}
+
+
+def seed_doc_kind_rules(conn: psycopg.Connection, rows: list[dict[str, str]],
+                        report: SeedReport):
+    """문서 종류 규칙 (FR-01). 표현은 정규식이라 적재 전에 읽히는지 본다."""
+    conn.execute("DELETE FROM doc_kind_rule")
+    for i, row in enumerate(rows, 2):         # 1행은 머리글
+        where = f"문서 종류 규칙 {i}행"
+        if row["doc_kind"] not in DOC_KINDS:
+            raise SeedError(f"{where}: 문서 종류 '{row['doc_kind']}'을 코드로 바꿀 수 없음")
+        for column in ("name_pattern", "page_pattern"):
+            try:
+                re.compile(row[column])
+            except re.error as exc:
+                raise SeedError(
+                    f"{where}: {column} '{row[column]}'이 정규식이 아님 ({exc})") from None
+        if not row["name_pattern"]:
+            raise SeedError(f"{where}: 파일 이름 표현(name_pattern)이 비어 있음")
+        conn.execute(
+            "INSERT INTO doc_kind_rule (priority, doc_kind, name_pattern, page_pattern, note) "
+            "VALUES (%s, %s, %s, %s, %s)",
+            (int(row["priority"]), row["doc_kind"], row["name_pattern"],
+             row["page_pattern"] or None, row["note"] or None))
+    report.counts["doc_kind_rule"] = len(rows)
+
+
 SEED_STEPS = [
     ("item_keys.csv", seed_item_keys),
     ("compare_rules.csv", seed_compare_rules),
@@ -270,6 +297,7 @@ SEED_STEPS = [
     ("column_roles.csv", seed_column_roles),
     ("target_objects.csv", seed_target_objects),
     ("type_rules.csv", seed_type_rules),
+    ("doc_kind_rules.csv", seed_doc_kind_rules),
 ]
 
 

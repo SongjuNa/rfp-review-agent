@@ -155,7 +155,7 @@ def process_document(conn: psycopg.Connection, path: Path, dicts: PipelineDicts,
         blocks, ratio = map_lines(blocks, txt)
         line_basis = "TXT" if ratio == 1.0 else "DOCX"
 
-    c = cls.classify(path.name, blocks, dicts.catalog)
+    c = cls.classify(path.name, blocks, dicts.catalog, dicts.kind_rules)
     if choice:
         c = cls.apply_choice(c, choice.bundle, choice.doc_kind)
         if c.classify_by == "HUMAN":

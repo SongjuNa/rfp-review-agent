@@ -770,6 +770,17 @@ class ItemKey(Out):
     used: int
 
 
+class DocKindRule(Out):
+    """문서 종류 규칙 한 줄. used는 그 종류로 규칙이 분류한 문서 수."""
+    doc_kind_rule_id: int
+    priority: int
+    doc_kind: DocKind
+    name_pattern: str
+    page_pattern: str | None
+    note: str | None
+    used: int
+
+
 class RiskExpression(Out):
     expr_id: int
     expression: str

@@ -1,4 +1,6 @@
-"""FR-01 문서 분류. 파일명과 첫 장 표현으로 코드가 정하고, AI는 첫 장 요약으로 보조한다."""
+"""FR-01 문서 분류. 파일명과 첫 장 표현(문서 종류 규칙 사전)으로 코드가 정하고,
+AI는 첫 장 요약으로 보조한다.
+"""
 
 import re
 from dataclasses import dataclass
@@ -8,17 +10,6 @@ from rfp_agent.pipeline.docx_reader import Block
 FIRST_PAGE_BLOCKS = 60
 MIN_READABLE_LINES = 10
 
-# (문서 종류, 파일명에서 찾는 표현, 첫 장에서 찾는 표현). 위에서부터 먼저 맞는 것.
-KIND_RULES: list[tuple[str, str, str | None]] = [
-    ("BID_FORM", r"bidding forms", None),
-    ("SUPPLIER_SPEC", r"comment update", r"C: Complied"),
-    ("TEST_SPEC", r"testing|시험", None),
-    ("PURCHASE_SPEC", r"prepurchase|requisition", r"\brequisition\b"),
-    ("REQUIREMENT_SPEC",
-     r"specification|spec\.|employers requirement|기술규격|설계기준|계통설명서|일반사항|송변전",
-     r"\bspecification\b|\bPART 1\b|\bSECTION \d{2} ?\d{2}"),
-]
-
 STANDARD_PATTERNS = {
     "IEC": r"\bIEC\b",
     "IEEE_UL": r"\b(?:IEEE|ANSI|UL|NEMA|NFPA)\b",
@@ -26,6 +17,20 @@ STANDARD_PATTERNS = {
 }
 MIN_STANDARD_MENTIONS = 3
 MIXED_RATIO = 0.5
+
+
+@dataclass
+class KindRule:
+    """문서 종류 규칙 사전 한 줄 (doc_kind_rule, data/seed/doc_kind_rules.csv)."""
+    doc_kind: str
+    name_pattern: str               # 소문자 파일 이름에서 찾는다
+    page_pattern: str | None        # 첫 장에서 대소문자 무시로 찾는다
+
+
+def load_kind_rules(conn) -> list[KindRule]:
+    """적재된 문서 종류 규칙을 순서대로 읽는다. 위에서부터 먼저 맞는 줄이 이긴다."""
+    return [KindRule(*r) for r in conn.execute(
+        "SELECT doc_kind, name_pattern, page_pattern FROM doc_kind_rule ORDER BY priority")]
 
 
 @dataclass
@@ -59,14 +64,15 @@ def find_catalog(file_name: str, catalog: list[CatalogEntry]) -> CatalogEntry | 
     return max(hits, key=lambda c: len(c.file_key)) if hits else None
 
 
-def doc_kind_of(file_name: str, first_page: str) -> tuple[str, str]:
+def doc_kind_of(file_name: str, first_page: str, rules: list[KindRule]) -> tuple[str, str]:
+    """파일 이름 표현을 모두 본 뒤 첫 장 표현을 본다. 맞는 줄이 없으면 종류 모름."""
     name = file_name.lower()
-    for kind, name_pattern, _ in KIND_RULES:
-        if re.search(name_pattern, name):
-            return kind, f"K-NAME-{kind}"
-    for kind, _, page_pattern in KIND_RULES:
-        if page_pattern and re.search(page_pattern, first_page, re.IGNORECASE):
-            return kind, f"K-PAGE-{kind}"
+    for r in rules:
+        if re.search(r.name_pattern, name):
+            return r.doc_kind, f"K-NAME-{r.doc_kind}"
+    for r in rules:
+        if r.page_pattern and re.search(r.page_pattern, first_page, re.IGNORECASE):
+            return r.doc_kind, f"K-PAGE-{r.doc_kind}"
     return "UNKNOWN", "K-NONE"
 
 
@@ -89,12 +95,13 @@ def first_page_text(blocks: list[Block]) -> str:
     return "\n".join(b.text for b in blocks[:FIRST_PAGE_BLOCKS])
 
 
-def classify(file_name: str, blocks: list[Block], catalog: list[CatalogEntry]) -> Classification:
+def classify(file_name: str, blocks: list[Block], catalog: list[CatalogEntry],
+             kind_rules: list[KindRule]) -> Classification:
     full_text = "\n".join(b.text for b in blocks)
     nonempty = sum(1 for b in blocks if b.text.strip())
     readable = nonempty >= MIN_READABLE_LINES
     entry = find_catalog(file_name, catalog)
-    kind, rule_id = doc_kind_of(file_name, first_page_text(blocks))
+    kind, rule_id = doc_kind_of(file_name, first_page_text(blocks), kind_rules)
     if entry:
         bundle, project_key, language = entry.bundle, entry.project_key, entry.language
     else:
