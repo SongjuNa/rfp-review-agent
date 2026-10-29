@@ -66,7 +66,7 @@ test('불리한 점 목록', async ({ page }) => {
 test('비교 제품 보기', async ({ page }) => {
   await openBid(page, '비교 제품')
   const seg = page.getByRole('group', { name: 'TS-115-GIS 비교 제품' })
-  await expect(page.getByText('TS-115-GIS 비교 제품', { exact: true })).toBeVisible()
+  await expect(page.locator('details.pseg')).toContainText('TS-115-GIS')
   await expect(seg.locator('button[aria-pressed="true"]')).toHaveCount(1)
 })
 

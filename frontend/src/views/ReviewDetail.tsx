@@ -44,9 +44,9 @@ function ReviewHeader({ run, approver, onEdit, onSwitched }: {
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
           <button type="button" className="bo" onClick={onEdit}>
             <span className="ms" aria-hidden="true" style={{ fontSize: 'var(--ic-s)' }}>edit</span>검토 정보 고치기</button>
-          {onSwitched && <ProductSeg run={run} onSwitched={onSwitched} />}
         </div>
       </div>
+      {onSwitched && <ProductSeg run={run} onSwitched={onSwitched} />}
     </>
   )
 }
