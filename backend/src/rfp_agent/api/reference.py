@@ -4,6 +4,7 @@ from fastapi import APIRouter, HTTPException, Query, Response
 
 from rfp_agent.api.schemas import (
     CompareRule,
+    DocKindRule,
     ItemKey,
     Product,
     ProductDetail,
@@ -58,3 +59,10 @@ def rule_items() -> list[ItemKey]:
 def risk_expressions() -> list[RiskExpression]:
     with connect() as conn:
         return reference.risk_expressions(conn)
+
+
+@router.get("/rules/doc-kinds")
+def doc_kind_rules() -> list[DocKindRule]:
+    """문서 종류 규칙 사전 (순서대로). 고치기는 data/seed를 고쳐 다시 적재한다."""
+    with connect() as conn:
+        return reference.doc_kind_rules(conn)

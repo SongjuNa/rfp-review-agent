@@ -179,3 +179,14 @@ def risk_expressions(conn: psycopg.Connection) -> list[dict]:
             """SELECT e.expr_id, e.expression, e.language, e.risk_kind, e.context_rule,
                       (SELECT count(*) FROM risk_flag f WHERE f.expr_id = e.expr_id) AS used
                FROM risk_expression e ORDER BY e.risk_kind, e.expr_id""").fetchall()
+
+
+def doc_kind_rules(conn: psycopg.Connection) -> list[dict]:
+    """문서 종류 규칙 사전과 그 종류로 규칙이 분류한 문서 수 (같은 종류는 한 줄뿐)."""
+    with conn.cursor(row_factory=dict_row) as cur:
+        return cur.execute(
+            """SELECT r.doc_kind_rule_id, r.priority, r.doc_kind, r.name_pattern, r.page_pattern,
+                      r.note,
+                      (SELECT count(*) FROM document d WHERE d.doc_kind = r.doc_kind
+                         AND d.classify_by = 'RULE') AS used
+               FROM doc_kind_rule r ORDER BY r.priority""").fetchall()

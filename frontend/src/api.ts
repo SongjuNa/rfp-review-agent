@@ -1,17 +1,19 @@
 // 백엔드 API (/api, Vite 프록시). 응답 타입은 백엔드 응답 모델에서 만든다 (api.gen.ts, `npm run gen:api`).
 import type {
-  ActionResult, ApprovalScreen, AssignmentStatus, BulkResult, DecisionResult, LossResult, ProductSwitch,
+  ActionResult, ApprovalScreen, AssignmentStatus, BulkResult, DecisionResult, DocumentChoice, DocumentPreview,
+  LossResult, ProductSwitch,
   RunSummary, StageResult, SubmitResult,
 } from './api.gen'
 
 export type {
-  ApprovalScreen, Assignment, CompareRule, Criterion, Datasheet, DatasheetInfo, DatasheetRow, EngineeringCheck,
+  ApprovalScreen, Assignment, CompareRule, Criterion, Datasheet, DatasheetInfo, DatasheetRow, DocKindRule,
+  DocumentChoice, DocumentPreview, EngineeringCheck,
   Equipment, Health, ItemKey, Judgment, JudgmentCounts, Location, LogEntry, Loss, MyTasks, OutputItem, Product,
   ProductDetail, ProductFamily, Proposal, ReadCheck, Requirement, ReviewCard, Risk, RiskExpression, RunDocument,
   RunListItem, RunSummary, SubmissionCheck, Tbe, TbeRow, User, Warranty,
 } from './api.gen'
 import type {
-  CompareRule, DatasheetInfo, Datasheet, EngineeringCheck, Equipment, Health, ItemKey, Judgment, JudgmentCounts,
+  CompareRule, DatasheetInfo, Datasheet, DocKindRule, EngineeringCheck, Equipment, Health, ItemKey, Judgment, JudgmentCounts,
   LogEntry, Loss, MyTasks, OutputItem, Product, ProductDetail, ProductFamily, Proposal, ReadCheck, Requirement,
   Risk, RiskExpression, RunDocument, RunListItem, SubmissionCheck, Tbe, User, Warranty, Assignment,
 } from './api.gen'
@@ -95,13 +97,22 @@ export const api = {
   users: () => call<User[]>('/users'),
   runs: (limit = 200) => call<RunListItem[]>(`/runs?limit=${limit}`),
   library: () => call<string[]>('/library'),
-  startLibrary: (files: string[], info: StartInfo = {}) =>
-    call<RunSummary>('/runs/library', json('POST', { files, ...filled(info) })),
-  upload: (files: File[], info: StartInfo = {}) => {
+  /** 사람이 정한 문서 분류(choices)는 파일 이름마다 */
+  startLibrary: (files: string[], info: StartInfo = {}, choices: Record<string, DocumentChoice> = {}) =>
+    call<RunSummary>('/runs/library', json('POST', { files, ...filled(info), choices })),
+  upload: (files: File[], info: StartInfo = {}, choices: Record<string, DocumentChoice> = {}) => {
     const form = new FormData()
     files.forEach((f) => form.append('files', f))
     Object.entries(filled(info)).forEach(([k, v]) => form.append(k, String(v)))
+    if (Object.keys(choices).length) form.append('choices', JSON.stringify(choices))
     return call<RunSummary>('/runs', { method: 'POST', body: form })
+  },
+  /** 분석 전 분류 추천 (규칙만, 저장 안 함) */
+  previewLibrary: (files: string[]) => call<DocumentPreview[]>('/runs/library/preview', json('POST', { files })),
+  previewUpload: (files: File[]) => {
+    const form = new FormData()
+    files.forEach((f) => form.append('files', f))
+    return call<DocumentPreview[]>('/runs/preview', { method: 'POST', body: form })
   },
   /** 보낸 칸만 바꾼다. 빈 문자열은 비우기 */
   updateInfo: (id: number, info: Partial<Record<keyof ReviewInfo, string | number | null>>, actor_id: number | null) =>
@@ -161,6 +172,7 @@ export const api = {
   compareRules: () => call<CompareRule[]>('/rules/compare'),
   ruleItems: () => call<ItemKey[]>('/rules/items'),
   riskExpressions: () => call<RiskExpression[]>('/rules/risk-expressions'),
+  docKindRules: () => call<DocKindRule[]>('/rules/doc-kinds'),
   assignments: (role: string) => call<Assignment[]>(`/assignments?role=${role}`),
   setTaskStatus: (assignmentId: number, status: string, actor_id: number) =>
     call<AssignmentStatus>(`/assignments/${assignmentId}`, json('PUT', { status, actor_id })),

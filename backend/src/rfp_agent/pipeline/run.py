@@ -19,7 +19,7 @@ from rfp_agent.llm import tasks
 from rfp_agent.llm.client import FAILURE_MESSAGE, LLM, LLMFailure
 from rfp_agent.pipeline import code_version, dictionaries
 from rfp_agent.pipeline.assignments import build_assignments
-from rfp_agent.pipeline.document import Report, process_document
+from rfp_agent.pipeline.document import Choice, Report, process_document
 from rfp_agent.pipeline.engineering import build_checks
 from rfp_agent.pipeline.judge import judge_run
 from rfp_agent.pipeline.loss import build_losses
@@ -42,6 +42,7 @@ DEFAULT_USER = "기본 엔지니어"    # 로그인(4단계) 전까지 0003에�
 class RunState(TypedDict, total=False):
     run_id: int
     paths: list[str]
+    choices: dict[str, dict]      # 파일 이름 → 사람이 정한 {bundle, doc_kind}
     document_ids: list[int]
     readable_ids: list[int]
     risk_count: int
@@ -129,9 +130,12 @@ def _documents_node(ctx: RunContext):
         dicts = dictionaries.load(conn)
         ids = []
         paths = state["paths"]
+        choices = state.get("choices") or {}
         for i, path in enumerate(paths, 1):
+            chosen = choices.get(Path(path).name)
             result = process_document(conn, Path(path), dicts, ctx.processing_key, ctx.llm,
-                                      ctx.txt_dir, _reporter(ctx, run_id, i, len(paths)))
+                                      ctx.txt_dir, _reporter(ctx, run_id, i, len(paths)),
+                                      Choice(**chosen) if chosen else None)
             conn.execute("INSERT INTO run_document VALUES (%s, %s) ON CONFLICT DO NOTHING",
                          (run_id, result.document_id))
             conn.commit()
@@ -351,11 +355,13 @@ def build_graph(ctx: RunContext):
     return graph.compile()
 
 
-def execute_run(ctx: RunContext, run_id: int, paths: list[Path]) -> str:
+def execute_run(ctx: RunContext, run_id: int, paths: list[Path],
+                choices: dict[str, dict] | None = None) -> str:
     """실행을 끝까지 돌리고 마지막 단계를 돌려준다 (ENGINEER_REVIEW 또는 FAILED)."""
     conn = ctx.conn
     try:
-        state = build_graph(ctx).invoke({"run_id": run_id, "paths": [str(p) for p in paths]})
+        state = build_graph(ctx).invoke({"run_id": run_id, "paths": [str(p) for p in paths],
+                                         "choices": choices or {}})
     except Exception as exc:
         conn.rollback()
         step = conn.execute("SELECT graph_state->>'step' FROM review_run WHERE run_id = %s",

@@ -4,7 +4,7 @@ from dataclasses import dataclass
 
 import psycopg
 
-from rfp_agent.pipeline.classify import CatalogEntry
+from rfp_agent.pipeline.classify import CatalogEntry, KindRule, load_kind_rules
 from rfp_agent.pipeline.risk import RiskExpression
 from rfp_agent.pipeline.type_tags import TypeRule
 from rfp_agent.pipeline.values import Dictionaries
@@ -18,6 +18,7 @@ class PipelineDicts:
     type_rules: list[TypeRule]
     risk_expressions: list[RiskExpression]
     projects: dict[str, int]
+    kind_rules: list[KindRule]
 
 
 def load(conn: psycopg.Connection) -> PipelineDicts:
@@ -38,4 +39,4 @@ def load(conn: psycopg.Connection) -> PipelineDicts:
     projects = dict(conn.execute(
         "SELECT project_key, project_id FROM project WHERE project_key IS NOT NULL"))
     return PipelineDicts(catalog, roles, Dictionaries.build(aliases, targets), rules, exprs,
-                         projects)
+                         projects, load_kind_rules(conn))

@@ -1,16 +1,16 @@
 import { useState } from 'react'
-import { api, type CompareRule, type ItemKey, type RiskExpression } from '../api'
+import { api, type CompareRule, type DocKindRule, type ItemKey, type RiskExpression } from '../api'
 import { ErrorText } from '../components/common'
 import { Pager } from '../components/Pager'
-import { DIRECTION_NAMES, RISK_NAMES } from '../components/labels'
+import { DIRECTION_NAMES, DOC_KIND_NAMES, RISK_NAMES } from '../components/labels'
 import { useLoad } from '../components/useLoad'
 import { usePageCss } from '../shell/pageCss'
 import { ExampleBand } from './detail/ExampleTab'
 
 // SCR-17 판정 규칙 (목업 v4.57 Rules). docs/screens/SCR-17-판정규칙.md
-// 읽기만 한다. 비교 방향·항목 이름·위험 표현 사전 세 가지와 쓴 횟수 (단위 탭은 단위 환산 금지 CR-10으로 뺐다).
+// 읽기만 한다. 비교 방향·항목 이름·위험 표현·문서 종류 사전 네 가지와 쓴 횟수 (단위 탭은 단위 환산 금지 CR-10으로 뺐다).
 
-type TabKey = 'dir' | 'name' | 'risk'
+type TabKey = 'dir' | 'name' | 'risk' | 'kind'
 type Cell = { v: string; cls?: string; right?: boolean }
 type Row = { key: string; search: string; cells: Cell[]; detail: [string, string][] }
 type Tab = { label: string; ph: string; cols: [string, boolean][]; rows: Row[]; used: number }
@@ -73,6 +73,22 @@ function riskTab(exprs: RiskExpression[]): Tab {
   }
 }
 
+function kindTab(rules: DocKindRule[]): Tab {
+  return {
+    label: '문서 종류', ph: '문서 종류, 찾는 표현',
+    cols: [['문서 종류', false], ['파일 이름에서 찾는 표현', false], ['첫 장에서 찾는 표현', false], ['순서', true], ['분류한 문서', true]],
+    used: rules.reduce((a, r) => a + r.used, 0),
+    rows: rules.map((r) => ({
+      key: `kind:${r.doc_kind_rule_id}`, search: [DOC_KIND_NAMES[r.doc_kind], r.doc_kind, r.name_pattern, r.page_pattern, r.note].join(' '),
+      cells: [{ v: DOC_KIND_NAMES[r.doc_kind] ?? r.doc_kind }, { v: r.name_pattern, cls: 'mono' },
+        { v: r.page_pattern ?? '파일 이름만 봄', cls: r.page_pattern ? 'mono' : 'c-grey' }, { v: String(r.priority), right: true },
+        { v: `${r.used}개`, right: true, cls: r.used ? '' : 'c-grey' }],
+      detail: [['메모', r.note ?? '—'], ['찾는 순서', '모든 줄의 파일 이름 표현을 위에서부터 본 뒤, 맞는 것이 없으면 첫 장 표현을 본다. 아무것도 안 맞으면 "종류 모름"(확인 필요)'],
+        ['분류한 문서', `${r.used}개 (규칙이 이 종류로 정한 문서. AI·사람이 정한 문서는 빼고 셈)`]],
+    })),
+  }
+}
+
 export function Rules() {
   usePageCss('Rules')
   const [tab, setTab] = useState<TabKey>('dir')
@@ -80,10 +96,10 @@ export function Rules() {
   const [open, setOpen] = useState<Record<string, boolean>>({})
   const [page, setPage] = useState(1)
   const [size, setSize] = useState(10)
-  const data = useLoad(() => Promise.all([api.compareRules(), api.ruleItems(), api.riskExpressions()]), [])
+  const data = useLoad(() => Promise.all([api.compareRules(), api.ruleItems(), api.riskExpressions(), api.docKindRules()]), [])
 
   const tabs: Record<TabKey, Tab> | null = data.data
-    ? { dir: dirTab(data.data[0]), name: nameTab(data.data[1]), risk: riskTab(data.data[2]) }
+    ? { dir: dirTab(data.data[0]), name: nameTab(data.data[1]), risk: riskTab(data.data[2]), kind: kindTab(data.data[3]) }
     : null
   const T = tabs?.[tab]
   const needle = q.trim().toLowerCase()
@@ -108,16 +124,16 @@ export function Rules() {
         <div className="rkp-f"><a href="#/eval">반영 후 점수 변화는 정답지·채점에서 봅니다<span className="ms" aria-hidden="true">chevron_right</span></a></div>
       </section>
       <div className="rtabs" role="tablist" aria-label="규칙 종류">
-        {(['dir', 'risk', 'name'] as TabKey[]).map((k) => (
+        {(['dir', 'risk', 'name', 'kind'] as TabKey[]).map((k) => (
           <button key={k} type="button" role="tab" aria-selected={tab === k} className={tab === k ? 'on' : ''}
             onClick={() => { setTab(k); setQ(''); setOpen({}); setPage(1) }}>
-            {tabs?.[k].label ?? { dir: '비교 방향', name: '항목 이름', risk: '위험 표현' }[k]}<span className="n">{tabs?.[k].rows.length ?? '…'}</span>
+            {tabs?.[k].label ?? { dir: '비교 방향', name: '항목 이름', risk: '위험 표현', kind: '문서 종류' }[k]}<span className="n">{tabs?.[k].rows.length ?? '…'}</span>
           </button>
         ))}
       </div>
       <section className="sec" style={{ marginTop: 16 }}>
         <ErrorText error={data.error} />
-        <div className="rhead"><span>마지막 수정 <b>기록 없음</b></span><span>지금 판정에 쓰임 <b>{T ? `${T.used.toLocaleString('en-US')}회` : '…'}</b></span></div>
+        <div className="rhead"><span>마지막 수정 <b>기록 없음</b></span><span>{tab === 'kind' ? '규칙이 분류한 문서' : '지금 판정에 쓰임'} <b>{T ? `${T.used.toLocaleString('en-US')}${tab === 'kind' ? '개' : '회'}` : '…'}</b></span></div>
         <div className="filters" role="search" style={{ marginTop: 0 }}>
           <label htmlFor="rq" className="sr">규칙 검색</label>
           <input className="fi" id="rq" value={q} onChange={(e) => { setQ(e.target.value); setPage(1) }} placeholder={T?.ph} style={{ flex: '1 1 260px', maxWidth: 340 }} />

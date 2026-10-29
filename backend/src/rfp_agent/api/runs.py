@@ -6,10 +6,11 @@ import hashlib
 import re
 from datetime import date
 from pathlib import Path
+from typing import Literal
 from urllib.parse import quote
 
 from fastapi import APIRouter, BackgroundTasks, Form, HTTPException, Query, Response, UploadFile
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, TypeAdapter, ValidationError
 
 from rfp_agent.api.schemas import (
     ActionResult,
@@ -21,7 +22,9 @@ from rfp_agent.api.schemas import (
     DatasheetInfo,
     DecisionResult,
     Deliverables,
+    DocKind,
     DocumentPair,
+    DocumentPreview,
     EngineeringCheck,
     Equipment,
     Judgment,
@@ -48,7 +51,7 @@ from rfp_agent.api.schemas import (
 )
 from rfp_agent.config import get_settings
 from rfp_agent.db.connection import connect
-from rfp_agent.pipeline import datasheet, queries, read_checks, review, review_info, tbe
+from rfp_agent.pipeline import datasheet, preview, queries, read_checks, review, review_info, tbe
 from rfp_agent.pipeline.assignments import build_assignments
 from rfp_agent.pipeline.export import outputs_docx
 from rfp_agent.pipeline.loss import recalculate
@@ -82,8 +85,22 @@ class ReviewInfo(BaseModel):
         return self.model_dump(exclude_unset=True, exclude={"actor_id"})
 
 
+class DocumentChoice(BaseModel):
+    """등록 화면에서 사람이 정한 문서 분류. 비운 칸은 규칙 결과를 쓴다."""
+    bundle: Literal["A", "B", "C", "D"] | None = None
+    doc_kind: DocKind | None = None
+
+
+Choices = dict[str, DocumentChoice]          # 파일 이름 → 사람이 정한 분류
+
+
+class LibraryFiles(BaseModel):
+    files: list[str]
+
+
 class LibraryRun(ReviewInfo):
     files: list[str]
+    choices: Choices = {}
 
 
 class ProductChoice(BaseModel):
@@ -150,14 +167,15 @@ def _summary(run_id: int) -> dict:
 
 
 def _start(paths: list[Path], background: BackgroundTasks, info: dict,
-           actor_id: int | None) -> dict:
+           actor_id: int | None, choices: Choices | None = None) -> dict:
     with connect() as conn:
         # 검토 정보가 틀리면 실행을 만들기 전에 막는다
         _review(lambda: review_info.clean(info))
         _review(lambda: review_info.check_engineer(conn, info.get("engineer_id") or None))
         run_id = start_run(conn, actor_id)
         _review(lambda: review_info.save_on_start(conn, run_id, info, actor_id))
-    background.add_task(run_to_end, run_id, paths)
+    chosen = {name: c.model_dump(exclude_none=True) for name, c in (choices or {}).items()}
+    background.add_task(run_to_end, run_id, paths, chosen)
     return _summary(run_id)
 
 
@@ -198,26 +216,17 @@ def library() -> list[str]:
     return sorted(p.name for p in docx_dir.glob("*.docx")) if docx_dir.exists() else []
 
 
-@router.post("/runs/library", status_code=202)
-def run_library(body: LibraryRun, background: BackgroundTasks) -> RunSummary:
+def _library_paths(files: list[str]) -> list[Path]:
     docx_dir = get_settings().docx_dir
-    paths = [docx_dir / _safe_name(name) for name in body.files]
+    paths = [docx_dir / _safe_name(name) for name in files]
     missing = [p.name for p in paths if not p.exists()]
     if not paths or missing:
         raise HTTPException(400, f"없는 파일: {', '.join(missing) or '(파일 없음)'}")
-    return _start(paths, background, body.info(), body.actor_id)
+    return paths
 
 
-@router.post("/runs", status_code=202)
-async def run_upload(files: list[UploadFile], background: BackgroundTasks,
-                     project_name: str | None = Form(None), review_name: str | None = Form(None),
-                     customer_name: str | None = Form(None), country: str | None = Form(None),
-                     due_date: str | None = Form(None), engineer_id: int | None = Form(None),
-                     actor_id: int | None = Form(None)) -> RunSummary:
-    """올린 docx로 검토를 시작한다. 검토 정보 칸은 모두 고를 수 있다.
-
-    파일은 내용 해시 폴더에 저장해 같은 파일이면 다시 처리하지 않는다.
-    """
+async def _save_uploads(files: list[UploadFile]) -> list[Path]:
+    """올린 파일을 내용 해시 폴더에 둔다. 같은 파일이면 한 번만 저장한다."""
     upload_dir = get_settings().upload_dir
     paths = []
     for f in files:
@@ -230,10 +239,56 @@ async def run_upload(files: list[UploadFile], background: BackgroundTasks,
         paths.append(target)
     if not paths:
         raise HTTPException(400, "파일이 없습니다.")
+    return paths
+
+
+def _preview(paths: list[Path]) -> list[dict]:
+    with connect() as conn:
+        try:
+            return preview.preview(conn, paths)
+        except preview.UnreadableFile as exc:
+            raise HTTPException(400, f"docx를 열 수 없습니다: {exc}") from exc
+
+
+@router.post("/runs/library/preview")
+def library_preview(body: LibraryFiles) -> list[DocumentPreview]:
+    """서버에 둔 RFP의 분석 전 분류 추천. 규칙만 쓰고 저장하지 않는다."""
+    return _preview(_library_paths(body.files))
+
+
+@router.post("/runs/preview")
+async def upload_preview(files: list[UploadFile]) -> list[DocumentPreview]:
+    """올린 docx의 분석 전 분류 추천. 규칙만 쓰고 DB에 저장하지 않는다."""
+    return _preview(await _save_uploads(files))
+
+
+@router.post("/runs/library", status_code=202)
+def run_library(body: LibraryRun, background: BackgroundTasks) -> RunSummary:
+    return _start(_library_paths(body.files), background, body.info(), body.actor_id, body.choices)
+
+
+@router.post("/runs", status_code=202)
+async def run_upload(files: list[UploadFile], background: BackgroundTasks,
+                     project_name: str | None = Form(None), review_name: str | None = Form(None),
+                     customer_name: str | None = Form(None), country: str | None = Form(None),
+                     due_date: str | None = Form(None), engineer_id: int | None = Form(None),
+                     actor_id: int | None = Form(None),
+                     choices: str | None = Form(None)) -> RunSummary:
+    """올린 docx로 검토를 시작한다. 검토 정보 칸은 모두 고를 수 있다.
+
+    파일은 내용 해시 폴더에 저장해 같은 파일이면 다시 처리하지 않는다.
+    choices는 등록 화면에서 사람이 정한 분류 JSON ({파일 이름: {bundle, doc_kind}}).
+    """
+    try:
+        chosen = TypeAdapter(Choices).validate_json(choices) if choices else {}
+    except ValidationError as exc:
+        raise HTTPException(400, f"문서 분류 값이 틀렸습니다: {exc.errors()[0]['msg']}") from exc
+    paths = await _save_uploads(files)
     sent = {"project_name": project_name, "review_name": review_name,
             "customer_name": customer_name, "country": country, "due_date": due_date,
             "engineer_id": engineer_id}
-    return _start(paths, background, {k: v for k, v in sent.items() if v is not None}, actor_id)
+    return _start(paths, background, {k: v for k, v in sent.items() if v is not None}, actor_id,
+                  chosen)
 
 
 @router.get("/runs/{run_id}")

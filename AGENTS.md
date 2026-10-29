@@ -58,6 +58,9 @@ openspec/
 | 19 | `archive/2026-10-29-update-api-contract` | API 응답 스키마(Pydantic), 근거 응답 위치 필수, 화면 타입 자동 생성·CI 대조 (완료) |
 | 20 | `archive/2026-10-29-update-processing-progress` | 처리 중 세부 진행(AI 줄 수)·지난 시간·멈춤 안내, 검토 목록·홈 자동 새로고침 (완료) |
 | 21 | `archive/2026-10-29-update-detail-layout` | 머리글 비교 제품 칸(묶음마다 한 줄, 많으면 접기), 긴 목록 페이지 번호 줄이기 (완료) |
+| 22 | `archive/2026-10-29-update-document-info` | 검토 상세 머리글에 판정 묶음, "문서 n개"를 누르면 문서 표(종류·분류 방법·묶음·판정 대상) (완료) |
+| 23 | `archive/2026-10-29-add-document-confirm` | 검토 등록에서 분석 전 문서 종류·묶음 추천, 사람이 확인·수정하고 시작 (완료) |
+| 24 | `archive/2026-10-29-update-doc-kind-rules` | 문서 종류 규칙을 사전(CSV → DB)으로, 판정 규칙 화면 "문서 종류" 탭 (완료) |
 
 ## 3. 작업 흐름
 
