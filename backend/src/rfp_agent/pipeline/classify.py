@@ -127,3 +127,33 @@ def apply_ai_kind(result: Classification, ai_kind: str | None) -> Classification
     if ai_kind != result.doc_kind or result.classify_by == "AI":
         result.needs_review = True
     return result
+
+
+def suggest_bundle(result: Classification, in_catalog: bool) -> tuple[str, str]:
+    """분석 전 추천 묶음과 이유 (등록 화면용, 저장하지 않는다).
+
+    문서 목록에 있으면 목록 묶음. 없으면 읽을 수 있는 IEC 문서만 판정 묶음(B)으로 추천한다
+    (제품표가 IEC 정격). A는 사업 데이터시트라 목록으로만 정하고, D는 자동으로 고르지 않는다.
+    """
+    if in_catalog:
+        return result.bundle, f"문서 목록의 묶음 {result.bundle}"
+    if not result.readable:
+        return "C", "글자를 읽지 못함 (스캔 문서)"
+    if result.standard_system == "IEC":
+        return "B", "문서 목록에 없음 · IEC 규격 문서라 판정 대상으로 추천"
+    system = {"IEEE_UL": "IEEE·UL", "KS_ES": "한국 규격", "MIXED": "여러 규격"}.get(
+        result.standard_system or "", "주 규격 체계 모름")
+    return "C", f"문서 목록에 없음 · {system}이라 판정하지 않음"
+
+
+def apply_choice(result: Classification, bundle: str | None,
+                 doc_kind: str | None) -> Classification:
+    """사람이 등록 화면에서 정한 묶음·문서 종류를 붙인다. 규칙 결과와 같으면 그대로 둔다."""
+    bundle = bundle or result.bundle
+    doc_kind = doc_kind or result.doc_kind
+    if (bundle, doc_kind) == (result.bundle, result.doc_kind):
+        return result
+    result.bundle, result.doc_kind, result.classify_by = bundle, doc_kind, "HUMAN"
+    result.judge_target = bundle in ("A", "B") and result.readable
+    result.needs_review = False
+    return result

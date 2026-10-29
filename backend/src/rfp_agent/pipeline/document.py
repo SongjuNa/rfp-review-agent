@@ -137,9 +137,16 @@ def _refine_with_ai(llm: LLM, candidates: list[Candidate], report: Report) -> No
                 c.req_kind, c.rule_id, c.extracted_by = "DESCRIPTION", "E-AI-DESCRIPTION", "AI"
 
 
+@dataclass
+class Choice:
+    """등록 화면에서 사람이 정한 문서 분류 (없는 칸은 규칙 결과를 쓴다)."""
+    bundle: str | None = None
+    doc_kind: str | None = None
+
+
 def process_document(conn: psycopg.Connection, path: Path, dicts: PipelineDicts, key: str,
                      llm: LLM | None, txt_dir: Path | None,
-                     report: Report = _no_report) -> DocumentResult:
+                     report: Report = _no_report, choice: Choice | None = None) -> DocumentResult:
     report("classify")
     blocks = read_blocks(path)
     line_basis = "DOCX"
@@ -149,6 +156,11 @@ def process_document(conn: psycopg.Connection, path: Path, dicts: PipelineDicts,
         line_basis = "TXT" if ratio == 1.0 else "DOCX"
 
     c = cls.classify(path.name, blocks, dicts.catalog)
+    if choice:
+        c = cls.apply_choice(c, choice.bundle, choice.doc_kind)
+        if c.classify_by == "HUMAN":
+            # 규칙과 다른 분류는 다른 처리 판으로 둔다. 같은 파일의 다른 검토 결과를 바꾸지 않는다.
+            key = f"{key}|H:{c.bundle}:{c.doc_kind}"
     existing = conn.execute(
         "SELECT document_id, file_no FROM document WHERE source_path = %s "
         "AND processing_key = %s", (str(path), key)).fetchone()
@@ -157,7 +169,7 @@ def process_document(conn: psycopg.Connection, path: Path, dicts: PipelineDicts,
                              (existing[0],)).fetchone()[0]
         return DocumentResult(existing[0], existing[1], True, c.readable, count)
 
-    if llm is not None and c.readable:
+    if llm is not None and c.readable and c.classify_by != "HUMAN":
         c = cls.apply_ai_kind(c, tasks.classify_document(llm, path.name,
                                                          cls.first_page_text(blocks)))
 

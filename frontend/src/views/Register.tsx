@@ -1,5 +1,6 @@
 import { useState, type ChangeEvent, type DragEvent, type ReactNode } from 'react'
-import { api, type RunSummary } from '../api'
+import { api, type DocumentChoice, type DocumentPreview, type RunSummary } from '../api'
+import { DOC_KIND_NAMES } from '../components/labels'
 import { useLoad } from '../components/useLoad'
 import { usePageCss } from '../shell/pageCss'
 import { href } from '../shell/router'
@@ -7,6 +8,7 @@ import { useSession } from '../shell/useSession'
 
 // SCR-07 검토 등록 (목업 v4.57 Register). docs/screens/SCR-07-검토등록.md
 // 목업의 자동 추출·Lot·제품 추천·결재선은 아직 없어 단계 2·3을 사람이 넣는 검토 정보로 바꿨다 (SCR-07_공유.md).
+// 문서를 고르면 분석 전 분류 추천(규칙만)을 불러와 문서 종류·묶음을 사람이 확인·수정한다 (add-document-confirm).
 
 type Info = { project_name: string; review_name: string; customer_name: string; country: string; due_date: string }
 type Picked = { name: string; size: string | null; file: File | null }   // file이 없으면 서버에 둔 RFP
@@ -19,6 +21,41 @@ function sizeText(bytes: number): string {
 }
 
 const isDocx = (name: string) => name.toLowerCase().endsWith('.docx')
+
+type Kind = DocumentPreview['doc_kind']
+type Bundle = DocumentPreview['bundle']
+type Chosen = { doc_kind: Kind; bundle: Bundle }
+const KINDS = Object.keys(DOC_KIND_NAMES) as Kind[]
+const BUNDLES: Bundle[] = ['A', 'B', 'C', 'D']
+
+/** 분류 추천 줄의 칸: 문서 종류·묶음 고르기, 언어, 판정 대상과 이유 */
+function ClassifyCells({ p, chosen, onChange }: {
+  p: DocumentPreview | 'loading' | 'error' | undefined; chosen: Chosen | undefined; onChange: (c: Chosen) => void
+}) {
+  if (p === undefined || p === 'loading') return <><td className="dimv" colSpan={3}>분류하는 중…</td><td /></>
+  if (p === 'error') return <><td className="dimv" colSpan={3}>분석하면서 정합니다</td><td /></>
+  const now = chosen ?? { doc_kind: p.doc_kind, bundle: p.bundle }
+  const changed = now.doc_kind !== p.doc_kind || now.bundle !== p.bundle
+  const judged = p.readable && (now.bundle === 'A' || now.bundle === 'B')
+  return (
+    <>
+      <td><select className="fi" aria-label="문서 종류" value={now.doc_kind}
+        onChange={(e) => onChange({ ...now, doc_kind: e.target.value as Kind })}>
+        {KINDS.map((k) => <option key={k} value={k}>{DOC_KIND_NAMES[k]}</option>)}
+      </select></td>
+      <td><select className="fi" aria-label="묶음" value={now.bundle} style={{ width: 96 }}
+        onChange={(e) => onChange({ ...now, bundle: e.target.value as Bundle })}>
+        {BUNDLES.map((b) => <option key={b} value={b}>묶음 {b}</option>)}
+      </select></td>
+      <td>{p.language === 'ko' ? '한국어' : p.language === 'en' ? '영어' : p.language === 'image' ? '그림' : p.language}</td>
+      <td>
+        {judged ? <span className="st c-green">판정 대상</span> : <span className="st c-red">판정 안 함</span>}
+        {changed && <> <span className="st c-blue">사람이 바꿈</span></>}
+        <div className="en" style={{ margin: '4px 0 0' }}>{changed ? `추천: ${DOC_KIND_NAMES[p.doc_kind]} · 묶음 ${p.bundle}` : p.reason}</div>
+      </td>
+    </>
+  )
+}
 
 function Field({ label, req, hint, children }: { label: string; req?: boolean; hint?: string; children: ReactNode }) {
   return (
@@ -42,23 +79,39 @@ export function Register() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [done, setDone] = useState<RunSummary | null>(null)
+  const [previews, setPreviews] = useState<Record<string, DocumentPreview | 'loading' | 'error'>>({})
+  const [chosen, setChosen] = useState<Record<string, Chosen>>({})
   const engineers = users.filter((u) => u.role === 'ENGINEER')
   const owner = engineer !== '' ? engineer : user?.role === 'ENGINEER' ? user.user_id : (engineers[0]?.user_id ?? '')
   const ok = picked.filter((p) => isDocx(p.name))
   const fromServer = picked.some((p) => p.file === null)
 
+  // 아직 추천이 없는 docx만 한 번에 불러온다 (규칙만 써서 몇 초)
+  const loadPreviews = (items: Picked[]) => {
+    const todo = items.filter((p) => isDocx(p.name) && previews[p.name] === undefined)
+    if (!todo.length) return
+    const mark = (v: 'loading' | 'error') => Object.fromEntries(todo.map((p) => [p.name, v]))
+    setPreviews((prev) => ({ ...prev, ...mark('loading') }))
+    const call = todo[0].file === null ? api.previewLibrary(todo.map((p) => p.name)) : api.previewUpload(todo.map((p) => p.file!))
+    call.then((rows) => setPreviews((prev) => ({ ...prev, ...Object.fromEntries(rows.map((r) => [r.file_name, r])) })),
+      () => setPreviews((prev) => ({ ...prev, ...mark('error') })))
+  }
   const addFiles = (list: FileList | null) => {
     if (!list) return
     const files = Array.from(list).map((f) => ({ name: f.name, size: sizeText(f.size), file: f }))
     // 올린 파일과 서버 파일은 한 번에 시작할 수 없어 섞지 않는다
-    setPicked([...picked.filter((p) => p.file !== null), ...files.filter((f) => !picked.some((p) => p.name === f.name))])
+    const added = files.filter((f) => !picked.some((p) => p.name === f.name))
+    setPicked([...picked.filter((p) => p.file !== null), ...added])
+    loadPreviews(added)
   }
   const toggleServer = (name: string) => {
     const has = picked.some((p) => p.name === name && p.file === null)
     setPicked(has ? picked.filter((p) => p.name !== name)
       : [...picked.filter((p) => p.file === null), { name, size: null, file: null }])
+    if (!has) loadPreviews([{ name, size: null, file: null }])
   }
   const onDrop = (e: DragEvent) => { e.preventDefault(); addFiles(e.dataTransfer.files) }
+
 
   let msg = ''
   let msgCls = 'msg'
@@ -74,7 +127,13 @@ export function Register() {
     setBusy(true)
     setError(null)
     const start = { ...info, engineer_id: typeof owner === 'number' ? owner : null, actor_id: user?.user_id ?? null }
-    const call = fromServer ? api.startLibrary(ok.map((p) => p.name), start) : api.upload(ok.map((p) => p.file!), start)
+    // 보이는 분류를 모두 보낸다. 규칙 추천과 같은 값은 서버가 규칙 결과로 둔다.
+    const choices: Record<string, DocumentChoice> = {}
+    ok.forEach((p) => {
+      const pv = previews[p.name]
+      if (typeof pv === 'object') choices[p.name] = chosen[p.name] ?? { doc_kind: pv.doc_kind, bundle: pv.bundle }
+    })
+    const call = fromServer ? api.startLibrary(ok.map((p) => p.name), start, choices) : api.upload(ok.map((p) => p.file!), start, choices)
     call.then(setDone, (e: Error) => setError(e.message)).finally(() => setBusy(false))
   }
 
@@ -142,14 +201,16 @@ export function Register() {
           {picked.length > 0 && (
             <div className="tw ftab">
               <table className="tbl">
-                <thead><tr><th>파일</th><th>문서 종류</th><th>묶음</th><th>언어</th><th>상태</th><th /></tr></thead>
+                <thead><tr><th>파일</th><th>문서 종류</th><th>묶음</th><th>언어</th><th>판정</th><th>상태</th><th /></tr></thead>
                 <tbody>
                   {picked.map((p) => {
                     const bad = !isDocx(p.name)
                     return (
                       <tr key={p.name} className={bad ? 'bad2' : ''}>
                         <td style={{ fontWeight: 600 }}>{p.name}<div className="en" style={{ margin: 0 }}>{p.size ?? '서버에 둔 파일'}</div></td>
-                        <td className="dimv" colSpan={3}>{bad ? '—' : '분석하면서 정합니다'}</td>
+                        {bad ? <><td className="dimv" colSpan={3}>—</td><td /></>
+                          : <ClassifyCells p={previews[p.name]} chosen={chosen[p.name]}
+                            onChange={(c) => setChosen({ ...chosen, [p.name]: c })} />}
                         <td>{bad ? <span className="st c-red">docx 아님</span> : <span className="st c-green">올릴 준비</span>}</td>
                         <td style={{ textAlign: 'right' }}>
                           <button type="button" className="ib" aria-label={`${p.name} 빼기`} title="빼기"

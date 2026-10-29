@@ -83,7 +83,7 @@
           "검토 실행"
         ],
         "summary": "Run Upload",
-        "description": "올린 docx로 검토를 시작한다. 검토 정보 칸은 모두 고를 수 있다.\n\n파일은 내용 해시 폴더에 저장해 같은 파일이면 다시 처리하지 않는다.",
+        "description": "올린 docx로 검토를 시작한다. 검토 정보 칸은 모두 고를 수 있다.\n\n파일은 내용 해시 폴더에 저장해 같은 파일이면 다시 처리하지 않는다.\nchoices는 등록 화면에서 사람이 정한 분류 JSON ({파일 이름: {bundle, doc_kind}}).",
         "operationId": "run_upload_api_runs_post",
         "requestBody": {
           "required": true,
@@ -197,6 +197,98 @@
                   },
                   "type": "array",
                   "title": "Response Library Api Library Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/runs/library/preview": {
+      "post": {
+        "tags": [
+          "검토 실행"
+        ],
+        "summary": "Library Preview",
+        "description": "서버에 둔 RFP의 분석 전 분류 추천. 규칙만 쓰고 저장하지 않는다.",
+        "operationId": "library_preview_api_runs_library_preview_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LibraryFiles"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/DocumentPreview"
+                  },
+                  "type": "array",
+                  "title": "Response Library Preview Api Runs Library Preview Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/runs/preview": {
+      "post": {
+        "tags": [
+          "검토 실행"
+        ],
+        "summary": "Upload Preview",
+        "description": "올린 docx의 분석 전 분류 추천. 규칙만 쓰고 DB에 저장하지 않는다.",
+        "operationId": "upload_preview_api_runs_preview_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_upload_preview_api_runs_preview_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/DocumentPreview"
+                  },
+                  "type": "array",
+                  "title": "Response Upload Preview Api Runs Preview Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
                 }
               }
             }
@@ -3495,6 +3587,17 @@
               }
             ],
             "title": "Actor Id"
+          },
+          "choices": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Choices"
           }
         },
         "type": "object",
@@ -3502,6 +3605,23 @@
           "files"
         ],
         "title": "Body_run_upload_api_runs_post"
+      },
+      "Body_upload_preview_api_runs_preview_post": {
+        "properties": {
+          "files": {
+            "items": {
+              "type": "string",
+              "contentMediaType": "application/octet-stream"
+            },
+            "type": "array",
+            "title": "Files"
+          }
+        },
+        "type": "object",
+        "required": [
+          "files"
+        ],
+        "title": "Body_upload_preview_api_runs_preview_post"
       },
       "BulkAction": {
         "properties": {
@@ -4208,6 +4328,49 @@
         ],
         "title": "Deliverables"
       },
+      "DocumentChoice": {
+        "properties": {
+          "bundle": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "A",
+                  "B",
+                  "C",
+                  "D"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bundle"
+          },
+          "doc_kind": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "BID_FORM",
+                  "REQUIREMENT_SPEC",
+                  "PURCHASE_SPEC",
+                  "TEST_SPEC",
+                  "SUPPLIER_SPEC",
+                  "UNKNOWN"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Doc Kind"
+          }
+        },
+        "type": "object",
+        "title": "DocumentChoice",
+        "description": "등록 화면에서 사람이 정한 문서 분류. 비운 칸은 규칙 결과를 쓴다."
+      },
       "DocumentPair": {
         "properties": {
           "pair_id": {
@@ -4253,6 +4416,99 @@
           "evidence"
         ],
         "title": "DocumentPair"
+      },
+      "DocumentPreview": {
+        "properties": {
+          "file_name": {
+            "type": "string",
+            "title": "File Name"
+          },
+          "in_catalog": {
+            "type": "boolean",
+            "title": "In Catalog"
+          },
+          "file_no": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "File No"
+          },
+          "doc_kind": {
+            "type": "string",
+            "enum": [
+              "BID_FORM",
+              "REQUIREMENT_SPEC",
+              "PURCHASE_SPEC",
+              "TEST_SPEC",
+              "SUPPLIER_SPEC",
+              "UNKNOWN"
+            ],
+            "title": "Doc Kind"
+          },
+          "bundle": {
+            "type": "string",
+            "enum": [
+              "A",
+              "B",
+              "C",
+              "D"
+            ],
+            "title": "Bundle"
+          },
+          "language": {
+            "type": "string",
+            "title": "Language"
+          },
+          "standard_system": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Standard System"
+          },
+          "readable": {
+            "type": "boolean",
+            "title": "Readable"
+          },
+          "judge_target": {
+            "type": "boolean",
+            "title": "Judge Target"
+          },
+          "needs_review": {
+            "type": "boolean",
+            "title": "Needs Review"
+          },
+          "reason": {
+            "type": "string",
+            "title": "Reason"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "file_name",
+          "in_catalog",
+          "file_no",
+          "doc_kind",
+          "bundle",
+          "language",
+          "standard_system",
+          "readable",
+          "judge_target",
+          "needs_review",
+          "reason"
+        ],
+        "title": "DocumentPreview",
+        "description": "분석 전 분류 추천 (저장하지 않음). 묶음·판정 대상은 코드 규칙의 추천이다."
       },
       "EngineeringCheck": {
         "properties": {
@@ -5035,6 +5291,22 @@
         ],
         "title": "JudgmentCounts"
       },
+      "LibraryFiles": {
+        "properties": {
+          "files": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Files"
+          }
+        },
+        "type": "object",
+        "required": [
+          "files"
+        ],
+        "title": "LibraryFiles"
+      },
       "LibraryRun": {
         "properties": {
           "project_name": {
@@ -5128,6 +5400,14 @@
             },
             "type": "array",
             "title": "Files"
+          },
+          "choices": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/DocumentChoice"
+            },
+            "type": "object",
+            "title": "Choices",
+            "default": {}
           }
         },
         "type": "object",
