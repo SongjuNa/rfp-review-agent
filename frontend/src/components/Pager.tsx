@@ -1,4 +1,6 @@
 // 표 아래 페이지 번호 (목업 .pager). 쪽 크기는 10·20·50.
+// 페이지가 많으면 처음·끝과 지금 페이지 앞뒤 2쪽만 보이고 사이는 "…"로 줄인다 (pageItems).
+import { pageItems } from './pageItems'
 
 export function Pager({ total, page, size, shown, onPage, onSize }: {
   total: number; page: number; size: number; shown: number
@@ -13,10 +15,10 @@ export function Pager({ total, page, size, shown, onPage, onSize }: {
         <button type="button" onClick={() => onPage(Math.max(1, page - 1))} disabled={page <= 1} aria-label="이전 페이지">
           <span className="ms" aria-hidden="true" style={{ fontSize: 'var(--ic-s)' }}>chevron_left</span>
         </button>
-        {Array.from({ length: pages }, (_, i) => i + 1).map((n) => (
-          <button key={n} type="button" className={n === page ? 'on' : ''} aria-current={n === page ? 'page' : undefined}
-            onClick={() => onPage(n)}>{n}</button>
-        ))}
+        {pageItems(page, pages).map((n, i) => n === null
+          ? <span key={`gap${i}`} aria-hidden="true" style={{ minWidth: 20, textAlign: 'center', color: '#98A2B3' }}>…</span>
+          : <button key={n} type="button" className={n === page ? 'on' : ''} aria-current={n === page ? 'page' : undefined}
+            onClick={() => onPage(n)}>{n}</button>)}
         <button type="button" onClick={() => onPage(Math.min(pages, page + 1))} disabled={page >= pages} aria-label="다음 페이지">
           <span className="ms" aria-hidden="true" style={{ fontSize: 'var(--ic-s)' }}>chevron_right</span>
         </button>

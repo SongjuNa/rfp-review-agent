@@ -1,0 +1,49 @@
+import { expect, test, type Route } from '@playwright/test'
+import { ENGINEER, as, deviationRun } from './helpers'
+
+// 명세 review-workspace "머리글 비교 제품 고르기"·"긴 목록 페이지 번호"의 Scenario (change update-detail-layout).
+// 실제 RFP처럼 설비 묶음과 판정 줄이 많은 경우를 응답을 바꿔 만든다.
+
+test('설비 묶음이 많은 비교 제품', async ({ page, request }) => {
+  const run = await deviationRun(request, `묶음 많음 ${Date.now()}`)
+  const vcb = Array.from({ length: 14 }, (_, i) => `VCB-SUSOL-VL-20-25B${String(i).padStart(2, '0')}`)
+  const groups = Array.from({ length: 12 }, (_, i) => ({
+    equipment_group: `T${i}|`, label: `파일 9${i % 3} TS-${i}-GIS ${'긴 절 제목 '.repeat(i % 3)}`, family: 'GIS',
+    products: [i === 11 ? vcb[0] : 'GIS-245-50'], selected_by: 'AUTO', chosen_product: null,
+    candidates: i === 11 ? vcb : ['GIS-245-50'], judgments: 3, deviations: 0, ambiguous: 0,
+  }))
+  await page.route(/\/api\/runs\/\d+\/equipment$/, (r: Route) => r.fulfill({ json: groups }))
+  await as(page, ENGINEER)
+  await page.goto(`/#/reviews/${run.run_id}`)
+  const box = page.locator('details.pseg')
+  await expect(box).toContainText('설비 12개')
+  await expect(box).not.toHaveAttribute('open', '')
+  await box.locator('summary').click()
+  await expect(box.getByRole('group')).toHaveCount(12)
+  // 단추가 많아도 화면 폭을 넘지 않고 줄을 바꾼다
+  const width = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)
+  expect(width).toBeLessThanOrEqual(0)
+  await expect(page.getByRole('group', { name: 'TS-11-GIS 긴 절 제목 긴 절 제목 비교 제품' }).getByRole('button')).toHaveCount(14)
+})
+
+test('페이지가 많은 목록', async ({ page, request }) => {
+  const run = await deviationRun(request, `페이지 많음 ${Date.now()}`)
+  const asked: string[] = []
+  await page.route(/\/api\/runs\/\d+\/judgments\?/, async (r: Route) => {
+    asked.push(new URL(r.request().url()).searchParams.get('offset') ?? '')
+    const res = await r.fetch()
+    await r.fulfill({ response: res, headers: { ...res.headers(), 'x-total-count': '1537' } })
+  })
+  await as(page, ENGINEER)
+  await page.goto(`/#/reviews/${run.run_id}`)
+  const nav = page.getByRole('navigation', { name: '페이지' })
+  await expect(nav.getByRole('button', { name: '154', exact: true })).toBeVisible()
+  expect(await nav.getByRole('button').count()).toBeLessThanOrEqual(11)        // 이전·다음 + 번호 9개 이하
+  await nav.getByRole('button', { name: '154', exact: true }).click()
+  await expect(nav.getByRole('button', { name: '154', exact: true })).toHaveAttribute('aria-current', 'page')
+  await expect(nav.getByRole('button', { name: '150', exact: true })).toBeVisible()
+  await expect.poll(() => asked.at(-1)).toBe('1530')
+  await nav.getByRole('button', { name: '이전 페이지' }).click()
+  await expect(nav.getByRole('button', { name: '153', exact: true })).toHaveAttribute('aria-current', 'page')
+  await expect(page.locator('.pager select')).toBeVisible()
+})
