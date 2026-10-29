@@ -89,6 +89,11 @@ export type Body_run_upload_api_runs_post = {
   due_date?: string | null
   engineer_id?: number | null
   actor_id?: number | null
+  choices?: string | null
+}
+
+export type Body_upload_preview_api_runs_preview_post = {
+  files: string[]
 }
 
 export type BulkAction = {
@@ -213,6 +218,12 @@ export type DeliverableWarranty = {
   source_kind: string | null
 }
 
+/** 등록 화면에서 사람이 정한 문서 분류. 비운 칸은 규칙 결과를 쓴다. */
+export type DocumentChoice = {
+  bundle?: 'A' | 'B' | 'C' | 'D' | null
+  doc_kind?: 'BID_FORM' | 'REQUIREMENT_SPEC' | 'PURCHASE_SPEC' | 'TEST_SPEC' | 'SUPPLIER_SPEC' | 'UNKNOWN' | null
+}
+
 export type DocumentPair = {
   pair_id: number
   file_no_a: number
@@ -220,6 +231,21 @@ export type DocumentPair = {
   relation: string
   status: string
   evidence: string | null
+}
+
+/** 분석 전 분류 추천 (저장하지 않음). 묶음·판정 대상은 코드 규칙의 추천이다. */
+export type DocumentPreview = {
+  file_name: string
+  in_catalog: boolean
+  file_no: number | null
+  doc_kind: 'BID_FORM' | 'REQUIREMENT_SPEC' | 'PURCHASE_SPEC' | 'TEST_SPEC' | 'SUPPLIER_SPEC' | 'UNKNOWN'
+  bundle: 'A' | 'B' | 'C' | 'D'
+  language: string
+  standard_system: string | null
+  readable: boolean
+  judge_target: boolean
+  needs_review: boolean
+  reason: string
 }
 
 export type EngineeringCheck = {
@@ -325,6 +351,10 @@ export type JudgmentCounts = {
   unconfirmed_comply: number
 }
 
+export type LibraryFiles = {
+  files: string[]
+}
+
 export type LibraryRun = {
   project_name?: string | null
   review_name?: string | null
@@ -334,6 +364,7 @@ export type LibraryRun = {
   engineer_id?: number | null
   actor_id?: number | null
   files: string[]
+  choices?: Record<string, DocumentChoice>
 }
 
 /** 원문 위치: 파일 번호 + 절 또는 표 + 행 (CR-02). 절·표·항목·행은 있는 것만 있다. */

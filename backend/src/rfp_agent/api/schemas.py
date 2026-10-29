@@ -129,6 +129,25 @@ class RunDocument(Out):
     requirements: int
 
 
+DocKind = Literal["BID_FORM", "REQUIREMENT_SPEC", "PURCHASE_SPEC", "TEST_SPEC", "SUPPLIER_SPEC",
+                  "UNKNOWN"]
+
+
+class DocumentPreview(Out):
+    """분석 전 분류 추천 (저장하지 않음). 묶음·판정 대상은 코드 규칙의 추천이다."""
+    file_name: str
+    in_catalog: bool
+    file_no: int | None
+    doc_kind: DocKind
+    bundle: Literal["A", "B", "C", "D"]
+    language: str
+    standard_system: str | None
+    readable: bool
+    judge_target: bool
+    needs_review: bool
+    reason: str
+
+
 class DocumentPair(Out):
     pair_id: int
     file_no_a: int
