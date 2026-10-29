@@ -56,6 +56,7 @@ openspec/
 | 17 | `archive/2026-10-28-add-datasheet-export` | 데이터시트 채우기 화면과 엑셀 내려받기 (완료) |
 | 18 | `archive/2026-10-28-add-example-screens` | 백엔드 없는 메뉴 화면 12개를 예시 데이터로 (완료) |
 | 19 | `archive/2026-10-29-update-api-contract` | API 응답 스키마(Pydantic), 근거 응답 위치 필수, 화면 타입 자동 생성·CI 대조 (완료) |
+| 20 | `archive/2026-10-29-update-processing-progress` | 처리 중 세부 진행(AI 줄 수)·지난 시간·멈춤 안내, 검토 목록·홈 자동 새로고침 (완료) |
 
 ## 3. 작업 흐름
 

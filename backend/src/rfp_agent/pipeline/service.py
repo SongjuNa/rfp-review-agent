@@ -8,7 +8,7 @@ from rfp_agent.config import get_settings
 from rfp_agent.db.connection import connect
 from rfp_agent.db.seed import dict_version
 from rfp_agent.llm.client import make_llm
-from rfp_agent.pipeline.run import RunContext, create_run, execute_run
+from rfp_agent.pipeline.run import RunContext, create_run, execute_run, write_progress
 
 
 def make_context(conn: psycopg.Connection) -> RunContext:
@@ -24,6 +24,12 @@ def start_run(conn: psycopg.Connection, started_by: int | None = None) -> int:
 
 
 def run_to_end(run_id: int, paths: list[Path]) -> str:
-    """새 연결로 실행을 끝까지 돌린다 (API 백그라운드 작업용)."""
-    with connect() as conn:
-        return execute_run(make_context(conn), run_id, paths)
+    """새 연결로 실행을 끝까지 돌린다 (API 백그라운드 작업용).
+
+    세부 진행은 자동 커밋 연결 하나를 더 열어 바로 적는다 (처리 상태 화면).
+    """
+    with connect() as conn, connect() as side:
+        side.autocommit = True
+        ctx = make_context(conn)
+        ctx.progress = write_progress(side)
+        return execute_run(ctx, run_id, paths)

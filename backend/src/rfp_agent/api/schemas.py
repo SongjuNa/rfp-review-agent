@@ -61,6 +61,15 @@ class ReviewFields(Out):
     engineer_id: int | None
 
 
+class StepDetail(Out):
+    """문서 읽기 단계 안의 세부 진행 (처리 상태 화면). AI 일만 줄 수가 있다."""
+    part: Literal["classify", "structure", "extract", "label", "save", "type"]
+    done: int | None
+    total: int | None
+    file_index: int
+    file_count: int
+
+
 class RunSummary(ReviewFields):
     run_id: int
     review_no: str
@@ -69,6 +78,8 @@ class RunSummary(ReviewFields):
     dict_version: str
     llm_model: str | None
     step: str | None
+    step_detail: StepDetail | None
+    step_updated_at: datetime
     failed_step: str | None
     error_message: str | None
     started_at: datetime
@@ -89,6 +100,8 @@ class RunListItem(ReviewFields):
     engineer_name: str | None
     stage: Stage
     step: str | None
+    step_detail: StepDetail | None
+    step_updated_at: datetime
     failed_step: str | None
     error_message: str | None
     started_at: datetime
