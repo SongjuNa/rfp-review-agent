@@ -1,21 +1,39 @@
 import { useState } from 'react'
-import { api, type CompareRule, type DocKindRule, type ItemKey, type RiskExpression } from '../api'
+import { api, type CompareRule, type DocKindRule, type ItemKey, type RiskExpression, type RuleDictionary, type RuleEdit, type RuleValue } from '../api'
 import { ErrorText } from '../components/common'
 import { Pager } from '../components/Pager'
-import { DIRECTION_NAMES, DOC_KIND_NAMES, RISK_NAMES } from '../components/labels'
+import { DIRECTION_NAMES, DOC_KIND_NAMES, EDITOR_ROLES, RISK_NAMES, RULE_FIELD_NAMES } from '../components/labels'
 import { useLoad } from '../components/useLoad'
 import { usePageCss } from '../shell/pageCss'
+import { useSession } from '../shell/useSession'
+import { RuleDialog, type RuleTarget } from './RuleDialog'
 import { ExampleBand } from './detail/ExampleTab'
 
 // SCR-17 판정 규칙 (목업 v4.57 Rules). docs/screens/SCR-17-판정규칙.md
-// 읽기만 한다. 비교 방향·항목 이름·위험 표현·문서 종류 사전 네 가지와 쓴 횟수 (단위 탭은 단위 환산 금지 CR-10으로 뺐다).
+// 비교 방향·항목 이름·위험 표현·문서 종류 사전 네 가지와 쓴 횟수 (단위 탭은 단위 환산 금지 CR-10으로 뺐다).
+// 엔지니어·승인자는 규칙을 추가·수정·삭제하고, 줄마다 수정 이력을 본다 (add-rule-editing).
 
 type TabKey = 'dir' | 'name' | 'risk' | 'kind'
 type Cell = { v: string; cls?: string; right?: boolean }
-type Row = { key: string; search: string; cells: Cell[]; detail: [string, string][] }
-type Tab = { label: string; ph: string; cols: [string, boolean][]; rows: Row[]; used: number }
+// id: 고치기 API의 줄 번호, rkey: 다시 적재해도 같은 줄을 찾는 키(수정 이력 맞추기), value: 고치기 창 시작값
+type Row = { key: string; search: string; cells: Cell[]; detail: [string, string][]; id: string; title: string
+  rkey: Record<string, unknown>; value: RuleValue }
+type Tab = { label: string; ph: string; cols: [string, boolean][]; rows: Row[]; used: number; dict: RuleDictionary }
 
-const LOCK = '규칙 고치기는 이 change 범위 밖입니다 (data/seed를 고쳐 다시 적재)'
+const DICTS: Record<TabKey, RuleDictionary> = { dir: 'compare', risk: 'risk-expressions', name: 'items', kind: 'doc-kinds' }
+const ACTIONS: Record<RuleEdit['action'], string> = { ADD: '추가', EDIT: '수정', DELETE: '삭제' }
+const when = (t: string) => new Date(t).toLocaleString('ko-KR', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })
+const sameKey = (a: Record<string, unknown> | null, b: Record<string, unknown>) =>
+  !!a && Object.keys(b).every((k) => (a[k] ?? null) === (b[k] ?? null))
+/** 그 줄의 고침: 고치기 전 키나 고친 뒤 키가 지금 줄 키와 같은 것 (새것부터) */
+const historyOf = (edits: RuleEdit[], dict: RuleDictionary, rkey: Record<string, unknown>) =>
+  edits.filter((e) => e.dictionary === dict && (sameKey(e.row_key, rkey) || sameKey(e.after_key, rkey)))
+const changed = (e: RuleEdit) => {
+  if (e.action !== 'EDIT' || !e.before_value || !e.after_value) return ''
+  const keys = Object.keys(e.after_value).filter((k) => JSON.stringify(e.before_value![k]) !== JSON.stringify(e.after_value![k]))
+  return keys.map((k) => `${RULE_FIELD_NAMES[k] ?? k}: ${fmt(e.before_value![k])} → ${fmt(e.after_value![k])}`).join(', ')
+}
+const fmt = (v: unknown) => (v === null || v === undefined || v === '' ? '—' : Array.isArray(v) ? v.join('; ') : String(v))
 // 사람이 제안한 위험 표현 (예시). 제안·반영 흐름은 만들지 않는다 (SCR-17_공유.md)
 const PROPOSED: [string, string, string, string, string][] = [
   ['10-29', '"online partial discharge monitoring sensors (UHF)"', '기술 검토 엔지니어 · 예시 검토', 'st c-blue', '확인 대기'],
@@ -29,7 +47,7 @@ const usedCell = (n: number): Cell => ({ v: `${n}건`, right: true, cls: n ? '' 
 
 function dirTab(rules: CompareRule[]): Tab {
   return {
-    label: '비교 방향', ph: '항목, 표, 방향',
+    label: '비교 방향', ph: '항목, 표, 방향', dict: 'compare',
     cols: [['항목', false], ['표 · 번호', false], ['방향', false], ['시간 조건', false], ['강점 방향', false], ['쓴 판정', true]],
     used: rules.reduce((a, r) => a + r.used, 0),
     rows: rules.map((r) => {
@@ -40,6 +58,10 @@ function dirTab(rules: CompareRule[]): Tab {
         cells: [{ v: name, cls: r.item_key ? '' : 'c-grey' }, { v: where, cls: 'mono' }, { v: dir(r.direction), cls: r.direction === 'AI' ? 'c-ora' : '' },
           { v: r.time_condition ? '시간도 비교' : '—' }, { v: strength(r.strength_direction) }, usedCell(r.used)],
         detail: [['표준 항목', r.item_key ?? '—'], ['처리', r.process_note ?? '—']],
+        id: String(r.compare_rule_id), title: `${name} · ${where}`,
+        rkey: { table_name: r.table_name, item_no: r.item_no, item_key: r.item_key },
+        value: { table_name: r.table_name, item_no: r.item_no, item_key: r.item_key, direction: r.direction,
+          time_condition: r.time_condition, strength_direction: r.own_strength_direction, process_note: r.process_note },
       }
     }),
   }
@@ -47,7 +69,7 @@ function dirTab(rules: CompareRule[]): Tab {
 
 function nameTab(items: ItemKey[]): Tab {
   return {
-    label: '항목 이름', ph: 'RFP 표기, 표준 항목',
+    label: '항목 이름', ph: 'RFP 표기, 표준 항목', dict: 'items',
     cols: [['표준 항목', false], ['RFP에 나오는 표기', false], ['제품표 칸', false], ['기본 방향', false], ['쓴 판정', true]],
     used: items.reduce((a, r) => a + r.used, 0),
     rows: items.map((r) => ({
@@ -55,13 +77,16 @@ function nameTab(items: ItemKey[]): Tab {
       cells: [{ v: r.name_ko }, { v: r.aliases.length ? r.aliases.join(', ') : '같은 뜻 표현 없음', cls: r.aliases.length ? '' : 'c-grey' },
         { v: r.pm_column ?? (r.fixed_key ? `고정값 ${r.fixed_key}` : '—'), cls: 'mono' }, { v: dir(r.default_direction) }, usedCell(r.used)],
       detail: [['표준 항목 키', r.item_key], ['강점 방향', strength(r.strength_direction)], ['메모', r.note ?? '—']],
+      id: r.item_key, title: r.name_ko, rkey: { item_key: r.item_key },
+      value: { item_key: r.item_key, name_ko: r.name_ko, aliases: r.aliases, default_direction: r.default_direction,
+        strength_direction: r.strength_direction, note: r.note },
     })),
   }
 }
 
 function riskTab(exprs: RiskExpression[]): Tab {
   return {
-    label: '위험 표현', ph: '영문 표현, 위험 종류',
+    label: '위험 표현', ph: '영문 표현, 위험 종류', dict: 'risk-expressions',
     cols: [['표현 (원문)', false], ['위험 종류', false], ['언어', false], ['위험으로 보는 조건', false], ['쓴 횟수', true]],
     used: exprs.reduce((a, r) => a + r.used, 0),
     rows: exprs.map((r) => ({
@@ -69,13 +94,15 @@ function riskTab(exprs: RiskExpression[]): Tab {
       cells: [{ v: r.expression }, { v: RISK_NAMES[r.risk_kind] ?? r.risk_kind }, { v: r.language, cls: 'mono' },
         { v: r.context_rule, cls: r.context_rule.includes('미정') ? 'c-ora' : '' }, usedCell(r.used)],
       detail: [['위험 조건 후보 수', `${r.used}건 (이 표현으로 찾은 후보, 확정은 사람)`]],
+      id: String(r.expr_id), title: r.expression, rkey: { expression: r.expression },
+      value: { expression: r.expression, language: r.language, risk_kind: r.risk_kind, context_rule: r.context_rule },
     })),
   }
 }
 
 function kindTab(rules: DocKindRule[]): Tab {
   return {
-    label: '문서 종류', ph: '문서 종류, 찾는 표현',
+    label: '문서 종류', ph: '문서 종류, 찾는 표현', dict: 'doc-kinds',
     cols: [['문서 종류', false], ['파일 이름에서 찾는 표현', false], ['첫 장에서 찾는 표현', false], ['순서', true], ['분류한 문서', true]],
     used: rules.reduce((a, r) => a + r.used, 0),
     rows: rules.map((r) => ({
@@ -85,6 +112,8 @@ function kindTab(rules: DocKindRule[]): Tab {
         { v: `${r.used}개`, right: true, cls: r.used ? '' : 'c-grey' }],
       detail: [['메모', r.note ?? '—'], ['찾는 순서', '모든 줄의 파일 이름 표현을 위에서부터 본 뒤, 맞는 것이 없으면 첫 장 표현을 본다. 아무것도 안 맞으면 "종류 모름"(확인 필요)'],
         ['분류한 문서', `${r.used}개 (규칙이 이 종류로 정한 문서. AI·사람이 정한 문서는 빼고 셈)`]],
+      id: String(r.doc_kind_rule_id), title: `${DOC_KIND_NAMES[r.doc_kind] ?? r.doc_kind} · ${r.priority}번`, rkey: { priority: r.priority },
+      value: { priority: r.priority, doc_kind: r.doc_kind, name_pattern: r.name_pattern, page_pattern: r.page_pattern, note: r.note },
     })),
   }
 }
@@ -96,7 +125,14 @@ export function Rules() {
   const [open, setOpen] = useState<Record<string, boolean>>({})
   const [page, setPage] = useState(1)
   const [size, setSize] = useState(10)
-  const data = useLoad(() => Promise.all([api.compareRules(), api.ruleItems(), api.riskExpressions(), api.docKindRules()]), [])
+  const [target, setTarget] = useState<RuleTarget | null>(null)
+  const { user } = useSession()
+  const canEdit = !!user && EDITOR_ROLES.includes(user.role)
+  const lockText = '규칙은 엔지니어·승인자만 고칠 수 있습니다 (머리글에서 사용자 바꾸기)'
+  const data = useLoad(() => Promise.all([api.compareRules(), api.ruleItems(), api.riskExpressions(), api.docKindRules(), api.ruleEdits()]), [])
+  const edits = data.data?.[4] ?? []
+  const last = edits.find((e) => e.dictionary === DICTS[tab] && !e.discarded_at)
+  const itemKeys: [string, string][] = (data.data?.[1] ?? []).map((r) => [r.item_key, `${r.name_ko} (${r.item_key})`])
 
   const tabs: Record<TabKey, Tab> | null = data.data
     ? { dir: dirTab(data.data[0]), name: nameTab(data.data[1]), risk: riskTab(data.data[2]), kind: kindTab(data.data[3]) }
@@ -112,7 +148,9 @@ export function Rules() {
         <h1>판정 규칙</h1>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
           <span title="수정 요청 보내기는 아직 없습니다"><button type="button" className="bo" disabled><span className="ms" aria-hidden="true" style={{ fontSize: 'var(--ic-s)' }}>edit_note</span>수정 요청</button></span>
-          <span title={LOCK}><button type="button" className="bp" disabled><span className="ms" aria-hidden="true" style={{ fontSize: 'var(--ic-s)' }}>lock</span>규칙 추가</button></span>
+          <span title={canEdit ? `${T?.label ?? ''} 규칙 추가` : lockText}><button type="button" className="bp" disabled={!canEdit || !T}
+            onClick={() => setTarget({ mode: 'add', dictionary: DICTS[tab] })}>
+            <span className="ms" aria-hidden="true" style={{ fontSize: 'var(--ic-s)' }}>{canEdit ? 'add' : 'lock'}</span>규칙 추가</button></span>
         </div>
       </div>
       <section className="rkp" aria-labelledby="rkpT">
@@ -133,7 +171,7 @@ export function Rules() {
       </div>
       <section className="sec" style={{ marginTop: 16 }}>
         <ErrorText error={data.error} />
-        <div className="rhead"><span>마지막 수정 <b>기록 없음</b></span><span>{tab === 'kind' ? '규칙이 분류한 문서' : '지금 판정에 쓰임'} <b>{T ? `${T.used.toLocaleString('en-US')}${tab === 'kind' ? '개' : '회'}` : '…'}</b></span></div>
+        <div className="rhead"><span>마지막 수정 <b>{last ? `${last.actor_name} · ${when(last.edited_at)} · ${ACTIONS[last.action]}` : '기록 없음'}</b></span>{!canEdit && <span className="c-ora">규칙은 엔지니어·승인자만 고칠 수 있습니다</span>}<span>{tab === 'kind' ? '규칙이 분류한 문서' : '지금 판정에 쓰임'} <b>{T ? `${T.used.toLocaleString('en-US')}${tab === 'kind' ? '개' : '회'}` : '…'}</b></span></div>
         <div className="filters" role="search" style={{ marginTop: 0 }}>
           <label htmlFor="rq" className="sr">규칙 검색</label>
           <input className="fi" id="rq" value={q} onChange={(e) => { setQ(e.target.value); setPage(1) }} placeholder={T?.ph} style={{ flex: '1 1 260px', maxWidth: 340 }} />
@@ -160,7 +198,16 @@ export function Rules() {
                 if (op) out.push(
                   <tr key={`${r.key}:x`} className="rx"><td colSpan={T?.cols.length}><div className="rxin">
                     <div><h4>이 규칙의 내용</h4><ul>{r.detail.map(([k, v]) => <li key={k}>{k}: {v}</li>)}</ul></div>
-                    <div><h4>수정 이력</h4><ul><li>수정 이력을 저장하지 않습니다 (기준 데이터 적재본 그대로)</li></ul></div>
+                    <div><h4>수정 이력</h4><RowHistory edits={historyOf(edits, T!.dict, r.rkey)} />
+                      <div className="rxact">
+                        <span title={canEdit ? undefined : lockText}><button type="button" className="bo" disabled={!canEdit}
+                          onClick={() => setTarget({ mode: 'edit', dictionary: T!.dict, id: r.id, value: r.value, title: r.title })}>
+                          <span className="ms" aria-hidden="true" style={{ fontSize: 'var(--ic-s)' }}>edit</span>수정</button></span>
+                        <span title={canEdit ? undefined : lockText}><button type="button" className="bo" disabled={!canEdit}
+                          onClick={() => setTarget({ mode: 'delete', dictionary: T!.dict, id: r.id, value: r.value, title: r.title })}>
+                          <span className="ms" aria-hidden="true" style={{ fontSize: 'var(--ic-s)' }}>delete</span>삭제</button></span>
+                      </div>
+                    </div>
                   </div></td></tr>,
                 )
                 return out
@@ -171,6 +218,22 @@ export function Rules() {
         {rows.length > 0 && <Pager total={found.length} page={page} size={size} shown={rows.length} onPage={setPage} onSize={(n) => { setSize(n); setPage(1) }} />}
         {T && rows.length === 0 && <p style={{ margin: 0, padding: '16px 12px', color: '#667085' }}>조건에 맞는 규칙이 없습니다.</p>}
       </section>
+      {target && <RuleDialog target={target} itemKeys={itemKeys} onClose={() => setTarget(null)}
+        onDone={() => { setTarget(null); if (target.mode === 'delete') setOpen({}); data.reload() }} />}
     </main>
+  )
+}
+
+function RowHistory({ edits }: { edits: RuleEdit[] }) {
+  if (!edits.length) return <ul><li>고친 적 없음 (기준 데이터 적재본 그대로)</li></ul>
+  return (
+    <ul className="rhist">
+      {edits.map((e) => (
+        <li key={e.edit_id} className={e.discarded_at ? 'rdis' : ''}>
+          <b>{ACTIONS[e.action]}</b> {e.reason} <span className="rwho">· {e.actor_name} · {when(e.edited_at)}{e.discarded_at ? ' · 버림' : ''}</span>
+          {changed(e) && <div className="rwho mono">{changed(e)}</div>}
+        </li>
+      ))}
+    </ul>
   )
 }

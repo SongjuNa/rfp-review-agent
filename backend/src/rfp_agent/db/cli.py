@@ -1,4 +1,4 @@
-"""DB 명령: rfp-db migrate | seed-rules | seed-products [--replace] | setup"""
+"""DB 명령: rfp-db migrate | seed-rules [--reset-edits] | seed-products [--replace] | setup"""
 
 import argparse
 import sys
@@ -36,6 +36,8 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("command", choices=["migrate", "seed-rules", "seed-products", "setup"])
     parser.add_argument("--replace", action="store_true",
                         help="이전 제품과 검토 실행 결과를 지우고 파일 내용만 넣음")
+    parser.add_argument("--reset-edits", action="store_true",
+                        help="화면에서 고친 규칙을 버리고 사전 파일 내용만 넣음 (이력은 남음)")
     args = parser.parse_args(argv)
     settings = get_settings()
     with connect() as conn:
@@ -43,7 +45,7 @@ def main(argv: list[str] | None = None) -> None:
             applied = migrate(conn, settings.migrations_dir)
             print(f"[마이그레이션] 적용 {len(applied)}건 {applied}")
         if args.command in ("seed-rules", "setup"):
-            print_report("규칙 사전", seed_rules(conn, settings.seed_dir))
+            print_report("규칙 사전", seed_rules(conn, settings.seed_dir, args.reset_edits))
         if args.command in ("seed-products", "setup"):
             run_products(conn, args.replace)
 

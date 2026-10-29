@@ -78,11 +78,12 @@ class Reference:
     @classmethod
     def load(cls, conn: psycopg.Connection) -> "Reference":
         defaults = {k: (d, s) for k, d, s in conn.execute(
-            "SELECT item_key, default_direction, strength_direction FROM item_key")}
+            "SELECT item_key, default_direction, strength_direction FROM item_key WHERE active")}
         rules = {}
         for rid, table, no, key, direction, time, strength in conn.execute(
                 "SELECT compare_rule_id, table_name, item_no, item_key, direction, "
-                "time_condition, strength_direction FROM compare_rule ORDER BY compare_rule_id"):
+                "time_condition, strength_direction FROM compare_rule WHERE active "
+                "ORDER BY compare_rule_id"):
             rules[(table, _item_no(no), key)] = Rule(rid, direction, time, strength)
         columns = {k: (c, u) for k, c, u in conn.execute(
             "SELECT item_key, pm_column, usage FROM item_pm_mapping")}

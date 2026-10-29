@@ -2844,7 +2844,7 @@
     "/api/rules/doc-kinds": {
       "get": {
         "summary": "Doc Kind Rules",
-        "description": "문서 종류 규칙 사전 (순서대로). 고치기는 data/seed를 고쳐 다시 적재한다.",
+        "description": "문서 종류 규칙 사전 (순서대로).",
         "operationId": "doc_kind_rules_api_rules_doc_kinds_get",
         "responses": {
           "200": {
@@ -2857,6 +2857,246 @@
                   },
                   "type": "array",
                   "title": "Response Doc Kind Rules Api Rules Doc Kinds Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/rules/edits": {
+      "get": {
+        "summary": "Rule Edits",
+        "description": "규칙 고침 이력, 새것부터. 버린 고침도 함께 낸다.",
+        "operationId": "rule_edits_api_rules_edits_get",
+        "parameters": [
+          {
+            "name": "dictionary",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "compare",
+                    "risk-expressions",
+                    "items",
+                    "doc-kinds"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Dictionary"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/RuleEdit"
+                  },
+                  "title": "Response Rule Edits Api Rules Edits Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/rules/{dictionary}": {
+      "post": {
+        "summary": "Add Rule",
+        "description": "규칙 한 줄 추가 (엔지니어·승인자). 지운 같은 키 줄이 있으면 되살린다.",
+        "operationId": "add_rule_api_rules__dictionary__post",
+        "parameters": [
+          {
+            "name": "dictionary",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "enum": [
+                "compare",
+                "risk-expressions",
+                "items",
+                "doc-kinds"
+              ],
+              "type": "string",
+              "title": "Dictionary"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RuleChange"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RuleEdit"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/rules/{dictionary}/{row_id}": {
+      "put": {
+        "summary": "Update Rule",
+        "operationId": "update_rule_api_rules__dictionary___row_id__put",
+        "parameters": [
+          {
+            "name": "dictionary",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "enum": [
+                "compare",
+                "risk-expressions",
+                "items",
+                "doc-kinds"
+              ],
+              "type": "string",
+              "title": "Dictionary"
+            }
+          },
+          {
+            "name": "row_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Row Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RuleChange"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RuleEdit"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete Rule",
+        "description": "규칙 한 줄 삭제. 지난 결과가 가리키는 사전은 끄고, 쓰이는 표준 항목은 막는다.",
+        "operationId": "delete_rule_api_rules__dictionary___row_id__delete",
+        "parameters": [
+          {
+            "name": "dictionary",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "enum": [
+                "compare",
+                "risk-expressions",
+                "items",
+                "doc-kinds"
+              ],
+              "type": "string",
+              "title": "Dictionary"
+            }
+          },
+          {
+            "name": "row_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Row Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RuleRemoval"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RuleEdit"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
                 }
               }
             }
@@ -3777,6 +4017,17 @@
             ],
             "title": "Strength Direction"
           },
+          "own_strength_direction": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Own Strength Direction"
+          },
           "process_note": {
             "anyOf": [
               {
@@ -3804,6 +4055,7 @@
           "direction",
           "time_condition",
           "strength_direction",
+          "own_strength_direction",
           "process_note",
           "used"
         ],
@@ -7982,6 +8234,186 @@
           "locations"
         ],
         "title": "RiskMember"
+      },
+      "RuleChange": {
+        "properties": {
+          "value": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Value"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "actor_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Actor Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "value"
+        ],
+        "title": "RuleChange",
+        "description": "규칙 추가·수정. value 칸은 사전마다 다르다 (pipeline/rule_edit.py). 사유는 꼭 적는다."
+      },
+      "RuleEdit": {
+        "properties": {
+          "edit_id": {
+            "type": "integer",
+            "title": "Edit Id"
+          },
+          "dictionary": {
+            "type": "string",
+            "enum": [
+              "compare",
+              "risk-expressions",
+              "items",
+              "doc-kinds"
+            ],
+            "title": "Dictionary"
+          },
+          "row_key": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Row Key"
+          },
+          "after_key": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "After Key"
+          },
+          "action": {
+            "type": "string",
+            "enum": [
+              "ADD",
+              "EDIT",
+              "DELETE"
+            ],
+            "title": "Action"
+          },
+          "before_value": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Before Value"
+          },
+          "after_value": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "After Value"
+          },
+          "reason": {
+            "type": "string",
+            "title": "Reason"
+          },
+          "actor_id": {
+            "type": "integer",
+            "title": "Actor Id"
+          },
+          "actor_name": {
+            "type": "string",
+            "title": "Actor Name"
+          },
+          "edited_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Edited At"
+          },
+          "discarded_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Discarded At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "edit_id",
+          "dictionary",
+          "row_key",
+          "after_key",
+          "action",
+          "before_value",
+          "after_value",
+          "reason",
+          "actor_id",
+          "actor_name",
+          "edited_at",
+          "discarded_at"
+        ],
+        "title": "RuleEdit",
+        "description": "규칙 고침 이력 한 줄 (add-rule-editing).\n\nrow_key는 고치기 전(추가는 추가한) 줄 키, after_key는 고친 뒤 키."
+      },
+      "RuleRemoval": {
+        "properties": {
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "actor_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Actor Id"
+          }
+        },
+        "type": "object",
+        "title": "RuleRemoval"
       },
       "RunDocument": {
         "properties": {

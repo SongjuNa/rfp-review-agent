@@ -769,6 +769,7 @@ class CompareRule(Out):
     direction: str
     time_condition: bool
     strength_direction: str | None
+    own_strength_direction: str | None     # 이 줄에 적은 강점 방향 (비면 항목 기본값을 씀)
     process_note: str | None
     used: int
 
@@ -803,3 +804,25 @@ class RiskExpression(Out):
     risk_kind: str
     context_rule: str
     used: int
+
+
+RuleDictionary = Literal["compare", "risk-expressions", "items", "doc-kinds"]
+
+
+class RuleEdit(Out):
+    """규칙 고침 이력 한 줄 (add-rule-editing).
+
+    row_key는 고치기 전(추가는 추가한) 줄 키, after_key는 고친 뒤 키.
+    """
+    edit_id: int
+    dictionary: RuleDictionary
+    row_key: dict[str, Any]
+    after_key: dict[str, Any] | None
+    action: Literal["ADD", "EDIT", "DELETE"]
+    before_value: dict[str, Any] | None
+    after_value: dict[str, Any] | None
+    reason: str
+    actor_id: int
+    actor_name: str
+    edited_at: datetime
+    discarded_at: datetime | None

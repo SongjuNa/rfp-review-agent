@@ -1,4 +1,6 @@
-"""기준 데이터 읽기 (SCR-16 제품표, SCR-17 판정 규칙). 읽기만 하고 바꾸지 않는다.
+"""기준 데이터 읽기 (SCR-16 제품표, SCR-17 판정 규칙). 고치기는 pipeline/rule_edit.py.
+
+끈(삭제한) 사전 줄은 목록에서 뺀다.
 
 빈 칸은 빈 값 그대로 낸다 (CR-04). 쓰인 횟수는 현재 판정(is_current)과 위험 조건 후보만 센다.
 """
@@ -149,11 +151,12 @@ def compare_rules(conn: psycopg.Connection) -> list[dict]:
             """SELECT c.compare_rule_id, c.table_name, c.item_no, c.item_key, k.name_ko,
                       c.direction, c.time_condition,
                       COALESCE(c.strength_direction, k.strength_direction) AS strength_direction,
+                      c.strength_direction AS own_strength_direction,
                       c.process_note,
                       (SELECT count(*) FROM judgment j
                        WHERE j.compare_rule_id = c.compare_rule_id AND j.is_current) AS used
                FROM compare_rule c LEFT JOIN item_key k ON k.item_key = c.item_key
-               ORDER BY c.compare_rule_id""").fetchall()
+               WHERE c.active ORDER BY c.compare_rule_id""").fetchall()
 
 
 def items(conn: psycopg.Connection) -> list[dict]:
@@ -168,7 +171,8 @@ def items(conn: psycopg.Connection) -> list[dict]:
                        WHERE v.item_key = k.item_key AND j.is_current) AS used
                FROM item_key k LEFT JOIN item_alias a ON a.item_key = k.item_key
                LEFT JOIN item_pm_mapping m ON m.item_key = k.item_key
-               GROUP BY k.item_key, m.pm_column, m.fixed_key ORDER BY k.item_key""").fetchall()
+               WHERE k.active GROUP BY k.item_key, m.pm_column, m.fixed_key
+               ORDER BY k.item_key""").fetchall()
     return rows
 
 
@@ -178,7 +182,7 @@ def risk_expressions(conn: psycopg.Connection) -> list[dict]:
         return cur.execute(
             """SELECT e.expr_id, e.expression, e.language, e.risk_kind, e.context_rule,
                       (SELECT count(*) FROM risk_flag f WHERE f.expr_id = e.expr_id) AS used
-               FROM risk_expression e ORDER BY e.risk_kind, e.expr_id""").fetchall()
+               FROM risk_expression e WHERE e.active ORDER BY e.risk_kind, e.expr_id""").fetchall()
 
 
 def doc_kind_rules(conn: psycopg.Connection) -> list[dict]:

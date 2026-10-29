@@ -70,3 +70,16 @@ export const DIRECTION_NAMES: Record<string, string> = {
   EQ: '같아야 함', GE: '같거나 커야 함', LE: '같거나 작아야 함', LT: '작아야 함', IN: '요구를 포함해야 함',
   FILL: '보증값 작성', TEXT: '문장 비교', AI: '문장 읽기 (언어 모델)', SOURCE: '원문 기호 따름',
 }
+/** 규칙 사전 이름 (판정 규칙 화면 고치기 API의 dictionary) */
+export const DICTIONARY_NAMES: Record<string, string> = {
+  compare: '비교 방향', 'risk-expressions': '위험 표현', items: '항목 이름', 'doc-kinds': '문서 종류',
+}
+/** 규칙을 고칠 수 있는 역할 [제안] */
+export const EDITOR_ROLES = ['ENGINEER', 'APPROVER']
+/** 규칙 사전 칸 이름 (수정 이력의 바뀐 칸) */
+export const RULE_FIELD_NAMES: Record<string, string> = {
+  table_name: '대상 표', item_no: '항목 번호', item_key: '표준 항목', direction: '비교 방향', time_condition: '시간 조건',
+  strength_direction: '강점 방향', process_note: '처리', expression: '표현', language: '언어', risk_kind: '위험 종류',
+  context_rule: '위험으로 보는 조건', name_ko: '한글 이름', default_direction: '기본 방향', note: '메모', aliases: 'RFP 표기',
+  priority: '순서', doc_kind: '문서 종류', name_pattern: '파일 이름 표현', page_pattern: '첫 장 표현',
+}

@@ -121,7 +121,8 @@ def seed_item_keys(conn: psycopg.Connection, rows: list[dict[str, str]], report:
                VALUES (%s, %s, %s, %s, %s)
                ON CONFLICT (item_key) DO UPDATE SET name_ko = EXCLUDED.name_ko,
                  default_direction = EXCLUDED.default_direction,
-                 strength_direction = EXCLUDED.strength_direction, note = EXCLUDED.note""",
+                 strength_direction = EXCLUDED.strength_direction, note = EXCLUDED.note,
+                 active = TRUE""",
             (key, row["한글 이름"], direction_code(row["기본 비교 방향"], key),
              strength_code(row["강점 방향"], key) or "NONE", blank_to_none(row["비고"])),
         )
@@ -150,12 +151,14 @@ def seed_compare_rules(conn: psycopg.Connection, rows: list[dict[str, str]], rep
                ON CONFLICT (table_name, item_no, COALESCE(item_key, '')) DO UPDATE SET
                  direction = EXCLUDED.direction, time_condition = EXCLUDED.time_condition,
                  strength_direction = EXCLUDED.strength_direction,
-                 process_note = EXCLUDED.process_note
+                 process_note = EXCLUDED.process_note, active = TRUE
                RETURNING compare_rule_id""",
             values,
         ).fetchone()[0]
         keep.append(row_id)
-    conn.execute("DELETE FROM compare_rule WHERE NOT (compare_rule_id = ANY(%s))", (keep,))
+    # 지난 판정이 가리킬 수 있어 지우지 않고 끈다 (add-rule-editing)
+    conn.execute("UPDATE compare_rule SET active = FALSE WHERE NOT (compare_rule_id = ANY(%s))",
+                 (keep,))
     report.counts["compare_rule"] = len(rows)
 
 
@@ -169,12 +172,13 @@ def seed_risk_expressions(conn: psycopg.Connection, rows: list[dict[str, str]],
             """INSERT INTO risk_expression (expression, language, risk_kind, context_rule)
                VALUES (%s, %s, %s, %s)
                ON CONFLICT (expression) DO UPDATE SET language = EXCLUDED.language,
-                 risk_kind = EXCLUDED.risk_kind, context_rule = EXCLUDED.context_rule""",
+                 risk_kind = EXCLUDED.risk_kind, context_rule = EXCLUDED.context_rule,
+                 active = TRUE""",
             # 사전 초안에서 조건이 빈 줄은 팀이 아직 정하지 않은 것이다.
             (expr, LANGUAGES[row["언어"]], RISK_KINDS[row["종류"]],
              row["위험 후보로 보는 조건"] or "(조건 미정)"),
         )
-    conn.execute("DELETE FROM risk_expression WHERE NOT (expression = ANY(%s))",
+    conn.execute("UPDATE risk_expression SET active = FALSE WHERE NOT (expression = ANY(%s))",
                  ([r["표현"] for r in rows],))
     report.counts["risk_expression"] = len(rows)
 
@@ -409,21 +413,42 @@ def seed_field_history(conn: psycopg.Connection, seed_dir: Path, report: SeedRep
     report.counts["fault_link"] = len(links)
 
 
-def dict_version(seed_dir: Path) -> str:
-    """사전·제품표 파일 내용으로 만든 판 번호. 같은 파일이면 같은 판이다 (CR-11)."""
+def dict_version(seed_dir: Path, conn: psycopg.Connection | None = None) -> str:
+    """사전·제품표 파일 내용과 화면 규칙 고침으로 만든 판 번호 (CR-11).
+
+    같은 파일, 같은 고침이면 같은 판이다. 버리지 않은 고침이 있으면 "+e<마지막 고침 번호>"를 붙인다.
+    """
     digest = hashlib.sha256()
     for path in sorted(seed_dir.rglob("*.csv")):
         digest.update(path.relative_to(seed_dir).as_posix().encode())
         digest.update(path.read_bytes())
-    return digest.hexdigest()[:12]
+    version = digest.hexdigest()[:12]
+    if conn is not None:
+        last = conn.execute(
+            "SELECT max(edit_id) FROM rule_edit WHERE discarded_at IS NULL").fetchone()[0]
+        if last:
+            version += f"+e{last}"
+    return version
 
 
-def seed_rules(conn: psycopg.Connection, seed_dir: Path) -> SeedReport:
+def seed_rules(conn: psycopg.Connection, seed_dir: Path, reset_edits: bool = False) -> SeedReport:
+    """CSV를 넣은 뒤 화면에서 고친 규칙을 고친 순서대로 다시 적용한다.
+
+    reset_edits면 고침을 버리고(이력에 버린 시각을 남김) CSV 내용만 둔다.
+    """
+    from rfp_agent.pipeline import rule_edit
+
     report = SeedReport()
     with conn.transaction():
         for name, step in SEED_STEPS:
             step(conn, read_csv(seed_dir / name), report)
         seed_field_history(conn, seed_dir, report)
+        if reset_edits:
+            n = conn.execute("UPDATE rule_edit SET discarded_at = now() "
+                             "WHERE discarded_at IS NULL").rowcount
+            report.counts["버린 규칙 고침"] = n
+        else:
+            rule_edit.replay(conn, report)
     return report
 
 
