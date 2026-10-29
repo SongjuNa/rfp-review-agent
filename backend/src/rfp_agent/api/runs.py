@@ -11,6 +11,41 @@ from urllib.parse import quote
 from fastapi import APIRouter, BackgroundTasks, Form, HTTPException, Query, Response, UploadFile
 from pydantic import BaseModel, Field
 
+from rfp_agent.api.schemas import (
+    ActionResult,
+    ApprovalScreen,
+    Assignment,
+    AssignmentStatus,
+    BulkResult,
+    Datasheet,
+    DatasheetInfo,
+    DecisionResult,
+    Deliverables,
+    DocumentPair,
+    EngineeringCheck,
+    Equipment,
+    Judgment,
+    JudgmentCounts,
+    LogEntry,
+    Loss,
+    LossResult,
+    MyTasks,
+    OutputItem,
+    ProductSwitch,
+    Proposal,
+    ReadCheck,
+    Requirement,
+    Risk,
+    RunDocument,
+    RunListItem,
+    RunSummary,
+    StageResult,
+    SubmissionCheck,
+    SubmitResult,
+    Tbe,
+    User,
+    Warranty,
+)
 from rfp_agent.config import get_settings
 from rfp_agent.db.connection import connect
 from rfp_agent.pipeline import datasheet, queries, read_checks, review, review_info, tbe
@@ -25,6 +60,12 @@ from rfp_agent.pipeline.service import make_context, run_to_end, start_run
 router = APIRouter(prefix="/api", tags=["검토 실행"])
 DOCX_TYPE = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
 XLSX_TYPE = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+
+
+def _file(media_type: str) -> dict:
+    """내려받기 API의 성공 응답은 JSON이 아니라 파일이다 (/openapi.json에 밝힘)."""
+    return {200: {"content": {media_type: {"schema": {"type": "string", "format": "binary"}}},
+                  "description": "파일"}}
 
 
 class ReviewInfo(BaseModel):
@@ -128,20 +169,20 @@ def _safe_name(name: str) -> str:
 
 
 @router.get("/users")
-def users() -> list[dict]:
+def users() -> list[User]:
     """로그인(범위 밖) 전까지 화면에서 고르는 사용자 목록."""
     with connect() as conn:
         return queries.users(conn)
 
 
 @router.get("/runs")
-def runs(limit: int = Query(50, le=200)) -> list[dict]:
+def runs(limit: int = Query(50, le=200)) -> list[RunListItem]:
     with connect() as conn:
         return queries.run_list(conn, limit)
 
 
 @router.get("/requirements/{requirement_id}")
-def requirement(requirement_id: int, run_id: int | None = None) -> dict:
+def requirement(requirement_id: int, run_id: int | None = None) -> Requirement:
     """요구사항 원문. run_id를 주면 그 실행의 문서 위치만 낸다."""
     with connect() as conn:
         item = queries.requirement(conn, requirement_id, run_id)
@@ -158,7 +199,7 @@ def library() -> list[str]:
 
 
 @router.post("/runs/library", status_code=202)
-def run_library(body: LibraryRun, background: BackgroundTasks) -> dict:
+def run_library(body: LibraryRun, background: BackgroundTasks) -> RunSummary:
     docx_dir = get_settings().docx_dir
     paths = [docx_dir / _safe_name(name) for name in body.files]
     missing = [p.name for p in paths if not p.exists()]
@@ -172,7 +213,7 @@ async def run_upload(files: list[UploadFile], background: BackgroundTasks,
                      project_name: str | None = Form(None), review_name: str | None = Form(None),
                      customer_name: str | None = Form(None), country: str | None = Form(None),
                      due_date: str | None = Form(None), engineer_id: int | None = Form(None),
-                     actor_id: int | None = Form(None)) -> dict:
+                     actor_id: int | None = Form(None)) -> RunSummary:
     """올린 docx로 검토를 시작한다. 검토 정보 칸은 모두 고를 수 있다.
 
     파일은 내용 해시 폴더에 저장해 같은 파일이면 다시 처리하지 않는다.
@@ -196,12 +237,12 @@ async def run_upload(files: list[UploadFile], background: BackgroundTasks,
 
 
 @router.get("/runs/{run_id}")
-def run_status(run_id: int) -> dict:
+def run_status(run_id: int) -> RunSummary:
     return _summary(run_id)
 
 
 @router.put("/runs/{run_id}/info")
-def update_info(run_id: int, body: ReviewInfo) -> dict:
+def update_info(run_id: int, body: ReviewInfo) -> RunSummary:
     """검토 정보를 고친다. 단계와 관계없이 고칠 수 있고 바뀐 칸은 이력에 남는다."""
     _summary(run_id)
     with connect() as conn:
@@ -210,14 +251,14 @@ def update_info(run_id: int, body: ReviewInfo) -> dict:
 
 
 @router.get("/runs/{run_id}/documents")
-def run_documents(run_id: int) -> list[dict]:
+def run_documents(run_id: int) -> list[RunDocument]:
     _summary(run_id)
     with connect() as conn:
         return queries.run_documents(conn, run_id)
 
 
 @router.get("/runs/{run_id}/pairs")
-def run_pairs(run_id: int) -> list[dict]:
+def run_pairs(run_id: int) -> list[DocumentPair]:
     _summary(run_id)
     with connect() as conn:
         return queries.run_pairs(conn, run_id)
@@ -226,7 +267,7 @@ def run_pairs(run_id: int) -> list[dict]:
 @router.get("/runs/{run_id}/requirements")
 def run_requirements(run_id: int, response: Response, document_id: int | None = None,
                      type_code: str | None = None, limit: int = Query(100, le=500),
-                     offset: int = 0) -> list[dict]:
+                     offset: int = 0) -> list[Requirement]:
     _summary(run_id)
     with connect() as conn:
         response.headers["X-Total-Count"] = str(queries.count_requirements(
@@ -236,7 +277,7 @@ def run_requirements(run_id: int, response: Response, document_id: int | None = 
 
 
 @router.get("/runs/{run_id}/risks")
-def run_risks(run_id: int) -> list[dict]:
+def run_risks(run_id: int) -> list[Risk]:
     _summary(run_id)
     with connect() as conn:
         return queries.run_risks(conn, run_id)
@@ -247,7 +288,7 @@ def run_judgments(run_id: int, response: Response, result: str | None = None,
                   group: str | None = None, type_code: str | None = None,
                   q: str | None = None, unconfirmed: bool = False,
                   order: str | None = Query(None, pattern="^priority$"),
-                  limit: int = Query(100, le=500), offset: int = 0) -> list[dict]:
+                  limit: int = Query(100, le=500), offset: int = 0) -> list[Judgment]:
     """판정 목록. order=priority면 일탈 → 질의 → 확인 필요 → 작성 필요 → 준수 순서."""
     _summary(run_id)
     filters = {"result": result, "group": group, "type_code": type_code, "q": q,
@@ -259,7 +300,7 @@ def run_judgments(run_id: int, response: Response, result: str | None = None,
 
 
 @router.get("/runs/{run_id}/judgment-counts")
-def judgment_counts(run_id: int) -> dict:
+def judgment_counts(run_id: int) -> JudgmentCounts:
     """판정 칩 건수 (판정 값마다, 확정 안 한 수, 그중 준수)."""
     _summary(run_id)
     with connect() as conn:
@@ -267,14 +308,14 @@ def judgment_counts(run_id: int) -> dict:
 
 
 @router.get("/runs/{run_id}/equipment")
-def run_equipment(run_id: int) -> list[dict]:
+def run_equipment(run_id: int) -> list[Equipment]:
     _summary(run_id)
     with connect() as conn:
         return queries.run_equipment(conn, run_id)
 
 
 @router.put("/runs/{run_id}/equipment/{group:path}/product")
-def choose_product(run_id: int, group: str, body: ProductChoice) -> dict:
+def choose_product(run_id: int, group: str, body: ProductChoice) -> ProductSwitch:
     """설비 묶음의 비교 제품을 바꾸고 그 묶음을 다시 판정한다.
 
     이전 판정은 지우지 않고 현재가 아님으로 남긴다.
@@ -301,7 +342,7 @@ def choose_product(run_id: int, group: str, body: ProductChoice) -> dict:
 
 @router.get("/runs/{run_id}/warranty")
 def run_warranty(run_id: int, response: Response, status: str | None = None,
-                 limit: int = Query(100, le=500), offset: int = 0) -> list[dict]:
+                 limit: int = Query(100, le=500), offset: int = 0) -> list[Warranty]:
     _summary(run_id)
     with connect() as conn:
         response.headers["X-Total-Count"] = str(queries.count_warranty(conn, run_id,
@@ -310,14 +351,14 @@ def run_warranty(run_id: int, response: Response, status: str | None = None,
 
 
 @router.get("/runs/{run_id}/losses")
-def run_losses(run_id: int) -> list[dict]:
+def run_losses(run_id: int) -> list[Loss]:
     _summary(run_id)
     with connect() as conn:
         return queries.run_losses(conn, run_id)
 
 
 @router.put("/runs/{run_id}/losses/{loss_calc_id}")
-def update_loss(run_id: int, loss_calc_id: int, body: LossValues) -> dict:
+def update_loss(run_id: int, loss_calc_id: int, body: LossValues) -> LossResult:
     """엔지니어가 손실값을 넣으면 다시 계산한다. 직접 넣은 값은 팀 가정으로 표시된다."""
     _summary(run_id)
     with connect() as conn:
@@ -338,13 +379,14 @@ def update_loss(run_id: int, loss_calc_id: int, body: LossValues) -> dict:
 
 
 @router.get("/runs/{run_id}/outputs")
-def run_outputs(run_id: int, list_kind: str | None = None) -> list[dict]:
+def run_outputs(run_id: int, list_kind: str | None = None) -> list[OutputItem]:
     _summary(run_id)
     with connect() as conn:
         return queries.run_outputs(conn, run_id, list_kind)
 
 
-@router.get("/runs/{run_id}/outputs/export")
+@router.get("/runs/{run_id}/outputs/export", response_class=Response,
+            responses=_file(DOCX_TYPE))
 def export_outputs(run_id: int, list_kind: str = Query(pattern="^(DEVIATION|QUERY)$")) -> Response:
     """일탈 목록·질의서 초안 Word 파일 (SCR-08-11)."""
     _summary(run_id)
@@ -357,7 +399,7 @@ def export_outputs(run_id: int, list_kind: str = Query(pattern="^(DEVIATION|QUER
 @router.get("/runs/{run_id}/tbe")
 def get_tbe(run_id: int, include: str = Query("all", pattern="^(all|confirmed)$"),
             lang: str = Query("en", pattern="^(en|ko|both)$"),
-            base: str = Query("now", pattern="^(now|v1)$")) -> dict:
+            base: str = Query("now", pattern="^(now|v1)$")) -> Tbe:
     """TBE 준수표 미리보기 (SCR-09). 엑셀과 같은 줄."""
     _summary(run_id)
     with connect() as conn:
@@ -367,7 +409,8 @@ def get_tbe(run_id: int, include: str = Query("all", pattern="^(all|confirmed)$"
             raise HTTPException(409, str(exc)) from exc
 
 
-@router.get("/runs/{run_id}/tbe/export")
+@router.get("/runs/{run_id}/tbe/export", response_class=Response,
+            responses=_file(XLSX_TYPE))
 def export_tbe(run_id: int, include: str = Query("all", pattern="^(all|confirmed)$"),
                lang: str = Query("en", pattern="^(en|ko|both)$"),
                base: str = Query("now", pattern="^(now|v1)$")) -> Response:
@@ -384,7 +427,7 @@ def export_tbe(run_id: int, include: str = Query("all", pattern="^(all|confirmed
 
 
 @router.get("/runs/{run_id}/datasheets")
-def get_datasheets(run_id: int) -> list[dict]:
+def get_datasheets(run_id: int) -> list[DatasheetInfo]:
     """판정이 있는 고객 표(데이터시트) 목록 (SCR-10)."""
     _summary(run_id)
     with connect() as conn:
@@ -392,7 +435,7 @@ def get_datasheets(run_id: int) -> list[dict]:
 
 
 @router.get("/runs/{run_id}/datasheet")
-def get_datasheet(run_id: int, table_id: int) -> dict:
+def get_datasheet(run_id: int, table_id: int) -> Datasheet:
     """데이터시트 한 장 미리보기. 엑셀과 같은 줄."""
     _summary(run_id)
     with connect() as conn:
@@ -402,7 +445,8 @@ def get_datasheet(run_id: int, table_id: int) -> dict:
             raise HTTPException(404, str(exc)) from exc
 
 
-@router.get("/runs/{run_id}/datasheet/export")
+@router.get("/runs/{run_id}/datasheet/export", response_class=Response,
+            responses=_file(XLSX_TYPE))
 def export_datasheet(run_id: int, table_id: int) -> Response:
     """데이터시트 엑셀 파일. X-Row-Count = 줄 수."""
     _summary(run_id)
@@ -417,7 +461,7 @@ def export_datasheet(run_id: int, table_id: int) -> Response:
 
 
 @router.get("/runs/{run_id}/submission-check")
-def get_submission_check(run_id: int) -> dict:
+def get_submission_check(run_id: int) -> SubmissionCheck:
     _summary(run_id)
     with connect() as conn:
         result = queries.submission_check(conn, run_id)
@@ -427,28 +471,28 @@ def get_submission_check(run_id: int) -> dict:
 
 
 @router.post("/runs/{run_id}/submission-check")
-def run_submission_check(run_id: int) -> dict:
+def run_submission_check(run_id: int) -> SubmissionCheck:
     _summary(run_id)
     with connect() as conn:
         return check_submission(conn, run_id)
 
 
 @router.get("/runs/{run_id}/checks")
-def run_checks(run_id: int) -> list[dict]:
+def run_checks(run_id: int) -> list[EngineeringCheck]:
     _summary(run_id)
     with connect() as conn:
         return queries.run_checks(conn, run_id)
 
 
 @router.get("/runs/{run_id}/proposals")
-def run_proposals(run_id: int) -> list[dict]:
+def run_proposals(run_id: int) -> list[Proposal]:
     _summary(run_id)
     with connect() as conn:
         return queries.run_proposals(conn, run_id)
 
 
 @router.post("/runs/{run_id}/actions")
-def act(run_id: int, body: Action) -> dict:
+def act(run_id: int, body: Action) -> ActionResult:
     """후보 하나를 확정·수정·반려(제안 포인트는 채택·버림·수정)하고 이력을 남긴다."""
     with connect() as conn:
         return _review(lambda: review.act(make_context(conn), run_id, body.target,
@@ -457,7 +501,7 @@ def act(run_id: int, body: Action) -> dict:
 
 
 @router.post("/runs/{run_id}/actions/bulk")
-def act_bulk(run_id: int, body: BulkAction) -> dict:
+def act_bulk(run_id: int, body: BulkAction) -> BulkResult:
     """여러 판정을 한 번에 제안대로 확정한다 (수정·반려는 한 줄씩)."""
     if body.target != "judgment" or body.action != "CONFIRM":
         raise HTTPException(400, "한꺼번에는 판정 확정만 할 수 있습니다.")
@@ -467,14 +511,14 @@ def act_bulk(run_id: int, body: BulkAction) -> dict:
 
 
 @router.get("/runs/{run_id}/history")
-def history(run_id: int, target: str | None = None, target_id: int | None = None) -> list[dict]:
+def history(run_id: int, target: str | None = None, target_id: int | None = None) -> list[LogEntry]:
     _summary(run_id)
     with connect() as conn:
         return review.history(conn, run_id, target, target_id)
 
 
 @router.post("/runs/{run_id}/finish-review")
-def finish_review(run_id: int, body: Submit) -> dict:
+def finish_review(run_id: int, body: Submit) -> SubmitResult:
     """결재 상신. 결재자와 상신 의견을 받아 승인 대기로 둔다 (걸린 기준이 없어도)."""
     with connect() as conn:
         return _review(lambda: review.finish_review(conn, run_id, body.approver_id,
@@ -482,14 +526,14 @@ def finish_review(run_id: int, body: Submit) -> dict:
 
 
 @router.post("/runs/{run_id}/withdraw")
-def withdraw(run_id: int, body: Actor) -> dict:
+def withdraw(run_id: int, body: Actor) -> StageResult:
     """결정 전인 상신을 취소하고 담당자 확인으로 되돌린다."""
     with connect() as conn:
         return _review(lambda: review.withdraw(conn, run_id, body.actor_id))
 
 
 @router.get("/runs/{run_id}/approval")
-def get_approval(run_id: int) -> dict:
+def get_approval(run_id: int) -> ApprovalScreen:
     with connect() as conn:
         screen = _review(lambda: review.approval(conn, run_id))
         screen["read_unchecked"] = read_checks.unchecked(conn, run_id)   # 문서 읽기 점검 미확인
@@ -497,39 +541,41 @@ def get_approval(run_id: int) -> dict:
 
 
 @router.get("/runs/{run_id}/read-checks")
-def run_read_checks(run_id: int) -> list[dict]:
+def run_read_checks(run_id: int) -> list[ReadCheck]:
     """문서 읽기 점검: 시스템이 제대로 읽지 못한 곳과 사람이 확인한 기록 (SCR-08-2)."""
     with connect() as conn:
         return _review(lambda: read_checks.read_checks(conn, run_id))
 
 
 @router.post("/runs/{run_id}/read-checks/{key}")
-def check_read(run_id: int, key: str, body: Actor) -> dict:
+def check_read(run_id: int, key: str, body: Actor) -> ReadCheck:
     with connect() as conn:
         return _review(lambda: read_checks.set_checked(conn, run_id, key, True, body.actor_id))
 
 
 @router.delete("/runs/{run_id}/read-checks/{key}")
-def uncheck_read(run_id: int, key: str, actor_id: int | None = None) -> dict:
+def uncheck_read(run_id: int, key: str, actor_id: int | None = None) -> ReadCheck:
     with connect() as conn:
         return _review(lambda: read_checks.set_checked(conn, run_id, key, False, actor_id))
 
 
 @router.post("/runs/{run_id}/approval")
-def decide(run_id: int, body: Decision) -> dict:
+def decide(run_id: int, body: Decision) -> DecisionResult:
     with connect() as conn:
-        return _review(lambda: review.decide(conn, run_id, body.decision, body.comment,
-                                             body.actor_id))
+        screen = _review(lambda: review.decide(conn, run_id, body.decision, body.comment,
+                                               body.actor_id))
+        screen["read_unchecked"] = read_checks.unchecked(conn, run_id)
+        return screen
 
 
 @router.post("/runs/{run_id}/reopen")
-def reopen(run_id: int, body: Actor) -> dict:
+def reopen(run_id: int, body: Actor) -> StageResult:
     with connect() as conn:
         return _review(lambda: review.reopen(conn, run_id, body.actor_id))
 
 
 @router.get("/runs/{run_id}/deliverables")
-def deliverables(run_id: int) -> dict:
+def deliverables(run_id: int) -> Deliverables:
     """전달 대상: 빼지 않은 목록, 확정한 보증값, 채택한 제안 포인트만 (AR-08)."""
     _summary(run_id)
     with connect() as conn:
@@ -537,28 +583,28 @@ def deliverables(run_id: int) -> dict:
 
 
 @router.get("/tasks")
-def my_tasks(user_id: int) -> dict:
+def my_tasks(user_id: int) -> MyTasks:
     """고른 사용자의 "내 할 일": 엔지니어·승인자는 멈춘 검토, 담당자는 받은 할 일 (FR-11)."""
     with connect() as conn:
         return _review(lambda: review.my_tasks(conn, user_id))
 
 
 @router.get("/runs/{run_id}/assignments")
-def run_assignments(run_id: int, role: str) -> list[dict]:
+def run_assignments(run_id: int, role: str) -> list[Assignment]:
     _summary(run_id)
     with connect() as conn:
         return review.assignments_for(conn, role, run_id)
 
 
 @router.get("/assignments")
-def role_assignments(role: str = Query(pattern="^(COST|QUALITY|SALES)$")) -> list[dict]:
+def role_assignments(role: str = Query(pattern="^(COST|QUALITY|SALES)$")) -> list[Assignment]:
     """협조 요청 현황 (SCR-13): 한 수신 부서에 보낸 요청을 모든 검토에서 모은다."""
     with connect() as conn:
         return review.assignments_for(conn, role)
 
 
 @router.put("/assignments/{assignment_id}")
-def update_assignment(assignment_id: int, body: TaskStatus) -> dict:
+def update_assignment(assignment_id: int, body: TaskStatus) -> AssignmentStatus:
     """담당자가 할 일 상태를 바꾼다 (할 일 → 하는 중 → 끝)."""
     with connect() as conn:
         return _review(lambda: review.set_assignment_status(conn, assignment_id, body.status,

@@ -44,6 +44,8 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
       - run: npm ci
       - run: npm run lint
+      # 화면 타입(src/api.gen.ts)이 응답 스키마(openapi.json)와 같은지. openapi.json은 backend pytest가 대조한다
+      - run: npm run check:api
       - run: npm run build
 
   openspec:

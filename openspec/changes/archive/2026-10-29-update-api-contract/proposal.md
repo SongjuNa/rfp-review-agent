@@ -44,6 +44,6 @@
 
 - 백엔드: `api/schemas.py`(새 파일, 응답 모델), `api/runs.py`·`api/reference.py`의 `response_model`, `/openapi.json` 내보내기 명령.
 - 프런트: `frontend/src/api.gen.ts`(만든 파일, 커밋함), `api.ts`의 손으로 쓴 타입을 만든 타입으로 바꿈. 어긋난 칸(`file_name` 등)은 화면을 고친다.
-- 개발 의존성: `openapi-typescript`(npm, 개발용). 백엔드는 새 의존성 없음.
+- 새 의존성 없음. 타입 생성은 `frontend/scripts/gen-api-types.mjs`(design.md 4).
 - CI: 스키마 → 타입 다시 만들기 → 차이 검사 단계를 더한다.
 - 위험: 지금 DB 값 중 모델과 맞지 않는 것이 있으면 그 API가 오류를 낸다. 구현 중 기존 테스트로 찾아 고친다(design.md 위험 1).

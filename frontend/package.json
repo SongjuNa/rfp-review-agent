@@ -8,7 +8,9 @@
     "build": "tsc -b && vite build",
     "lint": "oxlint",
     "preview": "vite preview",
-    "e2e": "playwright test"
+    "e2e": "playwright test",
+    "gen:api": "cd ../backend && uv run rfp-openapi > ../frontend/openapi.json && cd ../frontend && node scripts/gen-api-types.mjs",
+    "check:api": "node scripts/check-api-types.mjs"
   },
   "dependencies": {
     "react": "^19.3.1",

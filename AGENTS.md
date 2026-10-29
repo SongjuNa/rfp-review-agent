@@ -55,6 +55,7 @@ openspec/
 | 16 | `archive/2026-10-28-add-tbe-export` | TBE 준수표 화면과 엑셀 내려받기 (완료) |
 | 17 | `archive/2026-10-28-add-datasheet-export` | 데이터시트 채우기 화면과 엑셀 내려받기 (완료) |
 | 18 | `archive/2026-10-28-add-example-screens` | 백엔드 없는 메뉴 화면 12개를 예시 데이터로 (완료) |
+| 19 | `archive/2026-10-29-update-api-contract` | API 응답 스키마(Pydantic), 근거 응답 위치 필수, 화면 타입 자동 생성·CI 대조 (완료) |
 
 ## 3. 작업 흐름
 
@@ -107,6 +108,7 @@ archive는 마지막 묶음을 끝낸 사람이 한다.
 - 프런트: React 19, Vite, TypeScript. `/api`는 Vite 프록시로 백엔드에 연결된다.
 - DB: 스키마를 바꾸면 `db/migrations/`에 **다음 번호 파일을 추가**한다. 이미 있는 마이그레이션은 고치지 않는다.
 - 데이터: 사전·제품표는 `data/seed/`. 고객사 RFP 원문은 `data/private/`에만 두고 **커밋하지 않는다**. 테스트 픽스처에 원문 문장을 길게 옮기지 않는다(필요한 줄만, 고객사명·연락처·단가는 가림).
+- API 응답 모양은 `backend/src/rfp_agent/api/schemas.py`의 Pydantic 모델로 정한다(명세 `api-contract`). 응답 칸을 바꾸면 `cd frontend && npm run gen:api`로 `openapi.json`·`src/api.gen.ts`를 다시 만들어 함께 커밋한다.
 - 언어 모델 호출은 한 모듈(예: `rfp_agent/llm/`)에서만 하고, 테스트에서는 가짜 응답으로 바꿀 수 있게 한다. 키는 `GEMINI_API_KEY` 환경 변수로만 받는다.
 - 코드 주석과 사용자에게 보이는 문구는 한국어, 식별자는 영어.
 
@@ -114,7 +116,7 @@ archive는 마지막 묶음을 끝낸 사람이 한다.
 
 ```bash
 cd backend && uv run ruff check . && TEST_DATABASE_URL=postgresql://rfp:rfp@localhost:5433/rfp_test uv run pytest
-cd frontend && npm run lint && npm run build
+cd frontend && npm run lint && npm run check:api && npm run build
 openspec validate --all --strict
 ```
 
