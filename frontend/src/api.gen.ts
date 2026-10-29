@@ -615,6 +615,8 @@ export type ReviewCard = {
   engineer_name: string | null
   stage: 'PROCESSING' | 'ENGINEER_REVIEW' | 'APPROVAL' | 'APPROVED' | 'REJECTED' | 'FAILED'
   step: string | null
+  step_detail: StepDetail | null
+  step_updated_at: string
   failed_step: string | null
   error_message: string | null
   started_at: string
@@ -702,6 +704,8 @@ export type RunListItem = {
   engineer_name: string | null
   stage: 'PROCESSING' | 'ENGINEER_REVIEW' | 'APPROVAL' | 'APPROVED' | 'REJECTED' | 'FAILED'
   step: string | null
+  step_detail: StepDetail | null
+  step_updated_at: string
   failed_step: string | null
   error_message: string | null
   started_at: string
@@ -727,6 +731,8 @@ export type RunSummary = {
   dict_version: string
   llm_model: string | null
   step: string | null
+  step_detail: StepDetail | null
+  step_updated_at: string
   failed_step: string | null
   error_message: string | null
   started_at: string
@@ -744,6 +750,15 @@ export type RunSummary = {
 export type StageResult = {
   stage: 'PROCESSING' | 'ENGINEER_REVIEW' | 'APPROVAL' | 'APPROVED' | 'REJECTED' | 'FAILED'
   approval_id?: number | null
+}
+
+/** 문서 읽기 단계 안의 세부 진행 (처리 상태 화면). AI 일만 줄 수가 있다. */
+export type StepDetail = {
+  part: 'classify' | 'structure' | 'extract' | 'label' | 'save' | 'type'
+  done: number | null
+  total: number | null
+  file_index: number
+  file_count: number
 }
 
 export type SubmissionCheck = {

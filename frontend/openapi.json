@@ -7195,6 +7195,21 @@
             ],
             "title": "Step"
           },
+          "step_detail": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/StepDetail"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "step_updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Step Updated At"
+          },
           "failed_step": {
             "anyOf": [
               {
@@ -7296,6 +7311,8 @@
           "engineer_name",
           "stage",
           "step",
+          "step_detail",
+          "step_updated_at",
           "failed_step",
           "error_message",
           "started_at",
@@ -7808,6 +7825,21 @@
             ],
             "title": "Step"
           },
+          "step_detail": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/StepDetail"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "step_updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Step Updated At"
+          },
           "failed_step": {
             "anyOf": [
               {
@@ -7889,6 +7921,8 @@
           "engineer_name",
           "stage",
           "step",
+          "step_detail",
+          "step_updated_at",
           "failed_step",
           "error_message",
           "started_at",
@@ -8027,6 +8061,21 @@
             ],
             "title": "Step"
           },
+          "step_detail": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/StepDetail"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "step_updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Step Updated At"
+          },
           "failed_step": {
             "anyOf": [
               {
@@ -8115,6 +8164,8 @@
           "dict_version",
           "llm_model",
           "step",
+          "step_detail",
+          "step_updated_at",
           "failed_step",
           "error_message",
           "started_at",
@@ -8162,6 +8213,63 @@
           "stage"
         ],
         "title": "StageResult"
+      },
+      "StepDetail": {
+        "properties": {
+          "part": {
+            "type": "string",
+            "enum": [
+              "classify",
+              "structure",
+              "extract",
+              "label",
+              "save",
+              "type"
+            ],
+            "title": "Part"
+          },
+          "done": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Done"
+          },
+          "total": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Total"
+          },
+          "file_index": {
+            "type": "integer",
+            "title": "File Index"
+          },
+          "file_count": {
+            "type": "integer",
+            "title": "File Count"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "part",
+          "done",
+          "total",
+          "file_index",
+          "file_count"
+        ],
+        "title": "StepDetail",
+        "description": "문서 읽기 단계 안의 세부 진행 (처리 상태 화면). AI 일만 줄 수가 있다."
       },
       "SubmissionCheck": {
         "properties": {

@@ -4,6 +4,7 @@
 """
 
 import re
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -26,6 +27,14 @@ from rfp_agent.pipeline.structure import (
 )
 from rfp_agent.pipeline.type_tags import tag
 from rfp_agent.pipeline.values import normalize_candidate, target_of
+
+# 세부 진행 알림: (세부 일, 끝난 줄 수, 전체 줄 수)
+# 세부 일은 classify·structure·extract·label·save·type
+Report = Callable[[str, int | None, int | None], None]
+
+
+def _no_report(part: str, done: int | None = None, total: int | None = None) -> None:
+    pass
 
 
 @dataclass
@@ -108,15 +117,20 @@ def _save_tables(conn, document_id: int, tables: list[LogicalTable], section_ids
     return row_ids
 
 
-def _refine_with_ai(llm: LLM, candidates: list[Candidate]) -> None:
+def _refine_with_ai(llm: LLM, candidates: list[Candidate], report: Report) -> None:
     by_section: dict[int | None, list[Candidate]] = {}
     for c in candidates:
         if c.source_kind == "SENTENCE" and c.req_kind == "REQUIREMENT":
             by_section.setdefault(c.section.index if c.section else None, []).append(c)
+    total = sum(len(g) for g in by_section.values())
+    before = 0                  # 절마다 나눠 묻지만 진행은 문서 전체 문장 수로 이어 센다
+    report("label", 0, total)
     for group in by_section.values():
         title = group[0].section.title if group[0].section else None
-        for c, label in zip(group, tasks.label_sentences(llm, title, [c.text for c in group]),
-                            strict=True):
+        labels = tasks.label_sentences(llm, title, [c.text for c in group],
+                                       lambda done, _, b=before: report("label", b + done, total))
+        before += len(group)
+        for c, label in zip(group, labels, strict=True):
             if label == "WRITING_RULE":
                 c.req_kind, c.rule_id, c.extracted_by = "WRITING_RULE", "E-AI-WRITING-RULE", "AI"
             elif label == "DESCRIPTION":
@@ -124,7 +138,9 @@ def _refine_with_ai(llm: LLM, candidates: list[Candidate]) -> None:
 
 
 def process_document(conn: psycopg.Connection, path: Path, dicts: PipelineDicts, key: str,
-                     llm: LLM | None, txt_dir: Path | None) -> DocumentResult:
+                     llm: LLM | None, txt_dir: Path | None,
+                     report: Report = _no_report) -> DocumentResult:
+    report("classify")
     blocks = read_blocks(path)
     line_basis = "DOCX"
     txt = txt_dir / f"{path.stem}.txt" if txt_dir else None
@@ -151,6 +167,7 @@ def process_document(conn: psycopg.Connection, path: Path, dicts: PipelineDicts,
             # 판독 불가 문서는 이후 단계를 건너뛴다 (FR-01 예외).
             return DocumentResult(doc_id, file_no, False, False)
 
+        report("structure")
         sections = find_sections(blocks)
         tables = build_tables(blocks, dicts.column_roles,
                               supplier_marks=bool(re.search(r"C: Complied", "\n".join(
@@ -166,9 +183,12 @@ def process_document(conn: psycopg.Connection, path: Path, dicts: PipelineDicts,
                          (doc_id, section_ids.get(sec.index) if sec else None, block.line_no,
                           caption))
 
+        report("extract")
         candidates = extract(blocks, sections, tables)
         if llm is not None:
-            _refine_with_ai(llm, candidates)
+            _refine_with_ai(llm, candidates, report)
+
+        report("save")
 
         doc_title = " ".join(b.text for b in blocks[:FIRST_TITLE_BLOCKS]) + " " + path.stem
         doc_target = target_of(doc_title, dicts.values)
@@ -246,7 +266,9 @@ def process_document(conn: psycopg.Connection, path: Path, dicts: PipelineDicts,
                 )
 
         if llm is not None and unclassified:
-            ai_types = tasks.type_unclassified(llm, [cand.text for _, cand in unclassified])
+            report("type", 0, len(unclassified))
+            ai_types = tasks.type_unclassified(llm, [cand.text for _, cand in unclassified],
+                                               lambda done, total: report("type", done, total))
             for (req_id, _), code in zip(unclassified, ai_types, strict=True):
                 if code != "NONE":
                     conn.execute(

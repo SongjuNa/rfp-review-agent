@@ -32,7 +32,10 @@ REVIEW_INFO = """
 def run_summary(conn: psycopg.Connection, run_id: int) -> dict | None:
     rows = _rows(conn, f"""
         SELECT r.run_id, r.stage, r.dict_version, r.llm_model, r.failed_step, r.error_message,
-               r.started_at, r.finished_at, r.graph_state->>'step' AS step, {REVIEW_INFO},
+               r.started_at, r.finished_at, r.graph_state->>'step' AS step,
+               r.graph_state->'detail' AS step_detail,
+               COALESCE((r.graph_state->>'updated_at')::timestamptz, r.started_at)
+                   AS step_updated_at, {REVIEW_INFO},
                (SELECT count(*) FROM run_document WHERE run_id = r.run_id) AS documents,
                {COUNTS},
                (SELECT count(*) FROM judgment WHERE run_id = r.run_id AND is_current)
@@ -426,6 +429,9 @@ def users(conn: psycopg.Connection) -> list[dict]:
 def run_list(conn: psycopg.Connection, limit: int = 50) -> list[dict]:
     return _rows(conn, f"""
         SELECT r.run_id, r.stage, r.started_at, r.finished_at, r.graph_state->>'step' AS step,
+               r.graph_state->'detail' AS step_detail,
+               COALESCE((r.graph_state->>'updated_at')::timestamptz, r.started_at)
+                   AS step_updated_at,
                r.failed_step, r.error_message, {REVIEW_INFO},
                (SELECT string_agg(d.file_name, ', ' ORDER BY d.file_no)
                   FROM run_document rd JOIN document d USING (document_id)

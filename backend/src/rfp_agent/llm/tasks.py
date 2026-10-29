@@ -1,6 +1,7 @@
 """언어 모델에 맡기는 일 4가지. 모두 '보조'이고, 결과는 코드가 검증한다."""
 
 import re
+from collections.abc import Callable
 
 from rfp_agent.llm.client import LLM, LLMFailure, call_with_retry
 
@@ -11,6 +12,8 @@ SENTENCE_LABELS = ["REQUIREMENT", "WRITING_RULE", "DESCRIPTION"]
 TYPE_CODES = ["TECH_PERF", "RISK", "STANDARD_CERT", "COST", "TEST", "MAKER_QUAL", "SITE_ENV",
               "NONE"]
 CHUNK = 40
+
+Progress = Callable[[int, int], None]      # (끝난 줄 수, 전체 줄 수) — 처리 상태 화면용
 
 
 def one_line(text: str) -> str:
@@ -58,7 +61,8 @@ def _pick_each(llm: LLM, items: list[str], field: str, choices: list[str], promp
                 + _pick_each(llm, items[half:], field, choices, prompt_of))
 
 
-def label_sentences(llm: LLM, section_title: str | None, sentences: list[str]) -> list[str]:
+def label_sentences(llm: LLM, section_title: str | None, sentences: list[str],
+                    on_progress: Progress | None = None) -> list[str]:
     """절 단위로 문장마다 요구사항 / 작성 규칙 / 설명 중 하나를 붙인다."""
 
     def prompt_of(part: list[str]) -> str:
@@ -76,10 +80,13 @@ def label_sentences(llm: LLM, section_title: str | None, sentences: list[str]) -
     for start in range(0, len(sentences), CHUNK):
         labels.extend(_pick_each(llm, sentences[start:start + CHUNK], "labels", SENTENCE_LABELS,
                                  prompt_of))
+        if on_progress:
+            on_progress(len(labels), len(sentences))
     return labels
 
 
-def type_unclassified(llm: LLM, texts: list[str]) -> list[str]:
+def type_unclassified(llm: LLM, texts: list[str],
+                      on_progress: Progress | None = None) -> list[str]:
 
     def prompt_of(part: list[str]) -> str:
         numbered = "\n".join(f"{i}. {one_line(t)[:400]}" for i, t in enumerate(part))
@@ -92,6 +99,8 @@ def type_unclassified(llm: LLM, texts: list[str]) -> list[str]:
     out: list[str] = []
     for start in range(0, len(texts), CHUNK):
         out.extend(_pick_each(llm, texts[start:start + CHUNK], "types", TYPE_CODES, prompt_of))
+        if on_progress:
+            on_progress(len(out), len(texts))
     return out
 
 

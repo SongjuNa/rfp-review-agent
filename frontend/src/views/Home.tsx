@@ -3,7 +3,7 @@ import { api, type Assignment, type RunListItem, type User } from '../api'
 import { daysLeft, dday, dueText, reviewTitle, stamp } from '../components/format'
 import { progress } from '../components/progress'
 import { ROLE_NAMES, STAGE_NAMES, STAGE_TONES, STEP_NAMES } from '../components/labels'
-import { useLoad } from '../components/useLoad'
+import { useLoad, useRepeat } from '../components/useLoad'
 import { EVENTS, FILES, NOTICES, SYS_NOTICES } from '../examples/SCR-03'
 import { href } from '../shell/router'
 import { usePageCss } from '../shell/pageCss'
@@ -73,7 +73,7 @@ function card(r: RunListItem, col: Col, pending: Map<number, Pending>): { lines:
   const p = pending.get(r.run_id)
   const found = `일탈 후보 ${r.deviation_candidates}건 · 위험 조건 ${r.risks}건`
   switch (r.stage) {
-    case 'PROCESSING': return { lines: [`${STEP_NAMES[r.step ?? ''] ?? '처리'} ${progress(r.step)} %`, '처리 중'], note: '', tone: '' }
+    case 'PROCESSING': return { lines: [`${STEP_NAMES[r.step ?? ''] ?? '처리'} ${progress(r)} %`, '처리 중'], note: '', tone: '' }
     case 'FAILED': return { lines: [`${STEP_NAMES[r.failed_step ?? ''] ?? '처리'}에서 멈춤`], note: '분석 실패', tone: 'red' }
     case 'REJECTED': return { lines: [`요구사항 ${r.requirements}줄`, found], note: '반려됨 · 다시 확인', tone: 'red' }
     case 'APPROVAL': return { lines: [found, '결재자 확인 중'], note: '', tone: '' }
@@ -92,6 +92,7 @@ export function Home() {
   const { user, users } = useSession()
   const [now] = useState(() => Date.now())
   const runs = useLoad(() => api.runs(), [])
+  useRepeat(!!runs.data?.some((r) => r.stage === 'PROCESSING'), runs.reload)   // 처리 중이면 5초마다 다시 본다
   const asg = useLoad(() => Promise.all(['COST', 'QUALITY', 'SALES'].map((r) => api.assignments(r))), [])
   const [filter, setFilter] = useState<Filter | null>(null)
   const [view, setView] = useState<'stage' | 'pj'>('stage')

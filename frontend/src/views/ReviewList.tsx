@@ -3,7 +3,8 @@ import { api, type RunListItem } from '../api'
 import { dday, dueText, filesText, isoDay, num, scopeName, stamp } from '../components/format'
 import { STAGE_NAMES, STAGE_TONES, STEP_NAMES } from '../components/labels'
 import { Pager } from '../components/Pager'
-import { useLoad } from '../components/useLoad'
+import { useLoad, useRepeat } from '../components/useLoad'
+import { progress } from '../components/progress'
 import { href } from '../shell/router'
 import { useSession } from '../shell/useSession'
 
@@ -66,7 +67,7 @@ function Row({ r, seq, me }: { r: RunListItem; seq: number; me: number | null })
           ? <a className="failnm" href={detail}>{scope}</a>
           : <a href={detail} style={{ color: '#1F2937', fontWeight: 600 }}>{scope}</a>}
         {failed && step && <a className="tag failtag" href={detail}>{step}에서 멈춤<span className="ms" aria-hidden="true">chevron_right</span></a>}
-        {processing && step && <span className="tag">{step} 중</span>}
+        {processing && step && <span className="tag">{step} 중 {progress(r)}%</span>}
         <div className="cond meta">
           <span>{r.review_no}</span>
           {r.customer_name && <span>{r.customer_name}</span>}
@@ -109,6 +110,7 @@ function SortHead({ k, label, sort, onSort, num: isNum }: {
 export function ReviewList() {
   const { user, users } = useSession()
   const runs = useLoad(() => api.runs(), [])
+  useRepeat(!!runs.data?.some((r) => r.stage === 'PROCESSING'), runs.reload)   // 처리 중이면 5초마다 다시 본다
   const [period, setPeriod] = useState<Period>('all')
   const [scope, setScope] = useState<'mine' | 'all' | number>('mine')
   const [draft, setDraft] = useState<Search>(EMPTY)

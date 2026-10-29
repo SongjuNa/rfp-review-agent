@@ -15,3 +15,12 @@ export function useLoad<T>(load: () => Promise<T>, deps: unknown[]) {
   useEffect(reload, [reload])
   return { data, error, reload }
 }
+
+/** active인 동안 ms마다 다시 부른다 (처리 중인 검토가 있는 검토 목록·홈) */
+export function useRepeat(active: boolean, reload: () => void, ms = 5000) {
+  useEffect(() => {
+    if (!active) return
+    const timer = setInterval(reload, ms)
+    return () => clearInterval(timer)
+  }, [active, reload, ms])
+}

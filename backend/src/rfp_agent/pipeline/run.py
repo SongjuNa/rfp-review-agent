@@ -6,6 +6,7 @@
 """
 
 import logging
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TypedDict
@@ -18,7 +19,7 @@ from rfp_agent.llm import tasks
 from rfp_agent.llm.client import FAILURE_MESSAGE, LLM, LLMFailure
 from rfp_agent.pipeline import code_version, dictionaries
 from rfp_agent.pipeline.assignments import build_assignments
-from rfp_agent.pipeline.document import process_document
+from rfp_agent.pipeline.document import Report, process_document
 from rfp_agent.pipeline.engineering import build_checks
 from rfp_agent.pipeline.judge import judge_run
 from rfp_agent.pipeline.loss import build_losses
@@ -53,12 +54,34 @@ class RunState(TypedDict, total=False):
     assignment_count: int
 
 
+# 세부 진행 기록: (run_id, {"part", "done", "total", "file_index", "file_count"})
+ProgressWriter = Callable[[int, dict], None]
+
+
+def write_progress(conn: psycopg.Connection) -> ProgressWriter:
+    """자동 커밋 연결로 세부 진행을 바로 적는다.
+
+    문서 하나는 한 트랜잭션 안에서 처리하므로 같은 연결로 적으면 끝날 때까지 화면에 보이지 않는다.
+    진행 기록이 실패해도 처리는 계속한다.
+    """
+    def write(run_id: int, detail: dict) -> None:
+        try:
+            conn.execute(
+                "UPDATE review_run SET graph_state = graph_state || "
+                "jsonb_build_object('detail', %s::jsonb, 'updated_at', now()) WHERE run_id = %s",
+                (Jsonb(detail), run_id))
+        except psycopg.Error as exc:
+            log.warning("진행 기록 실패 (실행 %s): %s", run_id, exc)
+    return write
+
+
 @dataclass
 class RunContext:
     conn: psycopg.Connection
     version: str                # 사전·제품표 판 (dict_version)
     llm: LLM | None
     txt_dir: Path | None
+    progress: ProgressWriter | None = None     # 없으면 세부 진행을 적지 않는다 (테스트·CLI)
 
     @property
     def processing_key(self) -> str:
@@ -84,9 +107,19 @@ def create_run(conn: psycopg.Connection, version: str, llm: LLM | None,
 
 
 def _set_step(conn: psycopg.Connection, run_id: int, step: str) -> None:
-    conn.execute("UPDATE review_run SET graph_state = graph_state || %s WHERE run_id = %s",
-                 (Jsonb({"step": step}), run_id))
+    # 단계가 바뀌면 세부 진행을 지우고 마지막 진행 시각을 새로 적는다
+    conn.execute("UPDATE review_run SET graph_state = graph_state || %s || "
+                 "jsonb_build_object('updated_at', now()) WHERE run_id = %s",
+                 (Jsonb({"step": step, "detail": None}), run_id))
     conn.commit()
+
+
+def _reporter(ctx: RunContext, run_id: int, file_index: int, file_count: int) -> Report:
+    def report(part: str, done: int | None = None, total: int | None = None) -> None:
+        if ctx.progress:
+            ctx.progress(run_id, {"part": part, "done": done, "total": total,
+                                  "file_index": file_index, "file_count": file_count})
+    return report
 
 
 def _documents_node(ctx: RunContext):
@@ -95,9 +128,10 @@ def _documents_node(ctx: RunContext):
         _set_step(conn, run_id, "documents")
         dicts = dictionaries.load(conn)
         ids = []
-        for path in state["paths"]:
+        paths = state["paths"]
+        for i, path in enumerate(paths, 1):
             result = process_document(conn, Path(path), dicts, ctx.processing_key, ctx.llm,
-                                      ctx.txt_dir)
+                                      ctx.txt_dir, _reporter(ctx, run_id, i, len(paths)))
             conn.execute("INSERT INTO run_document VALUES (%s, %s) ON CONFLICT DO NOTHING",
                          (run_id, result.document_id))
             conn.commit()
@@ -335,8 +369,10 @@ def execute_run(ctx: RunContext, run_id: int, paths: list[Path]) -> str:
         return "FAILED"
     conn.execute(
         """UPDATE review_run SET stage = 'ENGINEER_REVIEW', finished_at = now(),
-                  graph_state = graph_state || %s WHERE run_id = %s""",
-        (Jsonb({"step": "done", **{k: state.get(k, 0) for k in COUNTS}}), run_id))
+                  graph_state = graph_state || %s || jsonb_build_object('updated_at', now())
+            WHERE run_id = %s""",
+        (Jsonb({"step": "done", "detail": None, **{k: state.get(k, 0) for k in COUNTS}}),
+         run_id))
     conn.commit()
     return "ENGINEER_REVIEW"
 
