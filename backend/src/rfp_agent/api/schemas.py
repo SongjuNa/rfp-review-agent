@@ -665,6 +665,21 @@ class Product(Out):
     load_loss_kw: float | None
     aux_loss_kw: float | None
     loss_is_assumed: bool | None
+    lightning_impulse_kv: float | None
+    power_freq_withstand_kv: float | None
+    switching_impulse_kv: float | None
+    peak_current_ka: float | None
+    making_current_ka: float | None
+    breaking_time_ms: float | None
+    closing_time_ms: float | None
+    gas_leakage_percent: float | None
+    partial_discharge_pc: float | None
+    cooling_type: str | None
+    insulation_medium: str | None
+    maintenance_months: int | None
+    service_life_years: int | None
+    comparison_values_assumed: bool
+    comparison_values_source: str | None
     is_assumed: bool
     is_design_card: bool
     source_doc: str | None

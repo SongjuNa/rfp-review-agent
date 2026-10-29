@@ -32,3 +32,11 @@ ct_polarity,변류기 극성,CT polarity; Polarity of current transformer; Polar
 buchholz_relay,부흐홀츠 계전기,Buchholz relay; Buchholz; 부흐홀츠; 브흐홀쯔,= (문자열),강점 아님,팀 추가(FR-15): 현장 이력 연결표 항목
 off_load_tap_changer,무부하 탭 절환기,Off-load tap changer; Off-load tap-changing; Off-circuit tap; No-load tap changer; 무부하 탭 절환,= (문자열),강점 아님,팀 추가(FR-15): 현장 이력 연결표 항목
 sound_level,소음,Sound level; Audible sound level; Noise level; 소음 레벨; 소음도,≤,작을수록 좋음,팀 추가(FR-15): 현장 이력 연결표 항목. dB(A)
+cooling_type,냉각 방식,Cooling type; Cooling method; 냉각 방식; Cooling system,= (문자열),강점 아님,제품 데이터별 냉각 방식 비교
+insulation_medium,절연 방식,Insulation medium; Insulating medium; 절연유; 절연 방식,= (문자열),강점 아님,유입·건식·가스 절연 등 분류
+warranty_period,보증기간,Warranty period; Warranty; 보증기간,≥,클수록 좋음,개월 단위로 비교
+std_lead_time,표준 납기,Standard lead time; Delivery time; 납기; Lead time,≤,작을수록 좋음,주 단위로 비교
+minimum_order_quantity,최소 주문 수량,Minimum order quantity; MOQ; 최소 주문 수량,≤,작을수록 좋음,수량 단위로 비교
+list_price,목록 가격,List price; Price; 가격; 단가,≤,작을수록 좋음,USD 단위로 비교
+maintenance_period,유지보수 기간,Maintenance period; Service period; 유지보수 기간,≥,클수록 좋음,개월 단위로 비교
+service_life,설계 수명,Service life; Design life; 설계 수명; 사용 수명,≥,클수록 좋음,년 단위로 비교

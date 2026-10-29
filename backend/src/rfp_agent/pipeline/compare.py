@@ -70,7 +70,9 @@ def unit_key(unit: str | None) -> str | None:
         return None
     u = re.sub(r"[\s.]", "", unit).lower()
     u = re.sub(r"^(k?[va])(rms|peak|p)$", r"\1", u)
-    u = {"℃": "°c", "degc": "°c", "oc": "°c", "cycles": "cycle"}.get(u, u)
+    u = {"℃": "°c", "degc": "°c", "oc": "°c", "cycles": "cycle",
+         "month": "months", "months": "months", "개월": "months",
+         "year": "years", "years": "years", "년": "years"}.get(u, u)
     return re.sub(r"^%(/년|/year|/yr|peryear|/annum)$", "%", u)
 
 

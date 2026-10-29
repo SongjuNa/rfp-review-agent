@@ -22,7 +22,7 @@ OPERATORS = {"≤": "<=", "≥": ">=", "<=": "<=", ">=": ">=", "<": "<", ">": ">
 KOREAN_BOUNDS = {"이내": "<=", "이하": "<=", "미만": "<", "이상": ">=", "초과": ">"}
 TIME_CONDITION = re.compile(r"\(\s*(\d+(?:\.\d+)?)\s*(?:sec(?:onds?)?|s|초)\.?\s*\)", re.IGNORECASE)
 UNITS = (r"kVA|MVA|kVAr|kV|kA|kW|MW|A|V|Hz|%|°C|℃|deg\.? ?C|°F|deg\.? ?F|oC|pC|dB|mm|m|ft|"
-         r"sec|ms|cycles?|kg|bar|MPa|초|분|년")
+         r"sec|ms|cycles?|kg|bar|MPa|months?|years?|초|분|년")
 _BOUNDS = "|".join(KOREAN_BOUNDS)
 SENTENCE_VALUE = re.compile(
     rf"(<=|>=|≤|≥|<|>)?\s*(\d[\d,]*(?:\.\d+)?)\s*({UNITS})(?![A-Za-z])(\s*(?:{_BOUNDS}))?"

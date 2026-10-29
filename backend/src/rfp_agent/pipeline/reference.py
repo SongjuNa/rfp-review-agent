@@ -10,10 +10,20 @@ from psycopg.rows import dict_row
 # 제품군마다 "판정에 쓰는 칸"은 그 제품군 제품 중 하나라도 값이 있는 칸이다 (빈 칸 수의 기준).
 VALUE_COLUMNS = ("rated_voltage_kv", "rated_current_a", "short_circuit_ka", "rated_frequency",
                  "rated_capacity", "standards", "ip_rating", "operating_temp", "weight_kg",
+                 "lightning_impulse_kv", "power_freq_withstand_kv", "switching_impulse_kv",
+                 "peak_current_ka", "making_current_ka", "breaking_time_ms", "closing_time_ms",
+                 "gas_leakage_percent", "partial_discharge_pc", "cooling_type", "insulation_medium",
+                 "maintenance_months", "service_life_years", "warranty_months",
                  "noload_loss_kw", "load_loss_kw", "aux_loss_kw")
 LIST_COLUMNS = ("product_code", "product_name", "family", "rated_voltage_kv", "rated_current_a",
                 "short_circuit_ka", "rated_frequency", "rated_capacity", "rated_capacity_unit",
-                "weight_kg", "noload_loss_kw", "load_loss_kw", "aux_loss_kw", "loss_is_assumed",
+                "weight_kg", "lightning_impulse_kv", "power_freq_withstand_kv",
+                "switching_impulse_kv", "peak_current_ka", "making_current_ka",
+                "breaking_time_ms", "closing_time_ms", "gas_leakage_percent",
+                "partial_discharge_pc", "cooling_type", "insulation_medium",
+                "maintenance_months", "service_life_years", "warranty_months",
+                "noload_loss_kw", "load_loss_kw", "aux_loss_kw", "loss_is_assumed",
+                "comparison_values_assumed", "comparison_values_source",
                 "is_assumed", "is_design_card", "source_doc", "lifecycle_status")
 
 USED_IN_LIMIT = 100          # 상세의 "판정에 쓰임" 줄은 최근 실행부터 100줄까지 (수는 used로 따로)
