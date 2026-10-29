@@ -238,6 +238,7 @@ def _supplier_mark(raw: list[str]) -> str | None:
 
 
 MAX_ITEM_NO = 20
+CAPTION_MAX_LEN = 150           # 표 앞 단락을 표 제목으로 볼 최대 길이
 
 
 def _item_number(item_no: str | None) -> int | None:
@@ -250,16 +251,22 @@ def build_tables(blocks: list[Block], role_dict: dict[str, str],
                  supplier_marks: bool = False) -> list[LogicalTable]:
     by_table: dict[int, list[Block]] = {}
     between_text: dict[int, bool] = {}       # 이 표 앞에 내용 있는 단락이 있었나
+    caption: dict[int, str] = {}             # 표 바로 앞 단락 (표 제목 줄이 표 밖에 있을 때)
     seen_text = False
+    last_text: str | None = None
     for b in blocks:
         if b.kind == "R":
             if b.table_no not in by_table:
                 between_text[b.table_no] = seen_text
+                if seen_text and last_text is not None:
+                    caption[b.table_no] = last_text
                 by_table[b.table_no] = []
                 seen_text = False
             by_table[b.table_no].append(b)
+            last_text = None
         elif b.text.strip():
             seen_text = True
+            last_text = normalize(b.text)
 
     tables: list[LogicalTable] = []
     for table_no, rows in by_table.items():
@@ -273,6 +280,11 @@ def build_tables(blocks: list[Block], role_dict: dict[str, str],
             titles = [normalize(r.text) for r in rows[:header_at]]
             data = rows[header_at + 1:]
         name = next((m.group(1) for t in titles if (m := TABLE_NAME.search(t))), None)
+        if name is None and header_at is not None and (cap := caption.get(table_no)) \
+                and len(cap) <= CAPTION_MAX_LEN and (m := TABLE_NAME.match(cap)):
+            # 표 안에 제목 줄이 없고 바로 앞 단락이 "TS-170-GIS — …"처럼 표 이름으로 시작하면
+            # 그 단락을 표 제목으로 본다. 본문 속 "Refer to TS-…" 같은 언급은 쓰지 않는다.
+            name = m.group(1)
 
         prev = tables[-1] if tables else None
         continues = (

@@ -71,3 +71,27 @@ def test_writing_rule_is_not_a_requirement(doc):
     blocks, sections, tables = doc
     rule = [c for c in extract(blocks, sections, tables) if "bidder shall indicate" in c.text]
     assert rule[0].req_kind == "WRITING_RULE"
+
+
+def _row(seq, table_no, row_no, cells):
+    return Block(seq=seq, kind="R", text=" | ".join(cells), line_no=seq + 1, line_count=1,
+                 table_no=table_no, row_no=row_no, cells=cells, raw_cells=cells)
+
+
+def test_table_name_from_caption_paragraph_right_before_table():
+    """표 안에 제목 줄이 없으면 바로 앞 단락 "TS-… — 설명"을 표 이름으로 쓴다."""
+    head = ["No.", "Description", "Unit", "Employer's Requirement"]
+    blocks = [
+        Block(seq=0, kind="P", text="TS-170-GIS — Added deviation-candidate requirements",
+              line_no=1, line_count=1),
+        _row(1, 0, 0, head),
+        _row(2, 0, 1, ["D-01", "Rated voltage", "kV", "≥180 kV"]),
+        Block(seq=3, kind="P", text="Refer to TS-245-GIS for the other bay.",
+              line_no=4, line_count=1),
+        _row(4, 1, 0, head),
+        _row(5, 1, 1, ["1", "Rated voltage", "kV", "≥245 kV"]),
+    ]
+
+    tables = build_tables(blocks, ROLES)
+
+    assert [t.name for t in tables] == ["TS-170-GIS", None]

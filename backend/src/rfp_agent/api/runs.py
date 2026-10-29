@@ -443,9 +443,14 @@ def run_outputs(run_id: int, list_kind: str | None = None) -> list[OutputItem]:
 @router.get("/runs/{run_id}/outputs/export", response_class=Response,
             responses=_file(DOCX_TYPE))
 def export_outputs(run_id: int, list_kind: str = Query(pattern="^(DEVIATION|QUERY)$")) -> Response:
-    """일탈 목록·질의서 초안 Word 파일 (SCR-08-11)."""
+    """일탈 목록·질의서 초안 Word 파일 (SCR-08-11). 항목이 없으면 파일을 만들지 않는다."""
     _summary(run_id)
     with connect() as conn:
+        items = [i for i in queries.run_outputs(conn, run_id, list_kind)
+                 if i["status"] != "REMOVED"]
+        if not items:
+            label = "일탈" if list_kind == "DEVIATION" else "질의"
+            raise HTTPException(409, f"{label} 후보가 없습니다. 목록 초안을 생성할 수 없습니다.")
         name, body = outputs_docx(conn, run_id, list_kind)
     return Response(body, media_type=DOCX_TYPE,
                     headers={"Content-Disposition": f"attachment; filename*=UTF-8''{quote(name)}"})

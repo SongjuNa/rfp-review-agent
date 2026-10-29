@@ -3,6 +3,7 @@
 같은 파일·같은 사전 판으로 이미 처리했으면 다시 하지 않고 저장된 결과를 쓴다 (NFR-05).
 """
 
+import hashlib
 import logging
 import re
 from collections.abc import Callable
@@ -54,8 +55,13 @@ def _next_file_no(conn: psycopg.Connection) -> int:
     return max(100, last) + 1
 
 
+def content_hash(path: Path) -> str:
+    """원본 파일 내용의 SHA-256. 이름·번호가 같아도 내용이 다르면 다른 문서로 처리한다."""
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
 def _insert_document(conn, path: Path, c: cls.Classification, dicts: PipelineDicts,
-                     line_basis: str, key: str) -> tuple[int, int]:
+                     line_basis: str, key: str, digest: str) -> tuple[int, int]:
     """이 처리 판(key)으로 처리한 문서 행을 새로 만든다.
 
     번호는 파일 목록 → 같은 파일의 이전 번호 → 101번부터.
@@ -69,6 +75,7 @@ def _insert_document(conn, path: Path, c: cls.Classification, dicts: PipelineDic
         language=c.language, standard_system=c.standard_system, judge_target=c.judge_target,
         readable=c.readable, classify_by=c.classify_by, needs_review=c.needs_review,
         source_path=str(path), line_basis=line_basis, processing_key=key,
+        content_hash=digest,
     )
     cols = ", ".join(values)
     marks = ", ".join(f"%({k})s" for k in values)
@@ -163,15 +170,18 @@ def process_document(conn: psycopg.Connection, path: Path, dicts: PipelineDicts,
         if c.classify_by == "HUMAN":
             # 규칙과 다른 분류는 다른 처리 판으로 둔다. 같은 파일의 다른 검토 결과를 바꾸지 않는다.
             key = f"{key}|H:{c.bundle}:{c.doc_kind}"
+    # 저장된 결과는 같은 처리 판 + 같은 파일 내용일 때만 다시 쓴다.
+    # (이름이 같은 다른 판 파일이 예전 분석 결과를 받지 않게)
+    digest = content_hash(path)
     if c.file_no is not None:
         existing = conn.execute(
             "SELECT document_id, file_no FROM document WHERE file_no = %s "
-            "AND processing_key = %s", (c.file_no, key)).fetchone()
+            "AND processing_key = %s AND content_hash = %s", (c.file_no, key, digest)).fetchone()
     else:
         # 파일 목록에 없는 문서는 파일 경로로 찾는다.
         existing = conn.execute(
             "SELECT document_id, file_no FROM document WHERE source_path = %s "
-            "AND processing_key = %s", (str(path), key)).fetchone()
+            "AND processing_key = %s AND content_hash = %s", (str(path), key, digest)).fetchone()
     if existing:
         count = conn.execute("SELECT count(*) FROM requirement WHERE document_id = %s",
                              (existing[0],)).fetchone()[0]
@@ -185,7 +195,7 @@ def process_document(conn: psycopg.Connection, path: Path, dicts: PipelineDicts,
             log.warning("AI 문서 분류를 건너뜀: %s", exc)
 
     with conn.transaction():
-        doc_id, file_no = _insert_document(conn, path, c, dicts, line_basis, key)
+        doc_id, file_no = _insert_document(conn, path, c, dicts, line_basis, key, digest)
         if not c.readable:
             # 판독 불가 문서는 이후 단계를 건너뛴다 (FR-01 예외).
             return DocumentResult(doc_id, file_no, False, False)
