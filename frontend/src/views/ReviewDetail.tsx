@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react'
 import { api, type RunSummary } from '../api'
 import { ErrorText } from '../components/common'
+import { judgedBundles } from '../components/documents'
 import { dday, dueText, reviewTitle } from '../components/format'
 import { STAGE_NAMES, STAGE_TONES } from '../components/labels'
 import { useLoad } from '../components/useLoad'
 import { useCrumbTail } from '../shell/crumb'
 import { usePageCss } from '../shell/pageCss'
+import { DocumentsDialog } from './DocumentsDialog'
 import { DetailBody, DetailTabs, type DetailTab } from './detail/DetailBody'
 import { ProductSeg } from './detail/ProductSeg'
 import { FailView } from './FailView'
@@ -17,11 +19,15 @@ import { WaitView } from './WaitView'
 // SCR-08 검토 상세 (목업 v4.57 Detail). 탭 줄, 머리글, 요약 칸과 탭 본문(detail/DetailBody), 결재 상신 창(SCR-08-10).
 // 승인 대기인 검토는 SCR-12 결재 대기 화면(WaitView)으로 보인다.
 
-/** 머리글: 검토 번호·단계·마감, 제목(사업명 · 검토명), 사업·문서·고객사·담당 줄, 검토 정보 고치기 */
+/** 머리글: 검토 번호·단계·마감, 제목(사업명 · 검토명), 사업·문서(누르면 문서 표)·판정 묶음·고객사·담당 줄, 검토 정보 고치기 */
 function ReviewHeader({ run, approver, onEdit, onSwitched }: {
   run: RunSummary; approver: string | null; onEdit: () => void; onSwitched?: () => void
 }) {
   const due = run.due_date ? dday(run.due_date) : null
+  const docs = useLoad(() => api.documents(run.run_id), [run.run_id, run.stage])
+  const [docsOpen, setDocsOpen] = useState(false)
+  const bundles = docs.data ? judgedBundles(docs.data) : null
+  const ready = run.stage !== 'PROCESSING'
   const place = [run.customer_name, run.country].filter(Boolean).join(' · ')
   return (
     <>
@@ -35,7 +41,12 @@ function ReviewHeader({ run, approver, onEdit, onSwitched }: {
           <h1>{reviewTitle(run)}</h1>
           <div className="idl" style={{ marginTop: 4 }}>
             {run.project_name && <><span>사업 {run.project_name}</span>·</>}
-            <span>문서 {run.documents}개</span>
+            {docs.data
+              ? <button type="button" className="lnk hdoc" onClick={() => setDocsOpen(true)} title="문서 종류·묶음 보기">문서 {run.documents}개</button>
+              : <span>문서 {run.documents}개</span>}
+            {ready && bundles && <>·{bundles.length
+              ? <span className="hbun">묶음 {bundles.join('·')}</span>
+              : <span className="hbun warn" title="묶음 A·B 문서가 없어 판정하지 않았습니다">판정 문서 없음</span>}</>}
             {place && <>·<span>{place}</span></>}
             ·<span>담당 {run.engineer_name ?? '없음'}</span>
             {approver && <>·<span>결재자 {approver}</span></>}
@@ -47,6 +58,7 @@ function ReviewHeader({ run, approver, onEdit, onSwitched }: {
         </div>
       </div>
       {onSwitched && <ProductSeg run={run} onSwitched={onSwitched} />}
+      {docsOpen && docs.data && <DocumentsDialog run={run} docs={docs.data} onClose={() => setDocsOpen(false)} />}
     </>
   )
 }
