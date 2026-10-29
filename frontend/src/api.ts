@@ -1,7 +1,7 @@
 // 백엔드 API (/api, Vite 프록시). 응답 타입은 백엔드 응답 모델에서 만든다 (api.gen.ts, `npm run gen:api`).
 import type {
   ActionResult, ApprovalScreen, AssignmentStatus, BulkResult, DecisionResult, DocumentChoice, DocumentPreview,
-  LossResult, ProductSwitch,
+  LossResult, ProductSwitch, RuleEdit,
   RunSummary, StageResult, SubmitResult,
 } from './api.gen'
 
@@ -9,7 +9,7 @@ export type {
   ApprovalScreen, Assignment, CompareRule, Criterion, Datasheet, DatasheetInfo, DatasheetRow, DocKindRule,
   DocumentChoice, DocumentPreview, EngineeringCheck,
   Equipment, Health, ItemKey, Judgment, JudgmentCounts, Location, LogEntry, Loss, MyTasks, OutputItem, Product,
-  ProductDetail, ProductFamily, Proposal, ReadCheck, Requirement, ReviewCard, Risk, RiskExpression, RunDocument,
+  ProductDetail, ProductFamily, Proposal, ReadCheck, Requirement, ReviewCard, Risk, RiskExpression, RuleEdit, RunDocument,
   RunListItem, RunSummary, SubmissionCheck, Tbe, TbeRow, User, Warranty,
 } from './api.gen'
 import type {
@@ -28,6 +28,10 @@ export type JudgmentQuery = {
   result?: string; group?: string; type_code?: string; q?: string; unconfirmed?: boolean; order?: 'priority'
   offset?: number; limit?: number
 }
+
+/** 규칙 사전 이름과 고칠 값 (add-rule-editing). 값 칸은 사전마다 다르다 */
+export type RuleDictionary = RuleEdit['dictionary']
+export type RuleValue = Record<string, string | number | boolean | string[] | null>
 
 export type TbeQuery = { include: 'all' | 'confirmed'; lang: 'en' | 'ko' | 'both'; base: 'now' | 'v1' }
 
@@ -173,6 +177,13 @@ export const api = {
   ruleItems: () => call<ItemKey[]>('/rules/items'),
   riskExpressions: () => call<RiskExpression[]>('/rules/risk-expressions'),
   docKindRules: () => call<DocKindRule[]>('/rules/doc-kinds'),
+  ruleEdits: (dictionary?: RuleDictionary) => call<RuleEdit[]>(`/rules/edits${dictionary ? `?dictionary=${dictionary}` : ''}`),
+  addRule: (dictionary: RuleDictionary, value: RuleValue, reason: string, actor_id: number) =>
+    call<RuleEdit>(`/rules/${dictionary}`, json('POST', { value, reason, actor_id })),
+  updateRule: (dictionary: RuleDictionary, id: string, value: RuleValue, reason: string, actor_id: number) =>
+    call<RuleEdit>(`/rules/${dictionary}/${encodeURIComponent(id)}`, json('PUT', { value, reason, actor_id })),
+  deleteRule: (dictionary: RuleDictionary, id: string, reason: string, actor_id: number) =>
+    call<RuleEdit>(`/rules/${dictionary}/${encodeURIComponent(id)}`, json('DELETE', { reason, actor_id })),
   assignments: (role: string) => call<Assignment[]>(`/assignments?role=${role}`),
   setTaskStatus: (assignmentId: number, status: string, actor_id: number) =>
     call<AssignmentStatus>(`/assignments/${assignmentId}`, json('PUT', { status, actor_id })),

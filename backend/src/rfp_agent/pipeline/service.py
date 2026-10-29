@@ -14,7 +14,7 @@ from rfp_agent.pipeline.run import RunContext, create_run, execute_run, write_pr
 def make_context(conn: psycopg.Connection) -> RunContext:
     settings = get_settings()
     txt_dir = settings.txt_dir if settings.txt_dir.exists() else None
-    return RunContext(conn, dict_version(settings.seed_dir),
+    return RunContext(conn, dict_version(settings.seed_dir, conn),
                       make_llm(settings.gemini_api_key, settings.gemini_model), txt_dir)
 
 

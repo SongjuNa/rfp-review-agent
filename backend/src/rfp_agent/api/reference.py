@@ -1,6 +1,9 @@
-"""기준 데이터 읽기 API (SCR-16 제품표, SCR-17 판정 규칙). 모두 읽기 전용."""
+"""기준 데이터 API (SCR-16 제품표, SCR-17 판정 규칙). 제품표는 읽기만, 규칙 사전은 고친다."""
+
+from typing import Any
 
 from fastapi import APIRouter, HTTPException, Query, Response
+from pydantic import BaseModel
 
 from rfp_agent.api.schemas import (
     CompareRule,
@@ -10,9 +13,11 @@ from rfp_agent.api.schemas import (
     ProductDetail,
     ProductFamily,
     RiskExpression,
+    RuleDictionary,
+    RuleEdit,
 )
 from rfp_agent.db.connection import connect
-from rfp_agent.pipeline import reference
+from rfp_agent.pipeline import reference, rule_edit
 
 router = APIRouter(prefix="/api")
 
@@ -63,6 +68,53 @@ def risk_expressions() -> list[RiskExpression]:
 
 @router.get("/rules/doc-kinds")
 def doc_kind_rules() -> list[DocKindRule]:
-    """문서 종류 규칙 사전 (순서대로). 고치기는 data/seed를 고쳐 다시 적재한다."""
+    """문서 종류 규칙 사전 (순서대로)."""
     with connect() as conn:
         return reference.doc_kind_rules(conn)
+
+
+class RuleChange(BaseModel):
+    """규칙 추가·수정. value 칸은 사전마다 다르다 (pipeline/rule_edit.py). 사유는 꼭 적는다."""
+    value: dict[str, Any]
+    reason: str | None = None
+    actor_id: int | None = None
+
+
+class RuleRemoval(BaseModel):
+    reason: str | None = None
+    actor_id: int | None = None
+
+
+def _edit(call):
+    """규칙 고침 오류(검사·권한·겹침)를 HTTP 응답으로 바꾼다."""
+    try:
+        with connect() as conn:
+            return call(conn)
+    except rule_edit.RuleEditError as exc:
+        raise HTTPException(exc.status, str(exc)) from exc
+
+
+@router.get("/rules/edits")
+def rule_edits(dictionary: RuleDictionary | None = None) -> list[RuleEdit]:
+    """규칙 고침 이력, 새것부터. 버린 고침도 함께 낸다."""
+    return _edit(lambda conn: rule_edit.edits(conn, dictionary))
+
+
+@router.post("/rules/{dictionary}", status_code=201)
+def add_rule(dictionary: RuleDictionary, body: RuleChange) -> RuleEdit:
+    """규칙 한 줄 추가 (엔지니어·승인자). 지운 같은 키 줄이 있으면 되살린다."""
+    return _edit(lambda conn: rule_edit.add(conn, dictionary, body.value, body.reason,
+                                            body.actor_id))
+
+
+@router.put("/rules/{dictionary}/{row_id}")
+def update_rule(dictionary: RuleDictionary, row_id: str, body: RuleChange) -> RuleEdit:
+    return _edit(lambda conn: rule_edit.update(conn, dictionary, row_id, body.value,
+                                               body.reason, body.actor_id))
+
+
+@router.delete("/rules/{dictionary}/{row_id}")
+def delete_rule(dictionary: RuleDictionary, row_id: str, body: RuleRemoval) -> RuleEdit:
+    """규칙 한 줄 삭제. 지난 결과가 가리키는 사전은 끄고, 쓰이는 표준 항목은 막는다."""
+    return _edit(lambda conn: rule_edit.delete(conn, dictionary, row_id, body.reason,
+                                               body.actor_id))

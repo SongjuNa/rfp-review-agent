@@ -93,7 +93,7 @@ def load_links(conn: psycopg.Connection) -> list[FaultLink]:
                        WHERE c.fault_id = l.fault_id AND c.suspect_reason IS NOT NULL)
                           AS suspects
                FROM fault_link l JOIN fault_catalog f ON f.fault_id = l.fault_id
-               JOIN item_key k ON k.item_key = l.item_key
+               JOIN item_key k ON k.item_key = l.item_key AND k.active
                ORDER BY l.fault_link_id""").fetchall()
         aliases: dict[str, list[str]] = {}
         for key, alias in conn.execute("SELECT item_key, alias_text FROM item_alias "

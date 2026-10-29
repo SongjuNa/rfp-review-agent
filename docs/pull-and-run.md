@@ -85,7 +85,7 @@ docker compose up -d db
 # 창 2: 백엔드
 cd backend
 uv sync                    # 새 Python 재료 받기
-uv run rfp-db setup        # 새 DB 표(0009~0012) + 규칙 사전 + 제품표
+uv run rfp-db setup        # 새 DB 표(0009~0013) + 규칙 사전 + 제품표 (화면에서 고친 규칙은 남음)
 uv run uvicorn rfp_agent.api.main:app --reload    # http://localhost:8000
 
 # 창 3: 화면

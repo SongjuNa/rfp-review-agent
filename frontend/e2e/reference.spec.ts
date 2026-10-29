@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test'
+import { as, ENGINEER } from './helpers'
 
-// SCR-16 제품표, SCR-17 판정 규칙 (add-reference-views). 기준 데이터(data/seed)를 읽기만 한다.
+// SCR-16 제품표, SCR-17 판정 규칙 (add-reference-views). 판정 규칙 고치기는 add-rule-editing.
 type Product = { product_code: string; family: string; used: number }
 
 test('제품 상세', async ({ page, request }) => {
@@ -64,5 +65,86 @@ test('문서 종류 규칙 탭', async ({ page }) => {
   await expect(rows.first()).toContainText('파일 이름만 봄')
   await expect(rows.first().locator('td').nth(3)).toHaveText('1')
   await expect(rows.first().locator('td').nth(4)).toHaveText(/^\d+개$/)
+})
+
+// 명세 review-workspace "판정 규칙 화면" (change add-rule-editing). 고친 규칙은 끝에 되돌린다 (고침 이력은 남는다).
+type Edit = { edit_id: number; action: string }
+const PHRASE = `to the satisfaction of the Engineer e2e ${Date.now()}`
+
+async function riskTab(page: import('@playwright/test').Page) {
+  await page.goto('/#/rules')
+  await page.getByRole('tablist', { name: '규칙 종류' }).getByRole('tab', { name: /위험 표현/ }).click()
+}
+
+test('화면에서 규칙 추가', async ({ page }) => {
+  await as(page, ENGINEER)
+  await riskTab(page)
+  await page.getByRole('button', { name: '규칙 추가' }).click()
+  const dlg = page.getByRole('dialog', { name: '규칙 추가' })
+  await dlg.getByLabel(/표현 \(원문\)/).fill(PHRASE)
+  await dlg.getByLabel('위험 종류').selectOption('OPEN_SCOPE')
+  await dlg.getByLabel('위험으로 보는 조건').fill('공급 범위 조항 안에 있을 때')
+  await expect(dlg.getByRole('button', { name: '저장' })).toBeDisabled()        // 사유 필수
+  await dlg.getByLabel('추가 사유').fill('현업 멘토 사례')
+  await dlg.getByRole('button', { name: '저장' }).click()
+  await expect(dlg).toBeHidden()
+  await page.getByLabel('규칙 검색').fill(PHRASE)
+  await expect(page.locator('tbody tr').first()).toContainText('범위 모호')
+  await expect(page.locator('.rhead')).toContainText(/마지막 수정 기본 엔지니어 · .+ · 추가/)
+})
+
+test('화면에서 규칙 삭제', async ({ page }) => {
+  await as(page, ENGINEER)
+  await riskTab(page)
+  await page.getByLabel('규칙 검색').fill(PHRASE)
+  const row = page.locator('tbody tr').first()
+  await expect(row).toContainText(PHRASE)
+  await row.click()
+  await page.locator('tr.rx').getByRole('button', { name: '삭제' }).click()
+  const dlg = page.getByRole('dialog', { name: '규칙 삭제' })
+  await expect(dlg).toContainText(PHRASE)
+  await dlg.getByLabel('삭제 사유').fill('e2e 정리')
+  await dlg.getByRole('button', { name: '삭제' }).click()
+  await expect(dlg).toBeHidden()
+  await expect(page.getByText('조건에 맞는 규칙이 없습니다.')).toBeVisible()
+})
+
+test('화면에서 규칙 수정과 이력', async ({ page, request }) => {
+  await as(page, ENGINEER)
+  await page.goto('/#/rules')
+  await page.getByRole('tablist', { name: '규칙 종류' }).getByRole('tab', { name: /문서 종류/ }).click()
+  await page.getByLabel('규칙 검색').fill('시험 사양서')
+  const row = page.locator('tbody tr').first()
+  const before = (await row.locator('td').nth(1).innerText()).trim()
+  const after = `${before}|test spec`
+  const edit = async (from: string, to: string, reason: string) => {
+    if (!(await page.locator('tr.rx').count())) await page.locator('tbody tr').first().click()   // 펼친 줄은 저장 뒤에도 펼쳐져 있다
+    await page.locator('tr.rx').getByRole('button', { name: '수정' }).click()
+    const dlg = page.getByRole('dialog', { name: '규칙 수정' })
+    await expect(dlg.getByLabel(/파일 이름에서 찾는 표현/)).toHaveValue(from)
+    await dlg.getByLabel(/파일 이름에서 찾는 표현/).fill(to)
+    await dlg.getByLabel('수정 사유').fill(reason)
+    await dlg.getByRole('button', { name: '저장' }).click()
+    await expect(dlg).toBeHidden()
+  }
+  await edit(before, after, '고객사 파일 이름')
+  await expect(page.locator('tbody tr').first().locator('td').nth(1)).toHaveText(after)
+  const history = page.locator('tr.rx .rhist li').first()
+  await expect(history).toContainText('수정 고객사 파일 이름')
+  await expect(history).toContainText('기본 엔지니어')
+  await expect(history).toContainText(`파일 이름 표현: ${before} → ${after}`)
+  await edit(after, before, 'e2e 되돌림')
+  const edits = (await (await request.get('/api/rules/edits?dictionary=doc-kinds')).json()) as Edit[]
+  expect(edits.slice(0, 2).map((e) => e.action)).toEqual(['EDIT', 'EDIT'])
+})
+
+test('고칠 수 없는 역할', async ({ page, request }) => {
+  const users = (await (await request.get('/api/users')).json()) as { user_id: number; role: string }[]
+  await as(page, users.find((u) => u.role === 'COST')!.user_id)
+  await riskTab(page)
   await expect(page.getByRole('button', { name: '규칙 추가' })).toBeDisabled()
+  await expect(page.getByText('엔지니어·승인자만 고칠 수 있습니다').first()).toBeVisible()
+  await page.locator('tbody tr').first().click()
+  await expect(page.locator('tr.rx').getByRole('button', { name: '수정' })).toBeDisabled()
+  await expect(page.locator('tr.rx').getByRole('button', { name: '삭제' })).toBeDisabled()
 })

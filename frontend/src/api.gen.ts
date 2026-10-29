@@ -117,6 +117,7 @@ export type CompareRule = {
   direction: string
   time_condition: boolean
   strength_direction: string | null
+  own_strength_direction: string | null
   process_note: string | null
   used: number
 }
@@ -716,6 +717,34 @@ export type RiskMember = {
   text_raw: string
   value_raw: string | null
   locations: Location[]
+}
+
+/** 규칙 추가·수정. value 칸은 사전마다 다르다 (pipeline/rule_edit.py). 사유는 꼭 적는다. */
+export type RuleChange = {
+  value: Record<string, unknown>
+  reason?: string | null
+  actor_id?: number | null
+}
+
+/** 규칙 고침 이력 한 줄 (add-rule-editing). row_key는 고치기 전(추가는 추가한) 줄 키, after_key는 고친 뒤 키. */
+export type RuleEdit = {
+  edit_id: number
+  dictionary: 'compare' | 'risk-expressions' | 'items' | 'doc-kinds'
+  row_key: Record<string, unknown>
+  after_key: Record<string, unknown> | null
+  action: 'ADD' | 'EDIT' | 'DELETE'
+  before_value: Record<string, unknown> | null
+  after_value: Record<string, unknown> | null
+  reason: string
+  actor_id: number
+  actor_name: string
+  edited_at: string
+  discarded_at: string | null
+}
+
+export type RuleRemoval = {
+  reason?: string | null
+  actor_id?: number | null
 }
 
 export type RunDocument = {
