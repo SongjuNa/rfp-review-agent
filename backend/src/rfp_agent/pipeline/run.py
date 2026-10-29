@@ -17,6 +17,7 @@ from psycopg.types.json import Jsonb
 
 from rfp_agent.llm import tasks
 from rfp_agent.llm.client import FAILURE_MESSAGE, LLM, LLMFailure
+from rfp_agent.llm.evidence import EvidenceSpan, evidence_id
 from rfp_agent.pipeline import code_version, dictionaries
 from rfp_agent.pipeline.assignments import build_assignments
 from rfp_agent.pipeline.document import Choice, Report, process_document
@@ -252,10 +253,21 @@ def _save_risks(ctx: RunContext, run_id: int, candidates: list[RiskCandidate]) -
     for cand in candidates:
         explanation = None
         if ctx.llm is not None:
-            texts = [r[0] for r in conn.execute(
-                "SELECT text_raw FROM requirement WHERE requirement_id = ANY(%s)",
-                (cand.members,))]
-            explanation = tasks.explain_risk(ctx.llm, cand.risk_kind, cand.facts, texts)
+            rows = conn.execute(
+                """SELECT DISTINCT d.document_id, sl.location_id, q.text_raw
+                   FROM requirement q
+                   JOIN document d USING (document_id)
+                   JOIN requirement_location rl USING (requirement_id)
+                   JOIN source_location sl USING (location_id)
+                   WHERE q.requirement_id = ANY(%s)""",
+                (cand.members,),
+            )
+            spans = [
+                EvidenceSpan(evidence_id(document_id, location_id), text_raw[:800])
+                for document_id, location_id, text_raw in rows
+            ]
+            if spans:
+                explanation = tasks.explain_risk(ctx.llm, cand.risk_kind, cand.facts, spans)
         risk_id = conn.execute(
             """INSERT INTO risk_flag (run_id, risk_kind, expr_id, explanation_ai, status, facts,
                                       item_key)
