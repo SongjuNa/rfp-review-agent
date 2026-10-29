@@ -107,22 +107,78 @@ def type_unclassified(llm: LLM, texts: list[str],
 NUMBER = re.compile(r"\d+(?:[.,]\d+)?")
 
 
-def explain_risk(llm: LLM, kind: str, facts: str, texts: list[str]) -> str | None:
-    """위험 조건 설명. 사실(facts)에 없는 숫자를 쓰면 버린다 (CR-07)."""
+from rfp_agent.llm.evidence import EvidenceSpan, normalize_quote
+
+
+def explain_risk(llm: LLM, kind: str, facts: str,
+                 texts: list[str] | list[EvidenceSpan]) -> str | None:
+    """위험 설명을 claim/evidence 구조로 받고 실제 근거로 검증한다."""
+    spans = [
+        span if isinstance(span, EvidenceSpan)
+        else EvidenceSpan(f"E-{i:03d}", span)
+        for i, span in enumerate(texts, start=1)
+    ]
     prompt = (
-        "입찰 기술 검토 엔지니어에게 이 조항이 왜 위험한지, 또는 두 값이 왜 다를 수 있는지 "
-        "한국어 두세 문장으로 설명한다. 아래 사실에 없는 숫자는 쓰지 않는다.\n"
-        f"종류: {kind}\n사실:\n{facts}\n원문:\n" + "\n".join(t[:800] for t in texts)
+        "입찰 기술 검토 엔지니어에게 이 조항이 왜 위험한지, "
+        "또는 두 값이 왜 다를 수 있는지 한국어 두세 문장으로 설명한다.\n"
+        "아래 근거 조각만 사용한다. 근거에 없는 사실이나 숫자는 쓰지 않는다.\n"
+        f"종류: {kind}\n사실:\n{facts}\n근거:\n"
+        + "\n".join(f"[{span.evidence_id}] {span.text[:800]}" for span in spans)
+        + "\n각 설명 claim에는 evidence_ids, exact_quote, relation을 포함한다."
     )
-    schema = {"type": "object", "properties": {"explanation": {"type": "string"}},
-              "required": ["explanation"]}
 
-    def check(d):
-        assert d["explanation"].strip()
+    schema = {
+        "type": "object",
+        "properties": {
+            "claims": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "text": {"type": "string"},
+                        "exact_quote": {"type": "string"},
+                        "evidence_ids": {"type": "array", "items": {"type": "string"}},
+                        "relation": {"type": "string",
+                                     "enum": ["DIRECT", "DERIVED", "INFERRED"]},
+                    },
+                    "required": ["text", "exact_quote", "evidence_ids", "relation"],
+                },
+            }
+        },
+        "required": ["claims"],
+    }
 
-    text = call_with_retry(llm, prompt, schema, check)["explanation"].strip()
-    allowed = {n.replace(",", "") for n in NUMBER.findall(facts + " " + " ".join(texts))}
-    if any(n.replace(",", "") not in allowed for n in NUMBER.findall(text)):
+    allowed = {span.evidence_id: span.text for span in spans}
+
+    def check(data):
+        # 이전 버전의 LLM Adapter 호환: 실제 Gemini는 claims를 반환한다.
+        if "claims" not in data:
+            assert data["explanation"].strip()
+            return
+        assert data["claims"]
+        for claim in data["claims"]:
+            claim_text = claim["text"].strip()
+            quote = normalize_quote(claim["exact_quote"])
+            evidence_ids = claim["evidence_ids"]
+            assert claim_text and quote and evidence_ids
+            assert claim["relation"] in {"DIRECT", "DERIVED", "INFERRED"}
+            assert all(evidence_id in allowed for evidence_id in evidence_ids)
+            selected = [allowed[evidence_id] for evidence_id in evidence_ids]
+            assert any(normalize_quote(quote) in normalize_quote(source)
+                       or normalize_quote(source) in normalize_quote(quote)
+                       for source in selected)
+
+    try:
+        data = call_with_retry(llm, prompt, schema, check)
+    except LLMFailure:
+        return None
+    if "claims" in data:
+        text = "\n".join(claim["text"].strip() for claim in data["claims"])
+    else:
+        text = data["explanation"].strip()
+
+    allowed_numbers = {n.replace(",", "") for n in NUMBER.findall(facts + " " + " ".join(allowed.values()))}
+    if any(n.replace(",", "") not in allowed_numbers for n in NUMBER.findall(text)):
         return None
     return text
 
