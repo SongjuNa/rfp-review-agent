@@ -110,7 +110,7 @@ def run_requirements(conn: psycopg.Connection, run_id: int, *, document_id: int 
                      type_code: str | None = None, limit: int = 100,
                      offset: int = 0) -> list[dict]:
     items = _rows(conn, """
-        SELECT q.requirement_id, d.file_no, q.source_kind, q.req_kind, q.text_raw,
+        SELECT q.requirement_id, d.file_no, d.file_name, q.source_kind, q.req_kind, q.text_raw,
                q.extracted_by, q.confidence, q.is_assumed, q.rule_id, q.supplier_mark,
                q.dedup_of""" + REQUIREMENTS_FROM + """
         ORDER BY d.file_no, q.requirement_id
@@ -439,7 +439,8 @@ def requirement(conn: psycopg.Connection, requirement_id: int,
     """요구사항 하나의 원문, 원문 위치, 유형, 값 (화면의 "원문 보기")."""
     items = _rows(conn, """
         SELECT q.requirement_id, d.file_no, d.file_name, q.source_kind, q.req_kind, q.text_raw,
-               q.extracted_by, q.confidence, q.is_assumed, q.dedup_of
+               q.extracted_by, q.confidence, q.is_assumed, q.rule_id, q.supplier_mark,
+               q.dedup_of
         FROM requirement q JOIN document d USING (document_id)
         WHERE q.requirement_id = %s""", (requirement_id,))
     return _attach(conn, items, run_id)[0] if items else None

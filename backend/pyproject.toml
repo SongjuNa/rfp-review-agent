@@ -25,6 +25,7 @@ dev = [
 [project.scripts]
 rfp-db = "rfp_agent.db.cli:main"
 rfp-review = "rfp_agent.cli:main"
+rfp-openapi = "rfp_agent.api.main:dump_openapi"
 
 [build-system]
 requires = ["hatchling"]

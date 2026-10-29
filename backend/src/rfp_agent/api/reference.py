@@ -2,6 +2,14 @@
 
 from fastapi import APIRouter, HTTPException, Query, Response
 
+from rfp_agent.api.schemas import (
+    CompareRule,
+    ItemKey,
+    Product,
+    ProductDetail,
+    ProductFamily,
+    RiskExpression,
+)
 from rfp_agent.db.connection import connect
 from rfp_agent.pipeline import reference
 
@@ -10,7 +18,7 @@ router = APIRouter(prefix="/api")
 
 @router.get("/products")
 def products(response: Response, family: str | None = None, q: str | None = None,
-             offset: int = 0, limit: int = Query(100, le=500), cards: bool = True) -> list[dict]:
+             offset: int = 0, limit: int = Query(100, le=500), cards: bool = True) -> list[Product]:
     """제품 목록: 제품군 거르기, 코드·이름 검색. 빈 칸 수·팀 가정·판정에 쓰인 수를 함께 낸다."""
     with connect() as conn:
         response.headers["X-Total-Count"] = str(reference.count_products(conn, family, q, cards))
@@ -18,14 +26,14 @@ def products(response: Response, family: str | None = None, q: str | None = None
 
 
 @router.get("/products/families")
-def product_families() -> list[dict]:
+def product_families() -> list[ProductFamily]:
     """제품군 탭과 위 요약 칸."""
     with connect() as conn:
         return reference.families(conn)
 
 
 @router.get("/products/{code}")
-def product(code: str) -> dict:
+def product(code: str) -> ProductDetail:
     """제품 하나: 전체 칸, 판정에 쓰인 곳, 제안 포인트, 같은 제품군 현장 이력."""
     with connect() as conn:
         try:
@@ -35,18 +43,18 @@ def product(code: str) -> dict:
 
 
 @router.get("/rules/compare")
-def compare_rules() -> list[dict]:
+def compare_rules() -> list[CompareRule]:
     with connect() as conn:
         return reference.compare_rules(conn)
 
 
 @router.get("/rules/items")
-def rule_items() -> list[dict]:
+def rule_items() -> list[ItemKey]:
     with connect() as conn:
         return reference.items(conn)
 
 
 @router.get("/rules/risk-expressions")
-def risk_expressions() -> list[dict]:
+def risk_expressions() -> list[RiskExpression]:
     with connect() as conn:
         return reference.risk_expressions(conn)
