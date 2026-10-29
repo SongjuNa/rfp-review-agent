@@ -105,7 +105,7 @@ export function Rules() {
         {PROPOSED.map(([d, ex, by, cls, st]) => (
           <div key={ex} className="rkp-r"><span className="mono">{d}</span><b>{ex}</b><span>{by}</span><span className={cls}>{st}</span></div>
         ))}
-        <div className="rkp-f"><span title="정답지·채점 화면은 아직 없습니다"><a aria-disabled="true">반영 후 점수 변화는 정답지·채점에서 봅니다<span className="ms" aria-hidden="true">chevron_right</span></a></span></div>
+        <div className="rkp-f"><a href="#/eval">반영 후 점수 변화는 정답지·채점에서 봅니다<span className="ms" aria-hidden="true">chevron_right</span></a></div>
       </section>
       <div className="rtabs" role="tablist" aria-label="규칙 종류">
         {(['dir', 'risk', 'name'] as TabKey[]).map((k) => (
