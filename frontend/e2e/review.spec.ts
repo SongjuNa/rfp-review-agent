@@ -1,20 +1,29 @@
 import { expect, test } from '@playwright/test'
 
-// 파일 1(입찰 양식)로 검토를 시작해 담당자 확인 → 승인까지 끝까지 간다 (tasks 3.1).
+// 파일 1(입찰 양식)로 검토를 시작해 담당자 확인 → 결재 상신 → 승인까지 끝까지 간다 (tasks 3.1).
 // 명세 review-workspace의 Scenario: 처리 중, 적합성 표의 비교 제품, 손실 환산 결과, 승인 화면.
 const FILE_1 = '1. Bidding Forms_Draft'
 
 test('파일 1을 올려 확인·승인까지', async ({ page }) => {
-  await page.goto('/')
-  const library = page.getByLabel('서버에 둔 RFP')
-  await library.waitFor({ timeout: 10_000 }).catch(() => undefined)
-  const file = (await library.locator('option').allTextContents()).find((f) => f.includes(FILE_1))
+  await page.goto('/#/register')
+  const more = page.getByRole('button', { name: '서버에 둔 RFP에서 고르기' })
+  await more.waitFor({ timeout: 10_000 }).catch(() => undefined)
+  test.skip(!(await more.isVisible()), '서버에 둔 RFP 원문이 없음')
+  await more.click()
+  const library = page.getByRole('table', { name: '서버에 둔 RFP' })
+  const file = (await library.locator('td:nth-child(2)').allTextContents()).find((f) => f.includes(FILE_1))
   test.skip(!file, '서버에 파일 1 원문이 없음')
-  await library.selectOption(file!)
-  await page.getByRole('button', { name: '골라서 시작' }).click()
+  await library.getByRole('checkbox', { name: file! }).check()
+  await page.getByRole('button', { name: /다음/ }).click()
+  await page.getByLabel('제출 마감일').fill('2026-12-31')
+  await page.getByRole('button', { name: /다음/ }).click()
+  await page.getByRole('button', { name: /등록하고 분석 시작/ }).click()
+  const reviewNo = (await page.getByRole('status').textContent())!.match(/RV-\d{4}-\d{3}/)![0]
+  await page.goto('/#/reviews')
+  await page.locator('tr', { hasText: reviewNo }).getByRole('link').first().click()
 
   // Scenario: 처리 중 — 실행이 시작되고 현재 단계가 보인다
-  const status = page.getByRole('status').first()
+  const status = page.locator('.legacy [role=status]').first()
   await expect(status).toContainText(/처리 중|담당자 확인/)
   await expect(status).toContainText('담당자 확인', { timeout: 240_000 })
 
@@ -48,18 +57,19 @@ test('파일 1을 올려 확인·승인까지', async ({ page }) => {
   await point.getByRole('button', { name: '채택', exact: true }).click()
   await expect(page.getByText('지금 채택 1건')).toBeVisible()
 
-  // Scenario: 승인 화면 — 담당자 확인을 마치면 승인 대기, 걸린 기준과 누락 점검
-  await page.getByRole('tab', { name: '승인' }).click()
-  await page.getByRole('button', { name: '담당자 확인 마치기' }).click()
-  await expect(status).toContainText('승인 대기')
-  await expect(page.getByText('AR-01').first()).toBeVisible()
-  await expect(page.getByText(/일탈 후보 \d+건/).first()).toBeVisible()
-  await expect(page.getByText(/빠진 일탈 \d+건/)).toBeVisible()
+  // 결재 상신 → 결재 대기 화면 → 지정 결재자가 승인 (update-approval-flow)
+  await page.getByRole('button', { name: '결재 상신' }).click()
+  const dialog = page.getByRole('dialog', { name: '결재 상신' })
+  await expect(dialog.getByText(/일탈 후보 \d+건/)).toBeVisible()
+  await dialog.getByLabel('상신 의견').fill('일탈 4,000 A는 옵션 제안으로 대응')
+  await dialog.getByRole('button', { name: '결재 상신' }).click()
+  await expect(page.getByText('기본 승인자의 결재를 기다리고 있습니다')).toBeVisible()
+  await expect(page.getByText(/목록에 빠진 일탈/)).toBeVisible()
 
-  await page.getByLabel('사용자').selectOption({ label: '기본 승인자 (APPROVER)' })
-  await page.getByLabel('의견').fill('일탈 4,000 A 사유 확인함')
+  await page.getByRole('button', { name: '사용자 바꾸기' }).click()
+  await page.getByRole('button', { name: /기본 승인자/ }).click()
   await page.getByRole('button', { name: '승인', exact: true }).click()
-  await expect(status).toContainText('승인됨')
+  await expect(page.locator('main .idl').first()).toContainText('승인됨')
 
   await page.getByRole('tab', { name: '이력' }).click()
   await expect(page.getByRole('cell', { name: '채택' })).toBeVisible()

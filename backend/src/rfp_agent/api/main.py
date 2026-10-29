@@ -1,12 +1,13 @@
 from fastapi import FastAPI
 from pydantic import BaseModel
 
-from rfp_agent.api import runs
+from rfp_agent.api import reference, runs
 from rfp_agent.config import get_settings
 from rfp_agent.db.connection import connect
 
 app = FastAPI(title="RFP 기술 검토 지원 API", version="0.2.0")
 app.include_router(runs.router)
+app.include_router(reference.router)
 
 
 class Health(BaseModel):

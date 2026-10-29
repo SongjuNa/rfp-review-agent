@@ -14,7 +14,7 @@ from rfp_agent.llm import tasks
 from rfp_agent.llm.client import LLM
 from rfp_agent.pipeline import classify as cls
 from rfp_agent.pipeline.dictionaries import PipelineDicts
-from rfp_agent.pipeline.docx_reader import read_blocks
+from rfp_agent.pipeline.docx_reader import find_figures, read_blocks
 from rfp_agent.pipeline.extract import Candidate, extract
 from rfp_agent.pipeline.line_map import map_lines
 from rfp_agent.pipeline.structure import (
@@ -158,6 +158,13 @@ def process_document(conn: psycopg.Connection, path: Path, dicts: PipelineDicts,
         index = SectionIndex(sections)
         section_ids = _save_sections(conn, doc_id, sections)
         row_ids = _save_tables(conn, doc_id, tables, section_ids, index)
+        for block, caption in find_figures(blocks):
+            # 그림 위치만 남긴다. 그림 속 글자는 읽지 않는다 (OCR 범위 밖)
+            sec = index.at(block.seq)
+            conn.execute("INSERT INTO doc_figure (document_id, section_id, line_no, caption) "
+                         "VALUES (%s, %s, %s, %s)",
+                         (doc_id, section_ids.get(sec.index) if sec else None, block.line_no,
+                          caption))
 
         candidates = extract(blocks, sections, tables)
         if llm is not None:

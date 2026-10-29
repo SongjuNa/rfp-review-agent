@@ -145,7 +145,7 @@ def test_review_cards_for_engineer_and_approver(tasks_run):
     assert mine["role"] == "ENGINEER" and mine["assignments"] == []
     assert card["summary"]["stage"] == "ENGINEER_REVIEW" and card["criteria"]
     assert [c for c in review.my_tasks(conn, approver)["reviews"] if c["run_id"] == run_id] == []
-    review.finish_review(conn, run_id)
+    review.finish_review(conn, run_id, approver, "결재 바랍니다")
     [card] = [c for c in review.my_tasks(conn, approver)["reviews"] if c["run_id"] == run_id]
     assert "AR-01" in [r["ar_code"] for r in card["criteria"]]
 
@@ -175,5 +175,29 @@ def test_tasks_api(tasks_run, db_url, monkeypatch):
         listed = client.get(f"/api/runs/{run_id}/assignments", params={"role": "QUALITY"}).json()
         assert [t["status"] for t in listed] == ["DOING"]
         assert client.get("/api/tasks", params={"user_id": 999999}).status_code == 400
+    finally:
+        get_settings.cache_clear()
+
+
+def test_department_requests_api(tasks_run, db_url, monkeypatch):
+    """Scenario: 수신 부서별 요청 현황 — 부서에 보낸 요청을 검토 번호·파일 이름과 모은다."""
+    from fastapi.testclient import TestClient
+
+    from rfp_agent.api.main import app
+    from rfp_agent.config import get_settings
+
+    conn, run_id = tasks_run
+    monkeypatch.setenv("DATABASE_URL", db_url)
+    monkeypatch.delenv("GEMINI_API_KEY", raising=False)
+    get_settings.cache_clear()
+    try:
+        client = TestClient(app)
+        listed = client.get("/api/assignments", params={"role": "QUALITY"}).json()
+        [task] = [t for t in listed if t["run_id"] == run_id]
+        assert task["text"] == TYPE_TEST and task["status"] == "TODO"
+        assert task["review_no"].endswith(f"-{run_id:03d}")
+        assert task["file_name"] == "synthetic_feeder_tasks.docx"
+        assert task["engineer_name"] is None or isinstance(task["engineer_name"], str)
+        assert client.get("/api/assignments", params={"role": "ENGINEER"}).status_code == 422
     finally:
         get_settings.cache_clear()

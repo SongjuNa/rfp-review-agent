@@ -46,6 +46,15 @@ openspec/
 | 7 | `archive/2026-10-24-add-engineering-check` | FR-12 공학 규칙 검산 (완료) |
 | 8 | `archive/2026-10-24-add-role-assignment` | FR-11 유형별 담당자 전달, "내 할 일" 화면 (완료) |
 | 9 | `archive/2026-10-25-update-risk-dictionary` | FR-06 위험 표현 사전에 "but not limited to" 추가 (완료) |
+| 10 | `archive/2026-10-28-update-app-shell` | 목업 v4.57 앱 틀: 왼쪽 메뉴, 머리글, 화면 주소 (완료) |
+| 11 | `archive/2026-10-28-add-review-info` | 검토 정보(사업명·검토명·고객사·국가·마감·담당), 검토 목록·등록·상세 화면 (완료) |
+| 12 | `archive/2026-10-28-update-approval-flow` | 결재자를 골라 상신, 지정 결재자만 결정, 상신 취소. 결재 상신 창·결재 대기 화면 (완료) |
+| 13 | `archive/2026-10-28-update-review-screens` | 목업 v4.57 검토 화면: 검토 상세 탭 전부, 처리 상태·분석 실패, 협조 요청 현황, 홈. 예전 화면 지움 (완료) |
+| 14 | `archive/2026-10-28-add-reference-views` | 제품표·판정 규칙 화면 (읽기 전용) (완료) |
+| 15 | `archive/2026-10-28-add-bulk-confirm` | 판정 여러 줄 한꺼번에 확정 (완료) |
+| 16 | `archive/2026-10-28-add-tbe-export` | TBE 준수표 화면과 엑셀 내려받기 (완료) |
+| 17 | `archive/2026-10-28-add-datasheet-export` | 데이터시트 채우기 화면과 엑셀 내려받기 (완료) |
+| 18 | `archive/2026-10-28-add-example-screens` | 백엔드 없는 메뉴 화면 12개를 예시 데이터로 (완료) |
 
 ## 3. 작업 흐름
 

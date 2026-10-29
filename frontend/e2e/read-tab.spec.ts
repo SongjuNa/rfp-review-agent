@@ -1,0 +1,60 @@
+import { expect, test, type Page } from '@playwright/test'
+import { APPROVER, ENGINEER, as, readRun } from './helpers'
+
+// 명세 review-workspace "문서 읽기 점검 탭"·"상신 전 확인의 문서 읽기 점검"의 Scenario (change update-review-screens).
+
+async function openRead(page: Page, name: string, user = ENGINEER) {
+  const run = await readRun(page.request, `${name} ${Date.now()}`)
+  await as(page, user)
+  await page.goto(`/#/reviews/${run.run_id}`)
+  await page.getByRole('tab', { name: '문서 읽기 점검' }).click()
+  return page.locator('#read table.rdt > tbody > tr')
+}
+
+test('점검 줄 확인', async ({ page }) => {
+  const rows = await openRead(page, '점검 확인')
+  await expect(page.locator('#read .sech .note')).toHaveText('표 1 · 그림 1 · 단위 1 · 위치 1')
+  await expect(rows).toHaveCount(4)
+  await expect(rows.locator('.rdk')).toHaveText([/표$/, /그림$/, /단위$/, /위치$/])
+  await expect(page.locator('#read .sech > .st')).toHaveText('확인 안 함 4건')
+  await expect(page.getByRole('tab', { name: '문서 읽기 점검' }).locator('.tabn')).toHaveText('4')
+  const fig = rows.filter({ hasText: 'Fig. 1 Single Line Diagram' })
+  await expect(fig).toContainText('synthetic_read.docx')
+  await fig.getByRole('button', { name: '직접 확인함' }).click()
+  await expect(fig).toHaveClass('done')
+  await expect(fig.locator('.rdok .st')).toHaveText('확인함')
+  await expect(fig.locator('.rdok .en')).toContainText(' · ')
+  await expect(page.locator('#read .sech > .st')).toHaveText('확인 안 함 3건')
+  await expect(page.getByRole('tab', { name: '문서 읽기 점검' }).locator('.tabn')).toHaveText('3')
+  await page.getByRole('tab', { name: '이력' }).click()
+  await expect(page.locator('#log')).toContainText('문서 읽기 점검 확인: Fig. 1 Single Line Diagram')
+})
+
+test('점검 확인 되돌리기', async ({ page }) => {
+  const rows = await openRead(page, '점검 되돌리기')
+  const unit = rows.filter({ hasText: '단위를 모름' })
+  await unit.getByRole('button', { name: '직접 확인함' }).click()
+  await expect(page.locator('#read .sech > .st')).toHaveText('확인 안 함 3건')
+  await unit.getByRole('button', { name: '되돌리기' }).click()
+  await expect(unit.getByRole('button', { name: '직접 확인함' })).toBeVisible()
+  await expect(unit).not.toHaveClass('done')
+  await expect(page.locator('#read .sech > .st')).toHaveText('확인 안 함 4건')
+})
+
+test('고칠 수 없을 때 확인 단추', async ({ page }) => {
+  const rows = await openRead(page, '점검 잠김', APPROVER)
+  const button = rows.first().getByRole('button', { name: '직접 확인함' })
+  await expect(button).toBeDisabled()
+  await expect(rows.first().locator('[title]')).toHaveAttribute('title', '엔지니어만 확인할 수 있습니다')
+})
+
+test('상신 창의 점검 미확인', async ({ page }) => {
+  await openRead(page, '점검 상신')
+  await page.getByRole('tab', { name: '판정' }).click()
+  await page.getByRole('button', { name: '결재 상신' }).click()
+  const dialog = page.getByRole('dialog', { name: '결재 상신' })
+  const line = dialog.locator('.apck li').filter({ hasText: '문서 읽기 점검 미확인 4건' })
+  await expect(line).toHaveCount(1)
+  await expect(line.locator('.apic')).toHaveClass(/warn/)
+  await expect(line).toContainText('빠진 요구사항이 있을 수 있습니다')
+})

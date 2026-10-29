@@ -1,8 +1,9 @@
 """FR-10 담당자 확인·승인과 수정 이력.
 
 멈춤 지점은 두 곳이다. 처리를 마친 실행은 담당자 확인(ENGINEER_REVIEW)에서 멈추고, 엔지니어가
-확인을 마치면 승인 기준(AR-01·02·03·06·07·08)을 코드로 판단해 하나라도 걸리면 승인(APPROVAL)에서
-멈춘다. 사람이 확인하지 않은 결과는 확정되지 않는다 (CR-08). 모든 동작은 review_log에 남는다.
+결재자와 상신 의견을 넣어 결재 상신하면 승인 기준(AR-01·02·03·06·07·08)을 코드로 판단해 기록하고
+걸린 기준과 관계없이 승인(APPROVAL)에서 멈춘다. 지정된 결재자만 결정한다. 사람이 확인하지 않은
+결과는 확정되지 않는다 (CR-08). 모든 동작은 review_log에 남는다.
 """
 
 import json
@@ -63,10 +64,10 @@ def default_user(conn: psycopg.Connection, role: str) -> int:
     return row[0]
 
 
-def _user_role(conn: psycopg.Connection, user_id: int) -> str:
+def _user_role(conn: psycopg.Connection, user_id: int, missing: int = 400) -> str:
     row = conn.execute("SELECT role FROM app_user WHERE user_id = %s", (user_id,)).fetchone()
     if row is None:
-        raise ReviewError(400, f"사용자 {user_id}이(가) 없습니다.")
+        raise ReviewError(missing, f"사용자 {user_id}이(가) 없습니다.")
     return row[0]
 
 
@@ -178,6 +179,38 @@ def _text(value: dict) -> str:
     return text
 
 
+def bulk_confirm(ctx: RunContext, run_id: int, judgment_ids: list[int],
+                 actor_id: int | None = None) -> dict:
+    """여러 현재 판정을 한 번에 제안대로 확정한다. 줄마다 이력을 남기고 다시 만들기는 한 번.
+
+    하나라도 이 실행의 현재 판정이 아니면 아무것도 바꾸지 않는다.
+    """
+    conn = ctx.conn
+    ids = list(dict.fromkeys(judgment_ids))         # 같은 줄을 두 번 보내도 한 번만
+    if not ids:
+        raise ReviewError(400, "확정할 판정을 하나 이상 고르세요.")
+    require_stage(conn, run_id, "ENGINEER_REVIEW")
+    actor_id = actor_id or default_user(conn, "ENGINEER")
+    _user_role(conn, actor_id)
+    befores = [row(conn, "judgment", i, run_id) for i in ids]
+    if stale := [b["judgment_id"] for b in befores if not b["is_current"]]:
+        raise ReviewError(409, f"현재 판정이 아닌 줄이 있습니다 ({', '.join(map(str, stale))}).")
+    for before in befores:
+        _apply(conn, "judgment", before, "CONFIRM", {})
+        after = row(conn, "judgment", before["judgment_id"], run_id)
+        log(conn, run_id, "judgment", before["judgment_id"], "CONFIRM", before, after, None,
+            actor_id)
+    conn.commit()
+    docs = readable_documents(conn, [r[0] for r in conn.execute(
+        "SELECT document_id FROM run_document WHERE run_id = %s", (run_id,))])
+    build_warranty(conn, run_id)
+    build_outputs(conn, run_id, docs, ctx.llm)
+    build_proposals(conn, run_id, ctx.llm)
+    build_assignments(conn, run_id)
+    conn.commit()
+    return {"confirmed": len(ids), "submission_check": _latest_check(conn, run_id)}
+
+
 def act(ctx: RunContext, run_id: int, target: str, target_id: int, action: str,
         value: dict | None = None, reason: str | None = None,
         actor_id: int | None = None) -> dict:
@@ -228,6 +261,22 @@ def _latest_check(conn: psycopg.Connection, run_id: int) -> dict | None:
     return row
 
 
+def review_ratio(conn: psycopg.Connection, run_id: int) -> dict:
+    """"확인 필요" 비율 (AR-03): 보증값 후보를 채운 칸은 빼고, 엔지니어가 확정·수정한 것도 뺀다."""
+    review, total = conn.execute(
+        """SELECT count(*) FILTER (WHERE j.review_status = 'CANDIDATE' AND (
+                      j.result = 'NEEDS_REVIEW' OR w.status = 'EMPTY_REVIEW')),
+                  count(*) FILTER (WHERE w.status IS DISTINCT FROM 'CANDIDATE'
+                                     AND w.status IS DISTINCT FROM 'CONFIRMED')
+           FROM judgment j
+           LEFT JOIN warranty_candidate w ON w.judgment_id = j.judgment_id
+           WHERE j.run_id = %s AND j.is_current AND j.review_status <> 'REJECTED'""",
+        (run_id,)).fetchone()
+    threshold = float(conn.execute(
+        "SELECT threshold FROM approval_rule WHERE ar_code = 'AR-03'").fetchone()[0])
+    return {"review": review, "total": total, "threshold": threshold}
+
+
 def criteria(conn: psycopg.Connection, run_id: int) -> list[Criterion]:
     """승인 기준 판단 (코드만, CR-01). 걸린 기준과 사람이 읽는 내용."""
     out: list[Criterion] = []
@@ -242,18 +291,8 @@ def criteria(conn: psycopg.Connection, run_id: int) -> list[Criterion]:
         "AND status <> 'CLOSED_OK'", (run_id,)).fetchone()[0]
     if blanket:
         out.append(Criterion("AR-02", f"포괄 조항 {blanket}건"))
-    # "확인 필요" 비율: 보증값 후보를 채운 칸은 빼고 계산한다. 엔지니어가 확정·수정한 것은 뺀다
-    review, total = conn.execute(
-        """SELECT count(*) FILTER (WHERE j.review_status = 'CANDIDATE' AND (
-                      j.result = 'NEEDS_REVIEW' OR w.status = 'EMPTY_REVIEW')),
-                  count(*) FILTER (WHERE w.status IS DISTINCT FROM 'CANDIDATE'
-                                     AND w.status IS DISTINCT FROM 'CONFIRMED')
-           FROM judgment j
-           LEFT JOIN warranty_candidate w ON w.judgment_id = j.judgment_id
-           WHERE j.run_id = %s AND j.is_current AND j.review_status <> 'REJECTED'""",
-        (run_id,)).fetchone()
-    threshold = float(conn.execute(
-        "SELECT threshold FROM approval_rule WHERE ar_code = 'AR-03'").fetchone()[0])
+    ratio = review_ratio(conn, run_id)
+    review, total, threshold = ratio["review"], ratio["total"], ratio["threshold"]
     if total and review / total > threshold:
         out.append(Criterion("AR-03", f"확인 필요 {review}/{total}건 "
                                       f"({review / total:.0%}, 기준 {threshold:.0%})"))
@@ -276,49 +315,68 @@ def criteria(conn: psycopg.Connection, run_id: int) -> list[Criterion]:
     return out
 
 
-def finish_review(conn: psycopg.Connection, run_id: int, actor_id: int | None = None) -> dict:
-    """담당자 확인을 마친다. 승인 기준에 걸리면 승인 대기, 아니면 바로 승인됨 [결정]."""
+def finish_review(conn: psycopg.Connection, run_id: int, approver_id: int | None,
+                  comment: str | None, actor_id: int | None = None) -> dict:
+    """결재 상신. 걸린 기준을 기록하고, 걸린 것이 없어도 승인 대기로 둔다 [결정 2026-10-28]."""
     require_stage(conn, run_id, "ENGINEER_REVIEW")
+    comment = (comment or "").strip()
+    if not comment:
+        raise ReviewError(400, "상신 의견이 필요합니다.")
+    if approver_id is None:
+        raise ReviewError(400, "결재자를 골라 주세요.")
     actor_id = actor_id or default_user(conn, "ENGINEER")
-    _user_role(conn, actor_id)
+    if _user_role(conn, actor_id) != "ENGINEER":
+        raise ReviewError(403, "결재 상신은 기술 검토 엔지니어만 할 수 있습니다.")
+    if _user_role(conn, approver_id, 404) != "APPROVER":
+        raise ReviewError(400, "결재자는 승인자만 될 수 있습니다.")
     found = criteria(conn, run_id)
-    stage = "APPROVAL" if found else "APPROVED"
     with conn.transaction():
         approval_id = conn.execute(
-            """INSERT INTO approval (run_id, decision, comment, decided_at)
-               VALUES (%s, %s, %s, CASE WHEN %s THEN now() END) RETURNING approval_id""",
-            (run_id, None if found else "APPROVED",
-             None if found else "승인 기준에 해당 없음", not found)).fetchone()[0]
+            """INSERT INTO approval (run_id, approver_id, requested_by, request_comment)
+               VALUES (%s, %s, %s, %s) RETURNING approval_id""",
+            (run_id, approver_id, actor_id, comment)).fetchone()[0]
         for c in found:
             conn.execute("INSERT INTO approval_reason VALUES (%s, %s, %s)",
                          (approval_id, c.ar_code, c.detail))
         conn.execute(
-            "UPDATE review_run SET stage = %s, graph_state = graph_state || %s "
-            "WHERE run_id = %s", (stage, Jsonb({"step": stage.lower()}), run_id))
+            "UPDATE review_run SET stage = 'APPROVAL', graph_state = graph_state || %s "
+            "WHERE run_id = %s", (Jsonb({"step": "approval"}), run_id))
         log(conn, run_id, "review_run", run_id, "CONFIRM", {"stage": "ENGINEER_REVIEW"},
-            {"stage": stage, "ar_codes": [c.ar_code for c in found]}, "담당자 확인 마침",
-            actor_id)
-    return {"stage": stage, "approval_id": approval_id,
+            {"stage": "APPROVAL", "approver_id": approver_id,
+             "ar_codes": [c.ar_code for c in found]}, comment, actor_id)
+    return {"stage": "APPROVAL", "approval_id": approval_id,
             "criteria": [{"ar_code": c.ar_code, "detail": c.detail} for c in found]}
+
+
+def _open_request(conn: psycopg.Connection, run_id: int) -> tuple[int, int | None]:
+    """결정 전인 가장 최근 상신 (approval_id, 지정 결재자)."""
+    found = conn.execute(
+        "SELECT approval_id, approver_id FROM approval WHERE run_id = %s AND decision IS NULL "
+        "ORDER BY approval_id DESC LIMIT 1", (run_id,)).fetchone()
+    if found is None:
+        raise ReviewError(409, "결정 전인 상신이 없습니다.")
+    return found[0], found[1]
 
 
 def decide(conn: psycopg.Connection, run_id: int, decision: str, comment: str | None,
            actor_id: int | None = None) -> dict:
-    """승인자가 승인 또는 반려한다. 결정 전에는 승인됨으로 바뀌지 않는다."""
+    """지정된 결재자가 승인 또는 반려한다. 결정 전에는 승인됨으로 바뀌지 않는다."""
     if decision not in ("APPROVED", "REJECTED"):
         raise ReviewError(400, "결정은 APPROVED 또는 REJECTED입니다.")
     if decision == "REJECTED" and not (comment or "").strip():
         raise ReviewError(400, "반려에는 의견이 필요합니다.")
     require_stage(conn, run_id, "APPROVAL")
-    actor_id = actor_id or default_user(conn, "APPROVER")
+    approval_id, approver_id = _open_request(conn, run_id)
+    actor_id = actor_id or approver_id or default_user(conn, "APPROVER")
     if _user_role(conn, actor_id) != "APPROVER":
         raise ReviewError(403, "승인자만 승인·반려할 수 있습니다.")
+    if approver_id is not None and actor_id != approver_id:
+        raise ReviewError(403, "지정된 결재자만 결정할 수 있습니다.")
     with conn.transaction():
-        approval_id = conn.execute(
+        conn.execute(
             """UPDATE approval SET decision = %s, comment = %s, approver_id = %s,
-                      decided_at = now()
-               WHERE approval_id = (SELECT max(approval_id) FROM approval WHERE run_id = %s)
-               RETURNING approval_id""", (decision, comment, actor_id, run_id)).fetchone()[0]
+                      decided_at = now() WHERE approval_id = %s""",
+            (decision, comment, actor_id, approval_id))
         conn.execute(
             "UPDATE review_run SET stage = %s, graph_state = graph_state || %s "
             "WHERE run_id = %s", (decision, Jsonb({"step": decision.lower()}), run_id))
@@ -326,6 +384,24 @@ def decide(conn: psycopg.Connection, run_id: int, decision: str, comment: str | 
             "CONFIRM" if decision == "APPROVED" else "REJECT", {"stage": "APPROVAL"},
             {"stage": decision}, comment, actor_id)
     return approval(conn, run_id) | {"approval_id": approval_id}
+
+
+def withdraw(conn: psycopg.Connection, run_id: int, actor_id: int | None = None) -> dict:
+    """결정 전인 상신을 취소하고 담당자 확인으로 되돌린다."""
+    require_stage(conn, run_id, "APPROVAL")
+    actor_id = actor_id or default_user(conn, "ENGINEER")
+    if _user_role(conn, actor_id) != "ENGINEER":
+        raise ReviewError(403, "상신 취소는 기술 검토 엔지니어만 할 수 있습니다.")
+    approval_id, _ = _open_request(conn, run_id)
+    with conn.transaction():
+        conn.execute("UPDATE approval SET decision = 'WITHDRAWN', withdrawn_at = now() "
+                     "WHERE approval_id = %s", (approval_id,))
+        conn.execute("UPDATE review_run SET stage = 'ENGINEER_REVIEW', graph_state = "
+                     "graph_state || %s WHERE run_id = %s",
+                     (Jsonb({"step": "engineer_review"}), run_id))
+        log(conn, run_id, "review_run", run_id, "EDIT", {"stage": "APPROVAL"},
+            {"stage": "ENGINEER_REVIEW"}, "상신 취소", actor_id)
+    return {"stage": "ENGINEER_REVIEW", "approval_id": approval_id}
 
 
 def reopen(conn: psycopg.Connection, run_id: int, actor_id: int | None = None) -> dict:
@@ -342,14 +418,17 @@ def reopen(conn: psycopg.Connection, run_id: int, actor_id: int | None = None) -
 
 
 def approval(conn: psycopg.Connection, run_id: int) -> dict:
-    """승인 화면: 걸린 기준, 누락 점검, 결정."""
+    """승인 화면: 상신 정보, 걸린 기준, 누락 점검, 결정. 취소한 상신은 보이지 않는다."""
     stage = _stage(conn, run_id)
     with conn.cursor(row_factory=dict_row) as cur:
         latest = cur.execute(
             """SELECT a.approval_id, a.decision, a.comment, a.requested_at, a.decided_at,
-                      u.user_name AS approver
+                      a.approver_id, u.user_name AS approver, a.requested_by AS requested_by_id,
+                      q.user_name AS requested_by, a.request_comment
                FROM approval a LEFT JOIN app_user u ON u.user_id = a.approver_id
-               WHERE a.run_id = %s ORDER BY a.approval_id DESC LIMIT 1""",
+               LEFT JOIN app_user q ON q.user_id = a.requested_by
+               WHERE a.run_id = %s AND a.decision IS DISTINCT FROM 'WITHDRAWN'
+               ORDER BY a.approval_id DESC LIMIT 1""",
             (run_id,)).fetchone()
         reasons = cur.execute(
             """SELECT r.ar_code, r.detail, ar.description FROM approval_reason r
@@ -357,21 +436,68 @@ def approval(conn: psycopg.Connection, run_id: int) -> dict:
                ORDER BY r.ar_code""", (latest["approval_id"],)).fetchall() if latest else []
     preview = [{"ar_code": c.ar_code, "detail": c.detail}
                for c in criteria(conn, run_id)] if stage == "ENGINEER_REVIEW" else None
+    ratio = review_ratio(conn, run_id)
     conn.commit()
     return {"stage": stage, "approval": latest, "reasons": reasons, "preview": preview,
-            "submission_check": _latest_check(conn, run_id)}
+            "review_ratio": ratio, "submission_check": _latest_check(conn, run_id)}
 
 
 def history(conn: psycopg.Connection, run_id: int, target: str | None = None,
             target_id: int | None = None) -> list[dict]:
     with conn.cursor(row_factory=dict_row) as cur:
-        return cur.execute(
+        rows = cur.execute(
             """SELECT l.log_id, l.target_table, l.target_id, l.action, l.before_value,
                       l.after_value, l.reason, u.user_name AS actor, l.acted_at
                FROM review_log l JOIN app_user u ON u.user_id = l.actor_id
                WHERE l.run_id = %s AND (%s::text IS NULL OR l.target_table = %s)
                  AND (%s::int IS NULL OR l.target_id = %s)
                ORDER BY l.log_id""", (run_id, target, target, target_id, target_id)).fetchall()
+    labels = _target_labels(conn, rows)
+    for r in rows:
+        r["target_label"] = labels.get((r["target_table"], r["target_id"]))
+    return rows
+
+
+# 이력 탭 문장에 쓰는 대상 이름 (항목 이름, 위험 표현, 근거 등). 대상 표마다 한 번에 찾는다.
+LABEL_SQL = {
+    "judgment": """
+        SELECT j.judgment_id, COALESCE(k.name_ko, tr.item_name_raw, left(q.text_raw, 40))
+        FROM judgment j JOIN requirement q USING (requirement_id)
+        LEFT JOIN table_row tr ON tr.row_id = q.row_id
+        LEFT JOIN req_value v ON v.value_id = j.value_id
+        LEFT JOIN item_key k ON k.item_key = v.item_key
+        WHERE j.judgment_id = ANY(%s)""",
+    "warranty_candidate": """
+        SELECT w.candidate_id, COALESCE(k.name_ko, tr.item_name_raw, left(q.text_raw, 40))
+        FROM warranty_candidate w JOIN judgment j USING (judgment_id)
+        JOIN requirement q ON q.requirement_id = j.requirement_id
+        LEFT JOIN table_row tr ON tr.row_id = q.row_id
+        LEFT JOIN req_value v ON v.value_id = j.value_id
+        LEFT JOIN item_key k ON k.item_key = v.item_key
+        WHERE w.candidate_id = ANY(%s)""",
+    "risk_flag": """
+        SELECT f.risk_id, COALESCE(e.expression, k.name_ko, f.item_key)
+        FROM risk_flag f LEFT JOIN risk_expression e USING (expr_id)
+        LEFT JOIN item_key k ON k.item_key = f.item_key
+        WHERE f.risk_id = ANY(%s)""",
+    "output_item": "SELECT item_id, left(text_draft, 40) FROM output_item WHERE item_id = ANY(%s)",
+    "proposal_point": "SELECT point_id, basis FROM proposal_point WHERE point_id = ANY(%s)",
+    "loss_calc": "SELECT loss_calc_id, product_code FROM loss_calc WHERE loss_calc_id = ANY(%s)",
+    "read_check": "SELECT read_check_id, label FROM read_check WHERE read_check_id = ANY(%s)",
+}
+
+
+def _target_labels(conn: psycopg.Connection, rows: list[dict]) -> dict[tuple[str, int], str]:
+    ids: dict[str, set[int]] = {}
+    for r in rows:
+        if r["target_table"] in LABEL_SQL:
+            ids.setdefault(r["target_table"], set()).add(r["target_id"])
+    out = {}
+    for table, wanted in ids.items():
+        for target_id, label in conn.execute(LABEL_SQL[table], (list(wanted),)):
+            if label:
+                out[(table, target_id)] = label
+    return out
 
 
 def deliverables(conn: psycopg.Connection, run_id: int) -> dict:
@@ -415,19 +541,25 @@ def set_assignment_status(conn: psycopg.Connection, assignment_id: int, status: 
     return {"assignment_id": assignment_id, "status": status}
 
 
-def _review_cards(conn: psycopg.Connection, stage: str) -> list[dict]:
-    """엔지니어는 담당자 확인, 승인자는 승인 대기인 검토. 카드마다 걸린 승인 기준을 붙인다."""
+def _review_cards(conn: psycopg.Connection, stage: str,
+                  approver_id: int | None = None) -> list[dict]:
+    """엔지니어는 담당자 확인, 승인자는 자기에게 상신된 승인 대기 검토. 걸린 승인 기준을 붙인다."""
     cards = []
     for run in queries.run_list(conn, 200):
         if run["stage"] != stage:
             continue
-        summary = queries.run_summary(conn, run["run_id"])
         if stage == "ENGINEER_REVIEW":
             found = [{"ar_code": c.ar_code, "detail": c.detail}
                      for c in criteria(conn, run["run_id"])]
+            extra = {}
         else:
-            found = approval(conn, run["run_id"])["reasons"]
-        cards.append({**run, "summary": summary, "criteria": found})
+            screen = approval(conn, run["run_id"])
+            if (screen["approval"] or {}).get("approver_id") != approver_id:
+                continue                        # 다른 결재자에게 간 검토는 보이지 않는다
+            found = screen["reasons"]
+            extra = {"approval": screen["approval"]}
+        summary = queries.run_summary(conn, run["run_id"])
+        cards.append({**run, "summary": summary, "criteria": found, **extra})
     conn.commit()
     return cards
 
@@ -435,11 +567,12 @@ def _review_cards(conn: psycopg.Connection, stage: str) -> list[dict]:
 def assignments_for(conn: psycopg.Connection, role: str, run_id: int | None = None) -> list[dict]:
     with conn.cursor(row_factory=dict_row) as cur:
         rows = cur.execute(
-            """SELECT a.assignment_id, a.run_id, a.assignee_role, a.status, a.repeat_count,
+            f"""SELECT a.assignment_id, a.run_id, a.assignee_role, a.status, a.repeat_count,
                       a.sent_at, a.updated_at, a.requirement_id, a.requirement_ids, a.point_id,
                       a.type_code, t.type_name, u.user_name AS assignee,
                       COALESCE(q.text_raw, p.text_draft) AS text, p.point_kind,
-                      p.requirement_id AS point_requirement_id, p.is_assumed, r.stage
+                      p.requirement_id AS point_requirement_id, p.is_assumed, r.stage,
+                      {queries.REVIEW_INFO}
                FROM assignment a JOIN review_run r ON r.run_id = a.run_id
                LEFT JOIN requirement_type t ON t.type_code = a.type_code
                LEFT JOIN app_user u ON u.user_id = a.assignee_id
@@ -450,11 +583,17 @@ def assignments_for(conn: psycopg.Connection, role: str, run_id: int | None = No
                  AND (%s::int IS NULL OR a.run_id = %s)
                ORDER BY a.run_id DESC, a.point_id IS NULL, a.assignment_id""",
             (role, list(VISIBLE_STAGES), run_id, run_id)).fetchall()
+        files = {(f["run_id"], f["file_no"]): f["file_name"] for f in cur.execute(
+            """SELECT rd.run_id, d.file_no, d.file_name FROM run_document rd
+               JOIN document d USING (document_id) WHERE rd.run_id = ANY(%s)""",
+            (list({r["run_id"] for r in rows}),))}
     out = []
     for r in rows:
         ids = r["requirement_ids"] or [r["point_requirement_id"]]
         locations = queries._locations(conn, ids, r["run_id"])
         r["locations"] = [loc for i in ids for loc in locations.get(i, [])]
+        r["file_name"] = files.get((r["run_id"], r["locations"][0]["file_no"])) \
+            if r["locations"] else None
         r["requirement_id"] = r["requirement_id"] or r["point_requirement_id"]
         if r["locations"]:                      # 원문 위치가 없으면 보내지 않는다 (CR-02)
             out.append(r)
@@ -468,7 +607,7 @@ def my_tasks(conn: psycopg.Connection, user_id: int) -> dict:
     if role == "ENGINEER":
         out["reviews"] = _review_cards(conn, "ENGINEER_REVIEW")
     elif role == "APPROVER":
-        out["reviews"] = _review_cards(conn, "APPROVAL")
+        out["reviews"] = _review_cards(conn, "APPROVAL", user_id)
     else:
         out["assignments"] = assignments_for(conn, role)
     return out

@@ -5,6 +5,7 @@
 그래서 txt가 있으면 line_map으로 txt 줄 번호(추적표 v3의 "N행")에 맞출 수 있다.
 """
 
+import re
 from collections.abc import Iterator
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -30,6 +31,7 @@ class Block:
     row_no: int | None = None       # 표 안 행 번호 (0부터)
     cells: list[str] = field(default_factory=list)          # 칸 원문 (병합 칸은 한 번만)
     raw_cells: list[str] = field(default_factory=list)      # 병합 칸 반복 포함 (txt와 같은 모양)
+    has_figure: bool = False        # 그림 개체(w:drawing, w:pict)가 든 단락
 
     @property
     def last_line(self) -> int:
@@ -59,7 +61,10 @@ def read_blocks(path: Path) -> list[Block]:
         if el.tag == qn("w:p"):
             text = Paragraph(el, doc).text
             items = [("P", text, None, [], [])]
+            figure = el.find(".//" + qn("w:drawing")) is not None \
+                or el.find(".//" + qn("w:pict")) is not None
         else:
+            figure = False
             table_no += 1
             items = []
             for row_no, row in enumerate(Table(el, doc).rows):
@@ -77,10 +82,30 @@ def read_blocks(path: Path) -> list[Block]:
             blocks.append(Block(
                 seq=len(blocks), kind=kind, text=text, line_no=line_no, line_count=count,
                 table_no=table_no if kind == "R" else None, row_no=row_no,
-                cells=cells, raw_cells=raw,
+                cells=cells, raw_cells=raw, has_figure=kind == "P" and figure,
             ))
             line_no += count
     return blocks
+
+
+CAPTION = re.compile(r"^\s*(fig\.|figure\b|그림\s*\d)", re.IGNORECASE)
+
+
+def find_figures(blocks: list[Block]) -> list[tuple[Block, str | None]]:
+    """그림 단락과 그림 설명.
+
+    설명은 바로 뒤, 없으면 바로 앞 단락이 "Fig."·"Figure"·"그림 n"으로 시작할 때 그 문장이다.
+    """
+    out = []
+    for i, b in enumerate(blocks):
+        if not b.has_figure:
+            continue
+        near = [blocks[j] for j in (i + 1, i - 1) if 0 <= j < len(blocks) and blocks[j].kind == "P"]
+        caption = next((n.text.strip() for n in near if CAPTION.match(n.text)), None)
+        if caption is None and CAPTION.match(b.text):
+            caption = b.text.strip()
+        out.append((b, caption))
+    return out
 
 
 def is_redacted(text: str) -> bool:

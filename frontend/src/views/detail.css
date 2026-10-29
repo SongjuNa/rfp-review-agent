@@ -1,0 +1,9 @@
+/* 목업 Detail CSS에 없는 것만 (SCR-08_공유.md): 검토 정보 고치기 창의 칸 배치 */
+.infog{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 16px}
+.infog label{display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:500;color:#344054}
+.infog .fi{width:100%;box-sizing:border-box}
+@media (max-width:640px){.infog{grid-template-columns:1fr}}
+/* 예시 띠 (_공통규칙.md 6장): 예시 화면·예시 영역 맨 위. 목업 .smp 색을 따른다 */
+.exband{display:flex;align-items:center;gap:8px;margin:0 0 16px;padding:10px 14px;border:1px dashed #DCE3EC;border-radius:8px;background:#F2F4F7;color:#475467;font-size:var(--fs-sm);font-weight:600}
+.exband .ms{font-size:18px}
+.rk .exband{margin:0;border:0;border-bottom:1px dashed #DCE3EC;border-radius:0}
