@@ -131,6 +131,8 @@ docker compose exec backend rfp-db seed-products
 
 ## 3. 써 보기 (5분 따라 하기)
 
+> 2026-10-29부터 화면이 목업 v4.57 모양(왼쪽 메뉴)으로 바뀌었습니다. 새 화면 기준 따라 하기는 [최신 코드 받아서 켜기](pull-and-run.md)의 4장을 보세요. 아래는 예전 화면 기준입니다.
+
 1. 왼쪽 **검토 시작**에서 "서버에 둔 RFP" 목록 중 `1. Bidding Forms` 파일을 고르고 **골라서 시작**을 누릅니다.
    (2-3을 건너뛰었다면 "docx 올리기"로 파일을 직접 고르고 **올려서 시작**)
 2. 위쪽 상태가 "처리 중"에서 **"담당자 확인"** 으로 바뀔 때까지 기다립니다. 파일 1은 30초쯤 걸립니다.
@@ -231,7 +233,7 @@ npx -y @fission-ai/openspec@1.14.3 validate --all --strict      # 저장소 맨 
 |---|---|
 | `Cannot connect to the Docker daemon` / `docker: command not found` | Docker Desktop이 켜져 있는지 확인. 고래 아이콘이 "Running"이 될 때까지 기다린 뒤 다시 |
 | `port is already allocated` 또는 `address already in use` (5433) | 다른 프로그램이 5433번을 쓰는 중. `lsof -nP -iTCP:5433 -sTCP:LISTEN`(맥)으로 찾아서 끄거나, `docker-compose.yml`의 `"5433:5432"` 앞 숫자를 다른 번호(예: `5434`)로 바꾸고 `.env`의 주소도 같은 번호로 |
-| 같은 오류인데 8000이나 5173 | 다른 프로그램(예전에 켜 둔 백엔드·화면)이 그 번호를 쓰는 중. 그 창을 끄고 다시 |
+| 같은 오류인데 8000이나 5173 | 예전에 켜 둔 컨테이너나 백엔드·화면이 그 번호를 쓰는 중. [최신 코드 받아서 켜기](pull-and-run.md)의 5장 참고 |
 | `git clone`에서 `Repository not found` | 저장소 초대를 아직 수락하지 않았거나 다른 계정으로 로그인함. GitHub 메일함의 초대 수락 |
 | 화면이 하얗거나 "백엔드에 연결할 수 없습니다" | 첫 실행은 화면 준비(`npm ci`)에 몇 분 걸림. `frontend-1 … Local: http://localhost:5173/`가 보일 때까지 기다린 뒤 새로 고침 |
 | "서버에 둔 RFP" 목록이 안 보임 | `data/private/rfp_docx/`에 docx가 없음. 2-3 확인. 폴더 이름 철자(`rfp_docx`)도 확인 |
