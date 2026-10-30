@@ -37,12 +37,12 @@
 | 사업 `submitted_at` 있음 | `done` | 제출 완료 |
 | `PROCESSING` | `an` | 분석 중 |
 | `FAILED` | `fail` | 분석 실패 |
-| `ENGINEER_REVIEW` + `assignment.status <> 'DONE'` 1건 이상 | `co` | 협조 대기 |
+| `ENGINEER_REVIEW` + `assignment.status = 'TODO'` 1건 이상 | `co` | 협조 대기 |
 | `ENGINEER_REVIEW` | `chk` | 판정 확인 |
 | `APPROVAL` | `ap` | 결재 대기 |
 | `REJECTED` | `rej` | 반려 (목업에 없음, 빨간 칩, `SCR-04_공유.md`) |
 | `APPROVED` | `sub` | 제출 준비 |
-- 홈의 "협조 대기" 열과 같은 기준(미확인 협조 요청)을 쓴다. SQL은 홈·목록과 함수 하나를 같이 쓴다.
+- 홈의 "협조 대기" 열과 같은 기준(확인하지 않은 TODO 협조 요청)을 쓴다. 상태 SQL은 `pipeline/business.py`의 `STATE` 하나.
 - 사업 전체 진행 여부: `submitted_at`이 없으면 진행 중. D-n은 서버가 `CURRENT_DATE` 기준으로 계산(`days_left`), 마감이 비면 연결 검토 최소 `due_date`.
 
 ### 4. 내 사업과 내 역할
@@ -53,7 +53,7 @@
 - `POST /api/businesses/{id}/submitted`: 연결 검토 1개 이상, 모두 `APPROVED`가 아니면 409. `DELETE`로 취소. 둘 다 `business_log`.
 - 누를 수 있는 사람은 따로 막지 않는다(로그인 없음). 이력으로 남긴다.
 
-### 6. API (`api/projects.py` 대신 `api/businesses.py`, 응답 모델은 `schemas.py`)
+### 6. API (`api/businesses.py`, 응답 모델은 `schemas.py`)
 - `GET /api/businesses?user_id=&scope=mine|all` → `BusinessList{summary{open, due3, overdue}, items[BusinessListItem]}`
 - `GET /api/businesses/{id}` → `BusinessDetail`(정보, `ranges[]`, `people[]`, `schedule[]`, `documents[]`)
 - `POST /api/businesses`, `PUT /api/businesses/{id}`(보낸 칸만, 빈 문자열은 비우기), `GET /api/businesses/{id}/history`
@@ -67,12 +67,12 @@
 - 찾기(상태·국가·마감·검색어)는 지금처럼 화면에서 거른다. 사업 수가 적어 서버 거르기는 하지 않는다.
 - 사업 상세 일정 탭: 사업 마감, 검토마다 시작·상신·결정 날짜. 목업의 "Addendum 받음, 질의 마감, 개찰" 같은 일정은 없음(`SCR-05_공유.md`).
 - 지난 이력 탭은 `SCR-04.ts`의 예시 일부를 남기고 탭 안에 예시 띠.
-- 등록 화면: 목업 "사업 연결" 라디오 두 개. 주소 `#/register?business=<id>`면 두 번째를 고른 채 연다.
+- 등록 화면: 목업 "사업 연결" 라디오 두 개. 주소 `#/register/business/<id>`면 두 번째를 고른 채 연다(화면 주소에 물음표 쿼리를 쓰지 않는 앱 틀 규칙).
 - 검토 머리글·검토 목록의 사업명은 연결이 있으면 사업 상세 링크.
 
 ### 8. 시연 데이터
-- `rfp-db seed-demo-businesses`(이름은 구현 때 정함): 데모 RFP 3개(`demo-tests/files/`)로 사업 2건을 만들고 검토를 시작한다. 키가 없으면 AI 없이 도는 경로를 쓴다.
-  데모 파일이 저장소에 없으면 명령은 경로를 인자로 받는다.
+- `rfp-db demo-businesses --business <사업명> a.docx [b.docx …] [--customer …] [--due-in 14]`: `--business`마다 사업 하나, 파일마다 검토 하나(설비 범위 = 파일 이름)를 끝까지 돌린다.
+  담당은 기본 엔지니어. 데모 파일(프로젝트 파일 `demo-tests/files/`)은 저장소에 없으므로 경로를 인자로 받는다. 키가 없으면 AI 없이 돈다.
 
 ## Risks / Trade-offs
 
@@ -84,3 +84,10 @@
 ## Open Questions
 
 - 제출 완료를 누를 수 있는 역할을 영업·결재자로 좁힐지 [확인 필요] — 지금은 막지 않음.
+
+## 결정 기록
+
+- 2026-10-30 (구현 중): 협조 대기 기준을 "끝나지 않은(DONE 아님)"에서 "확인하지 않은(TODO)"으로 바꿨다. 홈 화면 "협조 대기" 열이 TODO만 세므로 같은 검토가 두 화면에서 다른 상태로 보이지 않게 했다. 명세 문장도 고쳤다.
+- 2026-10-30 (구현 중): 등록 화면 주소를 `#/register?business=<id>` 대신 `#/register/business/<id>`로 했다.
+- 2026-10-30 (구현 중): 연결된 검토의 사업명은 검토 정보 창에서 잠그고(400), 사업 상세에서만 고친다. 사업명을 고치면 연결 검토의 사업명도 바꾸고 검토 이력에 남긴다.
+- 2026-10-30 (구현 중): 범위 카드의 "Lot" 자리는 Lot 칸이 없어 "범위 n"(하나면 "단일 발주")으로 보인다. 일정 탭에는 검토 마감(RUN_DUE)도 넣었다.

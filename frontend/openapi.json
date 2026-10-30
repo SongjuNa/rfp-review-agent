@@ -83,7 +83,7 @@
           "검토 실행"
         ],
         "summary": "Run Upload",
-        "description": "올린 docx로 검토를 시작한다. 검토 정보 칸은 모두 고를 수 있다.\n\n파일은 내용 해시 폴더에 저장해 같은 파일이면 다시 처리하지 않는다.\nchoices는 등록 화면에서 사람이 정한 분류 JSON ({파일 이름: {bundle, doc_kind}}).",
+        "description": "올린 docx로 검토를 시작한다. 검토 정보 칸은 모두 고를 수 있다.\n\n파일은 내용 해시 폴더에 저장해 같은 파일이면 다시 처리하지 않는다.\nchoices는 등록 화면에서 사람이 정한 분류 JSON ({파일 이름: {bundle, doc_kind}}).\nbusiness_id(진행 중인 사업에 추가)나 new_business_name(새 사업 만들기)으로 사업에 잇는다.",
         "operationId": "run_upload_api_runs_post",
         "requestBody": {
           "required": true,
@@ -3104,6 +3104,426 @@
         }
       }
     },
+    "/api/businesses": {
+      "get": {
+        "tags": [
+          "사업 현황"
+        ],
+        "summary": "Businesses",
+        "description": "사업 목록과 요약. scope=mine이면 user_id가 관여한 사업만 (내 사업).",
+        "operationId": "businesses_api_businesses_get",
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "User Id"
+            }
+          },
+          {
+            "name": "scope",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "enum": [
+                "mine",
+                "all"
+              ],
+              "type": "string",
+              "default": "all",
+              "title": "Scope"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessList"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "사업 현황"
+        ],
+        "summary": "Create Business",
+        "operationId": "create_business_api_businesses_post",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BusinessInfo"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessDetail"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/businesses/{business_id}": {
+      "get": {
+        "tags": [
+          "사업 현황"
+        ],
+        "summary": "Business Detail",
+        "operationId": "business_detail_api_businesses__business_id__get",
+        "parameters": [
+          {
+            "name": "business_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Business Id"
+            }
+          },
+          {
+            "name": "user_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "User Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessDetail"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "사업 현황"
+        ],
+        "summary": "Update Business",
+        "description": "사업 정보를 고친다. 바뀐 칸은 사업 이력에 남고, 사업명은 연결 검토에도 맞춘다.",
+        "operationId": "update_business_api_businesses__business_id__put",
+        "parameters": [
+          {
+            "name": "business_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Business Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BusinessInfo"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessDetail"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/businesses/{business_id}/submitted": {
+      "post": {
+        "tags": [
+          "사업 현황"
+        ],
+        "summary": "Mark Submitted",
+        "description": "제출 완료 표시. 연결 검토가 모두 승인되어야 한다 (아니면 409).",
+        "operationId": "mark_submitted_api_businesses__business_id__submitted_post",
+        "parameters": [
+          {
+            "name": "business_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Business Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Actor"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessDetail"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "사업 현황"
+        ],
+        "summary": "Unmark Submitted",
+        "operationId": "unmark_submitted_api_businesses__business_id__submitted_delete",
+        "parameters": [
+          {
+            "name": "business_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Business Id"
+            }
+          },
+          {
+            "name": "actor_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Actor Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessDetail"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/businesses/{business_id}/history": {
+      "get": {
+        "tags": [
+          "사업 현황"
+        ],
+        "summary": "Business History",
+        "operationId": "business_history_api_businesses__business_id__history_get",
+        "parameters": [
+          {
+            "name": "business_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Business Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/BusinessLog"
+                  },
+                  "title": "Response Business History Api Businesses  Business Id  History Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/runs/{run_id}/business": {
+      "put": {
+        "tags": [
+          "사업 현황"
+        ],
+        "summary": "Link Run",
+        "description": "검토를 사업에 연결하거나 해제한다. 검토 이력에 남고, FR-06 비교 범위는 바뀌지 않는다.",
+        "operationId": "link_run_api_runs__run_id__business_put",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Run Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RunBusiness"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunSummary"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/health": {
       "get": {
         "summary": "Health",
@@ -3687,6 +4107,28 @@
             ],
             "title": "Engineer Name"
           },
+          "business_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Business Id"
+          },
+          "business_no": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Business No"
+          },
           "locations": {
             "items": {
               "$ref": "#/components/schemas/Location"
@@ -3735,6 +4177,8 @@
           "due_date",
           "engineer_id",
           "engineer_name",
+          "business_id",
+          "business_no",
           "locations",
           "file_name"
         ],
@@ -3861,6 +4305,28 @@
               }
             ],
             "title": "Choices"
+          },
+          "business_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Business Id"
+          },
+          "new_business_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "New Business Name"
           }
         },
         "type": "object",
@@ -3947,6 +4413,877 @@
           "submission_check"
         ],
         "title": "BulkResult"
+      },
+      "BusinessDetail": {
+        "properties": {
+          "business_id": {
+            "type": "integer",
+            "title": "Business Id"
+          },
+          "business_no": {
+            "type": "string",
+            "title": "Business No"
+          },
+          "business_name": {
+            "type": "string",
+            "title": "Business Name"
+          },
+          "customer_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Customer Name"
+          },
+          "country": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Country"
+          },
+          "tender_no": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tender No"
+          },
+          "order_mode": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Order Mode"
+          },
+          "business_due_date": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Business Due Date"
+          },
+          "due_date": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Due Date"
+          },
+          "days_left": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Days Left"
+          },
+          "sales_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sales Id"
+          },
+          "sales_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sales Name"
+          },
+          "created_by": {
+            "type": "integer",
+            "title": "Created By"
+          },
+          "created_by_name": {
+            "type": "string",
+            "title": "Created By Name"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "submitted_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Submitted At"
+          },
+          "my_role": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "ENGINEER",
+                  "APPROVER",
+                  "HELPER",
+                  "SALES",
+                  "CREATOR"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "My Role"
+          },
+          "ranges": {
+            "items": {
+              "$ref": "#/components/schemas/BusinessRange"
+            },
+            "type": "array",
+            "title": "Ranges"
+          },
+          "people": {
+            "items": {
+              "$ref": "#/components/schemas/BusinessPerson"
+            },
+            "type": "array",
+            "title": "People"
+          },
+          "schedule": {
+            "items": {
+              "$ref": "#/components/schemas/BusinessEvent"
+            },
+            "type": "array",
+            "title": "Schedule"
+          },
+          "documents": {
+            "items": {
+              "$ref": "#/components/schemas/BusinessDocument"
+            },
+            "type": "array",
+            "title": "Documents"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "business_id",
+          "business_no",
+          "business_name",
+          "customer_name",
+          "country",
+          "tender_no",
+          "order_mode",
+          "business_due_date",
+          "due_date",
+          "days_left",
+          "sales_id",
+          "sales_name",
+          "created_by",
+          "created_by_name",
+          "created_at",
+          "submitted_at",
+          "my_role",
+          "ranges",
+          "people",
+          "schedule",
+          "documents"
+        ],
+        "title": "BusinessDetail"
+      },
+      "BusinessDocument": {
+        "properties": {
+          "run_id": {
+            "type": "integer",
+            "title": "Run Id"
+          },
+          "review_no": {
+            "type": "string",
+            "title": "Review No"
+          },
+          "review_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Review Name"
+          },
+          "file_name": {
+            "type": "string",
+            "title": "File Name"
+          },
+          "doc_kind": {
+            "type": "string",
+            "title": "Doc Kind"
+          },
+          "bundle": {
+            "type": "string",
+            "enum": [
+              "A",
+              "B",
+              "C",
+              "D"
+            ],
+            "title": "Bundle"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "run_id",
+          "review_no",
+          "review_name",
+          "file_name",
+          "doc_kind",
+          "bundle"
+        ],
+        "title": "BusinessDocument"
+      },
+      "BusinessEvent": {
+        "properties": {
+          "day": {
+            "type": "string",
+            "format": "date",
+            "title": "Day"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "START",
+              "REQUEST",
+              "APPROVED",
+              "REJECTED",
+              "RUN_DUE",
+              "DUE",
+              "SUBMITTED"
+            ],
+            "title": "Kind"
+          },
+          "run_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Run Id"
+          },
+          "review_no": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Review No"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "day",
+          "kind",
+          "run_id",
+          "review_no"
+        ],
+        "title": "BusinessEvent"
+      },
+      "BusinessInfo": {
+        "properties": {
+          "business_name": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 200
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Business Name"
+          },
+          "customer_name": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 200
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Customer Name"
+          },
+          "country": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 60
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Country"
+          },
+          "tender_no": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 80
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tender No"
+          },
+          "order_mode": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 200
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Order Mode"
+          },
+          "due_date": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Due Date"
+          },
+          "sales_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sales Id"
+          },
+          "actor_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Actor Id"
+          }
+        },
+        "type": "object",
+        "title": "BusinessInfo",
+        "description": "사업 정보. 보낸 칸만 바꾸고 빈 문자열은 비우기로 본다. 사업명은 비울 수 없다."
+      },
+      "BusinessList": {
+        "properties": {
+          "summary": {
+            "$ref": "#/components/schemas/BusinessSummary"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/BusinessListItem"
+            },
+            "type": "array",
+            "title": "Items"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "summary",
+          "items"
+        ],
+        "title": "BusinessList"
+      },
+      "BusinessListItem": {
+        "properties": {
+          "business_id": {
+            "type": "integer",
+            "title": "Business Id"
+          },
+          "business_no": {
+            "type": "string",
+            "title": "Business No"
+          },
+          "business_name": {
+            "type": "string",
+            "title": "Business Name"
+          },
+          "customer_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Customer Name"
+          },
+          "country": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Country"
+          },
+          "tender_no": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tender No"
+          },
+          "order_mode": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Order Mode"
+          },
+          "business_due_date": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Business Due Date"
+          },
+          "due_date": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Due Date"
+          },
+          "days_left": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Days Left"
+          },
+          "sales_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sales Id"
+          },
+          "sales_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sales Name"
+          },
+          "created_by": {
+            "type": "integer",
+            "title": "Created By"
+          },
+          "created_by_name": {
+            "type": "string",
+            "title": "Created By Name"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "submitted_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Submitted At"
+          },
+          "my_role": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "ENGINEER",
+                  "APPROVER",
+                  "HELPER",
+                  "SALES",
+                  "CREATOR"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "My Role"
+          },
+          "ranges": {
+            "items": {
+              "$ref": "#/components/schemas/BusinessRange"
+            },
+            "type": "array",
+            "title": "Ranges"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "business_id",
+          "business_no",
+          "business_name",
+          "customer_name",
+          "country",
+          "tender_no",
+          "order_mode",
+          "business_due_date",
+          "due_date",
+          "days_left",
+          "sales_id",
+          "sales_name",
+          "created_by",
+          "created_by_name",
+          "created_at",
+          "submitted_at",
+          "my_role",
+          "ranges"
+        ],
+        "title": "BusinessListItem"
+      },
+      "BusinessLog": {
+        "properties": {
+          "log_id": {
+            "type": "integer",
+            "title": "Log Id"
+          },
+          "field": {
+            "type": "string",
+            "title": "Field"
+          },
+          "before_value": {
+            "title": "Before Value"
+          },
+          "after_value": {
+            "title": "After Value"
+          },
+          "actor_id": {
+            "type": "integer",
+            "title": "Actor Id"
+          },
+          "actor_name": {
+            "type": "string",
+            "title": "Actor Name"
+          },
+          "acted_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Acted At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "log_id",
+          "field",
+          "before_value",
+          "after_value",
+          "actor_id",
+          "actor_name",
+          "acted_at"
+        ],
+        "title": "BusinessLog"
+      },
+      "BusinessPerson": {
+        "properties": {
+          "user_id": {
+            "type": "integer",
+            "title": "User Id"
+          },
+          "user_name": {
+            "type": "string",
+            "title": "User Name"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "ENGINEER",
+              "COST",
+              "QUALITY",
+              "SALES",
+              "APPROVER"
+            ],
+            "title": "Role"
+          },
+          "part": {
+            "type": "string",
+            "enum": [
+              "ENGINEER",
+              "APPROVER",
+              "HELPER",
+              "SALES"
+            ],
+            "title": "Part"
+          },
+          "run_ids": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Run Ids"
+          },
+          "scope": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scope"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "user_id",
+          "user_name",
+          "role",
+          "part",
+          "run_ids",
+          "scope"
+        ],
+        "title": "BusinessPerson"
+      },
+      "BusinessRange": {
+        "properties": {
+          "run_id": {
+            "type": "integer",
+            "title": "Run Id"
+          },
+          "review_no": {
+            "type": "string",
+            "title": "Review No"
+          },
+          "review_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Review Name"
+          },
+          "stage": {
+            "type": "string",
+            "enum": [
+              "PROCESSING",
+              "ENGINEER_REVIEW",
+              "APPROVAL",
+              "APPROVED",
+              "REJECTED",
+              "FAILED"
+            ],
+            "title": "Stage"
+          },
+          "due_date": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Due Date"
+          },
+          "started_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Started At"
+          },
+          "engineer_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Engineer Id"
+          },
+          "engineer_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Engineer Name"
+          },
+          "open_requests": {
+            "type": "integer",
+            "title": "Open Requests"
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "an",
+              "fail",
+              "chk",
+              "co",
+              "ap",
+              "rej",
+              "sub",
+              "done"
+            ],
+            "title": "State"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "run_id",
+          "review_no",
+          "review_name",
+          "stage",
+          "due_date",
+          "started_at",
+          "engineer_id",
+          "engineer_name",
+          "open_requests",
+          "state"
+        ],
+        "title": "BusinessRange",
+        "description": "사업에 연결된 검토 하나 (설비 범위). 상태는 저장하지 않고 계산한다."
+      },
+      "BusinessSummary": {
+        "properties": {
+          "open": {
+            "type": "integer",
+            "title": "Open"
+          },
+          "due3": {
+            "type": "integer",
+            "title": "Due3"
+          },
+          "overdue": {
+            "type": "integer",
+            "title": "Overdue"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "open",
+          "due3",
+          "overdue"
+        ],
+        "title": "BusinessSummary"
       },
       "CompareRule": {
         "properties": {
@@ -5750,6 +7087,29 @@
             "type": "object",
             "title": "Choices",
             "default": {}
+          },
+          "business_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Business Id"
+          },
+          "new_business_name": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 200
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "New Business Name"
           }
         },
         "type": "object",
@@ -8145,6 +9505,28 @@
             ],
             "title": "Engineer Id"
           },
+          "business_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Business Id"
+          },
+          "business_no": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Business No"
+          },
           "run_id": {
             "type": "integer",
             "title": "Run Id"
@@ -8298,6 +9680,8 @@
           "country",
           "due_date",
           "engineer_id",
+          "business_id",
+          "business_no",
           "run_id",
           "review_no",
           "engineer_name",
@@ -8785,6 +10169,34 @@
         "type": "object",
         "title": "RuleRemoval"
       },
+      "RunBusiness": {
+        "properties": {
+          "business_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Business Id"
+          },
+          "actor_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Actor Id"
+          }
+        },
+        "type": "object",
+        "title": "RunBusiness"
+      },
       "RunDocument": {
         "properties": {
           "document_id": {
@@ -8955,6 +10367,28 @@
             ],
             "title": "Engineer Id"
           },
+          "business_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Business Id"
+          },
+          "business_no": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Business No"
+          },
           "run_id": {
             "type": "integer",
             "title": "Run Id"
@@ -9088,6 +10522,8 @@
           "country",
           "due_date",
           "engineer_id",
+          "business_id",
+          "business_no",
           "run_id",
           "review_no",
           "engineer_name",
@@ -9175,6 +10611,28 @@
               }
             ],
             "title": "Engineer Id"
+          },
+          "business_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Business Id"
+          },
+          "business_no": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Business No"
           },
           "run_id": {
             "type": "integer",
@@ -9329,6 +10787,8 @@
           "country",
           "due_date",
           "engineer_id",
+          "business_id",
+          "business_no",
           "run_id",
           "review_no",
           "engineer_name",

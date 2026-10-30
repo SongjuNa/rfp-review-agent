@@ -49,7 +49,9 @@ export function ReviewInfoDialog({ run, onClose, onSaved }: { run: RunSummary; o
           <section className="aps">
             <div className="infog">
               {LABELS.map(([k, label, max]) => (
-                <label key={k}>{label}<input className="fi" value={form[k]} maxLength={max} onChange={set(k)} /></label>
+                <label key={k}>{label}<input className="fi" value={form[k]} maxLength={max} onChange={set(k)}
+                  disabled={k === 'project_name' && run.business_id !== null}
+                  title={k === 'project_name' && run.business_id !== null ? '사업에 연결된 검토의 사업명은 사업 상세에서 고칩니다' : undefined} /></label>
               ))}
               <label>제출 마감일<input className="fi" type="date" value={form.due_date} onChange={set('due_date')} /></label>
               <label>담당 엔지니어
@@ -59,7 +61,8 @@ export function ReviewInfoDialog({ run, onClose, onSaved }: { run: RunSummary; o
                 </select>
               </label>
             </div>
-            <p className="aphint" style={{ color: '#667085' }}>고친 칸은 이력 탭에 남습니다. 검토 정보는 판정에 쓰지 않습니다.</p>
+            <p className="aphint" style={{ color: '#667085' }}>고친 칸은 이력 탭에 남습니다. 검토 정보는 판정에 쓰지 않습니다.
+              {run.business_no && <> 사업명은 <a className="lnk" href={`#/projects/${run.business_no}`}>사업 상세</a>에서 고칩니다.</>}</p>
           </section>
         </div>
         <div className="mdf">

@@ -87,6 +87,9 @@ def update(conn: psycopg.Connection, run_id: int, info: dict, actor_id: int | No
     changed = {k: v for k, v in values.items() if before[k] != v}
     if not changed:
         return {"changed": []}
+    if "project_name" in changed and conn.execute(
+            "SELECT business_id FROM review_run WHERE run_id = %s", (run_id,)).fetchone()[0]:
+        raise ReviewError(400, "사업에 연결된 검토의 사업명은 사업 상세에서 고칩니다.")
     if actor_id is None:
         actor_id = conn.execute("SELECT min(user_id) FROM app_user WHERE role = 'ENGINEER'"
                                 ).fetchone()[0]

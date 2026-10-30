@@ -52,13 +52,15 @@ class User(Out):
 
 
 class ReviewFields(Out):
-    """사람이 넣는 검토 정보 (add-review-info). 비어 있으면 null."""
+    """사람이 넣는 검토 정보 (add-review-info)와 연결된 사업 (add-project-status). 빈 값은 null."""
     project_name: str | None
     review_name: str | None
     customer_name: str | None
     country: str | None
     due_date: date | None
     engineer_id: int | None
+    business_id: int | None
+    business_no: str | None
 
 
 class StepDetail(Out):
@@ -645,6 +647,8 @@ class Assignment(Out):
     due_date: date | None
     engineer_id: int | None
     engineer_name: str | None
+    business_id: int | None
+    business_no: str | None
     locations: list[Location]
     file_name: str | None
 
@@ -827,3 +831,96 @@ class RuleEdit(Out):
     actor_name: str
     edited_at: datetime
     discarded_at: datetime | None
+
+
+# ── 사업 현황 (add-project-status) ───────────────────────────
+# 범위 상태: 분석 중·분석 실패·판정 확인·협조 대기·결재 대기·반려·제출 준비·제출 완료
+RangeState = Literal["an", "fail", "chk", "co", "ap", "rej", "sub", "done"]
+BusinessRole = Literal["ENGINEER", "APPROVER", "HELPER", "SALES", "CREATOR"]
+
+
+class BusinessRange(Out):
+    """사업에 연결된 검토 하나 (설비 범위). 상태는 저장하지 않고 계산한다."""
+    run_id: int
+    review_no: str
+    review_name: str | None
+    stage: Stage
+    due_date: date | None
+    started_at: datetime
+    engineer_id: int | None
+    engineer_name: str | None
+    open_requests: int
+    state: RangeState
+
+
+class BusinessListItem(Out):
+    business_id: int
+    business_no: str
+    business_name: str
+    customer_name: str | None
+    country: str | None
+    tender_no: str | None
+    order_mode: str | None
+    business_due_date: date | None
+    due_date: date | None             # 사업 마감, 비면 연결 검토 중 가장 이른 마감
+    days_left: int | None
+    sales_id: int | None
+    sales_name: str | None
+    created_by: int
+    created_by_name: str
+    created_at: datetime
+    submitted_at: datetime | None
+    my_role: BusinessRole | None
+    ranges: list[BusinessRange]
+
+
+class BusinessSummary(Out):
+    open: int
+    due3: int
+    overdue: int
+
+
+class BusinessList(Out):
+    summary: BusinessSummary
+    items: list[BusinessListItem]
+
+
+class BusinessPerson(Out):
+    user_id: int
+    user_name: str
+    role: Role
+    part: Literal["ENGINEER", "APPROVER", "HELPER", "SALES"]
+    run_ids: list[int]
+    scope: str | None
+
+
+class BusinessEvent(Out):
+    day: date
+    kind: Literal["START", "REQUEST", "APPROVED", "REJECTED", "RUN_DUE", "DUE", "SUBMITTED"]
+    run_id: int | None
+    review_no: str | None
+
+
+class BusinessDocument(Out):
+    run_id: int
+    review_no: str
+    review_name: str | None
+    file_name: str
+    doc_kind: str
+    bundle: Literal["A", "B", "C", "D"]
+
+
+class BusinessDetail(BusinessListItem):
+    people: list[BusinessPerson]
+    schedule: list[BusinessEvent]
+    documents: list[BusinessDocument]
+
+
+class BusinessLog(Out):
+    log_id: int
+    field: str
+    before_value: Any
+    after_value: Any
+    actor_id: int
+    actor_name: str
+    acted_at: datetime

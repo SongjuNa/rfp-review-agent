@@ -1,4 +1,5 @@
-// 사업 현황·사업 상세 예시 데이터 (목업 v4.57 Projects·Project의 PJ 14건). 사업 단위 API가 없어 예시로만 보여 준다 (SCR-04_공유.md).
+// 사업 현황·사업 상세 예시 데이터 (목업 v4.57 Projects·Project의 PJ 14건). 화면은 실제 데이터로 바뀌었고(add-project-status),
+// 지금은 사업 상세의 지난 이력 탭 예시(hist)만 쓴다.
 // 지명·고객사는 입찰 이력(SCR-14)과 같은 "예시 사업장 A", "예시 고객사 A"로, 사람 이름은 역할로, 고객 입찰 번호는 숫자만 남겼다.
 
 /** 설비 범위 하나. key: pre 등록 전 · an 분석 중 · fail 분석 실패 · chk 판정 확인 · co 협조 대기 · ap 결재 대기 · sub 제출 준비 · done 제출 완료 (목업 pj-ch 색). href는 앱 주소 */
@@ -360,7 +361,3 @@ export const EXAMPLE_PROJECTS: Project[] = [
   },
 ]
 
-/** 주소의 사업 번호. 없는 번호면 목업처럼 첫 사업을 연다. */
-export function findProject(id: string): Project {
-  return EXAMPLE_PROJECTS.find((x) => x.id === id) ?? EXAMPLE_PROJECTS[0]
-}

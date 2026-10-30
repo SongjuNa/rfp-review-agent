@@ -74,7 +74,7 @@ test('검토 등록 화면으로 시작', async ({ page }) => {
   await expect(page.getByText('올릴 준비')).toBeVisible()
   await page.getByRole('button', { name: /다음/ }).click()
   await expect(page.getByRole('button', { name: /다음/ })).toBeDisabled()     // 제출 마감일은 필수
-  await page.getByRole('textbox', { name: /^사업명/ }).fill('새만금 산단')
+  await page.getByLabel('새 사업명').fill('새만금 산단')     // 사업 연결: 새 사업 만들기 (add-project-status)
   await page.getByLabel('설비 범위', { exact: true }).fill('154 kV 송변전 설비')
   await page.getByLabel('제출 마감일').fill(isoAfter(10))
   await page.getByRole('button', { name: /다음/ }).click()

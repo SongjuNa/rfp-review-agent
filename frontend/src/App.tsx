@@ -7,7 +7,7 @@ import { ReviewDetail } from './views/ReviewDetail'
 import { ReviewList } from './views/ReviewList'
 import { Home } from './views/Home'
 import { Datasheet } from './views/Datasheet'
-import { findProject } from './examples/SCR-04'
+import { businessIdOf } from './api'
 import { findBid } from './examples/SCR-14'
 import { BidView } from './views/examples/BidView'
 import { Bids } from './views/examples/Bids'
@@ -16,11 +16,11 @@ import { Files } from './views/examples/Files'
 import { Login } from './views/examples/Login'
 import { Notice } from './views/examples/Notice'
 import { Phrases } from './views/examples/Phrases'
-import { Project } from './views/examples/Project'
+import { Project } from './views/Project'
 import { Settings } from './views/examples/Settings'
 import { SysNotice } from './views/examples/SysNotice'
 import { Team } from './views/examples/Team'
-import { Projects } from './views/examples/Projects'
+import { Projects } from './views/Projects'
 import { Products } from './views/Products'
 import { Rules } from './views/Rules'
 import { Tbe } from './views/Tbe'
@@ -51,8 +51,12 @@ function route(path: string): Route {
   if (path === '/reviews') {
     return { menu: 'reviews', crumbs: [home, { label: 'RFP 검토', path: '/reviews' }, { label: '검토 목록' }], body: <ReviewList /> }
   }
-  if (path === '/register') {
-    return { menu: 'register', crumbs: [home, { label: 'RFP 검토', path: '/reviews' }, { label: '검토 등록' }], body: <Register /> }
+  // 사업 상세의 "이 사업에 RFP 등록"은 그 사업을 고른 채 연다 (add-project-status)
+  const register = path.match(/^\/register(?:\/business\/(\d+))?$/)
+  if (register) {
+    const businessId = register[1] ? Number(register[1]) : null
+    return { menu: 'register', crumbs: [home, { label: 'RFP 검토', path: '/reviews' }, { label: '검토 등록' }],
+      body: <Register key={businessId ?? 'new'} businessId={businessId} /> }
   }
   if (path === '/' || path === '') {
     return { menu: 'home', crumbs: [{ label: '홈' }], body: <Home /> }
@@ -73,8 +77,10 @@ function route(path: string): Route {
   }
   const project = path.match(/^\/projects\/([^/]+)$/)
   if (project) {
-    const p = findProject(decodeURIComponent(project[1]))
-    return { menu: 'projects', crumbs: [home, { label: 'RFP 관리' }, { label: '사업 현황', path: '/projects' }, { label: '사업 상세' }], body: <Project key={p.id} project={p} /> }
+    const no = decodeURIComponent(project[1])
+    const id = businessIdOf(no)
+    return { menu: 'projects', crumbs: [home, { label: 'RFP 관리' }, { label: '사업 현황', path: '/projects' }, { label: id === null ? '사업 상세' : no }],
+      body: id === null ? <Projects /> : <Project key={id} businessId={id} /> }
   }
   if (path === '/projects') {
     return { menu: 'projects', crumbs: [home, { label: 'RFP 관리' }, { label: '사업 현황' }], body: <Projects /> }

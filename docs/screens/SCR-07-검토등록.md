@@ -1,25 +1,26 @@
 # 화면 명세: SCR-07 검토 등록
 
-- 연결 요구사항: FR-01, `review-workspace` 검토 정보 입력과 표시 (`add-review-info`)
+- 연결 요구사항: FR-01, `review-workspace` 검토 정보 입력과 표시 (`add-review-info`), 검토 등록 사업 연결 (`add-project-status`)
 - 기준 목업: `Spec2Win_목업_v4.57.html#Register`
 - 구현 방식: 실제 (단계 2·3은 목업의 자동 추출 대신 직접 입력, `SCR-07_공유.md`)
-- 사용 API: `GET /api/library`, `POST /api/runs/preview`(multipart), `POST /api/runs/library/preview`, `POST /api/runs`(multipart, `choices` JSON 칸), `POST /api/runs/library`(`choices`), `GET /api/users`
-- 화면 주소: `#/register`
+- 사용 API: `GET /api/library`, `POST /api/runs/preview`(multipart), `POST /api/runs/library/preview`, `POST /api/runs`(multipart, `choices` JSON 칸), `POST /api/runs/library`(`choices`), `GET /api/users`, `GET /api/businesses`(진행 중인 사업 고르기)
+- 화면 주소: `#/register`, 사업 상세의 "이 사업에 RFP 등록"은 `#/register/business/<사업 id>`(그 사업을 고른 채 연다)
 
 ## 화면 구성
 
 | 단계 | 보이는 항목 | 보내는 칸 |
 |---|---|---|
 | 1 문서 올리기 | 끌어다 놓기 상자(docx 여러 개), "또는 서버에 둔 RFP에서 고르기"(서버에 원문이 있을 때만), 고른 파일 표(파일·크기, 상태 "올릴 준비"/"docx 아님", 빼기) | `files` |
-| 2 검토 정보 | 사업명, 설비 범위, 고객사, 국가, 제출 마감일(필수) | `project_name`, `review_name`, `customer_name`, `country`, `due_date` |
+| 2 검토 정보 | 사업 연결(새 사업 만들기: 사업명 / 진행 중인 사업에 추가: 사업 고르기), 설비 범위, 고객사, 국가, 제출 마감일(필수) | `new_business_name` 또는 `business_id`, `project_name`, `review_name`, `customer_name`, `country`, `due_date` |
 | 3 검토 설정 | 제목(사업명 · 설비 범위), 문서 수·마감, 담당 엔지니어(엔지니어만, 기본 = 고른 사용자) | `engineer_id`, `actor_id` |
-| 끝 | "RV-… 등록했습니다", 문서 수·마감 문장, 검토 목록으로 / 홈으로 | |
+| 끝 | "RV-… 등록했습니다", 문서 수·마감 문장, 검토 목록으로 / 사업 상세로(사업에 이었을 때) / 홈으로 | |
 
 - 아래 띠(`.foot2`): 왼쪽 안내 문장, 이전 / 다음 / 등록하고 분석 시작.
 - 단계 표시(`.steps`): 지금 단계 강조, 끝낸 단계는 ✓, 앞 단계만 눌러서 돌아갈 수 있다.
 - 올린 파일과 서버 파일은 한 실행으로 섞어 시작할 수 없어(API가 다름) 한쪽을 고르면 다른 쪽을 비운다.
 - 문서를 고르면 아직 추천이 없는 docx만 한 번에 분류 추천을 부른다(규칙만, 저장 안 함, 몇 초). 불러오는 동안 "분류하는 중…", 실패하면 "분석하면서 정합니다".
 - 줄마다 문서 종류 고르기, 묶음 고르기(A~D), 언어, 판정 칸("판정 대상"/"판정 안 함" + 추천 이유). 추천과 다르게 고르면 "사람이 바꿈"과 원래 추천을 보인다.
+- 사업 연결: 진행 중인 사업(제출 완료가 아닌 것)을 고르면 고객사·국가·마감을 사업 값으로 채운다(고칠 수 있음). 새 사업명을 비우면 사업에 잇지 않는다.
 - 등록하고 분석을 시작하면 보이는 분류를 모두 `choices`로 보낸다. 서버는 규칙 결과와 같은 값은 무시하고, 다르면 그 검토의 문서에 "사람"으로 저장한다(`add-document-confirm`).
 
 ## 입력 검증
@@ -35,7 +36,7 @@
 |---|---|---|
 | 2단계 "자동 추출 확인"(값마다 원문 위치) | 없음 (`add-review-info` Non-Goal) | "검토 정보" 직접 입력으로 바꿈 |
 | 파일 표의 Lot 고르기 | 없음 | 문서 종류·묶음은 고르기, 언어는 표시 (`add-document-confirm`) |
-| 사업 연결(새 사업 / 진행 중인 사업) | 사업 단위 없음 | 사업명 글자 칸 |
+| 사업 연결(새 사업 / 진행 중인 사업) | 있음 (`add-project-status`) | 목업과 같음 |
 | 손실 환산 단가, 설치 고도, 주위 온도, RFP 접수일 | 단가·조건은 처리 중 문서에서 찾음 | 뺌 |
 | 3단계 Lot별 비교 제품 추천 | 판정 때 코드가 고름 | 뺌 (검토 상세에서 바꿔 보기) |
 | 결재자·협조 담당 고르기 | 결재자는 상신 때 고름(`update-approval-flow`) | 뺌 |

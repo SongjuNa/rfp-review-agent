@@ -20,13 +20,18 @@ COUNTS = """
                   AND result = 'DEVIATION_CANDIDATE') AS deviation_candidates,
                (SELECT count(*) FROM proposal_point WHERE run_id = r.run_id) AS proposals"""
 
-# 사람이 넣은 검토 정보와 검토 번호 RV-<시작 연도>-<실행 번호 세 자리>
+# 사람이 넣은 검토 정보와 검토 번호 RV-<시작 연도>-<실행 번호 세 자리>,
+# 연결된 사업 (add-project-status)
 REVIEW_INFO = """
                'RV-' || extract(year FROM r.started_at)::int || '-' || lpad(r.run_id::text, 3, '0')
                    AS review_no,
                r.project_name, r.review_name, r.customer_name, r.country, r.due_date,
                r.engineer_id, (SELECT user_name FROM app_user WHERE user_id = r.engineer_id)
-                   AS engineer_name"""
+                   AS engineer_name,
+               r.business_id,
+               (SELECT 'PJ-' || extract(year FROM b.created_at)::int || '-'
+                       || lpad(b.business_id::text, 3, '0')
+                  FROM business b WHERE b.business_id = r.business_id) AS business_no"""
 
 
 def run_summary(conn: psycopg.Connection, run_id: int) -> dict | None:

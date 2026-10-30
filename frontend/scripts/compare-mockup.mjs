@@ -18,7 +18,11 @@ async function pickRuns() {
   const pick = { RUN_ID: 'ENGINEER_REVIEW', WAIT_ID: 'APPROVAL', FAIL_ID: 'FAILED', PROC_ID: 'PROCESSING' }
   let runs = []
   try { runs = await (await fetch(`${APP}/api/runs?limit=200`)).json() } catch { /* 백엔드가 없으면 실행이 필요한 화면을 건너뛴다 */ }
-  return Object.fromEntries(Object.entries(pick).map(([k, stage]) => [k, process.env[k] ?? runs.find((r) => r.stage === stage)?.run_id]))
+  const ids = Object.fromEntries(Object.entries(pick).map(([k, stage]) => [k, process.env[k] ?? runs.find((r) => r.stage === stage)?.run_id]))
+  let biz = { items: [] }
+  try { biz = await (await fetch(`${APP}/api/businesses`)).json() } catch { /* 사업이 없으면 사업 상세를 건너뛴다 */ }
+  ids.BUSINESS_NO = process.env.BUSINESS_NO ?? biz.items[0]?.business_no
+  return ids
 }
 
 /** [SCR, 목업 화면 키, 앱 주소(실행 번호가 없으면 null)] */
@@ -26,7 +30,7 @@ function screens(ids) {
   const r = (id, tail = '') => (id ? `/reviews/${id}${tail}` : null)
   return [
     ['SCR-01', 'Login', '/login'], ['SCR-02', 'Loading', r(ids.PROC_ID)], ['SCR-03', 'Home', '/'],
-    ['SCR-04', 'Projects', '/projects'], ['SCR-05', 'Project', '/projects/_'], ['SCR-06', 'Main', '/reviews'],
+    ['SCR-04', 'Projects', '/projects'], ['SCR-05', 'Project', ids.BUSINESS_NO ? `/projects/${ids.BUSINESS_NO}` : null], ['SCR-06', 'Main', '/reviews'],
     ['SCR-07', 'Register', '/register'], ['SCR-08', 'Detail', r(ids.RUN_ID)], ['SCR-09', 'Tbe', r(ids.RUN_ID, '/tbe')],
     ['SCR-10', 'Datasheet', r(ids.RUN_ID, '/datasheet')], ['SCR-11', 'Fail', r(ids.FAIL_ID)], ['SCR-12', 'Wait', r(ids.WAIT_ID)],
     ['SCR-13', 'Todo', '/todo'], ['SCR-14', 'Bids', '/bids'], ['SCR-15', 'BidView', '/bids/_'], ['SCR-16', 'Products', '/products'],

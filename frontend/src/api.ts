@@ -1,12 +1,14 @@
 // 백엔드 API (/api, Vite 프록시). 응답 타입은 백엔드 응답 모델에서 만든다 (api.gen.ts, `npm run gen:api`).
 import type {
-  ActionResult, ApprovalScreen, AssignmentStatus, BulkResult, DecisionResult, DocumentChoice, DocumentPreview,
+  ActionResult, ApprovalScreen, AssignmentStatus, BulkResult, BusinessDetail, BusinessList, BusinessLog,
+  DecisionResult, DocumentChoice, DocumentPreview,
   LossResult, ProductSwitch, RuleEdit,
   RunSummary, StageResult, SubmitResult,
 } from './api.gen'
 
 export type {
-  ApprovalScreen, Assignment, CompareRule, Criterion, Datasheet, DatasheetInfo, DatasheetRow, DocKindRule,
+  ApprovalScreen, Assignment, BusinessDetail, BusinessEvent, BusinessList, BusinessListItem, BusinessLog, BusinessPerson,
+  BusinessRange, CompareRule, Criterion, Datasheet, DatasheetInfo, DatasheetRow, DocKindRule,
   DocumentChoice, DocumentPreview, EngineeringCheck,
   Equipment, Health, ItemKey, Judgment, JudgmentCounts, Location, LogEntry, Loss, MyTasks, OutputItem, Product,
   ProductDetail, ProductFamily, Proposal, ReadCheck, Requirement, ReviewCard, Risk, RiskExpression, RuleEdit, RunDocument,
@@ -79,8 +81,21 @@ async function page<T>(path: string): Promise<Page<T>> {
   return { items, total: Number(res.headers.get('X-Total-Count') ?? items.length) }
 }
 
-/** 검토 시작 때 함께 보내는 검토 정보. 빈 칸은 보내지 않는다 */
-export type StartInfo = Partial<Omit<ReviewInfo, 'engineer_id'>> & { engineer_id?: number | null; actor_id?: number | null }
+/** 검토 시작 때 함께 보내는 검토 정보. 빈 칸은 보내지 않는다.
+ * 사업 연결(add-project-status): business_id(진행 중인 사업에 추가) 또는 new_business_name(새 사업 만들기) */
+export type StartInfo = Partial<Omit<ReviewInfo, 'engineer_id'>> & {
+  engineer_id?: number | null; actor_id?: number | null; business_id?: number | null; new_business_name?: string
+}
+
+/** 사업 정보 (add-project-status). 보낸 칸만 바꾸고 빈 문자열은 비우기 */
+export type BusinessInfo = Partial<Record<'business_name' | 'customer_name' | 'country' | 'tender_no' | 'order_mode'
+  | 'due_date', string | null>> & { sales_id?: number | null }
+
+/** 사업 번호 PJ-2026-003 → 3 (화면 주소 `#/projects/PJ-2026-003`) */
+export function businessIdOf(no: string): number | null {
+  const m = /^PJ-\d+-(\d+)$/.exec(no) ?? /^(\d+)$/.exec(no)
+  return m ? Number(m[1]) : null
+}
 
 function filled(info: StartInfo): Record<string, string | number> {
   const out: Record<string, string | number> = {}
@@ -188,6 +203,21 @@ export const api = {
   setTaskStatus: (assignmentId: number, status: string, actor_id: number) =>
     call<AssignmentStatus>(`/assignments/${assignmentId}`, json('PUT', { status, actor_id })),
   reopen: (id: number, actor_id: number) => call<StageResult>(`/runs/${id}/reopen`, json('POST', { actor_id })),
+  businesses: (user_id: number | null, scope: 'mine' | 'all') =>
+    call<BusinessList>(`/businesses?${query({ user_id: user_id ?? undefined, scope })}`),
+  business: (id: number, user_id: number | null) =>
+    call<BusinessDetail>(`/businesses/${id}${user_id != null ? `?user_id=${user_id}` : ''}`),
+  createBusiness: (info: BusinessInfo, actor_id: number | null) =>
+    call<BusinessDetail>('/businesses', json('POST', { ...info, actor_id })),
+  updateBusiness: (id: number, info: BusinessInfo, actor_id: number | null) =>
+    call<BusinessDetail>(`/businesses/${id}`, json('PUT', { ...info, actor_id })),
+  markSubmitted: (id: number, actor_id: number | null) =>
+    call<BusinessDetail>(`/businesses/${id}/submitted`, json('POST', { actor_id })),
+  unmarkSubmitted: (id: number, actor_id: number | null) =>
+    call<BusinessDetail>(`/businesses/${id}/submitted${actor_id != null ? `?actor_id=${actor_id}` : ''}`, { method: 'DELETE' }),
+  businessHistory: (id: number) => call<BusinessLog[]>(`/businesses/${id}/history`),
+  linkBusiness: (runId: number, business_id: number | null, actor_id: number | null) =>
+    call<RunSummary>(`/runs/${runId}/business`, json('PUT', { business_id, actor_id })),
 }
 
 function query(params: Record<string, string | number | boolean | undefined>): string {

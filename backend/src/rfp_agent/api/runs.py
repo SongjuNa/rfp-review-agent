@@ -51,7 +51,16 @@ from rfp_agent.api.schemas import (
 )
 from rfp_agent.config import get_settings
 from rfp_agent.db.connection import connect
-from rfp_agent.pipeline import datasheet, preview, queries, read_checks, review, review_info, tbe
+from rfp_agent.pipeline import (
+    business,
+    datasheet,
+    preview,
+    queries,
+    read_checks,
+    review,
+    review_info,
+    tbe,
+)
 from rfp_agent.pipeline.assignments import build_assignments
 from rfp_agent.pipeline.export import outputs_docx
 from rfp_agent.pipeline.loss import recalculate
@@ -82,7 +91,9 @@ class ReviewInfo(BaseModel):
     actor_id: int | None = None
 
     def info(self) -> dict:
-        return self.model_dump(exclude_unset=True, exclude={"actor_id"})
+        return self.model_dump(exclude_unset=True,
+                               exclude={"actor_id", "files", "choices", "business_id",
+                                        "new_business_name"})
 
 
 class DocumentChoice(BaseModel):
@@ -101,6 +112,8 @@ class LibraryFiles(BaseModel):
 class LibraryRun(ReviewInfo):
     files: list[str]
     choices: Choices = {}
+    business_id: int | None = None          # 진행 중인 사업에 추가 (add-project-status)
+    new_business_name: str | None = Field(None, max_length=200)   # 새 사업 만들기
 
 
 class ProductChoice(BaseModel):
@@ -167,13 +180,17 @@ def _summary(run_id: int) -> dict:
 
 
 def _start(paths: list[Path], background: BackgroundTasks, info: dict,
-           actor_id: int | None, choices: Choices | None = None) -> dict:
+           actor_id: int | None, choices: Choices | None = None,
+           business_id: int | None = None, new_business_name: str | None = None) -> dict:
     with connect() as conn:
-        # 검토 정보가 틀리면 실행을 만들기 전에 막는다
+        # 검토 정보·사업 칸이 틀리면 실행을 만들기 전에 막는다
         _review(lambda: review_info.clean(info))
         _review(lambda: review_info.check_engineer(conn, info.get("engineer_id") or None))
+        _review(lambda: business.check_start(conn, business_id, new_business_name))
         run_id = start_run(conn, actor_id)
         _review(lambda: review_info.save_on_start(conn, run_id, info, actor_id))
+        _review(lambda: business.link_on_start(conn, run_id, business_id, new_business_name,
+                                               review_info.clean(info), actor_id))
     chosen = {name: c.model_dump(exclude_none=True) for name, c in (choices or {}).items()}
     background.add_task(run_to_end, run_id, paths, chosen)
     return _summary(run_id)
@@ -264,7 +281,8 @@ async def upload_preview(files: list[UploadFile]) -> list[DocumentPreview]:
 
 @router.post("/runs/library", status_code=202)
 def run_library(body: LibraryRun, background: BackgroundTasks) -> RunSummary:
-    return _start(_library_paths(body.files), background, body.info(), body.actor_id, body.choices)
+    return _start(_library_paths(body.files), background, body.info(), body.actor_id, body.choices,
+                  body.business_id, body.new_business_name)
 
 
 @router.post("/runs", status_code=202)
@@ -273,11 +291,14 @@ async def run_upload(files: list[UploadFile], background: BackgroundTasks,
                      customer_name: str | None = Form(None), country: str | None = Form(None),
                      due_date: str | None = Form(None), engineer_id: int | None = Form(None),
                      actor_id: int | None = Form(None),
-                     choices: str | None = Form(None)) -> RunSummary:
+                     choices: str | None = Form(None),
+                     business_id: int | None = Form(None),
+                     new_business_name: str | None = Form(None)) -> RunSummary:
     """올린 docx로 검토를 시작한다. 검토 정보 칸은 모두 고를 수 있다.
 
     파일은 내용 해시 폴더에 저장해 같은 파일이면 다시 처리하지 않는다.
     choices는 등록 화면에서 사람이 정한 분류 JSON ({파일 이름: {bundle, doc_kind}}).
+    business_id(진행 중인 사업에 추가)나 new_business_name(새 사업 만들기)으로 사업에 잇는다.
     """
     try:
         chosen = TypeAdapter(Choices).validate_json(choices) if choices else {}
@@ -288,7 +309,7 @@ async def run_upload(files: list[UploadFile], background: BackgroundTasks,
             "customer_name": customer_name, "country": country, "due_date": due_date,
             "engineer_id": engineer_id}
     return _start(paths, background, {k: v for k, v in sent.items() if v is not None}, actor_id,
-                  chosen)
+                  chosen, business_id, new_business_name)
 
 
 @router.get("/runs/{run_id}")

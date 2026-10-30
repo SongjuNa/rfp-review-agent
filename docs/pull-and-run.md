@@ -85,7 +85,7 @@ docker compose up -d db
 # 창 2: 백엔드
 cd backend
 uv sync                    # 새 Python 재료 받기
-uv run rfp-db setup        # 새 DB 표(0009~0013) + 규칙 사전 + 제품표 (화면에서 고친 규칙은 남음)
+uv run rfp-db setup        # 새 DB 표(0009~0014) + 규칙 사전 + 제품표 (화면에서 고친 규칙은 남음)
 uv run uvicorn rfp_agent.api.main:app --reload    # http://localhost:8000
 
 # 창 3: 화면
@@ -95,6 +95,12 @@ npm run dev                # http://localhost:5173
 ```
 
 윈도우 PowerShell에서 `.env` 없이 DB 주소를 넣으려면 창 2에서 먼저 `$env:DATABASE_URL="postgresql://rfp:rfp@localhost:5433/rfp"`를 실행합니다. 맥은 `export DATABASE_URL=postgresql://rfp:rfp@localhost:5433/rfp`입니다.
+
+사업 현황 화면을 바로 보고 싶으면 예시 사업을 만들 수 있습니다(파일마다 분석을 한 번씩 돌립니다).
+
+```bash
+uv run rfp-db demo-businesses --business "Demo 145 kV 변전소" a.docx b.docx --business "Demo 저압 배전반" c.docx
+```
 
 서버 응답 칸(`backend/src/rfp_agent/api/schemas.py`)을 고쳤다면 화면 타입도 다시 만들어 함께 커밋합니다.
 
@@ -116,7 +122,7 @@ cd frontend && npm run gen:api
 5. **결재 상신**을 눌러 결재자를 고르고 올립니다.
 6. 오른쪽 위 사용자를 결재자로 바꾸고 그 검토를 열면 결재 대기 화면이 나옵니다. **승인** 또는 **반려**를 누릅니다.
 
-> 사업 현황, 입찰 이력, 정답지·채점, 팀 현황, 공지사항, 자료실 같은 화면은 아직 서버 기능이 없어 **예시 데이터**를 보여 줍니다. 눌러도 실제로 저장되지 않습니다.
+> 입찰 이력, 정답지·채점, 팀 현황, 공지사항, 자료실 같은 화면은 아직 서버 기능이 없어 **예시 데이터**를 보여 줍니다. 눌러도 실제로 저장되지 않습니다.
 > 결과는 모두 AI와 코드가 만든 **"후보"** 입니다. 사람이 확정해야 진짜 결과가 됩니다.
 > Gemini 키가 없으면 AI 보조 단계만 건너뛰고 코드 규칙 결과만 나옵니다.
 

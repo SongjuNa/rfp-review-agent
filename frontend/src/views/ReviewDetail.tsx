@@ -7,6 +7,7 @@ import { STAGE_NAMES, STAGE_TONES } from '../components/labels'
 import { useLoad } from '../components/useLoad'
 import { useCrumbTail } from '../shell/crumb'
 import { usePageCss } from '../shell/pageCss'
+import { href } from '../shell/router'
 import { DocumentsDialog } from './DocumentsDialog'
 import { DetailBody, DetailTabs, type DetailTab } from './detail/DetailBody'
 import { ProductSeg } from './detail/ProductSeg'
@@ -40,7 +41,9 @@ function ReviewHeader({ run, approver, onEdit, onSwitched }: {
         <div style={{ minWidth: 0 }}>
           <h1>{reviewTitle(run)}</h1>
           <div className="idl" style={{ marginTop: 4 }}>
-            {run.project_name && <><span>사업 {run.project_name}</span>·</>}
+            {run.project_name && <>{run.business_no
+              ? <a className="lnk" href={href(`/projects/${run.business_no}`)} title="사업 상세 보기">사업 {run.project_name}</a>
+              : <span>사업 {run.project_name}</span>}·</>}
             {docs.data
               ? <button type="button" className="lnk hdoc" onClick={() => setDocsOpen(true)} title="문서 종류·묶음 보기">문서 {run.documents}개</button>
               : <span>문서 {run.documents}개</span>}
