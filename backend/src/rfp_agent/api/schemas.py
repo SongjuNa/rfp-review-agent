@@ -697,6 +697,7 @@ class Product(Out):
     insulation_medium: str | None
     maintenance_months: int | None
     service_life_years: int | None
+    warranty_months: int | None
     comparison_values_assumed: bool
     comparison_values_source: str | None
     is_assumed: bool

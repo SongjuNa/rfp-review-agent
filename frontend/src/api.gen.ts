@@ -492,6 +492,22 @@ export type Product = {
   load_loss_kw: number | null
   aux_loss_kw: number | null
   loss_is_assumed: boolean | null
+  lightning_impulse_kv: number | null
+  power_freq_withstand_kv: number | null
+  switching_impulse_kv: number | null
+  peak_current_ka: number | null
+  making_current_ka: number | null
+  breaking_time_ms: number | null
+  closing_time_ms: number | null
+  gas_leakage_percent: number | null
+  partial_discharge_pc: number | null
+  cooling_type: string | null
+  insulation_medium: string | null
+  maintenance_months: number | null
+  service_life_years: number | null
+  warranty_months: number | null
+  comparison_values_assumed: boolean
+  comparison_values_source: string | null
   is_assumed: boolean
   is_design_card: boolean
   source_doc: string | null
@@ -522,6 +538,22 @@ export type ProductDetail = {
   load_loss_kw: number | null
   aux_loss_kw: number | null
   loss_is_assumed: boolean | null
+  lightning_impulse_kv: number | null
+  power_freq_withstand_kv: number | null
+  switching_impulse_kv: number | null
+  peak_current_ka: number | null
+  making_current_ka: number | null
+  breaking_time_ms: number | null
+  closing_time_ms: number | null
+  gas_leakage_percent: number | null
+  partial_discharge_pc: number | null
+  cooling_type: string | null
+  insulation_medium: string | null
+  maintenance_months: number | null
+  service_life_years: number | null
+  warranty_months: number | null
+  comparison_values_assumed: boolean
+  comparison_values_source: string | null
   is_assumed: boolean
   is_design_card: boolean
   source_doc: string | null

@@ -123,7 +123,8 @@ def test_ai_failure_stops_run_with_message(seeded_db, spec_docx):
     run_id, stage = run_once(seeded_db, [spec_docx], llm=FakeLLM(fail=True))
     summary = queries.run_summary(seeded_db, run_id)
     assert stage == "FAILED" == summary["stage"]
-    assert summary["failed_step"] == "documents"
+    # 문서 단계 AI 분류는 재시도 후 실패하면 건너뛴다 → 처음 멈추는 곳은 risks
+    assert summary["failed_step"] == "risks"
     assert summary["error_message"] == FAILURE_MESSAGE
 
 

@@ -1238,7 +1238,7 @@
           "검토 실행"
         ],
         "summary": "Export Outputs",
-        "description": "일탈 목록·질의서 초안 Word 파일 (SCR-08-11).",
+        "description": "일탈 목록·질의서 초안 Word 파일 (SCR-08-11). 항목이 없으면 파일을 만들지 않는다.",
         "operationId": "export_outputs_api_runs__run_id__outputs_export_get",
         "parameters": [
           {
@@ -6616,6 +6616,175 @@
             ],
             "title": "Loss Is Assumed"
           },
+          "lightning_impulse_kv": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lightning Impulse Kv"
+          },
+          "power_freq_withstand_kv": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Power Freq Withstand Kv"
+          },
+          "switching_impulse_kv": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Switching Impulse Kv"
+          },
+          "peak_current_ka": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Peak Current Ka"
+          },
+          "making_current_ka": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Making Current Ka"
+          },
+          "breaking_time_ms": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Breaking Time Ms"
+          },
+          "closing_time_ms": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Closing Time Ms"
+          },
+          "gas_leakage_percent": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gas Leakage Percent"
+          },
+          "partial_discharge_pc": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Partial Discharge Pc"
+          },
+          "cooling_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cooling Type"
+          },
+          "insulation_medium": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Insulation Medium"
+          },
+          "maintenance_months": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Maintenance Months"
+          },
+          "service_life_years": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Service Life Years"
+          },
+          "warranty_months": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Warranty Months"
+          },
+          "comparison_values_assumed": {
+            "type": "boolean",
+            "title": "Comparison Values Assumed"
+          },
+          "comparison_values_source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Comparison Values Source"
+          },
           "is_assumed": {
             "type": "boolean",
             "title": "Is Assumed"
@@ -6686,6 +6855,22 @@
           "load_loss_kw",
           "aux_loss_kw",
           "loss_is_assumed",
+          "lightning_impulse_kv",
+          "power_freq_withstand_kv",
+          "switching_impulse_kv",
+          "peak_current_ka",
+          "making_current_ka",
+          "breaking_time_ms",
+          "closing_time_ms",
+          "gas_leakage_percent",
+          "partial_discharge_pc",
+          "cooling_type",
+          "insulation_medium",
+          "maintenance_months",
+          "service_life_years",
+          "warranty_months",
+          "comparison_values_assumed",
+          "comparison_values_source",
           "is_assumed",
           "is_design_card",
           "source_doc",
@@ -6850,6 +7035,175 @@
             ],
             "title": "Loss Is Assumed"
           },
+          "lightning_impulse_kv": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lightning Impulse Kv"
+          },
+          "power_freq_withstand_kv": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Power Freq Withstand Kv"
+          },
+          "switching_impulse_kv": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Switching Impulse Kv"
+          },
+          "peak_current_ka": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Peak Current Ka"
+          },
+          "making_current_ka": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Making Current Ka"
+          },
+          "breaking_time_ms": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Breaking Time Ms"
+          },
+          "closing_time_ms": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Closing Time Ms"
+          },
+          "gas_leakage_percent": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gas Leakage Percent"
+          },
+          "partial_discharge_pc": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Partial Discharge Pc"
+          },
+          "cooling_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cooling Type"
+          },
+          "insulation_medium": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Insulation Medium"
+          },
+          "maintenance_months": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Maintenance Months"
+          },
+          "service_life_years": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Service Life Years"
+          },
+          "warranty_months": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Warranty Months"
+          },
+          "comparison_values_assumed": {
+            "type": "boolean",
+            "title": "Comparison Values Assumed"
+          },
+          "comparison_values_source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Comparison Values Source"
+          },
           "is_assumed": {
             "type": "boolean",
             "title": "Is Assumed"
@@ -6945,6 +7299,22 @@
           "load_loss_kw",
           "aux_loss_kw",
           "loss_is_assumed",
+          "lightning_impulse_kv",
+          "power_freq_withstand_kv",
+          "switching_impulse_kv",
+          "peak_current_ka",
+          "making_current_ka",
+          "breaking_time_ms",
+          "closing_time_ms",
+          "gas_leakage_percent",
+          "partial_discharge_pc",
+          "cooling_type",
+          "insulation_medium",
+          "maintenance_months",
+          "service_life_years",
+          "warranty_months",
+          "comparison_values_assumed",
+          "comparison_values_source",
           "is_assumed",
           "is_design_card",
           "source_doc",
