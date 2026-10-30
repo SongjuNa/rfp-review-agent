@@ -61,16 +61,19 @@ export function Projects() {
             {SCOPES.map(([k, label]) => <button key={k} type="button" className={scope === k ? 'on' : ''} aria-pressed={scope === k} onClick={() => setScope(k)}>{label}</button>)}
           </div>
         </div>
+        {/* 검색 조건: 1줄 왼쪽 제출 마감(아래 -전체-와 같은 시작선), 오른쪽 상태·국가 (minjeong 10-30) */}
         <div className="sp" role="search" aria-label="사업 찾기">
           <div className="sp-r1">
-            <label className="sp-f"><span className="sp-l">상태</span>
-              <select className="fi" value={draft.st} onChange={(e) => set({ st: e.target.value as Filter['st'] })}>
-                <option value="open">진행 중</option><option value="done">제출 완료</option><option value="all">전체</option></select></label>
-            <label className="sp-f"><span className="sp-l">국가</span>
-              <select className="fi" value={draft.cty} onChange={(e) => set({ cty: e.target.value })}>
-                <option value="">모든 국가</option>{countries.map((c) => <option key={c}>{c}</option>)}</select></label>
             <div className="sp-f" role="radiogroup" aria-label="제출 마감"><span className="sp-l">제출 마감</span>
               {DUE.map(([k, label]) => <label key={k} className="sp-rd"><input type="radio" name="due" checked={draft.due === k} onChange={() => set({ due: k })} />{label}</label>)}</div>
+            <div className="sp-f" style={{ marginLeft: 'auto', gap: 32 }}>
+              <label className="sp-f"><span className="sp-l">상태</span>
+                <select className="fi" value={draft.st} onChange={(e) => set({ st: e.target.value as Filter['st'] })}>
+                  <option value="open">진행 중</option><option value="done">제출 완료</option><option value="all">전체</option></select></label>
+              <label className="sp-f"><span className="sp-l">국가</span>
+                <select className="fi" value={draft.cty} onChange={(e) => set({ cty: e.target.value })}>
+                  <option value="">모든 국가</option>{countries.map((c) => <option key={c}>{c}</option>)}</select></label>
+            </div>
           </div>
           <div className="sp-r2">
             <select className="fi sp-qf" value={draft.qf} onChange={(e) => set({ qf: e.target.value as Filter['qf'] })} aria-label="검색 대상">
