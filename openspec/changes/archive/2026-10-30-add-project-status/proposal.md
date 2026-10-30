@@ -40,6 +40,7 @@ CR-04(없는 값은 비움), CR-08(확정은 사람), CR-11(판정 결과 영향
 ## Impact
 
 - DB: 마이그레이션 `0014_business.sql`(`business`, `business_log`, `review_run.business_id`, 기존 검토 묶기).
+- CLI: `rfp-db demo-businesses`.
 - API: `GET/POST /api/businesses`, `GET/PUT /api/businesses/{id}`, `POST/DELETE /api/businesses/{id}/submitted`, `GET /api/businesses/{id}/history`, `PUT /api/runs/{id}/business`, `POST /api/runs`·`/api/runs/library`에 사업 칸.
-- 화면: `views/Projects.tsx`, `views/Project.tsx`(예시에서 옮김), `Register.tsx`, `openapi.json`·`api.gen.ts` 다시 생성.
+- 화면: `views/Projects.tsx`, `views/Project.tsx`(예시에서 옮김), `views/BusinessDialog.tsx`, `Register.tsx`, `ReviewDetail.tsx`, `openapi.json`·`api.gen.ts` 다시 생성.
 - 판정·후보 계산은 바뀌지 않는다(CR-11 영향 없음).

@@ -21,7 +21,7 @@ test('예시 띠', async ({ page }) => {
   expect(calls).toEqual([])
 
   // 다른 예시 화면도 같은 띠를 보인다
-  for (const path of ['/projects', '/phrases', '/eval', '/team', '/notice', '/sysnotice', '/files', '/settings']) {
+  for (const path of ['/phrases', '/eval', '/team', '/notice', '/sysnotice', '/files', '/settings']) {
     await page.goto('/#' + path)
     await expect(page.getByRole('note').filter({ hasText: BAND })).toBeVisible()
   }

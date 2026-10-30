@@ -1,5 +1,5 @@
 import { useState, type ChangeEvent, type DragEvent, type ReactNode } from 'react'
-import { api, type DocumentChoice, type DocumentPreview, type RunSummary } from '../api'
+import { api, type BusinessListItem, type DocumentChoice, type DocumentPreview, type RunSummary } from '../api'
 import { DOC_KIND_NAMES } from '../components/labels'
 import { useLoad } from '../components/useLoad'
 import { usePageCss } from '../shell/pageCss'
@@ -9,6 +9,7 @@ import { useSession } from '../shell/useSession'
 // SCR-07 검토 등록 (목업 v4.57 Register). docs/screens/SCR-07-검토등록.md
 // 목업의 자동 추출·Lot·제품 추천·결재선은 아직 없어 단계 2·3을 사람이 넣는 검토 정보로 바꿨다 (SCR-07_공유.md).
 // 문서를 고르면 분석 전 분류 추천(규칙만)을 불러와 문서 종류·묶음을 사람이 확인·수정한다 (add-document-confirm).
+// 검토 정보 단계의 "사업 연결"로 새 사업을 만들거나 진행 중인 사업에 검토를 더한다 (add-project-status).
 
 type Info = { project_name: string; review_name: string; customer_name: string; country: string; due_date: string }
 type Picked = { name: string; size: string | null; file: File | null }   // file이 없으면 서버에 둔 RFP
@@ -67,10 +68,19 @@ function Field({ label, req, hint, children }: { label: string; req?: boolean; h
   )
 }
 
-export function Register() {
+export function Register({ businessId = null }: { businessId?: number | null }) {
   usePageCss('Register')
   const { user, users } = useSession()
   const library = useLoad(() => api.library(), [])
+  // 진행 중인 사업 (제출 완료가 아닌 것)
+  // 주소로 사업을 고른 채 열었으면 목록이 왔을 때 그 사업 값으로 한 번 채운다
+  const businesses = useLoad(() => api.businesses(null, 'all').then((l) => {
+    const items = l.items.filter((b) => b.submitted_at === null)
+    if (businessId !== null) pickBusiness(items.find((b) => b.business_id === businessId) ?? null)
+    return items
+  }), [])
+  const [pjMode, setPjMode] = useState<'new' | 'old'>(businessId !== null ? 'old' : 'new')
+  const [pjSel, setPjSel] = useState<number | ''>(businessId ?? '')
   const [step, setStep] = useState(1)
   const [picked, setPicked] = useState<Picked[]>([])
   const [showLibrary, setShowLibrary] = useState(false)
@@ -85,6 +95,17 @@ export function Register() {
   const owner = engineer !== '' ? engineer : user?.role === 'ENGINEER' ? user.user_id : (engineers[0]?.user_id ?? '')
   const ok = picked.filter((p) => isDocx(p.name))
   const fromServer = picked.some((p) => p.file === null)
+  const open = businesses.data ?? []
+  const chosenBiz = pjMode === 'old' ? open.find((b) => b.business_id === pjSel) ?? null : null
+
+  // 사업을 고르면 사업명은 그 사업 이름, 고객사·국가·마감은 사업 값으로 미리 채운다 (사람이 고칠 수 있음)
+  function pickBusiness(b: BusinessListItem | null) {
+    if (!b) return
+    setInfo((prev) => ({
+      ...prev, project_name: b.business_name, customer_name: b.customer_name ?? prev.customer_name,
+      country: b.country ?? prev.country, due_date: b.due_date ?? prev.due_date,
+    }))
+  }
 
   // 아직 추천이 없는 docx만 한 번에 불러온다 (규칙만 써서 몇 초)
   const loadPreviews = (items: Picked[]) => {
@@ -121,12 +142,15 @@ export function Register() {
     else if (picked.length > ok.length) msg = 'docx가 아닌 파일은 빼고 진행합니다.'
   }
   if (step === 2 && !info.due_date) { msg = '제출 마감일을 입력해 주세요.'; nextDis = true }
+  if (step === 2 && pjMode === 'old' && !chosenBiz) { msg = '연결할 사업을 골라 주세요.'; nextDis = true }
   if (error) msg = error
 
   const submit = () => {
     setBusy(true)
     setError(null)
-    const start = { ...info, engineer_id: typeof owner === 'number' ? owner : null, actor_id: user?.user_id ?? null }
+    const biz = chosenBiz ? { business_id: chosenBiz.business_id }
+      : info.project_name.trim() ? { new_business_name: info.project_name.trim() } : {}
+    const start = { ...info, ...biz, engineer_id: typeof owner === 'number' ? owner : null, actor_id: user?.user_id ?? null }
     // 보이는 분류를 모두 보낸다. 규칙 추천과 같은 값은 서버가 규칙 결과로 둔다.
     const choices: Record<string, DocumentChoice> = {}
     ok.forEach((p) => {
@@ -145,7 +169,9 @@ export function Register() {
           <div className="ic"><span className="ms" aria-hidden="true">check</span></div>
           <h2>{done.review_no} 등록했습니다</h2>
           <p>문서 {ok.length}개 · 제출 마감 {info.due_date}. 요구사항 추출을 시작했습니다. 끝나면 홈의 내 할 일에 나타납니다.</p>
-          <div className="acts"><a className="bo" href={href('/reviews')}>검토 목록으로</a><a className="bp" href={href('/')}>홈으로</a></div>
+          <div className="acts"><a className="bo" href={href('/reviews')}>검토 목록으로</a>
+            {done.business_no && <a className="bo" href={href(`/projects/${done.business_no}`)}>사업 상세로</a>}
+            <a className="bp" href={href('/')}>홈으로</a></div>
         </div>
       </main>
     )
@@ -230,10 +256,26 @@ export function Register() {
         <div className="card2">
           <h2>검토 정보</h2>
           <p className="sub2">검토 목록과 결재 화면에 보일 정보입니다. 문서에서 자동으로 채우지 않으니 직접 넣어 주세요.</p>
+          <div className="fld" style={{ marginBottom: 16 }}><span className="k">사업 연결</span>
+            <div className="pjc">
+              <label className="pjo"><input type="radio" name="pjm" checked={pjMode === 'new'}
+                onChange={() => { setPjMode('new'); setInfo({ ...info, project_name: '' }) }} />
+                <span><b>새 사업 만들기</b>
+                  <input className="fi" value={pjMode === 'new' ? info.project_name : ''} onChange={set('project_name')} maxLength={200}
+                    aria-label="새 사업명" placeholder="예: Thai Binh" disabled={pjMode !== 'new'} />
+                  <span className="src">검토명은 "{(pjMode === 'new' && info.project_name) || '사업명'} · 설비 범위"로 만들어집니다. 비워 두면 사업에 잇지 않습니다.</span></span></label>
+              <label className="pjo"><input type="radio" name="pjm" checked={pjMode === 'old'} disabled={open.length === 0}
+                onChange={() => { setPjMode('old'); pickBusiness(open.find((b) => b.business_id === pjSel) ?? null) }} />
+                <span><b>진행 중인 사업에 추가</b>
+                  <select className="fi" value={pjSel} disabled={pjMode !== 'old'} aria-label="진행 중인 사업"
+                    onChange={(e) => { const id = Number(e.target.value); setPjSel(id); pickBusiness(open.find((b) => b.business_id === id) ?? null) }}>
+                    <option value="">사업 고르기</option>
+                    {open.map((b) => <option key={b.business_id} value={b.business_id}>{b.business_no} · {b.business_name}</option>)}
+                  </select>
+                  <span className="src">{open.length === 0 ? '진행 중인 사업이 없습니다.' : '고객사·국가·마감을 사업 값으로 채웁니다. 고칠 수 있습니다.'}</span></span></label>
+            </div>
+          </div>
           <div className="fg">
-            <Field label="사업명" hint={`검토명은 "${info.project_name || '사업명'} · 설비 범위"로 보입니다`}>
-              <input className="fi" value={info.project_name} onChange={set('project_name')} maxLength={200} placeholder="예: Thai Binh" />
-            </Field>
             <Field label="설비 범위">
               <input className="fi" value={info.review_name} onChange={set('review_name')} maxLength={200}
                 placeholder="예: 115·230 kV GIS 변전소 신설" />

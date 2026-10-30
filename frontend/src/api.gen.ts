@@ -71,6 +71,8 @@ export type Assignment = {
   due_date: string | null
   engineer_id: number | null
   engineer_name: string | null
+  business_id: number | null
+  business_no: string | null
   locations: Location[]
   file_name: string | null
 }
@@ -90,6 +92,8 @@ export type Body_run_upload_api_runs_post = {
   engineer_id?: number | null
   actor_id?: number | null
   choices?: string | null
+  business_id?: number | null
+  new_business_name?: string | null
 }
 
 export type Body_upload_preview_api_runs_preview_post = {
@@ -106,6 +110,123 @@ export type BulkAction = {
 export type BulkResult = {
   confirmed: number
   submission_check: SubmissionCheck | null
+}
+
+export type BusinessDetail = {
+  business_id: number
+  business_no: string
+  business_name: string
+  customer_name: string | null
+  country: string | null
+  tender_no: string | null
+  order_mode: string | null
+  business_due_date: string | null
+  due_date: string | null
+  days_left: number | null
+  sales_id: number | null
+  sales_name: string | null
+  created_by: number
+  created_by_name: string
+  created_at: string
+  submitted_at: string | null
+  my_role: 'ENGINEER' | 'APPROVER' | 'HELPER' | 'SALES' | 'CREATOR' | null
+  ranges: BusinessRange[]
+  people: BusinessPerson[]
+  schedule: BusinessEvent[]
+  documents: BusinessDocument[]
+}
+
+export type BusinessDocument = {
+  run_id: number
+  review_no: string
+  review_name: string | null
+  file_name: string
+  doc_kind: string
+  bundle: 'A' | 'B' | 'C' | 'D'
+}
+
+export type BusinessEvent = {
+  day: string
+  kind: 'START' | 'REQUEST' | 'APPROVED' | 'REJECTED' | 'RUN_DUE' | 'DUE' | 'SUBMITTED'
+  run_id: number | null
+  review_no: string | null
+}
+
+/** 사업 정보. 보낸 칸만 바꾸고 빈 문자열은 비우기로 본다. 사업명은 비울 수 없다. */
+export type BusinessInfo = {
+  business_name?: string | null
+  customer_name?: string | null
+  country?: string | null
+  tender_no?: string | null
+  order_mode?: string | null
+  due_date?: string | null
+  sales_id?: number | null
+  actor_id?: number | null
+}
+
+export type BusinessList = {
+  summary: BusinessSummary
+  items: BusinessListItem[]
+}
+
+export type BusinessListItem = {
+  business_id: number
+  business_no: string
+  business_name: string
+  customer_name: string | null
+  country: string | null
+  tender_no: string | null
+  order_mode: string | null
+  business_due_date: string | null
+  due_date: string | null
+  days_left: number | null
+  sales_id: number | null
+  sales_name: string | null
+  created_by: number
+  created_by_name: string
+  created_at: string
+  submitted_at: string | null
+  my_role: 'ENGINEER' | 'APPROVER' | 'HELPER' | 'SALES' | 'CREATOR' | null
+  ranges: BusinessRange[]
+}
+
+export type BusinessLog = {
+  log_id: number
+  field: string
+  before_value: unknown
+  after_value: unknown
+  actor_id: number
+  actor_name: string
+  acted_at: string
+}
+
+export type BusinessPerson = {
+  user_id: number
+  user_name: string
+  role: 'ENGINEER' | 'COST' | 'QUALITY' | 'SALES' | 'APPROVER'
+  part: 'ENGINEER' | 'APPROVER' | 'HELPER' | 'SALES'
+  run_ids: number[]
+  scope: string | null
+}
+
+/** 사업에 연결된 검토 하나 (설비 범위). 상태는 저장하지 않고 계산한다. */
+export type BusinessRange = {
+  run_id: number
+  review_no: string
+  review_name: string | null
+  stage: 'PROCESSING' | 'ENGINEER_REVIEW' | 'APPROVAL' | 'APPROVED' | 'REJECTED' | 'FAILED'
+  due_date: string | null
+  started_at: string
+  engineer_id: number | null
+  engineer_name: string | null
+  open_requests: number
+  state: 'an' | 'fail' | 'chk' | 'co' | 'ap' | 'rej' | 'sub' | 'done'
+}
+
+export type BusinessSummary = {
+  open: number
+  due3: number
+  overdue: number
 }
 
 export type CompareRule = {
@@ -377,6 +498,8 @@ export type LibraryRun = {
   actor_id?: number | null
   files: string[]
   choices?: Record<string, DocumentChoice>
+  business_id?: number | null
+  new_business_name?: string | null
 }
 
 /** 원문 위치: 파일 번호 + 절 또는 표 + 행 (CR-02). 절·표·항목·행은 있는 것만 있다. */
@@ -685,6 +808,8 @@ export type ReviewCard = {
   country: string | null
   due_date: string | null
   engineer_id: number | null
+  business_id: number | null
+  business_no: string | null
   run_id: number
   review_no: string
   engineer_name: string | null
@@ -779,6 +904,11 @@ export type RuleRemoval = {
   actor_id?: number | null
 }
 
+export type RunBusiness = {
+  business_id?: number | null
+  actor_id?: number | null
+}
+
 export type RunDocument = {
   document_id: number
   file_no: number
@@ -802,6 +932,8 @@ export type RunListItem = {
   country: string | null
   due_date: string | null
   engineer_id: number | null
+  business_id: number | null
+  business_no: string | null
   run_id: number
   review_no: string
   engineer_name: string | null
@@ -827,6 +959,8 @@ export type RunSummary = {
   country: string | null
   due_date: string | null
   engineer_id: number | null
+  business_id: number | null
+  business_no: string | null
   run_id: number
   review_no: string
   engineer_name: string | null

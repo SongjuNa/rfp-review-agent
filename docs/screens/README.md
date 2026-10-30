@@ -34,8 +34,8 @@
 | SCR-01 | `Login` | 로그인 | — | 범위 밖 (로그인 없음, 사용자 고르기) | 예시 화면 (`add-example-screens`) |
 | SCR-02 | `Loading` | 처리 상태 | — | FR-01~06, `review-run` | 실제 |
 | SCR-03 | `Home` | 홈 | 홈 | FR-10, FR-11, `review-workspace` 홈 화면 | 실제 (내 업무·카드·실패 알림·팀 업무). 공지·자료실·행사는 예시 |
-| SCR-04 | `Projects` | 사업 현황 | RFP 관리 | 없음 (사업 단위는 `add-review-info` Non-Goal) | 예시 화면 (`add-example-screens`) |
-| SCR-05 | `Project` | 사업 상세 | RFP 관리 | 없음 | 예시 화면 (`add-example-screens`) |
+| SCR-04 | `Projects` | 사업 현황 | RFP 관리 | `add-project-status` | 실제 (`add-project-status`) |
+| SCR-05 | `Project` | 사업 상세 | RFP 관리 | `add-project-status` | 실제. 지난 이력 탭만 예시 |
 | SCR-06 | `Main` | 검토 목록 | RFP 관리 | FR-10, `add-review-info` | 실제 + 예정 |
 | SCR-07 | `Register` | 검토 등록 | RFP 관리 | FR-01, `add-review-info` | 실제 + 예정. 자동 추출 확인(2단계)은 일부 예시 |
 | SCR-08 | `Detail` | 검토 상세 | RFP 관리 | 아래 SCR-08-x | 탭별로 다름 |
@@ -84,7 +84,9 @@
 | SCR-02 | `GET /runs/{id}` (`stage`, `step`) | — | 진행률 %, 남은 시간 |
 | SCR-03 | `GET /runs`, `GET /assignments?role=`, `GET /users` | — | 판정 기준 변경 영향, 재시도, 게시판, 행사, 접속 상태 |
 | SCR-06 | `GET /runs` | 검토 번호·검토 정보·개수·담당 (`add-review-info`) | 같은 입찰 묶기 |
-| SCR-07 | `POST /runs`, `GET /library`, `POST /runs/library` | 검토 정보 입력 칸 (`add-review-info`) | 문서 종류 미리 확인, 자동 추출, Lot 나누기, 사업 연결 |
+| SCR-04 | `GET /businesses` | — | 등록 전 범위 |
+| SCR-05 | `GET`·`PUT /businesses/{id}`, `POST`·`DELETE /businesses/{id}/submitted` | — | 지난 입찰 이력, 고객 측 창구, 접속 상태 |
+| SCR-07 | `POST /runs`, `GET /library`, `POST /runs/library`, `GET /businesses` | 검토 정보 입력 칸 (`add-review-info`), 사업 연결 (`add-project-status`) | 자동 추출, Lot 나누기 |
 | SCR-08 | `GET /runs/{id}`, `/documents`, `/equipment`, `/losses`, `/approval`(preview) | 검토 정보 고치기 `PUT /runs/{id}/info` | 문서 추가, 상신 권장일 |
 | SCR-08-1 | `GET /judgments`, `/requirements/{id}`, `/checks`, `/risks`, `/outputs`, `/history`, `POST /actions`, `PUT /equipment/{group}/product` | 전체 개수 `X-Total-Count` | 번역, 질의 보냄 상태, 한꺼번에 확정 |
 | SCR-08-2 | `GET /read-checks`, `POST`·`DELETE /read-checks/{key}` | — | — |
