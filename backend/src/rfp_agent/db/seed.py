@@ -456,6 +456,7 @@ def product_row(row: dict[str, str]) -> dict[str, object]:
     values: dict[str, object] = {c: (row.get(c) or None) for c in PRODUCT_COLUMNS}
     values["lifecycle_status"] = values["lifecycle_status"] or "UNKNOWN"
     values["is_assumed"] = values["is_assumed"] or "N"
+    values["comparison_values_assumed"] = values["comparison_values_assumed"] or "Y"
     description = row.get("description") or ""
     values["is_design_card"] = description.startswith(DESIGN_CARD_MARK)
     values["rated_frequency"] = next(
