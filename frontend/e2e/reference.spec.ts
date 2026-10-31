@@ -18,6 +18,32 @@ test('제품 상세', async ({ page, request }) => {
   await expect(panel).toContainText('정격 전압')
 })
 
+test('제품 상세에 계열 사진', async ({ page }) => {
+  // 명세 review-workspace "제품표 상세의 제품 사진" (change add-product-photos)
+  const list = (await (await page.request.get('/api/products?family=GIS&limit=100')).json()) as Product[]
+  await page.goto('/#/products')
+  await page.getByRole('button', { name: /^GIS/ }).click()
+  await page.locator('tbody tr', { hasText: list[0].product_code }).first().click()
+  const photo = page.getByRole('complementary', { name: '제품 상세' }).getByRole('figure', { name: '제품 사진' })
+  await expect(photo.getByRole('img', { name: 'GIS 대표 사진' })).toBeVisible()
+  await expect(photo).toContainText('이 모델만의 사진은 아님')
+  await expect(photo.getByRole('link', { name: 'LS ELECTRIC 공식 사이트' })).toHaveAttribute('href', /ls-electric\.com/)
+  expect(await photo.getByRole('img').evaluate((i: HTMLImageElement) => i.naturalWidth)).toBeGreaterThan(0)
+})
+
+test('사진이 없는 카탈로그', async ({ page }) => {
+  // 명세 review-workspace "제품표 상세의 제품 사진". 실제 제품표는 7개 카탈로그 모두 사진이 있어 응답을 바꿔 확인한다.
+  await page.route(/\/api\/products\/(?!families)[^/?]+$/, async (route) => {
+    const res = await route.fetch()
+    const body = await res.json()
+    await route.fulfill({ response: res, json: { ...body, source_doc: 'CAT-C99999-01 p.1' } })
+  })
+  await page.goto('/#/products')
+  await page.locator('tbody tr').first().click()
+  const panel = page.getByRole('complementary', { name: '제품 상세' })
+  await expect(panel.getByLabel('제품 사진')).toHaveText('공식 사진 없음')
+})
+
 test('두 제품 비교', async ({ page, request }) => {
   const list = (await (await request.get('/api/products?family=GIS&limit=100')).json()) as Product[]
   const [a, b] = list

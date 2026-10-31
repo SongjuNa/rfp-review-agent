@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { api, type ItemKey, type Product, type ProductDetail } from '../api'
 import { Pager } from '../components/Pager'
+import { productPhoto } from '../components/productPhotos'
 import { FAMILY_NAMES, POINT_KIND_NAMES, RESULT_NAMES, RESULT_TONES, STATUS_NAMES } from '../components/labels'
 import { useLoad } from '../components/useLoad'
 import { href } from '../shell/router'
@@ -193,6 +194,7 @@ function Panel({ code, data, error, tab, onTab, items, onClose }: {
         <div style={{ flex: '1 1 auto', minWidth: 0 }}><div className="en" style={{ margin: '0 0 2px' }}>{p ? `${FAMILY_NAMES[p.family] ?? p.family} · ${p.product_name}` : '불러오는 중…'}</div><h3>{code}</h3></div>
         <button type="button" className="ib" aria-label="닫기" onClick={onClose}><span className="ms" aria-hidden="true">close</span></button>
       </div>
+      {p && <Photo sourceDoc={p.source_doc} />}
       <div className="ptabs" role="tablist">
         <button type="button" role="tab" className={tab === 'graph' ? 'on' : ''} aria-selected={tab === 'graph'} onClick={() => onTab('graph')}>연결</button>
         <button type="button" role="tab" className={tab === 'vals' ? 'on' : ''} aria-selected={tab === 'vals'} onClick={() => onTab('vals')}>값</button>
@@ -238,6 +240,19 @@ function Panel({ code, data, error, tab, onTab, items, onClose }: {
         </div>
       )}
     </aside>
+  )
+}
+
+/** 제품 계열 대표 사진과 출처 (add-product-photos). 모델마다 다른 사진이 아니라서 그렇게 적는다. */
+function Photo({ sourceDoc }: { sourceDoc: string | null }) {
+  const ph = productPhoto(sourceDoc)
+  if (!ph) return <p className="en" style={{ margin: '0 16px 8px' }} aria-label="제품 사진">공식 사진 없음</p>
+  return (
+    <figure className="pimg" aria-label="제품 사진" style={{ margin: '0 16px 12px', padding: '10px 10px 8px' }}>
+      <img src={ph.src} alt={`${ph.family} 대표 사진`} style={{ display: 'block', width: '100%', height: 180, objectFit: 'contain' }} />
+      <figcaption>{ph.family} 대표 사진 · 이 모델만의 사진은 아님<br />
+        사진 출처: <a href={ph.page} target="_blank" rel="noreferrer">{ph.site}</a></figcaption>
+    </figure>
   )
 }
 
