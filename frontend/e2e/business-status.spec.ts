@@ -12,6 +12,8 @@ async function start(request: APIRequestContext, form: Record<string, string>): 
   const res = await request.post('/api/runs', {
     multipart: {
       files: { name: 'synthetic_154kV_GIS_spec.docx', mimeType: 'application/octet-stream', buffer: readFileSync(DOCX) },
+      // 문서 목록에 없는 문서라 묶음을 정해 보낸다 (reject-unjudged-registration)
+      choices: JSON.stringify({ 'synthetic_154kV_GIS_spec.docx': { bundle: 'B' } }),
       actor_id: String(ENGINEER), ...form,
     },
   })
@@ -90,6 +92,8 @@ test('이 사업에 RFP 등록', async ({ page, request }) => {
   await page.getByRole('link', { name: '이 사업에 RFP 등록' }).click()
   await expect(page).toHaveURL(new RegExp(`#/register/business/${run.business_id}$`))
   await page.locator('input[type=file]').setInputFiles({ name: 'a.docx', mimeType: 'application/octet-stream', buffer: readFileSync(DOCX) })
+  // 문서 목록에 없는 문서라 묶음을 B로 정해야 다음으로 간다 (reject-unjudged-registration)
+  await page.locator('tr', { hasText: 'a.docx' }).getByLabel('묶음').selectOption('B')
   await page.getByRole('button', { name: /다음/ }).click()
   await expect(page.getByRole('radio', { name: /진행 중인 사업에 추가/ })).toBeChecked()
   await expect(page.getByLabel('진행 중인 사업', { exact: true })).toHaveValue(String(run.business_id))
@@ -116,6 +120,8 @@ test('사업 고르면 미리 채움', async ({ page, request }) => {
     country: '베트남', due_date: '2099-12-31', actor_id: ENGINEER } })).json() as { business_id: number }
   await page.goto('/#/register')
   await page.locator('input[type=file]').setInputFiles({ name: 'a.docx', mimeType: 'application/octet-stream', buffer: readFileSync(DOCX) })
+  // 문서 목록에 없는 문서라 묶음을 B로 정해야 다음으로 간다 (reject-unjudged-registration)
+  await page.locator('tr', { hasText: 'a.docx' }).getByLabel('묶음').selectOption('B')
   await page.getByRole('button', { name: /다음/ }).click()
   await page.getByRole('radio', { name: /진행 중인 사업에 추가/ }).check()
   await page.getByLabel('진행 중인 사업', { exact: true }).selectOption(String(made.business_id))

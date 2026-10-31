@@ -16,6 +16,8 @@ async function start(request: APIRequestContext, form: Record<string, string>) {
   const res = await request.post('/api/runs', {
     multipart: {
       files: { name: 'synthetic_154kV_GIS_spec.docx', mimeType: 'application/octet-stream', buffer: readFileSync(DOCX) },
+      // 문서 목록에 없는 문서라 묶음을 정해 보낸다 (reject-unjudged-registration)
+      choices: JSON.stringify({ 'synthetic_154kV_GIS_spec.docx': { bundle: 'B' } }),
       ...form,
     },
   })
@@ -72,6 +74,8 @@ test('검토 등록 화면으로 시작', async ({ page }) => {
   await page.goto('/#/register')
   await page.getByLabel('docx 올리기').setInputFiles(DOCX.pathname)
   await expect(page.getByText('올릴 준비')).toBeVisible()
+  // 문서 목록에 없는 문서라 묶음을 B로 정해야 다음으로 간다 (reject-unjudged-registration)
+  await page.locator('tr', { hasText: 'synthetic_154kV_GIS_spec.docx' }).getByLabel('묶음').selectOption('B')
   await page.getByRole('button', { name: /다음/ }).click()
   await expect(page.getByRole('button', { name: /다음/ })).toBeDisabled()     // 제출 마감일은 필수
   await page.getByLabel('새 사업명').fill('새만금 산단')     // 사업 연결: 새 사업 만들기 (add-project-status)

@@ -145,3 +145,43 @@ def test_same_file_uploaded_at_once(db, tmp_path, monkeypatch):
         queries.run_documents(db, first)[0]["document_id"]
     assert db.execute("SELECT count(*) FROM judgment WHERE run_id = %s",
                       (second,)).fetchone()[0] > 0
+
+
+def upload(client, paths, choices=None):
+    files = [("files", (p.name, p.read_bytes())) for p in paths]
+    data = {"choices": json.dumps(choices)} if choices else {}
+    return client.post("/api/runs", files=files, data=data)
+
+
+def test_reject_bundle_c_only(client, db, tmp_path):
+    """Scenario: 묶음 C 문서만 올려 등록 — 거절되고 검토 실행이 생기지 않는다."""
+    path = build_judgment_spec(tmp_path / "new_plain_datasheet.docx")
+    res = upload(client, [path])
+    assert res.status_code == 400 and "판정 대상 문서" in res.json()["detail"]
+    assert count(db, "review_run") == 0 and count(db, "document") == 0
+    # 사람이 C로 정해 보내도 같다
+    assert upload(client, [path], {path.name: {"bundle": "C"}}).status_code == 400
+    assert count(db, "review_run") == 0
+
+
+def test_start_when_human_sets_bundle_b(client, db, tmp_path):
+    """Scenario: 사람이 묶음 B로 정해 등록 — 검토가 시작된다."""
+    path = build_judgment_spec(tmp_path / "new_plain_datasheet.docx")
+    res = upload(client, [path], {path.name: {"bundle": "B"}})
+    assert res.status_code == 202, res.text
+    assert count(db, "review_run") == 1
+
+
+def test_start_with_one_judge_target(client, db, spec, tmp_path):
+    """Scenario: 판정 대상이 하나라도 있으면 시작 — 묶음 C 문서도 함께 저장된다."""
+    other = build_judgment_spec(tmp_path / "new_plain_datasheet.docx")
+    res = upload(client, [spec, other])
+    assert res.status_code == 202, res.text
+    docs = client.get(f"/api/runs/{res.json()['run_id']}/documents").json()
+    assert sorted(d["bundle"] for d in docs) == ["A", "C"]
+
+
+def test_broken_docx_is_not_rejected_here(client, db):
+    """열 수 없는 docx는 거절 판단에서 빼고 지금처럼 분석 실패로 남긴다."""
+    res = client.post("/api/runs", files=[("files", ("빈 파일.docx", b""))])
+    assert res.status_code == 202

@@ -15,6 +15,8 @@ async function dueToday(request: APIRequestContext, project: string, scope: stri
   const res = await request.post('/api/runs', {
     multipart: {
       files: { name: 'synthetic_154kV_GIS_spec.docx', mimeType: 'application/octet-stream', buffer: readFileSync(DOCX) },
+      // 문서 목록에 없는 문서라 묶음을 정해 보낸다 (reject-unjudged-registration)
+      choices: JSON.stringify({ 'synthetic_154kV_GIS_spec.docx': { bundle: 'B' } }),
       project_name: project, review_name: scope, due_date: today(), actor_id: String(ENGINEER),
     },
   })
