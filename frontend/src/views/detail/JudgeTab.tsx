@@ -75,6 +75,7 @@ export function JudgeTab({ run, tick, onChanged, head }: {
   const clearFilter = () => reset(() => { setF('all'); setOnlyUnc(false); setText(''); setType('') })
   const open = (j: Judgment) => { setCur(j.judgment_id); setMd(j.judgment_id); setEdK(''); setEdWhy(''); setEdHint(false); setWVal(''); setWWhy('') }
   const done = () => { onChanged() }
+  const say = (m: string) => { setToast(m); setTimeout(() => setToast(''), 3000) }
   const act = (body: Parameters<typeof api.act>[1]) => api.act(id, { ...body, actor_id: user!.user_id }).then(done)
   const go = (d: number) => {
     const i = list.findIndex((r) => r.judgment_id === (curRow?.judgment_id ?? -1)) + d
@@ -108,8 +109,7 @@ export function JudgeTab({ run, tick, onChanged, head }: {
     try {
       await api.bulkConfirm(id, ids, user!.user_id)
       setSel({})
-      setToast(`판정 ${ids.length}줄을 제안대로 확정했습니다.`)
-      setTimeout(() => setToast(''), 3000)
+      say(`판정 ${ids.length}줄을 제안대로 확정했습니다.`)
       done()
     } catch (e) {
       setError((e as Error).message)
@@ -204,7 +204,7 @@ export function JudgeTab({ run, tick, onChanged, head }: {
           <Panel runId={id} j={curRow} w={wOf(curRow)} items={items.data ?? []} log={log.data ?? []} docs={docs.data ?? []} canEdit={canEdit}
             edK={edK} edWhy={edWhy} edHint={edHint} wVal={wVal} wWhy={wWhy}
             setEdK={setEdK} setEdWhy={(v) => { setEdWhy(v); setEdHint(false) }} setWVal={setWVal} setWWhy={setWWhy}
-            onPrev={() => go(-1)} onNext={() => go(1)} onClose={() => setCur(-1)} onApply={apply} onSaveW={saveW} onDone={done} />
+            onPrev={() => go(-1)} onNext={() => go(1)} onClose={() => setCur(-1)} onApply={apply} onSaveW={saveW} onDone={done} onSaved={say} />
         )}
       </div>
 
@@ -213,7 +213,7 @@ export function JudgeTab({ run, tick, onChanged, head }: {
           pos={(page - 1) * size + mdIdx + 1} total={total} canEdit={canEdit}
           onPrev={mdIdx > 0 ? () => { setMd(list[mdIdx - 1].judgment_id); setCur(list[mdIdx - 1].judgment_id) } : null}
           onNext={mdIdx < list.length - 1 ? () => { setMd(list[mdIdx + 1].judgment_id); setCur(list[mdIdx + 1].judgment_id) } : null}
-          onClose={() => setMd(null)} onDone={done}
+          onClose={() => setMd(null)} onDone={done} onSaved={say}
           onEdit={() => { setMd(null); setTimeout(() => document.getElementById('newk')?.focus(), 0) }}
           onConfirm={() => act({ target: 'judgment', target_id: mdRow.judgment_id, action: 'CONFIRM' })} />
       )}
@@ -227,12 +227,12 @@ type PanelProps = {
   edK: string; edWhy: string; edHint: boolean; wVal: string; wWhy: string
   setEdK: (v: string) => void; setEdWhy: (v: string) => void; setWVal: (v: string) => void; setWWhy: (v: string) => void
   onPrev: () => void; onNext: () => void; onClose: () => void; onApply: () => void; onSaveW: (candidateId: number) => void
-  onDone: () => void
+  onDone: () => void; onSaved: (message: string) => void
 }
 
 /** 오른쪽 패널: 원문, 판정 근거, 판정 출처, 보증값, 목록 문장, 판정 바꾸기 */
 function Panel({ runId, j, w, items, log, docs, canEdit, edK, edWhy, edHint, wVal, wWhy, setEdK, setEdWhy, setWVal, setWWhy,
-  onPrev, onNext, onClose, onApply, onSaveW, onDone }: PanelProps) {
+  onPrev, onNext, onClose, onApply, onSaveW, onDone, onSaved }: PanelProps) {
   const req = useLoad(() => api.requirement(j.requirement_id, runId), [j.requirement_id, runId])
   const [a, m, b] = markSplit(req.data?.text_raw ?? '', j.req_value_raw)
   const sug = suggested(j, log)
@@ -287,7 +287,7 @@ function Panel({ runId, j, w, items, log, docs, canEdit, edK, edWhy, edHint, wVa
               )}
           </div>
         )}
-        {draft && <OutputEditor key={`${draft.item_id}-${draft.text_draft}-${draft.status}`} runId={runId} item={draft} id="draft" canEdit={canEdit} onDone={onDone} />}
+        {draft && <OutputEditor key={`${draft.item_id}-${draft.text_draft}-${draft.status}`} runId={runId} item={draft} id="draft" canEdit={canEdit} onDone={onDone} onSaved={onSaved} />}
         <div style={{ borderTop: '1px solid #DCE3EC', paddingTop: 14 }}>
           <div className="lbl">판정 바꾸기</div>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
