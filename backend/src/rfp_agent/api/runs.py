@@ -28,6 +28,7 @@ from rfp_agent.api.schemas import (
     DocumentPreview,
     EngineeringCheck,
     Equipment,
+    HandoffResult,
     Judgment,
     JudgmentCounts,
     LogEntry,
@@ -44,6 +45,7 @@ from rfp_agent.api.schemas import (
     RunListItem,
     RunLogItem,
     RunSummary,
+    SalesHandoff,
     SendResult,
     StageResult,
     SubmissionCheck,
@@ -64,6 +66,7 @@ from rfp_agent.pipeline import (
     review_info,
     run_control,
     run_log,
+    sales_handoff,
     tbe,
 )
 from rfp_agent.pipeline.assignments import build_assignments
@@ -79,6 +82,7 @@ from rfp_agent.pipeline.service import make_context, run_to_end, start_run
 router = APIRouter(prefix="/api", tags=["검토 실행"])
 DOCX_TYPE = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
 XLSX_TYPE = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+ZIP_TYPE = "application/zip"
 
 
 def _file(media_type: str) -> dict:
@@ -157,6 +161,11 @@ class TaskStatus(BaseModel):
     status: str = Field(pattern="^(TODO|DOING|DONE)$")
     actor_id: int
     reply_note: str | None = None
+
+
+class HandoffRequest(BaseModel):
+    actor_id: int | None = None
+    table_id: int | None = None      # 데이터시트일 때
 
 
 class SendRequests(BaseModel):
@@ -757,3 +766,61 @@ def send_assignments(run_id: int, body: SendRequests) -> SendResult:
                      "AND assignment_id = ANY(%s) AND mail_sent_at IS NULL",
                      (run_id, body.assignment_ids))
         return send_requests(conn, run_id, body.assignment_ids, actor_id)
+
+
+# ── 영업 인계 (add-submission-package, FR-11 확장) ──────────────
+
+def _engineer(conn, actor_id: int | None) -> int:
+    actor = actor_id or review.default_user(conn, "ENGINEER")
+    if _review(lambda: review._user_role(conn, actor)) != "ENGINEER":
+        raise HTTPException(403, "영업에 넘기기는 기술 검토 엔지니어만 할 수 있습니다.")
+    return actor
+
+
+@router.post("/runs/{run_id}/datasheet/handoff")
+def handoff_datasheet(run_id: int, body: HandoffRequest) -> HandoffResult:
+    """데이터시트 한 장을 영업 주소로 보낸다. 후보 칸이 남으면 409."""
+    _summary(run_id)
+    if body.table_id is None:
+        raise HTTPException(422, "넘길 데이터시트(table_id)를 정해 주세요.")
+    with connect() as conn:
+        actor = _engineer(conn, body.actor_id)
+        try:
+            return sales_handoff.send_datasheet(conn, run_id, body.table_id, actor)
+        except datasheet.NotFound as exc:
+            raise HTTPException(404, str(exc)) from exc
+        except sales_handoff.HandoffRefused as exc:
+            raise HTTPException(409, str(exc)) from exc
+
+
+@router.get("/runs/{run_id}/package", response_class=Response, responses=_file(ZIP_TYPE))
+def download_package(run_id: int) -> Response:
+    """인계 패키지 zip (결재 승인 뒤). 승인 전이면 409."""
+    _summary(run_id)
+    with connect() as conn:
+        try:
+            name, body, _ = sales_handoff.build_package(conn, run_id)
+        except sales_handoff.HandoffRefused as exc:
+            raise HTTPException(409, str(exc)) from exc
+    return Response(body, media_type=ZIP_TYPE,
+                    headers={"Content-Disposition": f"attachment; filename*=UTF-8''{quote(name)}"})
+
+
+@router.post("/runs/{run_id}/package/handoff")
+def handoff_package(run_id: int, body: HandoffRequest) -> HandoffResult:
+    """인계 패키지를 영업 주소로 보낸다."""
+    _summary(run_id)
+    with connect() as conn:
+        actor = _engineer(conn, body.actor_id)
+        try:
+            return sales_handoff.send_package(conn, run_id, actor)
+        except sales_handoff.HandoffRefused as exc:
+            raise HTTPException(409, str(exc)) from exc
+
+
+@router.get("/runs/{run_id}/handoffs")
+def list_handoffs(run_id: int) -> list[SalesHandoff]:
+    """영업에 넘긴 기록, 최근 것부터."""
+    _summary(run_id)
+    with connect() as conn:
+        return sales_handoff.handoffs(conn, run_id)

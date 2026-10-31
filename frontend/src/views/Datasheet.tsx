@@ -3,6 +3,7 @@ import { api, type DatasheetRow } from '../api'
 import { ErrorText } from '../components/common'
 import { Pager } from '../components/Pager'
 import { saveFile } from '../components/download'
+import { stamp } from '../components/format'
 import { useLoad } from '../components/useLoad'
 import { useCrumbTail } from '../shell/crumb'
 import { usePageCss } from '../shell/pageCss'
@@ -11,10 +12,12 @@ import { useSession } from '../shell/useSession'
 
 // SCR-10 데이터시트 채우기 (목업 v4.57 Datasheet). docs/screens/SCR-10-데이터시트.md
 // 고객 표 하나의 칸 순서 그대로. 근거 값이 없는 칸은 비워 두고 "확인 필요" (CR-04). 화면과 엑셀이 같은 줄.
+// 영업에 넘기기(add-submission-package): 엔지니어만, 후보 칸이 없을 때만(CR-08). 넘긴 기록은 /handoffs.
 
 type Filter = 'all' | 'cand' | 'empty' | 'ok'
 const FILTERS: [Filter, string][] = [['all', '전체'], ['cand', '후보'], ['empty', '확인 필요'], ['ok', '확정']]
 const TONES: Record<DatasheetRow['state'], string> = { ok: 'st c-green', cand: 'st c-blue', empty: 'st c-ora' }
+const SENDABLE = ['ENGINEER_REVIEW', 'APPROVAL', 'APPROVED']
 const pct = (n: number, total: number) => `${total ? Math.round((n / total) * 100) : 0} %`
 
 export function Datasheet({ runId }: { runId: number }) {
@@ -26,6 +29,7 @@ export function Datasheet({ runId }: { runId: number }) {
   const [size, setSize] = useState(10)
   const [tick, setTick] = useState(0)
   const [busy, setBusy] = useState(false)
+  const [sending, setSending] = useState(false)
   const [confirming, setConfirming] = useState<string | null>(null)
   const [toast, setToast] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -35,6 +39,7 @@ export function Datasheet({ runId }: { runId: number }) {
   const first = sheets.data?.length ? [...sheets.data].sort((a, b) => b.empty - a.empty)[0].table_id : null
   const tableId = chosen ?? first
   const data = useLoad(() => (tableId === null ? Promise.resolve(null) : api.datasheet(runId, tableId)), [runId, tableId, tick])
+  const sent = useLoad(() => api.handoffs(runId), [runId, tick])
   useCrumbTail(run.data?.review_no)
 
   const r = run.data
@@ -64,6 +69,23 @@ export function Datasheet({ runId }: { runId: number }) {
       say(`${name} 를 내려받았습니다. 고객 양식 칸 순서 그대로입니다.`)
     }, (e: Error) => setError(e.message)).finally(() => setBusy(false))
   }
+  const last = sent.data?.find((h) => h.kind === 'DATASHEET' && h.table_id === tableId)
+  const sendBlock = !r || !d ? '불러오는 중입니다'
+    : user?.role !== 'ENGINEER' ? '영업에 넘기기는 기술 검토 엔지니어만 할 수 있습니다'
+      : !SENDABLE.includes(r.stage) ? '담당자 확인 단계부터 영업에 넘길 수 있습니다'
+        : d.rows.length === 0 ? '넘길 칸이 없습니다'
+          : c && c.cand > 0 ? `후보 ${c.cand}칸을 먼저 확정해 주세요. 사람이 확인하지 않은 값은 넘기지 않습니다`
+            : null
+  const handoff = () => {
+    if (sending || sendBlock || tableId === null) return
+    setSending(true)
+    setError(null)
+    api.handoffDatasheet(runId, tableId, user!.user_id).then((res) => {
+      setTick((t) => t + 1)
+      if (res.sent) say(`영업 담당(${res.mail_to})에게 넘겼습니다. 확인 필요 ${res.empty ?? 0}칸은 비운 채로 넘어갑니다.`)
+      else setError(res.error === '주소 없음' ? '영업 주소가 설정되지 않아 넘기지 못했습니다(RFP_MAIL_SALES).' : `영업에 넘기지 못했습니다: ${res.error}`)
+    }, (e: Error) => setError(e.message)).finally(() => setSending(false))
+  }
   const sub = d && r ? [d.table_name, d.source_file, r.project_name, r.review_no].filter(Boolean).join(' · ') : ''
 
   return (
@@ -72,14 +94,23 @@ export function Datasheet({ runId }: { runId: number }) {
         <div><h1>데이터시트 채우기</h1><p className="tb-sub">{sub}</p></div>
         <div style={{ display: 'flex', gap: 8 }}>
           <a className="bo" href={href(`/reviews/${runId}`)}><span className="ms" aria-hidden="true" style={{ fontSize: 'var(--ic-s)' }}>arrow_back</span>검토 상세로</a>
-          <span title="영업에 넘기는 기능은 아직 없습니다. 엑셀을 내려받아 전달해 주세요"><button type="button" className="bo" disabled>
-            <span className="ms" aria-hidden="true" style={{ fontSize: 'var(--ic-s)' }}>forward_to_inbox</span>영업에 넘기기</button></span>
+          <span title={sendBlock ?? undefined}><button type="button" className="bo" onClick={handoff} disabled={sending || sendBlock !== null}>
+            <span className="ms" aria-hidden="true" style={{ fontSize: 'var(--ic-s)' }}>forward_to_inbox</span>
+            {sending ? '넘기는 중…' : last && !last.mail_error ? '다시 넘기기' : '영업에 넘기기'}</button></span>
           <span title={d && d.rows.length === 0 ? '내려받을 칸이 없습니다' : undefined}>
             <button type="button" className="bp" onClick={download} disabled={busy || !d || d.rows.length === 0}>
               <span className="ms" aria-hidden="true" style={{ fontSize: 'var(--ic-s)' }}>download</span>{busy ? '만드는 중…' : '엑셀 내려받기'}</button></span>
         </div>
       </div>
       <div className="sh-note"><span className="ms" aria-hidden="true">info</span><span>보증값은 제안 영업이 고객에게 내는 값입니다. 이 화면은 <b>엔지니어가 확정한 후보를 영업에 넘기는 초안</b>입니다. 고객 양식의 칸 순서를 그대로 두고, 제품표·성적서에 없는 값은 채우지 않고 "확인 필요"로 남깁니다. 납기·보증 기간 같은 상업 정보는 영업이 오퍼시트에 적습니다.</span></div>
+      {(last || (c && c.cand > 0 && user?.role === 'ENGINEER')) && (
+        <p className="ds-sent">
+          {last && (last.mail_error
+            ? <span className="c-red">{stamp(last.sent_at)} 영업에 넘기지 못함: {last.mail_error === '주소 없음' ? '영업 주소 없음' : '발송 실패'}</span>
+            : <span>{stamp(last.sent_at)} 영업 담당({last.mail_to})에게 넘김 · {last.sent_by_name}</span>)}
+          {c && c.cand > 0 && user?.role === 'ENGINEER' && <span className="c-ora">{last ? ' · ' : ''}후보 {c.cand}칸을 먼저 확정해야 영업에 넘길 수 있습니다.</span>}
+        </p>
+      )}
       <div className="ds-k" aria-label="요약">
         <div><span>제출할 칸</span><b>{c?.rows ?? '—'}</b><em>고객 양식 그대로</em></div>
         <div><span>채움 · 확정</span><b className="c-green">{c?.ok ?? '—'}</b><em>엔지니어 확정</em></div>

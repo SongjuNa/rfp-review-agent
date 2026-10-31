@@ -1,7 +1,7 @@
 // 백엔드 API (/api, Vite 프록시). 응답 타입은 백엔드 응답 모델에서 만든다 (api.gen.ts, `npm run gen:api`).
 import type {
   ActionResult, ApprovalScreen, AssignmentStatus, BulkResult, CostSummary, BusinessDetail, BusinessList, BusinessLog,
-  DecisionResult, DocumentChoice, DocumentPreview,
+  DecisionResult, DocumentChoice, DocumentPreview, HandoffResult, SalesHandoff,
   LossResult, ProductSwitch, RuleEdit,
   RunLogItem, RunSummary, SendResult, StageResult, SubmitResult,
 } from './api.gen'
@@ -12,7 +12,7 @@ export type {
   DocumentChoice, DocumentPreview, EngineeringCheck,
   Equipment, Health, ItemKey, Judgment, JudgmentCounts, Location, LogEntry, Loss, MyTasks, OutputItem, Product,
   ProductDetail, ProductFamily, Proposal, ReadCheck, Requirement, ReviewCard, Risk, RiskExpression, RuleEdit, RunDocument,
-  RunListItem, RunLogItem, RunSummary, SubmissionCheck, Tbe, TbeRow, User, Warranty,
+  RunListItem, RunLogItem, RunSummary, SalesHandoff, SubmissionCheck, Tbe, TbeRow, User, Warranty,
 } from './api.gen'
 import type {
   CompareRule, DatasheetInfo, Datasheet, DocKindRule, EngineeringCheck, Equipment, Health, ItemKey, Judgment, JudgmentCounts,
@@ -212,6 +212,13 @@ export const api = {
   /** 협조 요청 메일 보내기·다시 보내기 (판정 없는 요청, 발송 실패·주소 없음) */
   sendRequests: (runId: number, assignment_ids: number[], actor_id: number) =>
     call<SendResult>(`/runs/${runId}/assignments/send`, json('POST', { assignment_ids, actor_id })),
+  /** 영업 인계 (add-submission-package): 데이터시트 한 장, 결재 승인 뒤 인계 패키지 */
+  handoffDatasheet: (runId: number, table_id: number, actor_id: number) =>
+    call<HandoffResult>(`/runs/${runId}/datasheet/handoff`, json('POST', { table_id, actor_id })),
+  handoffPackage: (runId: number, actor_id: number) =>
+    call<HandoffResult>(`/runs/${runId}/package/handoff`, json('POST', { actor_id })),
+  downloadPackage: (runId: number) => file(`/runs/${runId}/package`),
+  handoffs: (runId: number) => call<SalesHandoff[]>(`/runs/${runId}/handoffs`),
   reopen: (id: number, actor_id: number) => call<StageResult>(`/runs/${id}/reopen`, json('POST', { actor_id })),
   businesses: (user_id: number | null, scope: 'mine' | 'all') =>
     call<BusinessList>(`/businesses?${query({ user_id: user_id ?? undefined, scope })}`),

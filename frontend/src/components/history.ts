@@ -46,6 +46,12 @@ export function historyText(l: LogEntry): string {
       if (l.action === 'REPLY') return `협조 요청 회신 받음 표시${a.reply_note ? `: ${String(a.reply_note)}` : ''}`
       return '협조 요청 회신 받음 표시 되돌림'
     }
+    case 'sales_handoff': {
+      // 영업 인계 (add-submission-package)
+      const what = a.kind === 'PACKAGE' ? '인계 패키지' : '데이터시트'
+      if (a.error) return `${what} 영업에 넘기지 못함: ${String(a.error)}`
+      return `${what} 영업에 넘김: ${v(a.mail_to)}`
+    }
     case 'run_product_choice':
       return `비교 제품 바꿈: ${v(b.product_code === null ? '자동' : b.product_code)} → ${v(a.product_code === null ? '자동' : a.product_code)}`
     case 'review_run': {
