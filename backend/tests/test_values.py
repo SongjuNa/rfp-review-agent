@@ -67,3 +67,18 @@ def test_site_numbers_are_not_values():
 
 def test_standard_titles_have_no_values():
     assert sentence_values("Part 103: Switches for rated voltages above 1 kV up to 52 kV") == []
+
+
+def test_auxiliary_circuit_voltage_is_not_highest_voltage(seeded_db):
+    """보조 회로 정격 전압은 "Rated voltage"로 시작해도 설비 최고 전압에 연결하지 않는다."""
+    from rfp_agent.pipeline import dictionaries
+    from rfp_agent.pipeline.values import item_key_of
+
+    dicts = dictionaries.load(seeded_db).values
+    assert item_key_of("Rated voltage of auxiliary circuits", dicts) == "aux_circuit_voltage"
+    assert item_key_of("Rated supply voltage of auxiliary and control circuits",
+                       dicts) == "aux_circuit_voltage"
+    assert item_key_of("보조 회로 정격 전압", dicts) == "aux_circuit_voltage"
+    # 원래 설비 최고 전압 표현은 그대로
+    assert item_key_of("Rated voltage", dicts) == "rated_voltage_um"
+    assert item_key_of("Rated voltage (Ur)", dicts) == "rated_voltage_um"

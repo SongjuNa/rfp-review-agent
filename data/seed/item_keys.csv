@@ -16,6 +16,7 @@ breaking_time,차단 시간,Total Breaking Time; Maximum interrupting time; Rate
 closing_time,투입 시간,Total Closing Time; No-load closing time; 무부하 투입시간,≤,작을수록 좋음,
 operating_sequence,동작 책무,Rated operation cycle; Rated operation sequences; Operating sequence; 표준 동작책무,= (문자열),강점 아님,표기 방식 다르면 확인 필요
 control_voltage,제어 전원 전압,Trip coil and closing coil voltage; Control circuit voltage; Mechanism voltage; 제어전원,포함,강점 아님,제품 지원 전압 목록에 요구값이 포함되면 준수
+aux_circuit_voltage,보조 회로 정격 전압,Rated voltage of auxiliary circuits; Rated supply voltage of auxiliary circuits; Rated voltage of auxiliary and control circuits; Rated supply voltage of auxiliary and control circuits; 보조회로 정격전압; 보조회로 전압,포함,강점 아님,설비 최고 전압(rated_voltage_um)과 다름. "Rated voltage"로 시작해 잘못 연결되던 문제(10-31 버그 8). 제품표 연결 없음 → 판정은 확인 필요
 trip_coil_count,트립 코일 수,No. of tripping coils; Number of trip coil; 트립코일 수,≥,강점 아님,2차 트립 코일 옵션 여부 확인
 ip_rating,외함 보호 등급,Protection class of enclosure; IP rating; 보호등급,≥ (IP 코드 비교),클수록 좋음,IP 두 자리 각각 비교
 ambient_temp_max,최고 주위 온도,Ambient temperature; maximum ambient temperature; 주위 최고 온도,≥ (제품 허용 범위가 요구 포함),클수록 좋음,온도 상승(K)과 혼동 금지(전수분석 오탐 사례)
