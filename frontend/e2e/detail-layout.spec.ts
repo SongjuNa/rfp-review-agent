@@ -47,3 +47,19 @@ test('페이지가 많은 목록', async ({ page, request }) => {
   await expect(nav.getByRole('button', { name: '153', exact: true })).toHaveAttribute('aria-current', 'page')
   await expect(page.locator('.pager select')).toBeVisible()
 })
+
+test('후보가 하나뿐인 비교 제품', async ({ page, request }) => {
+  const run = await deviationRun(request, `후보 하나 ${Date.now()}`)
+  const groups = [{
+    equipment_group: 'T1|', label: '파일 101 TS-145-GIS', family: 'GIS', products: ['GIS-145-40'], selected_by: 'AUTO',
+    chosen_product: null, candidates: ['GIS-145-40'], judgments: 14, deviations: 1, ambiguous: 0,
+  }]
+  await page.route(/\/api\/runs\/\d+\/equipment$/, (r: Route) => r.fulfill({ json: groups }))
+  await as(page, ENGINEER)
+  await page.goto(`/#/reviews/${run.run_id}`)
+  const box = page.locator('details.pseg')
+  // 바꿀 제품이 없으면 "펼쳐서 바꾸기" 대신 "펼쳐 보기", 줄 옆에 "다른 후보 없음"
+  await expect(box.locator('.pseg-tg')).toHaveText('펼쳐 보기')
+  await expect(box.getByRole('group', { name: 'TS-145-GIS 비교 제품' }).getByRole('button')).toHaveCount(1)
+  await expect(box.getByText('다른 후보 없음')).toBeVisible()
+})
