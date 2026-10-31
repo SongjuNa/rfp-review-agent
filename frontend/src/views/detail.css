@@ -49,3 +49,7 @@
 .pt-note{display:flex;align-items:center;gap:6px;margin:8px 0 0;padding:8px 10px;border-radius:6px;background:#F2F4F7;color:#475467;font-size:var(--fs-sm)}
 .pt-note.ok{background:#D1FADF;color:#05603A}
 .pt-note .ms{font-size:16px}
+
+/* 처리 상태 화면 분석 취소 (add-run-control) */
+.ldcancel{margin-top:16px;display:flex;gap:8px;align-items:center;justify-content:center;flex-wrap:wrap}
+.ldcancel .ldtx{margin-top:0}

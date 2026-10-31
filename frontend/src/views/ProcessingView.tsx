@@ -1,12 +1,23 @@
 import { useEffect, useState } from 'react'
-import type { RunSummary } from '../api'
+import './detail.css'
+import { api, type RunSummary } from '../api'
 import { duration, progress, STALL_MS, stepText } from '../components/progress'
+import { useSession } from '../shell/useSession'
 
 // SCR-02 처리 상태 (목업 v4.57 Loading). docs/screens/SCR-02-처리상태.md
 // 진행률은 처리 단계 순서와 문서 읽기 단계의 세부 진행으로 센다. 남은 시간은 알 수 없어 보이지 않는다.
 
-export function ProcessingView({ run }: { run: RunSummary }) {
+export function ProcessingView({ run, onChanged }: { run: RunSummary; onChanged: () => void }) {
+  const { user } = useSession()
   const [now, setNow] = useState(() => Date.now())
+  const [asking, setAsking] = useState(false)          // "분석 취소"를 한 번 눌러 확인을 묻는 중
+  const [error, setError] = useState('')
+  const cancelling = Boolean(run.cancel_requested_at)
+  const cancel = () => {
+    setError('')
+    api.cancelRun(run.run_id, user?.user_id ?? null).then(() => { setAsking(false); onChanged() },
+      (e: Error) => setError(e.message))
+  }
   useEffect(() => {
     const timer = setInterval(() => setNow(Date.now()), 1000)     // 지난 시간을 1초마다 다시 센다
     return () => clearInterval(timer)
@@ -33,9 +44,19 @@ export function ProcessingView({ run }: { run: RunSummary }) {
           <div className="ldtx" style={{ marginTop: 4, fontSize: 12 }}>{hint}</div>
           {stalled && (
             <p role="alert" className="ldtx" style={{ marginTop: 12, color: '#B42318' }}>
-              10분 넘게 진행이 없습니다. 분석 중에 백엔드가 꺼졌다면 이 검토는 끝나지 않으니 검토를 다시 등록해 주세요.
+              10분 넘게 진행이 없습니다. 분석 중에 백엔드가 꺼졌다면 이 검토는 끝나지 않으니 분석을 취소한 뒤 다시 시도해 주세요.
             </p>
           )}
+          {/* 분석 취소 (add-run-control): 한 번 더 확인한 뒤 요청한다. 처리는 다음 진행 기록에서 멈춘다 */}
+          <div className="ldcancel">
+            {cancelling ? <span className="ldtx" role="status">취소하는 중… 지금 하던 일을 마치면 멈춥니다.</span>
+              : asking ? <>
+                <span className="ldtx">분석을 멈출까요? 나중에 실패 화면에서 다시 시도할 수 있습니다.</span>
+                <button type="button" className="bp sm" onClick={cancel}>취소하기</button>
+                <button type="button" className="bo sm" onClick={() => setAsking(false)}>계속 분석</button>
+              </> : <button type="button" className="bo sm" onClick={() => setAsking(true)}>분석 취소</button>}
+            {error && <span className="ldtx" role="alert" style={{ color: '#B42318' }}>{error}</span>}
+          </div>
         </div>
       </div>
     </div>

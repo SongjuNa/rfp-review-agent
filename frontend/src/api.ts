@@ -182,6 +182,9 @@ export const api = {
   submit: (id: number, approver_id: number, comment: string, actor_id: number) =>
     call<SubmitResult>(`/runs/${id}/finish-review`, json('POST', { approver_id, comment, actor_id })),
   withdraw: (id: number, actor_id: number) => call<StageResult>(`/runs/${id}/withdraw`, json('POST', { actor_id })),
+  // 처리 중 취소, 실패·취소한 검토 다시 시도 (add-run-control)
+  cancelRun: (id: number, actor_id: number | null) => call<RunSummary>(`/runs/${id}/cancel`, json('POST', { actor_id })),
+  retryRun: (id: number, actor_id: number | null) => call<RunSummary>(`/runs/${id}/retry`, json('POST', { actor_id })),
   decide: (id: number, decision: string, comment: string, actor_id: number) =>
     call<DecisionResult>(`/runs/${id}/approval`, json('POST', { decision, comment, actor_id })),
   tasks: (user_id: number) => call<MyTasks>(`/tasks?user_id=${user_id}`),

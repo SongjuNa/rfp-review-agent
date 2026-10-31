@@ -2055,6 +2055,112 @@
         }
       }
     },
+    "/api/runs/{run_id}/cancel": {
+      "post": {
+        "tags": [
+          "검토 실행"
+        ],
+        "summary": "Cancel Run",
+        "description": "처리 중인 검토를 취소한다. 처리는 다음 진행 기록 때 멈추고 처리 실패가 된다.",
+        "operationId": "cancel_run_api_runs__run_id__cancel_post",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Run Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Actor"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunSummary"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/runs/{run_id}/retry": {
+      "post": {
+        "tags": [
+          "검토 실행"
+        ],
+        "summary": "Retry Run",
+        "description": "실패·취소한 검토를 같은 파일·분류로 다시 처리한다. 처리한 문서는 다시 쓴다.",
+        "operationId": "retry_run_api_runs__run_id__retry_post",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Run Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Actor"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunSummary"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/runs/{run_id}/approval": {
       "get": {
         "tags": [
@@ -10728,6 +10834,26 @@
             ],
             "title": "Error Message"
           },
+          "cancel_requested_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cancel Requested At"
+          },
+          "retries": {
+            "type": "integer",
+            "title": "Retries"
+          },
+          "retryable": {
+            "type": "boolean",
+            "title": "Retryable"
+          },
           "started_at": {
             "type": "string",
             "format": "date-time",
@@ -10800,6 +10926,9 @@
           "step_updated_at",
           "failed_step",
           "error_message",
+          "cancel_requested_at",
+          "retries",
+          "retryable",
           "started_at",
           "finished_at",
           "documents",
