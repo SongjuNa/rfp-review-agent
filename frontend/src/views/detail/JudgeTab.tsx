@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
-import { api, type Judgment, type LogEntry, type OutputItem, type RunDocument, type RunSummary, type Warranty } from '../../api'
+import { api, type EngineeringCheck, type Judgment, type LogEntry, type OutputItem, type RunDocument, type RunSummary, type Warranty } from '../../api'
 import { Pager } from '../../components/Pager'
+import { CHECK_NAMES, CHECK_RULE, CHECK_TONES, checkLine, checksByRequirement } from '../../components/checks'
 import { stamp } from '../../components/format'
 import { confirmedBy, compareText, itemName, locShort, markSplit, prodCell, reqText, suggested, itemFor } from '../../components/judgment'
 import { RESULT_DOTS, RESULT_NAMES, RESULT_ORDER, RESULT_TONES, TYPE_NAMES } from '../../components/labels'
@@ -11,6 +12,7 @@ import { OutputEditor } from './OutputEditor'
 
 // SCR-08-1 판정 탭 (목업 v4.57 Detail #judge). docs/screens/SCR-08-1-판정.md
 // 판정 칩·거르기·판정 순서 표, 줄을 누르면 판정 상세 창과 오른쪽 패널. 고른 줄·준수 모두를 한꺼번에 제안대로 확정 (add-bulk-confirm).
+// 공학 검산(FR-12) 위반·확인 필요 줄 표시와 패널 "공학 검산" 칸 (update-check-display).
 
 
 /** 검색어는 멈춘 뒤 0.3초 있다 보낸다 */
@@ -57,6 +59,10 @@ export function JudgeTab({ run, tick, onChanged, head }: {
   const items = useLoad(() => api.outputs(id), [id, tick])
   const log = useLoad(() => api.history(id), [id, tick])
   const docs = useLoad(() => api.documents(id), [id])
+  const checks = useLoad(() => api.checks(id), [id, tick])
+  const checkOf = checksByRequirement(checks.data ?? [])
+  const violations = (checks.data ?? []).filter((x) => x.result === 'VIOLATION').length
+  const unsure = (checks.data ?? []).filter((x) => x.result === 'NEEDS_REVIEW').length
   const canEdit = run.stage === 'ENGINEER_REVIEW' && user?.role === 'ENGINEER'
 
   const list = rows.data?.items ?? []
@@ -157,6 +163,11 @@ export function JudgeTab({ run, tick, onChanged, head }: {
           {Object.entries(TYPE_NAMES).map(([code, name]) => <option key={code} value={code}>{name}</option>)}
         </select>
       </div>
+      {(violations > 0 || unsure > 0) && (
+        <p className="chkn"><span className="ms" aria-hidden="true">calculate</span>
+          <span>공학 검산 {[violations ? `위반 ${violations}건` : '', unsure ? `확인 필요 ${unsure}건` : ''].filter(Boolean).join(' · ')}
+            <span className="en" style={{ display: 'inline', marginLeft: 6 }}>{CHECK_RULE}. 표에 표시한 줄을 눌러 계산식을 보세요.</span></span></p>
+      )}
       <div className={'work' + (curRow ? ' open' : '')}>
         <div style={{ minWidth: 0 }}>
           {canEdit && selIds.length > 0 && (
@@ -183,6 +194,9 @@ export function JudgeTab({ run, tick, onChanged, head }: {
                         {(j.review_status === 'CONFIRMED' || j.review_status === 'EDITED') && <div className="cfm"><span className="ms" aria-hidden="true">check</span>확정</div>}
                       </td>
                       <td style={{ minWidth: 180 }}><span style={{ fontWeight: 600 }}>{itemName(j)}</span>
+                        {checkOf.get(j.requirement_id) && checkOf.get(j.requirement_id)!.result !== 'PASS' && (
+                          <span className={`tag chk ${checkOf.get(j.requirement_id)!.result === 'VIOLATION' ? 'bad' : 'warn'}`}>
+                            {checkOf.get(j.requirement_id)!.result === 'VIOLATION' ? '검산 위반' : '검산 확인 필요'}</span>)}
                         {j.item_name && j.item_name_raw && <div className="en">{j.item_name_raw}</div>}</td>
                       <td style={{ whiteSpace: 'nowrap' }}>{reqText(j)}</td>
                       <td style={{ whiteSpace: 'nowrap' }}><span className={p.cls}>{p.val}</span><div className="en">{p.sub}</div></td>
@@ -203,7 +217,7 @@ export function JudgeTab({ run, tick, onChanged, head }: {
         </div>
 
         {curRow && (
-          <Panel runId={id} j={curRow} w={wOf(curRow)} items={items.data ?? []} log={log.data ?? []} docs={docs.data ?? []} canEdit={canEdit}
+          <Panel runId={id} j={curRow} w={wOf(curRow)} check={checkOf.get(curRow.requirement_id)} items={items.data ?? []} log={log.data ?? []} docs={docs.data ?? []} canEdit={canEdit}
             edK={edK} edWhy={edWhy} edHint={edHint} wVal={wVal} wWhy={wWhy}
             setEdK={setEdK} setEdWhy={(v) => { setEdWhy(v); setEdHint(false) }} setWVal={setWVal} setWWhy={setWWhy}
             onPrev={() => go(-1)} onNext={() => go(1)} onClose={() => setCur(-1)} onApply={apply} applying={applying} error={panelError} onSaveW={saveW} onDone={done} onSaved={say} />
@@ -211,7 +225,7 @@ export function JudgeTab({ run, tick, onChanged, head }: {
       </div>
 
       {mdRow && (
-        <JudgmentDialog runId={id} j={mdRow} w={wOf(mdRow)} items={items.data ?? []} log={log.data ?? []} docs={docs.data ?? []}
+        <JudgmentDialog runId={id} j={mdRow} w={wOf(mdRow)} check={checkOf.get(mdRow.requirement_id)} items={items.data ?? []} log={log.data ?? []} docs={docs.data ?? []}
           pos={(page - 1) * size + mdIdx + 1} total={total} canEdit={canEdit}
           onPrev={mdIdx > 0 ? () => { setMd(list[mdIdx - 1].judgment_id); setCur(list[mdIdx - 1].judgment_id) } : null}
           onNext={mdIdx < list.length - 1 ? () => { setMd(list[mdIdx + 1].judgment_id); setCur(list[mdIdx + 1].judgment_id) } : null}
@@ -225,7 +239,7 @@ export function JudgeTab({ run, tick, onChanged, head }: {
 }
 
 type PanelProps = {
-  runId: number; j: Judgment; w?: Warranty; items: OutputItem[]; log: LogEntry[]; docs: RunDocument[]; canEdit: boolean
+  runId: number; j: Judgment; w?: Warranty; check?: EngineeringCheck; items: OutputItem[]; log: LogEntry[]; docs: RunDocument[]; canEdit: boolean
   edK: string; edWhy: string; edHint: boolean; wVal: string; wWhy: string
   setEdK: (v: string) => void; setEdWhy: (v: string) => void; setWVal: (v: string) => void; setWWhy: (v: string) => void
   onPrev: () => void; onNext: () => void; onClose: () => void; onApply: () => void; applying: boolean; error: string | null
@@ -234,7 +248,7 @@ type PanelProps = {
 }
 
 /** 오른쪽 패널: 원문, 판정 근거, 판정 출처, 보증값, 목록 문장, 판정 바꾸기 */
-function Panel({ runId, j, w, items, log, docs, canEdit, edK, edWhy, edHint, wVal, wWhy, setEdK, setEdWhy, setWVal, setWWhy,
+function Panel({ runId, j, w, check, items, log, docs, canEdit, edK, edWhy, edHint, wVal, wWhy, setEdK, setEdWhy, setWVal, setWWhy,
   onPrev, onNext, onClose, onApply, applying, error, onSaveW, onDone, onSaved }: PanelProps) {
   const req = useLoad(() => api.requirement(j.requirement_id, runId), [j.requirement_id, runId])
   const [a, m, b] = markSplit(req.data?.text_raw ?? '', j.req_value_raw)
@@ -267,6 +281,13 @@ function Panel({ runId, j, w, items, log, docs, canEdit, edK, edWhy, edHint, wVa
           <div><span className={`st ${RESULT_TONES[j.result]}`}>{RESULT_NAMES[j.result]}</span> <span style={{ marginLeft: 6 }}>{compareText(j, w)}</span></div>
           <div className="en" style={{ marginTop: 2 }}>{j.reason_text}</div>
         </div>
+        {check && (
+          <div>
+            <div className="lbl">공학 검산</div>
+            <div><span className={CHECK_TONES[check.result]}>{CHECK_NAMES[check.result]}</span> <span style={{ marginLeft: 6 }}>{checkLine(check)}</span></div>
+            <div className="en" style={{ marginTop: 2 }}>{check.rule_code} · {CHECK_RULE}</div>
+          </div>
+        )}
         <div>
           <div className="lbl">판정 출처</div>
           <table className="pv"><tbody>
