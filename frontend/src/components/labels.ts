@@ -46,6 +46,11 @@ export const POINT_KIND_NAMES: Record<string, string> = {
 export const ROLE_NAMES: Record<string, string> = {
   ENGINEER: '기술 검토 엔지니어', APPROVER: '승인자', COST: '견적 담당', QUALITY: '품질 담당', SALES: '영업 담당',
 }
+/** 요구사항 유형 7종 (명세서 2-2). 순서는 거르기 목록 순서 */
+export const TYPE_NAMES: Record<string, string> = {
+  TECH_PERF: '기술 성능', STANDARD_CERT: '적용 규격·인증', SITE_ENV: '설치 환경', MAKER_QUAL: '제조사 자격',
+  TEST: '시험', COST: '비용 영향', RISK: '위험 조건',
+}
 export const RISK_NAMES: Record<string, string> = {
   BLANKET: '포괄 조항', VALUE_MISMATCH: '값 불일치', OPEN_SCOPE: '범위 모호', COST_SHIFT: '비용 전가',
 }
