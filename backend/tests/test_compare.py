@@ -93,3 +93,13 @@ def test_paired_particles_follow_filled_value():
     assert filled.text == "가스 누설률이 1 % 이내와 <0.5로 다릅니다." and filled.check == "OK"
     assert josa("3150 A과(와) 정격 전류을(를)") == "3150 A와 정격 전류를"
     assert josa("40 kA 1(으)로, 파일(으)로, 품목(으)로") == "40 kA 1로, 파일로, 품목으로"
+
+
+def test_josa_after_placeholder():
+    """Scenario: 제품 코드 뒤 조사 — 자리표시자 뒤 한쪽 조사를 채운 값에 맞춰 고른다."""
+    assert fill("{p}는 {v2}로", {"p": "GIS-145-40", "v2": "650"}).text == "GIS-145-40은 650으로"
+    assert fill("{p}는 {v2}를 견뎌", {"p": "TRF-HV", "v2": "40 kA 3 s"}).text \
+        == "TRF-HV는 40 kA 3 s를 견뎌"
+    assert fill("{p}의 값은 {v2}로.", {"p": "GIS-245-50", "v2": "3,150 A"}).text \
+        == "GIS-245-50의 값은 3,150 A로."
+    assert fill("{p}가격", {"p": "GIS-145-40"}).text == "GIS-145-40가격"     # 낱말 일부는 그대로

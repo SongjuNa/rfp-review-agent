@@ -45,6 +45,18 @@ def _coda(ch: str) -> tuple[bool, bool]:
     return ch in CODA, ch in RIEUL
 
 
+# 자리표시자 바로 뒤에 붙은 한쪽 조사("{p}는", "{v2}로"). 값을 채우기 전에 둘 다 적은 꼴로 바꿔
+# 채운 값의 끝 글자에 맞게 고른다 ("GIS-145-40는" → "GIS-145-40은").
+AFTER_SLOT = re.compile(r"(\{\w+\})(으로|로|은|는|이|가|을|를|과|와)(?=[\s.,;:!?)\]·]|$)")
+PAIR_OF = {"은": "은(는)", "는": "은(는)", "이": "이(가)", "가": "이(가)", "을": "을(를)",
+           "를": "을(를)", "과": "과(와)", "와": "과(와)", "으로": "(으)로", "로": "(으)로"}
+
+
+def pair_slots(template: str) -> str:
+    """'{p}는 {v2}로' → '{p}은(는) {v2}(으)로'."""
+    return AFTER_SLOT.sub(lambda m: m.group(1) + PAIR_OF[m.group(2)], template)
+
+
 def josa(text: str) -> str:
     """'1 % 이내과(와) <0.5(으)로' → '1 % 이내와 <0.5로'. 앞 글자의 받침으로 조사를 고른다."""
     def pick(m: re.Match) -> str:
@@ -71,7 +83,7 @@ def filled_with(text: str, values: dict[str, str]) -> bool:
 
 def fill(template: str, values: dict[str, str]) -> Filled:
     """자리표시자를 채우고, 채운 문장 속 숫자가 모두 근거 값(values)에 있는지 본다."""
-    text = josa(PLACEHOLDER.sub(lambda m: values.get(m.group(1), m.group(0)), template))
+    text = josa(PLACEHOLDER.sub(lambda m: values.get(m.group(1), m.group(0)), pair_slots(template)))
     allowed = {n for v in values.values() for n in numbers_in(v)}
     wrong = [n for n in numbers_in(text) if n not in allowed]
     if PLACEHOLDER.search(text):
