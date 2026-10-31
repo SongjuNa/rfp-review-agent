@@ -74,8 +74,9 @@ export function Datasheet({ runId }: { runId: number }) {
           <a className="bo" href={href(`/reviews/${runId}`)}><span className="ms" aria-hidden="true" style={{ fontSize: 'var(--ic-s)' }}>arrow_back</span>검토 상세로</a>
           <span title="영업에 넘기는 기능은 아직 없습니다. 엑셀을 내려받아 전달해 주세요"><button type="button" className="bo" disabled>
             <span className="ms" aria-hidden="true" style={{ fontSize: 'var(--ic-s)' }}>forward_to_inbox</span>영업에 넘기기</button></span>
-          <button type="button" className="bp" onClick={download} disabled={busy || !d}>
-            <span className="ms" aria-hidden="true" style={{ fontSize: 'var(--ic-s)' }}>download</span>{busy ? '만드는 중…' : '엑셀 내려받기'}</button>
+          <span title={d && d.rows.length === 0 ? '내려받을 칸이 없습니다' : undefined}>
+            <button type="button" className="bp" onClick={download} disabled={busy || !d || d.rows.length === 0}>
+              <span className="ms" aria-hidden="true" style={{ fontSize: 'var(--ic-s)' }}>download</span>{busy ? '만드는 중…' : '엑셀 내려받기'}</button></span>
         </div>
       </div>
       <div className="sh-note"><span className="ms" aria-hidden="true">info</span><span>보증값은 제안 영업이 고객에게 내는 값입니다. 이 화면은 <b>엔지니어가 확정한 후보를 영업에 넘기는 초안</b>입니다. 고객 양식의 칸 순서를 그대로 두고, 제품표·성적서에 없는 값은 채우지 않고 "확인 필요"로 남깁니다. 납기·보증 기간 같은 상업 정보는 영업이 오퍼시트에 적습니다.</span></div>
