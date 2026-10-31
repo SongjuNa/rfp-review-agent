@@ -66,6 +66,7 @@ openspec/
 | 27 | `archive/2026-10-31-add-claim-evidence` | AI 위험 설명을 문장마다 근거 조각·인용과 대조하고 근거 위치 저장 (완료) |
 | 28 | `archive/2026-10-31-update-document-reuse` | 내용이 같은 파일만 처리 결과 재사용, 표 앞 단락 표 이름, 빈 초안 거절 (완료) |
 | 29 | `archive/2026-10-31-update-comparison-assumption` | 제품표 팀 합성 비교값으로 한 판정·보증값·제품표 화면에 "팀 가정" 표시 (CR-06) (완료) |
+| 30 | `archive/2026-10-31-update-rejudge-busy` | 비교 제품을 바꿔 다시 판정하는 동안 화면 가운데 "다시 판정 중" 안내, 다른 단추 막기 (완료) |
 
 ## 3. 작업 흐름
 

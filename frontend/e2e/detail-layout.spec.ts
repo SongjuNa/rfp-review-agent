@@ -63,3 +63,34 @@ test('후보가 하나뿐인 비교 제품', async ({ page, request }) => {
   await expect(box.getByRole('group', { name: 'TS-145-GIS 비교 제품' }).getByRole('button')).toHaveCount(1)
   await expect(box.getByText('다른 후보 없음')).toBeVisible()
 })
+
+test('다시 판정 중 화면 막기', async ({ page, request }) => {
+  // 명세 review-workspace "머리글 비교 제품 고르기" (change update-rejudge-busy)
+  const run = await deviationRun(request, `다시 판정 ${Date.now()}`)
+  let chosen: string | null = null
+  let release: () => void = () => {}
+  const held = new Promise<void>((done) => { release = done })
+  await page.route(/\/api\/runs\/\d+\/equipment$/, (r: Route) => r.fulfill({ json: [{
+    equipment_group: 'T7|', label: '파일 91 TS-245-GIS', family: 'GIS', products: [chosen ?? 'GIS-245-40'], selected_by: chosen ? 'ENGINEER' : 'AUTO',
+    chosen_product: chosen, candidates: ['GIS-245-40', 'GIS-245-50'], judgments: 11, deviations: 0, ambiguous: 0,
+  }] }))
+  await page.route(/\/api\/runs\/\d+\/equipment\/.+\/product$/, async (r: Route) => {
+    await held                                       // 다시 판정이 끝나지 않은 상태를 붙잡아 둔다
+    chosen = r.request().postDataJSON().product_code
+    await r.fulfill({ json: { judgments: 11 } })
+  })
+  await as(page, ENGINEER)
+  await page.goto(`/#/reviews/${run.run_id}`)
+  await page.getByRole('group', { name: 'TS-245-GIS 비교 제품' }).getByRole('button', { name: 'GIS-245-50' }).click()
+  const cover = page.getByRole('alertdialog', { name: '다시 판정 중…' })
+  await expect(cover).toBeVisible()
+  await expect(cover).toContainText('TS-245-GIS · GIS-245-50')
+  // 막이 클릭을 가로채 탭과 다른 단추가 눌리지 않는다
+  await expect(page.getByRole('tab', { name: '위험 조건' }).click({ trial: true, timeout: 1500 })).rejects.toThrow()
+  await expect(page.getByRole('button', { name: '결재 상신' }).click({ trial: true, timeout: 1500 })).rejects.toThrow()
+  release()
+  await expect(cover).toBeHidden()
+  await expect(page.getByRole('group', { name: 'TS-245-GIS 비교 제품' }).getByRole('button', { name: 'GIS-245-50' }))
+    .toHaveAttribute('aria-pressed', 'true')
+  await expect(page.getByRole('tab', { name: '판정' })).toHaveAttribute('aria-selected', 'true')
+})
