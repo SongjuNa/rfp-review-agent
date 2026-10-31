@@ -142,6 +142,21 @@ def test_ai_inputs_are_per_section(seeded_db, spec_docx):
     assert explained
 
 
+def test_risk_explanation_keeps_claim_evidence(seeded_db, spec_docx):
+    """Scenario: 근거와 맞는 설명 저장 — 문장마다 인용과 근거 위치가 남는다."""
+    run_id, _ = run_once(seeded_db, [spec_docx], llm=FakeLLM())
+    rows = seeded_db.execute(
+        """SELECT c.target_id, c.claim_text, c.exact_quote, c.status, s.location_id,
+                  EXISTS (SELECT 1 FROM risk_flag_member m
+                          JOIN requirement_location rl USING (requirement_id)
+                          WHERE m.risk_id = c.target_id AND rl.location_id = s.location_id)
+           FROM claim_evidence c JOIN claim_evidence_source s USING (claim_id)
+           WHERE c.run_id = %s AND c.target_table = 'risk_flag'""", (run_id,)).fetchall()
+    explained = [r for r in queries.run_risks(seeded_db, run_id) if r["explanation_ai"]]
+    assert rows and len({r[0] for r in rows}) == len(explained)
+    assert all(r[2] and r[3] == "SUPPORTED" and r[5] for r in rows)
+
+
 def test_unreadable_document_skips_later_steps(seeded_db, tmp_path):
     path = build_image_only(tmp_path / "scan_only.docx")
     run_id, stage = run_once(seeded_db, [path])

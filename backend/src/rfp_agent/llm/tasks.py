@@ -2,8 +2,10 @@
 
 import re
 from collections.abc import Callable
+from dataclasses import dataclass
 
 from rfp_agent.llm.client import LLM, LLMFailure, call_with_retry
+from rfp_agent.llm.evidence import EvidenceSpan, normalize_quote
 
 PROMPT_VERSION = "p2"
 DOC_KINDS = ["BID_FORM", "REQUIREMENT_SPEC", "PURCHASE_SPEC", "TEST_SPEC", "SUPPLIER_SPEC",
@@ -105,26 +107,72 @@ def type_unclassified(llm: LLM, texts: list[str],
 
 
 NUMBER = re.compile(r"\d+(?:[.,]\d+)?")
+RELATIONS = ["DIRECT", "DERIVED", "INFERRED"]
 
 
-def explain_risk(llm: LLM, kind: str, facts: str, texts: list[str]) -> str | None:
-    """위험 조건 설명. 사실(facts)에 없는 숫자를 쓰면 버린다 (CR-07)."""
+@dataclass(frozen=True)
+class Claim:
+    """설명 문장 하나와 그 근거: 고른 근거 조각 ID와 그 조각에서 그대로 옮긴 인용."""
+    text: str
+    quote: str
+    evidence_ids: tuple[str, ...]
+    relation: str
+
+
+@dataclass(frozen=True)
+class RiskExplanation:
+    text: str
+    claims: tuple[Claim, ...]
+
+
+def explain_risk(llm: LLM, kind: str, facts: str,
+                 spans: list[EvidenceSpan]) -> RiskExplanation | None:
+    """위험 조건 설명을 문장(claim)마다 근거 조각 ID·원문 인용과 함께 받는다.
+
+    코드가 검증해서 하나라도 어긋나면 설명 전체를 버린다 (CR-07):
+    없는 근거 ID, 고른 조각에 없는 인용, 사실·근거에 없는 숫자.
+    """
     prompt = (
         "입찰 기술 검토 엔지니어에게 이 조항이 왜 위험한지, 또는 두 값이 왜 다를 수 있는지 "
-        "한국어 두세 문장으로 설명한다. 아래 사실에 없는 숫자는 쓰지 않는다.\n"
-        f"종류: {kind}\n사실:\n{facts}\n원문:\n" + "\n".join(t[:800] for t in texts)
+        "한국어 두세 문장으로 설명한다. 아래 근거 조각만 쓰고, 근거에 없는 사실이나 숫자는 "
+        "쓰지 않는다. 문장마다 쓴 근거 조각 ID(evidence_ids), 그 조각에서 그대로 옮긴 "
+        "짧은 인용(exact_quote), 근거와의 관계(relation: DIRECT 그대로, DERIVED 계산·비교, "
+        "INFERRED 추론)를 함께 낸다.\n"
+        f"종류: {kind}\n사실:\n{facts}\n근거:\n"
+        + "\n".join(f"[{s.evidence_id}] {s.text[:800]}" for s in spans)
     )
-    schema = {"type": "object", "properties": {"explanation": {"type": "string"}},
-              "required": ["explanation"]}
+    schema = {"type": "object", "properties": {"claims": {"type": "array", "items": {
+        "type": "object",
+        "properties": {
+            "text": {"type": "string"},
+            "exact_quote": {"type": "string"},
+            "evidence_ids": {"type": "array", "items": {"type": "string"}},
+            "relation": {"type": "string", "enum": RELATIONS},
+        },
+        "required": ["text", "exact_quote", "evidence_ids", "relation"]}}},
+        "required": ["claims"]}
 
     def check(d):
-        assert d["explanation"].strip()
+        assert d["claims"]
+        for c in d["claims"]:
+            assert c["text"].strip() and c["exact_quote"].strip() and c["evidence_ids"]
+            assert c["relation"] in RELATIONS
 
-    text = call_with_retry(llm, prompt, schema, check)["explanation"].strip()
-    allowed = {n.replace(",", "") for n in NUMBER.findall(facts + " " + " ".join(texts))}
+    data = call_with_retry(llm, prompt, schema, check)
+    sources = {s.evidence_id: s.text[:800] for s in spans}
+    claims = tuple(Claim(c["text"].strip(), c["exact_quote"].strip(), tuple(c["evidence_ids"]),
+                         c["relation"]) for c in data["claims"])
+    for c in claims:
+        if any(i not in sources for i in c.evidence_ids):
+            return None                     # 주지 않은 근거를 댔다
+        quote = normalize_quote(c.quote)
+        if not any(quote in normalize_quote(sources[i]) for i in c.evidence_ids):
+            return None                     # 인용이 고른 근거 조각에 없다
+    text = "\n".join(c.text for c in claims)
+    allowed = {n.replace(",", "") for n in NUMBER.findall(facts + " " + " ".join(sources.values()))}
     if any(n.replace(",", "") not in allowed for n in NUMBER.findall(text)):
         return None
-    return text
+    return RiskExplanation(text, claims)
 
 
 DRAFT_VERSION = "d1"

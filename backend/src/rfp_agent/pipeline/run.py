@@ -17,6 +17,7 @@ from psycopg.types.json import Jsonb
 
 from rfp_agent.llm import tasks
 from rfp_agent.llm.client import FAILURE_MESSAGE, LLM, LLMFailure
+from rfp_agent.llm.evidence import EvidenceSpan, evidence_id, parse_evidence_id
 from rfp_agent.pipeline import code_version, dictionaries
 from rfp_agent.pipeline.assignments import build_assignments
 from rfp_agent.pipeline.document import Choice, Report, process_document
@@ -250,24 +251,49 @@ def value_refs(conn: psycopg.Connection, document_ids: list[int]) -> list[ValueR
 def _save_risks(ctx: RunContext, run_id: int, candidates: list[RiskCandidate]) -> int:
     conn = ctx.conn
     for cand in candidates:
-        explanation = None
+        explained = None
         if ctx.llm is not None:
-            texts = [r[0] for r in conn.execute(
-                "SELECT text_raw FROM requirement WHERE requirement_id = ANY(%s)",
-                (cand.members,))]
-            explanation = tasks.explain_risk(ctx.llm, cand.risk_kind, cand.facts, texts)
+            # 근거 조각: 후보 요구사항의 원문 위치마다 ID(E-문서-위치)를 붙여 AI에 준다
+            spans = [EvidenceSpan(evidence_id(doc_id, loc_id), text)
+                     for doc_id, loc_id, text in conn.execute(
+                         """SELECT DISTINCT q.document_id, rl.location_id, q.text_raw
+                            FROM requirement q
+                            JOIN requirement_location rl USING (requirement_id)
+                            WHERE q.requirement_id = ANY(%s)
+                            ORDER BY q.document_id, rl.location_id""", (cand.members,))]
+            if spans:
+                explained = tasks.explain_risk(ctx.llm, cand.risk_kind, cand.facts, spans)
         risk_id = conn.execute(
             """INSERT INTO risk_flag (run_id, risk_kind, expr_id, explanation_ai, status, facts,
                                       item_key)
                VALUES (%s, %s, %s, %s, 'CANDIDATE', %s, %s) RETURNING risk_id""",
             (run_id, cand.risk_kind, cand.expression.expr_id if cand.expression else None,
-             explanation, cand.facts, cand.item_key),
+             explained.text if explained else None, cand.facts, cand.item_key),
         ).fetchone()[0]
         values = cand.value_members or [None] * len(cand.members)
         for req_id, value_id in zip(cand.members, values, strict=True):
             conn.execute("INSERT INTO risk_flag_member VALUES (%s, %s, %s) "
                          "ON CONFLICT DO NOTHING", (risk_id, req_id, value_id))
+        if explained:
+            _save_claims(conn, run_id, "risk_flag", risk_id, "RISK_EXPLANATION", explained.claims)
     return len(candidates)
+
+
+def _save_claims(conn: psycopg.Connection, run_id: int, table: str, target_id: int,
+                 claim_type: str, claims) -> None:
+    """AI 설명 문장마다 인용과 근거 위치를 남긴다. 코드가 인용을 확인한 문장만 온다."""
+    for claim in claims:
+        claim_id = conn.execute(
+            """INSERT INTO claim_evidence (run_id, target_table, target_id, claim_type,
+                                           claim_text, exact_quote, relation, status)
+               VALUES (%s, %s, %s, %s, %s, %s, %s, 'SUPPORTED') RETURNING claim_id""",
+            (run_id, table, target_id, claim_type, claim.text, claim.quote, claim.relation),
+        ).fetchone()[0]
+        locations = dict.fromkeys(parsed[1] for i in claim.evidence_ids
+                                  if (parsed := parse_evidence_id(i)))
+        for seq, location_id in enumerate(locations, start=1):
+            conn.execute("INSERT INTO claim_evidence_source (claim_id, location_id, source_seq) "
+                         "VALUES (%s, %s, %s)", (claim_id, location_id, seq))
 
 
 def _risks_node(ctx: RunContext):
@@ -279,6 +305,8 @@ def _risks_node(ctx: RunContext):
         candidates = clause_candidates(conn, readable, dicts)
         candidates += find_value_mismatches(value_refs(conn, readable), dicts.values.parents)
         with conn.transaction():
+            conn.execute("DELETE FROM claim_evidence WHERE run_id = %s "
+                         "AND target_table = 'risk_flag'", (run_id,))
             conn.execute("DELETE FROM risk_flag_member WHERE risk_id IN "
                          "(SELECT risk_id FROM risk_flag WHERE run_id = %s)", (run_id,))
             conn.execute("DELETE FROM risk_flag WHERE run_id = %s", (run_id,))

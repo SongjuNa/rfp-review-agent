@@ -93,8 +93,12 @@ class FakeLLM:
         field = next(iter(schema["properties"]))
         if field == "doc_kind":
             return {"doc_kind": "UNKNOWN"}
-        if field == "explanation":
-            return {"explanation": "두 값의 적용 대상이 달라 확인이 필요하다."}
+        if field == "claims":
+            # 첫 근거 조각을 대고, 그 조각의 앞 20글자를 그대로 인용한다
+            eid, text = re.search(r"^\[(E-\d+-\d+)\] (.*)$", prompt, re.MULTILINE).groups()
+            return {"claims": [{"text": "두 값의 적용 대상이 달라 확인이 필요하다.",
+                                "exact_quote": text[:20], "evidence_ids": [eid],
+                                "relation": "INFERRED"}]}
         count = len(re.findall(r"^\d+\. ", prompt, re.MULTILINE))
         if field == "texts":
             lines = re.findall(r"^\d+\. .*\(자리표시자: (.*)\)$", prompt, re.MULTILINE)
