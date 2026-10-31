@@ -33,7 +33,7 @@ type Pending = { n: number; late: number }
 function pendingByRun(lists: Assignment[][], now: number): Map<number, Pending> {
   const out = new Map<number, Pending>()
   for (const a of lists.flat()) {
-    if (a.status !== 'TODO') continue
+    if (a.status === 'DONE') continue           // 회신 받지 않은 요청 (안 보냄·메일 보냄)
     const p = out.get(a.run_id) ?? { n: 0, late: 0 }
     p.n += 1
     if (now - new Date(a.sent_at).getTime() > DAY) p.late += 1
@@ -247,7 +247,7 @@ function teamRows(runs: RunListItem[], users: User[], asg: Assignment[][]) {
       return { ...base, job: waiting.length ? `결재 ${waiting.length}건 확인` : '결재 대기 없음', ref: waiting.map((r) => r.review_no).join(' · '),
         stage: waiting.length ? '결재 처리 중' : '', tone: 'st c-blue', due: '', late: false, upd: '', to: '/reviews' }
     }
-    const todo = (depts[u.role] ?? []).filter((a) => a.status === 'TODO')
+    const todo = (depts[u.role] ?? []).filter((a) => a.status !== 'DONE')
     return { ...base, job: todo.length ? `협조 요청 ${todo.length}건 미확인` : '미확인 협조 요청 없음', ref: ROLE_NAMES[u.role] ?? '',
       stage: todo.length ? '협조 처리 중' : '', tone: 'st c-ora', due: '', late: false, upd: '', to: '/todo' }
   })

@@ -34,7 +34,7 @@ def set_stage(conn, run_id, stage):
 
 
 def request_help(conn, run_id, assignee_id, role="COST", status="TODO"):
-    """협조 요청 한 건 (요구사항 하나에). 상태 TODO = 확인하지 않음."""
+    """협조 요청 한 건 (요구사항 하나에). TODO 안 보냄, DOING 메일 보냄, DONE 회신 받음."""
     req = conn.execute("""SELECT q.requirement_id FROM requirement q JOIN run_document rd
                           USING (document_id) WHERE rd.run_id = %s LIMIT 1""",
                        (run_id,)).fetchone()[0]
@@ -208,12 +208,16 @@ def test_linked_project_name_is_locked(db, spec, client):
 # ── 범위별 진행 상태 ─────────────────────────────────────────
 
 def test_state_waiting_for_help(db, spec):
-    """Scenario: 협조 대기 — 확인하지 않은 협조 요청이 남은 담당자 확인."""
+    """Scenario: 협조 대기 — 메일을 보냈지만 회신 받지 않은 협조 요청이 남은 담당자 확인."""
     run_id = run_once(db, [spec])
     business_id = business.create(db, {"business_name": "예시 사업"}, None)
     business.link(db, run_id, business_id, None)
     task = request_help(db, run_id, review.default_user(db, "COST"))
-    assert states(db, business_id) == ["co"]
+    assert states(db, business_id) == ["co"]                 # 안 보냄
+    db.execute("UPDATE assignment SET status = 'DOING', mail_sent_at = now() "
+               "WHERE assignment_id = %s", (task,))
+    db.commit()
+    assert states(db, business_id) == ["co"]                 # 메일 보냄, 회신 대기
     assert business.detail(db, business_id)["ranges"][0]["open_requests"] == 1
     db.execute("UPDATE assignment SET status = 'DONE' WHERE assignment_id = %s", (task,))
     db.commit()

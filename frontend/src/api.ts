@@ -3,7 +3,7 @@ import type {
   ActionResult, ApprovalScreen, AssignmentStatus, BulkResult, BusinessDetail, BusinessList, BusinessLog,
   DecisionResult, DocumentChoice, DocumentPreview,
   LossResult, ProductSwitch, RuleEdit,
-  RunLogItem, RunSummary, StageResult, SubmitResult,
+  RunLogItem, RunSummary, SendResult, StageResult, SubmitResult,
 } from './api.gen'
 
 export type {
@@ -204,8 +204,12 @@ export const api = {
   deleteRule: (dictionary: RuleDictionary, id: string, reason: string, actor_id: number) =>
     call<RuleEdit>(`/rules/${dictionary}/${encodeURIComponent(id)}`, json('DELETE', { reason, actor_id })),
   assignments: (role: string) => call<Assignment[]>(`/assignments?role=${role}`),
-  setTaskStatus: (assignmentId: number, status: string, actor_id: number) =>
-    call<AssignmentStatus>(`/assignments/${assignmentId}`, json('PUT', { status, actor_id })),
+  /** 엔지니어가 회신 받음을 기록하거나 되돌린다 (메일 보냄 ↔ 회신 받음) */
+  setTaskStatus: (assignmentId: number, status: 'DOING' | 'DONE', actor_id: number, reply_note?: string) =>
+    call<AssignmentStatus>(`/assignments/${assignmentId}`, json('PUT', { status, actor_id, reply_note })),
+  /** 협조 요청 메일 보내기·다시 보내기 (판정 없는 요청, 발송 실패·주소 없음) */
+  sendRequests: (runId: number, assignment_ids: number[], actor_id: number) =>
+    call<SendResult>(`/runs/${runId}/assignments/send`, json('POST', { assignment_ids, actor_id })),
   reopen: (id: number, actor_id: number) => call<StageResult>(`/runs/${id}/reopen`, json('POST', { actor_id })),
   businesses: (user_id: number | null, scope: 'mine' | 'all') =>
     call<BusinessList>(`/businesses?${query({ user_id: user_id ?? undefined, scope })}`),

@@ -22,6 +22,15 @@ services:
     environment:
       DATABASE_URL: postgresql://rfp:rfp@db:5432/rfp
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      # 협조 요청 메일 (update-role-handoff-mail). 기본은 Mailpit이라 밖으로 나가지 않는다
+      RFP_SMTP_HOST: ${RFP_SMTP_HOST:-mailpit}
+      RFP_SMTP_PORT: ${RFP_SMTP_PORT:-1025}
+      RFP_SMTP_USER: ${RFP_SMTP_USER:-}
+      RFP_SMTP_PASSWORD: ${RFP_SMTP_PASSWORD:-}
+      RFP_MAIL_FROM: ${RFP_MAIL_FROM:-rfp-agent@example.com}
+      RFP_MAIL_COST: ${RFP_MAIL_COST:-cost@example.com}
+      RFP_MAIL_QUALITY: ${RFP_MAIL_QUALITY:-quality@example.com}
+      RFP_MAIL_SALES: ${RFP_MAIL_SALES:-sales@example.com}
     volumes:
       # 화면에서 올린 docx를 data/private/uploads에 저장하므로 쓰기 가능하게 붙인다
       - ./data/private:/app/data/private
@@ -30,6 +39,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      mailpit:
+        condition: service_started
 
   frontend:
     image: node:22-slim
@@ -46,6 +57,13 @@ services:
       - "5173:5173"
     depends_on:
       - backend
+
+  # 확인용 메일 서버: 시스템이 보낸 협조 요청 메일을 http://localhost:8025 에서 본다 (밖으로 보내지 않음)
+  mailpit:
+    image: axllent/mailpit:v1.21.8
+    ports:
+      - "8025:8025"
+      - "1025:1025"
 
 volumes:
   pgdata:

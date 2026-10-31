@@ -2722,7 +2722,7 @@
           "검토 실행"
         ],
         "summary": "Update Assignment",
-        "description": "담당자가 할 일 상태를 바꾼다 (할 일 → 하는 중 → 끝).",
+        "description": "엔지니어가 회신 받음을 기록하거나 되돌린다 (메일 보냄 ↔ 회신 받음).",
         "operationId": "update_assignment_api_assignments__assignment_id__put",
         "parameters": [
           {
@@ -2752,6 +2752,59 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/AssignmentStatus"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/runs/{run_id}/assignments/send": {
+      "post": {
+        "tags": [
+          "검토 실행"
+        ],
+        "summary": "Send Assignments",
+        "description": "엔지니어가 고른 요청을 부서 주소로 보낸다 (판정 없는 요청, 실패·주소 없음 다시 보내기).",
+        "operationId": "send_assignments_api_runs__run_id__assignments_send_post",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Run Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SendRequests"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SendResult"
                 }
               }
             }
@@ -4301,6 +4354,96 @@
               }
             ],
             "title": "File Name"
+          },
+          "mail_sent_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mail Sent At"
+          },
+          "mail_to": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mail To"
+          },
+          "mail_error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mail Error"
+          },
+          "sent_by_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sent By Name"
+          },
+          "dept_address": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dept Address"
+          },
+          "replied_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Replied At"
+          },
+          "replied_by_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Replied By Name"
+          },
+          "reply_note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reply Note"
           }
         },
         "additionalProperties": false,
@@ -4335,7 +4478,15 @@
           "business_id",
           "business_no",
           "locations",
-          "file_name"
+          "file_name",
+          "mail_sent_at",
+          "mail_to",
+          "mail_error",
+          "sent_by_name",
+          "dept_address",
+          "replied_at",
+          "replied_by_name",
+          "reply_note"
         ],
         "title": "Assignment"
       },
@@ -11305,6 +11456,62 @@
         ],
         "title": "RunSummary"
       },
+      "SendRequests": {
+        "properties": {
+          "assignment_ids": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Assignment Ids"
+          },
+          "actor_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Actor Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "assignment_ids"
+        ],
+        "title": "SendRequests"
+      },
+      "SendResult": {
+        "properties": {
+          "sent": {
+            "type": "integer",
+            "title": "Sent"
+          },
+          "failed": {
+            "type": "integer",
+            "title": "Failed"
+          },
+          "no_address": {
+            "type": "integer",
+            "title": "No Address"
+          },
+          "mails": {
+            "type": "integer",
+            "title": "Mails"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "sent",
+          "failed",
+          "no_address",
+          "mails"
+        ],
+        "title": "SendResult"
+      },
       "StageResult": {
         "properties": {
           "stage": {
@@ -11531,6 +11738,17 @@
           "actor_id": {
             "type": "integer",
             "title": "Actor Id"
+          },
+          "reply_note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reply Note"
           }
         },
         "type": "object",

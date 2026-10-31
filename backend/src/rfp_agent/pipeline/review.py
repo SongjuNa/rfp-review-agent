@@ -14,8 +14,10 @@ import psycopg
 from psycopg.rows import dict_row
 from psycopg.types.json import Jsonb
 
+from rfp_agent.notify.mail import get_mailer
 from rfp_agent.pipeline import queries
 from rfp_agent.pipeline.assignments import build_assignments
+from rfp_agent.pipeline.handoff_mail import send_after_confirm
 from rfp_agent.pipeline.numbers import fill
 from rfp_agent.pipeline.outputs import build_outputs, check_submission
 from rfp_agent.pipeline.proposals import build_proposals
@@ -208,6 +210,7 @@ def bulk_confirm(ctx: RunContext, run_id: int, judgment_ids: list[int],
     build_proposals(conn, run_id, ctx.llm)
     build_assignments(conn, run_id)
     conn.commit()
+    send_after_confirm(conn, run_id, actor_id)      # 확인을 마친 요청은 부서로 메일 (FR-11)
     return {"confirmed": len(ids), "submission_check": _latest_check(conn, run_id)}
 
 
@@ -248,6 +251,7 @@ def act(ctx: RunContext, run_id: int, target: str, target_id: int, action: str,
         check_submission(conn, run_id)
     build_assignments(conn, run_id)                 # 채택한 제안 포인트는 영업·견적에 전달 (FR-11)
     conn.commit()
+    send_after_confirm(conn, run_id, actor_id)      # 확인을 마친 요청은 부서로 메일
     return {"before": _json(before).obj, "after": _json(after).obj,
             "submission_check": _latest_check(conn, run_id)}
 
@@ -525,18 +529,33 @@ VISIBLE_STAGES = ("ENGINEER_REVIEW", "APPROVAL", "APPROVED", "REJECTED")
 
 
 def set_assignment_status(conn: psycopg.Connection, assignment_id: int, status: str,
-                          actor_id: int) -> dict:
-    """담당자가 할 일 상태를 바꾼다 (할 일 → 하는 중 → 끝). 그 역할 사용자만 바꿀 수 있다."""
+                          actor_id: int, reply_note: str | None = None) -> dict:
+    """엔지니어가 회신 받음을 기록하거나 되돌린다 (메일 보냄 ↔ 회신 받음).
+
+    메일 보냄은 발송에 성공할 때 시스템이 기록하고, 견적·품질·영업 담당은 상태를 바꾸지 않는다.
+    """
     if status not in TASK_STATUSES:
         raise ReviewError(400, f"상태 {status}은(는) 없습니다.")
-    found = conn.execute("SELECT assignee_role FROM assignment WHERE assignment_id = %s",
+    found = conn.execute("SELECT run_id, status FROM assignment WHERE assignment_id = %s",
                          (assignment_id,)).fetchone()
     if found is None:
         raise ReviewError(404, f"할 일 {assignment_id}이(가) 없습니다.")
-    if _user_role(conn, actor_id) != found[0]:
-        raise ReviewError(403, "이 할 일은 담당 역할 사용자만 바꿀 수 있습니다.")
-    conn.execute("UPDATE assignment SET status = %s, assignee_id = %s, updated_at = now() "
-                 "WHERE assignment_id = %s", (status, actor_id, assignment_id))
+    if _user_role(conn, actor_id) != "ENGINEER":
+        raise ReviewError(403, "회신 기록은 기술 검토 엔지니어만 할 수 있습니다.")
+    run_id, current = found
+    if {current, status} != {"DOING", "DONE"}:
+        raise ReviewError(409, "메일을 보낸 요청만 회신 받음으로 표시하거나 되돌릴 수 있습니다.")
+    note = (reply_note or "").strip() or None
+    if status == "DONE":
+        conn.execute("UPDATE assignment SET status = 'DONE', replied_at = now(), replied_by = %s, "
+                     "reply_note = %s, updated_at = now() WHERE assignment_id = %s",
+                     (actor_id, note, assignment_id))
+    else:
+        conn.execute("UPDATE assignment SET status = 'DOING', replied_at = NULL, "
+                     "replied_by = NULL, reply_note = NULL, updated_at = now() "
+                     "WHERE assignment_id = %s", (assignment_id,))
+    log(conn, run_id, "assignment", assignment_id, "REPLY" if status == "DONE" else "UNDO",
+        {"status": current}, {"status": status, "reply_note": note}, None, actor_id)
     conn.commit()
     return {"assignment_id": assignment_id, "status": status}
 
@@ -570,12 +589,16 @@ def assignments_for(conn: psycopg.Connection, role: str, run_id: int | None = No
             f"""SELECT a.assignment_id, a.run_id, a.assignee_role, a.status, a.repeat_count,
                       a.sent_at, a.updated_at, a.requirement_id, a.requirement_ids, a.point_id,
                       a.type_code, t.type_name, u.user_name AS assignee,
+                      a.mail_sent_at, a.mail_to, a.mail_error, su.user_name AS sent_by_name,
+                      a.replied_at, ru.user_name AS replied_by_name, a.reply_note,
                       COALESCE(q.text_raw, p.text_draft) AS text, p.point_kind,
                       p.requirement_id AS point_requirement_id, p.is_assumed, r.stage,
                       {queries.REVIEW_INFO}
                FROM assignment a JOIN review_run r ON r.run_id = a.run_id
                LEFT JOIN requirement_type t ON t.type_code = a.type_code
                LEFT JOIN app_user u ON u.user_id = a.assignee_id
+               LEFT JOIN app_user su ON su.user_id = a.sent_by
+               LEFT JOIN app_user ru ON ru.user_id = a.replied_by
                LEFT JOIN requirement q ON q.requirement_id = a.requirement_id
                LEFT JOIN proposal_point p ON p.point_id = a.point_id
                WHERE a.assignee_role = %s AND r.stage = ANY(%s)
@@ -587,6 +610,7 @@ def assignments_for(conn: psycopg.Connection, role: str, run_id: int | None = No
             """SELECT rd.run_id, d.file_no, d.file_name FROM run_document rd
                JOIN document d USING (document_id) WHERE rd.run_id = ANY(%s)""",
             (list({r["run_id"] for r in rows}),))}
+    mailer = get_mailer()
     out = []
     for r in rows:
         ids = r["requirement_ids"] or [r["point_requirement_id"]]
@@ -595,6 +619,7 @@ def assignments_for(conn: psycopg.Connection, role: str, run_id: int | None = No
         r["file_name"] = files.get((r["run_id"], r["locations"][0]["file_no"])) \
             if r["locations"] else None
         r["requirement_id"] = r["requirement_id"] or r["point_requirement_id"]
+        r["dept_address"] = mailer.address(r["assignee_role"])
         if r["locations"]:                      # 원문 위치가 없으면 보내지 않는다 (CR-02)
             out.append(r)
     return out

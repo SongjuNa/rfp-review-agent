@@ -654,6 +654,14 @@ class Assignment(Out):
     business_no: str | None
     locations: list[Location]
     file_name: str | None
+    mail_sent_at: datetime | None     # 메일 보낸 시각 (sent_at은 할 일을 만든 시각)
+    mail_to: str | None
+    mail_error: str | None            # "주소 없음" 또는 발송 실패 오류
+    sent_by_name: str | None
+    dept_address: str | None          # 지금 설정된 부서 주소
+    replied_at: datetime | None
+    replied_by_name: str | None
+    reply_note: str | None
 
 
 class ReviewCard(RunListItem):
@@ -671,6 +679,13 @@ class MyTasks(Out):
 class AssignmentStatus(Out):
     assignment_id: int
     status: TaskState
+
+
+class SendResult(Out):
+    sent: int           # 메일 보냄이 된 요청 수
+    failed: int         # 발송 실패
+    no_address: int     # 부서 주소가 설정되지 않음
+    mails: int          # 보낸 메일 수 (부서마다 한 통)
 
 
 # ── 기준 데이터 (제품표·규칙 사전) ──────────────────────────

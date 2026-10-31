@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
-import { as, riskRun } from './helpers'
+import { ENGINEER, as, riskRun } from './helpers'
 
 // SCR-13 협조 요청 현황. 합성 사양서(tests/docx_factory.build_gis_spec)의 형식시험 줄이 품질 담당에게 간다.
 const QUALITY = 4
@@ -15,9 +15,10 @@ test('수신 부서별 요청 현황', async ({ page, request }) => {
   await page.getByRole('navigation', { name: '수신 부서' }).getByRole('button', { name: '품질 담당' }).click()
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('품질 담당')
   const r = row(page, run.review_no)
-  await expect(r).toContainText('미확인')
+  await expect(r.locator('.st').first()).toHaveText(/안 보냄|회신 대기/)
   await expect(r).toContainText('synthetic_154kV_GIS_spec.docx')
-  await expect(page.locator('.sumline')).toContainText(/미확인\s*[1-9]/)
+  await expect(page.locator('.sumline')).toContainText(/안 보냄\s*\d+/)
+  await expect(page.locator('.sumline')).toContainText(/회신 받음\s*\d+/)
   await page.getByRole('navigation', { name: '수신 부서' }).getByRole('button', { name: '미분류' }).click()
   await expect(page.getByText('이 담당에게 요청 항목이 없습니다.')).toBeVisible()
 })
@@ -27,33 +28,65 @@ test('24시간 넘게 미확인', async ({ page, request }) => {
   const old = new Date(Date.now() - 2 * 86_400_000).toISOString()
   await page.route('**/api/assignments?role=QUALITY', async (route) => {
     const res = await route.fetch()
-    const rows = (await res.json()) as { run_id: number; sent_at: string }[]
-    await route.fulfill({ response: res, json: rows.map((a) => (a.run_id === run.run_id ? { ...a, sent_at: old } : a)) })
+    const rows = (await res.json()) as { run_id: number }[]
+    await route.fulfill({ response: res, json: rows.map((a) => (a.run_id === run.run_id
+      ? { ...a, status: 'DOING', mail_sent_at: old, mail_to: 'quality@example.com', mail_error: null } : a)) })
   })
   await page.goto('/#/todo')
   await page.getByRole('navigation', { name: '수신 부서' }).getByRole('button', { name: '품질 담당' }).click()
   const r = row(page, run.review_no)
-  await expect(r.locator('.st')).toHaveText('24시간 넘게 미확인')
+  await expect(r.locator('.st')).toHaveText('24시간 넘게 회신 없음')
   await r.click()
   const dlg = page.getByRole('dialog')
-  await expect(dlg.locator('.tl2')).toContainText('재요청 필요')
-  await expect(dlg.getByRole('button', { name: '재요청' })).toBeDisabled()
+  await expect(dlg.locator('.tl2')).toContainText('다시 연락 필요')
+  await expect(dlg.locator('.tl2')).toContainText('메일 보냄')
 })
 
-test('받는 담당자의 확인', async ({ page, request }) => {
+test('보내기와 받는 담당자의 확인', async ({ page, request }) => {
+  // 판정이 없는 형식시험 요청은 엔지니어가 [보내기]로 보낸다. 회신이 오면 엔지니어가 회신 요지와 함께 "회신 받음"을 표시한다
   const run = await riskRun(request, `협조 요청 확인 ${Date.now()}`)
+  await as(page, ENGINEER)
+  await page.goto('/#/todo')
+  await page.getByRole('navigation', { name: '수신 부서' }).getByRole('button', { name: '품질 담당' }).click()
+  const r = row(page, run.review_no)
+  await expect(r.locator('.st').first()).toHaveText('안 보냄')
+  await r.getByRole('button', { name: '보내기' }).click()
+  await expect(page.getByRole('status')).toContainText('메일을 보냈습니다')
+  await expect(r.locator('.st').first()).toHaveText('회신 대기')
+  await r.click()
+  const dlg = page.getByRole('dialog')
+  await expect(dlg.locator('.tl2')).toContainText('메일 보냄')
+  await dlg.getByLabel('회신 요지 (한 줄)').fill('성적서 3종 11-05까지 보냄')
+  await dlg.getByRole('button', { name: '회신 받음 표시' }).click()
+  await expect(page.getByRole('status')).toContainText('회신 받음으로 표시했습니다')
+  await expect(r).toHaveClass(/dis/)
+  await expect(r.locator('.st').first()).toHaveText('회신 받음')
+  await expect(dlg).toContainText('회신 요지: 성적서 3종 11-05까지 보냄')
+  await expect(dlg.locator('.tl2')).toContainText('회신 받음')
+})
+
+test('발송 실패 다시 보내기와 담당자는 읽기만', async ({ page, request }) => {
+  const run = await riskRun(request, `협조 요청 실패 ${Date.now()}`)
+  await page.route('**/api/assignments?role=QUALITY', async (route) => {
+    const res = await route.fetch()
+    const rows = (await res.json()) as { run_id: number; status: string }[]
+    await route.fulfill({ response: res, json: rows.map((a) => (a.run_id === run.run_id && a.status === 'TODO'
+      ? { ...a, mail_error: '메일을 보내지 못했습니다: 연결 거부' } : a)) })
+  })
+  await as(page, ENGINEER)
+  await page.goto('/#/todo')
+  await page.getByRole('navigation', { name: '수신 부서' }).getByRole('button', { name: '품질 담당' }).click()
+  const r = row(page, run.review_no)
+  await expect(r).toContainText('발송 실패')
+  await expect(r.getByRole('button', { name: '다시 보내기' })).toBeVisible()
   await as(page, QUALITY)
   await page.goto('/#/todo')
+  await page.reload()                                                            // 같은 주소라 다시 읽어 사용자를 바꾼다
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('품질 담당')   // 담당자는 자기 부서 탭으로 열린다
-  const r = row(page, run.review_no)
-  await r.click()
-  await page.getByRole('dialog').getByRole('button', { name: '확인함' }).click()
-  await expect(page.getByRole('status')).toContainText('확인으로 표시했습니다')
-  await expect(r).toHaveClass(/dis/)
-  await expect(r.locator('.st')).toHaveText('확인')
+  await expect(row(page, run.review_no).getByRole('button')).toHaveCount(0)
+  await row(page, run.review_no).click()
   const dlg = page.getByRole('dialog')
-  await expect(dlg.locator('.tl2')).toContainText('확인')
-  await expect(dlg.getByRole('button', { name: '처리 끝' })).toBeVisible()
+  await expect(dlg.getByRole('button', { name: /보내기|회신 받음/ })).toHaveCount(0)
 })
 
 test('요청하기 예시', async ({ page }) => {

@@ -38,12 +38,12 @@
 ### Modified Capabilities
 - `role-assignment`: 할 일 상태를 엔지니어가 기록, 판정 확정 때 메일 발송.
 - `business-status`: 협조 대기 계산 기준.
-- `review-workspace`: 협조 요청 현황 화면, 홈 화면 협조 대기 기준, 내 할 일 화면.
+- `review-workspace`: 협조 요청 현황 화면, 내 할 일 화면. (홈 화면 협조 대기 문구는 목업을 고친 뒤 따로 바꾼다. 홈 카드 열 기준만 사업 현황과 같게 맞춘다.)
 
 ## Impact
 
-- 백엔드: `pipeline/assignments.py`(상태 권한, 보낸 기록), 새 `rfp_agent/notify/`(메일 발송 모듈, 테스트에서 가짜 발송기로 바꿈), `pipeline/review.py` 확정 때 발송 호출, `api/runs.py`·`schemas.py` 경로와 응답, `pipeline/business.py` 상태 계산. DB: 마이그레이션 0015(`assignment` 보낸 시각·발송 오류·회신 요지·회신 시각 칸, 번호는 최민정 배정).
+- 백엔드: `pipeline/assignments.py`(상태 권한, 보낸 기록), 새 `rfp_agent/notify/`(메일 발송 모듈, 테스트에서 가짜 발송기로 바꿈), `pipeline/review.py` 확정 때 발송 호출, `api/runs.py`·`schemas.py` 경로와 응답, `pipeline/business.py` 상태 계산. DB: 마이그레이션 0017(`assignment` 메일 보낸 시각·받는 주소·발송 오류·회신 요지·회신 시각 칸).
 - 설정: `RFP_SMTP_HOST`·`RFP_SMTP_PORT`·`RFP_SMTP_USER`·`RFP_SMTP_PASSWORD`, 부서 주소 3개(환경 변수만). `docker-compose.yml`에 Mailpit.
-- 프런트: `views/Todo.tsx`(협조 요청), `Home.tsx` 협조 대기 기준 문구(박경빈 님에게 알림), `gen:api`.
+- 프런트: `views/Todo.tsx`(협조 요청), `Home.tsx` 협조 대기 기준 한 줄(회신 받음이 아닌 요청, 박경빈 님에게 알림. 문구는 목업 뒤), `gen:api`.
 - 문서: `docs/screens/SCR-13`, `SCR-13_공유.md`.
-- 담당: 최민정(협조 요청 구역). 부서 몫 엑셀은 인계 패키지(`add-submission-package`)와 같은 함수를 쓴다.
+- 담당: 최민정(협조 요청 구역). 부서 몫 엑셀은 이 change에서 만든다(인계 패키지는 아직 없으므로, 나중에 같은 함수를 쓴다).

@@ -16,6 +16,15 @@ class Settings(BaseSettings):
     seed_dir: Path = REPO_ROOT / "data" / "seed"
     # RFP 원문처럼 저장소에 올리지 않는 자료 (data/private/README.md)
     private_data_dir: Path = REPO_ROOT / "data" / "private"
+    # 협조 요청 메일 (update-role-handoff-mail). 시연·개발은 Mailpit, 실제 사내 서버는 값만 바꾼다.
+    rfp_smtp_host: str | None = None
+    rfp_smtp_port: int = 1025
+    rfp_smtp_user: str | None = None
+    rfp_smtp_password: str | None = None
+    rfp_mail_from: str = "rfp-agent@example.com"
+    rfp_mail_cost: str | None = None
+    rfp_mail_quality: str | None = None
+    rfp_mail_sales: str | None = None
 
     @property
     def docx_dir(self) -> Path:
