@@ -24,6 +24,39 @@ def numbers_in(text: str) -> list[str]:
     return [_plain(m.group(0)) for m in NUMBER.finditer(text)]
 
 
+# "과(와)", "(으)로"처럼 둘 다 적은 조사. 자리표시자 값을 모르는 언어 모델이 이렇게 쓰므로
+# 값을 채운 뒤 앞 글자에 맞게 고른다.
+PAIRED = re.compile(r"(\S)\s?(과\(와\)|와\(과\)|\(으\)로|이\(가\)|가\(이\)"
+                    r"|을\(를\)|를\(을\)|은\(는\)|는\(은\))")
+# 받침 있는 조사, 받침 없는 조사
+PARTICLES = {"과": ("과", "와"), "와": ("과", "와"), "(으)로": ("으로", "로"), "이": ("이", "가"),
+             "가": ("이", "가"), "을": ("을", "를"), "를": ("을", "를"), "은": ("은", "는"),
+             "는": ("은", "는")}
+# 한글이 아닌 끝 글자를 읽었을 때 받침: 0 영, 1 일, 3 삼, 6 육, 7 칠, 8 팔, L 엘, M 엠, N 엔, R 알
+CODA = set("013678LMNRlmnr")
+RIEUL = set("178Llr")                       # ㄹ 받침 뒤에는 "(으)로"가 "로"
+
+
+def _coda(ch: str) -> tuple[bool, bool]:
+    """(받침이 있는지, 그 받침이 ㄹ인지)."""
+    if "가" <= ch <= "힣":
+        final = (ord(ch) - 0xAC00) % 28
+        return final != 0, final == 8
+    return ch in CODA, ch in RIEUL
+
+
+def josa(text: str) -> str:
+    """'1 % 이내과(와) <0.5(으)로' → '1 % 이내와 <0.5로'. 앞 글자의 받침으로 조사를 고른다."""
+    def pick(m: re.Match) -> str:
+        has, rieul = _coda(m.group(1))
+        pair = m.group(2)
+        name = "(으)로" if pair == "(으)로" else pair[0]
+        if name == "(으)로" and rieul:
+            return m.group(1) + "로"
+        return m.group(1) + PARTICLES[name][0 if has else 1]
+    return PAIRED.sub(pick, text)
+
+
 @dataclass
 class Filled:
     text: str
@@ -38,7 +71,7 @@ def filled_with(text: str, values: dict[str, str]) -> bool:
 
 def fill(template: str, values: dict[str, str]) -> Filled:
     """자리표시자를 채우고, 채운 문장 속 숫자가 모두 근거 값(values)에 있는지 본다."""
-    text = PLACEHOLDER.sub(lambda m: values.get(m.group(1), m.group(0)), template)
+    text = josa(PLACEHOLDER.sub(lambda m: values.get(m.group(1), m.group(0)), template))
     allowed = {n for v in values.values() for n in numbers_in(v)}
     wrong = [n for n in numbers_in(text) if n not in allowed]
     if PLACEHOLDER.search(text):

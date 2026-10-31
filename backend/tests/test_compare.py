@@ -3,7 +3,7 @@ loss-evaluation, proposal-points의 Scenario를 코드 수준에서 확인한다
 
 from rfp_agent.pipeline.compare import ReqValue, compare, precheck, unit_key
 from rfp_agent.pipeline.loss import DOLLAR_PER_KW, compute, price_kind
-from rfp_agent.pipeline.numbers import fill, fmt
+from rfp_agent.pipeline.numbers import fill, fmt, josa
 from rfp_agent.pipeline.products import ProductValue
 
 
@@ -85,3 +85,11 @@ def test_loss_without_values():
     assert DOLLAR_PER_KW.match("US$/kW") and not DOLLAR_PER_KW.match("KRW/kW")
     assert [price_kind(n) for n in ("No-load loss", "Load loss", "Auxiliary loss")] == [
         "noload", "load", "aux"]
+
+
+def test_paired_particles_follow_filled_value():
+    """채운 값 뒤의 "과(와)", "(으)로" 같은 조사를 앞 글자 받침에 맞게 고른다."""
+    filled = fill("가스 누설률이 {v1}과(와) {v2}(으)로 다릅니다.", {"v1": "1 % 이내", "v2": "<0.5"})
+    assert filled.text == "가스 누설률이 1 % 이내와 <0.5로 다릅니다." and filled.check == "OK"
+    assert josa("3150 A과(와) 정격 전류을(를)") == "3150 A와 정격 전류를"
+    assert josa("40 kA 1(으)로, 파일(으)로, 품목(으)로") == "40 kA 1로, 파일로, 품목으로"
