@@ -64,12 +64,15 @@ def find_form(conn: psycopg.Connection, document_ids: list[int],
     return None, None
 
 
+OPERATORS = {"<": "<", "<=": "≤", ">": ">", ">=": "≥"}
+
+
 def _judgment_drafts(conn: psycopg.Connection, run_id: int) -> list[Draft]:
     with conn.cursor(row_factory=dict_row) as cur:
         rows = cur.execute(
             """SELECT j.judgment_id, j.requirement_id, j.result, j.reason_code, j.product_code,
-                      j.product_value_raw, j.is_assumed, v.item_key, v.num_value, v.unit_raw,
-                      v.raw_text, k.name_ko
+                      j.product_value_raw, j.is_assumed, v.item_key, v.num_value, v.operator,
+                      v.unit_raw, v.raw_text, k.name_ko
                FROM judgment j JOIN req_value v ON v.value_id = j.value_id
                LEFT JOIN item_key k ON k.item_key = v.item_key
                WHERE j.run_id = %s AND j.is_current AND j.review_status <> 'REJECTED'
@@ -79,7 +82,9 @@ def _judgment_drafts(conn: psycopg.Connection, run_id: int) -> list[Draft]:
     for r in rows:
         kind = "DEVIATION" if r["result"] == "DEVIATION_CANDIDATE" else "QUERY"
         num = float(r["num_value"]) if r["num_value"] is not None else None
-        req = (fmt(num) if num is not None and r["reason_code"] != "MULTI_VALUE"
+        # 비교 기호를 붙여야 "<0.5"와 0.5가 같은 숫자로 읽히지 않는다 (요구 미만·초과 조건)
+        req = (OPERATORS.get(r["operator"] or "", "") + fmt(num)
+               if num is not None and r["reason_code"] != "MULTI_VALUE"
                else (r["raw_text"] or "").strip())
         unit = (r["unit_raw"] or "").strip()
         key = (kind, "J", r["item_key"], req, unit_key(unit), r["product_code"], r["reason_code"])

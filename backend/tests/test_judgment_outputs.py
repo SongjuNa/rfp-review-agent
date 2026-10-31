@@ -120,6 +120,8 @@ def test_gas_leakage_query_and_deviation_are_linked(db, tmp_path):
                  and "1 %" in i["text_draft"])
     assert deviation["linked_items"] == [query["item_id"]]
     assert query["linked_items"] == [deviation["item_id"]]
+    # 요구 "<0.5"의 비교 기호가 남아야 제품 0.5 %와 같은 값으로 읽히지 않는다
+    assert "<0.5" in deviation["text_draft"] and deviation["number_check"] == "OK"
 
 
 def test_number_mismatch_is_flagged(db, spec):
