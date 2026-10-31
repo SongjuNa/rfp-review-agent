@@ -22,6 +22,7 @@ import { SysNotice } from './views/examples/SysNotice'
 import { Team } from './views/examples/Team'
 import { Projects } from './views/Projects'
 import { Products } from './views/Products'
+import { RunLog } from './views/RunLog'
 import { Rules } from './views/Rules'
 import { Tbe } from './views/Tbe'
 import { Todo } from './views/Todo'
@@ -90,6 +91,9 @@ function route(path: string): Route {
   }
   if (path === '/eval') {
     return { menu: 'eval', crumbs: [home, { label: '지식 관리' }, { label: '정답지·채점' }], body: <Eval /> }
+  }
+  if (path === '/runlog') {
+    return { menu: 'runlog', crumbs: [home, { label: '지식 관리' }, { label: '실행 기록' }], body: <RunLog /> }
   }
   if (path === '/team') {
     return { menu: 'team', crumbs: [home, { label: '팀 공유' }, { label: '팀 현황' }], body: <Team /> }

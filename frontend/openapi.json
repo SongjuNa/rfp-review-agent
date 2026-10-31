@@ -119,6 +119,55 @@
         }
       }
     },
+    "/api/run-log": {
+      "get": {
+        "tags": [
+          "검토 실행"
+        ],
+        "summary": "Get Run Log",
+        "description": "실행 기록: 검토마다 걸린 시간·단계별 시간·AI 사용량·추정 비용 (add-run-log).",
+        "operationId": "get_run_log_api_run_log_get",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 500,
+              "default": 200,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/RunLogItem"
+                  },
+                  "title": "Response Get Run Log Api Run Log Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/requirements/{requirement_id}": {
       "get": {
         "tags": [
@@ -10648,6 +10697,320 @@
           "proposals"
         ],
         "title": "RunListItem"
+      },
+      "RunLogItem": {
+        "properties": {
+          "project_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Project Name"
+          },
+          "review_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Review Name"
+          },
+          "customer_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Customer Name"
+          },
+          "country": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Country"
+          },
+          "due_date": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Due Date"
+          },
+          "engineer_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Engineer Id"
+          },
+          "business_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Business Id"
+          },
+          "business_no": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Business No"
+          },
+          "run_id": {
+            "type": "integer",
+            "title": "Run Id"
+          },
+          "review_no": {
+            "type": "string",
+            "title": "Review No"
+          },
+          "engineer_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Engineer Name"
+          },
+          "stage": {
+            "type": "string",
+            "enum": [
+              "PROCESSING",
+              "ENGINEER_REVIEW",
+              "APPROVAL",
+              "APPROVED",
+              "REJECTED",
+              "FAILED"
+            ],
+            "title": "Stage"
+          },
+          "failed_step": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Failed Step"
+          },
+          "cancelled": {
+            "type": "boolean",
+            "title": "Cancelled"
+          },
+          "started_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Started At"
+          },
+          "finished_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finished At"
+          },
+          "seconds": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Seconds"
+          },
+          "llm_model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Llm Model"
+          },
+          "dict_version": {
+            "type": "string",
+            "title": "Dict Version"
+          },
+          "llm_calls": {
+            "type": "integer",
+            "title": "Llm Calls"
+          },
+          "llm_retries": {
+            "type": "integer",
+            "title": "Llm Retries"
+          },
+          "llm_input_tokens": {
+            "type": "integer",
+            "title": "Llm Input Tokens"
+          },
+          "llm_output_tokens": {
+            "type": "integer",
+            "title": "Llm Output Tokens"
+          },
+          "llm_thinking_tokens": {
+            "type": "integer",
+            "title": "Llm Thinking Tokens"
+          },
+          "estimated_cost_krw": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Estimated Cost Krw"
+          },
+          "cost_assumed": {
+            "type": "boolean",
+            "title": "Cost Assumed"
+          },
+          "documents": {
+            "type": "integer",
+            "title": "Documents"
+          },
+          "documents_reused": {
+            "type": "integer",
+            "title": "Documents Reused"
+          },
+          "requirements": {
+            "type": "integer",
+            "title": "Requirements"
+          },
+          "judgments": {
+            "type": "integer",
+            "title": "Judgments"
+          },
+          "retries": {
+            "type": "integer",
+            "title": "Retries"
+          },
+          "steps": {
+            "items": {
+              "$ref": "#/components/schemas/RunStepTime"
+            },
+            "type": "array",
+            "title": "Steps"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "project_name",
+          "review_name",
+          "customer_name",
+          "country",
+          "due_date",
+          "engineer_id",
+          "business_id",
+          "business_no",
+          "run_id",
+          "review_no",
+          "engineer_name",
+          "stage",
+          "failed_step",
+          "cancelled",
+          "started_at",
+          "finished_at",
+          "seconds",
+          "llm_model",
+          "dict_version",
+          "llm_calls",
+          "llm_retries",
+          "llm_input_tokens",
+          "llm_output_tokens",
+          "llm_thinking_tokens",
+          "estimated_cost_krw",
+          "cost_assumed",
+          "documents",
+          "documents_reused",
+          "requirements",
+          "judgments",
+          "retries",
+          "steps"
+        ],
+        "title": "RunLogItem",
+        "description": "실행 기록 한 줄 (add-run-log, NFR-09). 비용은 모델 단가(팀 가정)로 어림한 값."
+      },
+      "RunStepTime": {
+        "properties": {
+          "attempt": {
+            "type": "integer",
+            "title": "Attempt"
+          },
+          "step": {
+            "type": "string",
+            "title": "Step"
+          },
+          "seconds": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Seconds"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "attempt",
+          "step",
+          "seconds"
+        ],
+        "title": "RunStepTime",
+        "description": "실행 기록의 단계 하나 (add-run-log). 끝나지 않은 단계는 seconds가 null."
       },
       "RunSummary": {
         "properties": {

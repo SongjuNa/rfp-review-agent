@@ -2,7 +2,7 @@
 
 export type MenuKey =
   | 'home' | 'register' | 'projects' | 'reviews' | 'todo' | 'bids'
-  | 'products' | 'rules' | 'phrases' | 'eval'
+  | 'products' | 'rules' | 'phrases' | 'eval' | 'runlog'
   | 'team' | 'notice' | 'sysnotice' | 'files' | 'settings'
 
 export type GroupKey = 'rfp' | 'kn' | 'sh'
@@ -28,6 +28,7 @@ export const GROUPS: { key: GroupKey; icon: string; label: string; items: MenuIt
       { key: 'rules', path: '/rules', icon: 'rule', label: '규칙 관리', scr: 'SCR-17' },
       { key: 'phrases', path: '/phrases', icon: 'format_quote', label: '표준 문구', scr: 'SCR-18' },
       { key: 'eval', path: '/eval', icon: 'fact_check', label: '정답지·채점', scr: 'SCR-19' },
+      { key: 'runlog', path: '/runlog', icon: 'timer', label: '실행 기록', scr: 'SCR-25' },     // 목업에 없음 (add-run-log)
     ],
   },
   {

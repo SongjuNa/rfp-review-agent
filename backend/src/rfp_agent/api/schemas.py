@@ -927,3 +927,38 @@ class BusinessLog(Out):
     actor_id: int
     actor_name: str
     acted_at: datetime
+
+
+class RunStepTime(Out):
+    """실행 기록의 단계 하나 (add-run-log). 끝나지 않은 단계는 seconds가 null."""
+    attempt: int                            # 0 = 처음 처리, 1 = 첫 다시 시도
+    step: str
+    seconds: float | None
+
+
+class RunLogItem(ReviewFields):
+    """실행 기록 한 줄 (add-run-log, NFR-09). 비용은 모델 단가(팀 가정)로 어림한 값."""
+    run_id: int
+    review_no: str
+    engineer_name: str | None
+    stage: Stage
+    failed_step: str | None
+    cancelled: bool
+    started_at: datetime
+    finished_at: datetime | None
+    seconds: float | None
+    llm_model: str | None
+    dict_version: str
+    llm_calls: int
+    llm_retries: int
+    llm_input_tokens: int
+    llm_output_tokens: int
+    llm_thinking_tokens: int
+    estimated_cost_krw: int | None          # 단가표에 없는 모델이면 null, AI 없이 돌면 0
+    cost_assumed: bool                      # 단가가 팀 가정 (CR-06)
+    documents: int
+    documents_reused: int
+    requirements: int
+    judgments: int
+    retries: int
+    steps: list[RunStepTime]

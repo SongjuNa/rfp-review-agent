@@ -3,7 +3,7 @@ import type {
   ActionResult, ApprovalScreen, AssignmentStatus, BulkResult, BusinessDetail, BusinessList, BusinessLog,
   DecisionResult, DocumentChoice, DocumentPreview,
   LossResult, ProductSwitch, RuleEdit,
-  RunSummary, StageResult, SubmitResult,
+  RunLogItem, RunSummary, StageResult, SubmitResult,
 } from './api.gen'
 
 export type {
@@ -12,7 +12,7 @@ export type {
   DocumentChoice, DocumentPreview, EngineeringCheck,
   Equipment, Health, ItemKey, Judgment, JudgmentCounts, Location, LogEntry, Loss, MyTasks, OutputItem, Product,
   ProductDetail, ProductFamily, Proposal, ReadCheck, Requirement, ReviewCard, Risk, RiskExpression, RuleEdit, RunDocument,
-  RunListItem, RunSummary, SubmissionCheck, Tbe, TbeRow, User, Warranty,
+  RunListItem, RunLogItem, RunSummary, SubmissionCheck, Tbe, TbeRow, User, Warranty,
 } from './api.gen'
 import type {
   CompareRule, DatasheetInfo, Datasheet, DocKindRule, EngineeringCheck, Equipment, Health, ItemKey, Judgment, JudgmentCounts,
@@ -182,6 +182,7 @@ export const api = {
   submit: (id: number, approver_id: number, comment: string, actor_id: number) =>
     call<SubmitResult>(`/runs/${id}/finish-review`, json('POST', { approver_id, comment, actor_id })),
   withdraw: (id: number, actor_id: number) => call<StageResult>(`/runs/${id}/withdraw`, json('POST', { actor_id })),
+  runLog: () => call<RunLogItem[]>('/run-log'),
   // 처리 중 취소, 실패·취소한 검토 다시 시도 (add-run-control)
   cancelRun: (id: number, actor_id: number | null) => call<RunSummary>(`/runs/${id}/cancel`, json('POST', { actor_id })),
   retryRun: (id: number, actor_id: number | null) => call<RunSummary>(`/runs/${id}/retry`, json('POST', { actor_id })),
