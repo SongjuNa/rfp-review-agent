@@ -176,24 +176,49 @@ def process_document(conn: psycopg.Connection, path: Path, dicts: PipelineDicts,
     # 저장된 결과는 같은 처리 판 + 같은 파일 내용일 때만 다시 쓴다.
     # (이름이 같은 다른 판 파일이 예전 분석 결과를 받지 않게)
     digest = content_hash(path)
-    if c.file_no is not None:
-        existing = conn.execute(
-            "SELECT document_id, file_no FROM document WHERE file_no = %s "
-            "AND processing_key = %s AND content_hash = %s", (c.file_no, key, digest)).fetchone()
-    else:
-        # 파일 목록에 없는 문서는 파일 경로로 찾는다.
-        existing = conn.execute(
-            "SELECT document_id, file_no FROM document WHERE source_path = %s "
-            "AND processing_key = %s AND content_hash = %s", (str(path), key, digest)).fetchone()
+    existing = _find_existing(conn, c, path, key, digest)
     if existing:
-        count = conn.execute("SELECT count(*) FROM requirement WHERE document_id = %s",
-                             (existing[0],)).fetchone()[0]
-        return DocumentResult(existing[0], existing[1], True, c.readable, count)
+        return _reused(conn, existing, c)
 
     if llm is not None and c.readable and c.classify_by != "HUMAN":
         c = cls.apply_ai_kind(c, tasks.classify_document(llm, path.name,
                                                          cls.first_page_text(blocks)))
 
+    try:
+        return _process_new(conn, path, dicts, key, llm, report, c, blocks, line_basis, digest)
+    except psycopg.errors.UniqueViolation:
+        # 같은 파일을 거의 동시에 두 검토가 올리면 먼저 넣은 쪽이 이긴다.
+        # 진 쪽은 자기 작업을 되돌리고 먼저 처리된 결과를 다시 쓴다
+        # (같은 처리 판 + 같은 내용이므로 결과가 같다, CR-11).
+        existing = _find_existing(conn, c, path, key, digest)
+        if existing is None:
+            raise
+        return _reused(conn, existing, c)
+
+
+def _find_existing(conn: psycopg.Connection, c: cls.Classification, path: Path, key: str,
+                   digest: str) -> tuple[int, int] | None:
+    """같은 처리 판 + 같은 파일 내용으로 이미 처리한 문서."""
+    if c.file_no is not None:
+        return conn.execute(
+            "SELECT document_id, file_no FROM document WHERE file_no = %s "
+            "AND processing_key = %s AND content_hash = %s", (c.file_no, key, digest)).fetchone()
+    # 파일 목록에 없는 문서는 파일 경로로 찾는다.
+    return conn.execute(
+        "SELECT document_id, file_no FROM document WHERE source_path = %s "
+        "AND processing_key = %s AND content_hash = %s", (str(path), key, digest)).fetchone()
+
+
+def _reused(conn: psycopg.Connection, existing: tuple[int, int],
+            c: cls.Classification) -> DocumentResult:
+    count = conn.execute("SELECT count(*) FROM requirement WHERE document_id = %s",
+                         (existing[0],)).fetchone()[0]
+    return DocumentResult(existing[0], existing[1], True, c.readable, count)
+
+
+def _process_new(conn, path: Path, dicts: PipelineDicts, key: str, llm: LLM | None,
+                 report: Report, c: cls.Classification, blocks, line_basis: str,
+                 digest: str) -> DocumentResult:
     with conn.transaction():
         doc_id, file_no = _insert_document(conn, path, c, dicts, line_basis, key, digest)
         if not c.readable:
