@@ -18,11 +18,9 @@ test('결재 상신 창', async ({ page, request }) => {
   await send.click()
   await expect(page.getByText('기본 승인자의 결재를 기다리고 있습니다')).toBeVisible()
   await expect(page.locator('.wop')).toContainText(COMMENT)
-  // 결정 전 상신 취소 → 검토 화면으로 돌아간다
+  // 결정 전 상신 취소 → 바로 검토 상세 판정 탭으로 돌아간다
   await page.getByRole('button', { name: '상신 취소' }).click()
-  await expect(page.locator('.ftoast')).toContainText('상신을 취소했습니다.')
-  await expect(page.locator('.ftl')).toContainText('상신 취소')
-  await page.getByRole('link', { name: '검토 화면으로' }).click()
+  await expect(page.locator('.toast')).toContainText('상신을 취소했습니다.')
   await expect(page.getByRole('button', { name: '결재 상신' })).toBeEnabled()
 })
 
