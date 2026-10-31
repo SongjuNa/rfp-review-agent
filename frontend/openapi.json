@@ -1238,7 +1238,7 @@
           "검토 실행"
         ],
         "summary": "Export Outputs",
-        "description": "일탈 목록·질의서 초안 Word 파일 (SCR-08-11).",
+        "description": "일탈 목록·질의서 초안 Word 파일 (SCR-08-11). 항목이 없으면 파일을 만들지 않는다.",
         "operationId": "export_outputs_api_runs__run_id__outputs_export_get",
         "parameters": [
           {

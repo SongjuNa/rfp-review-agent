@@ -157,5 +157,12 @@ def test_deviation_list_docx(db, run, db_url, monkeypatch):
         assert all("행" in r.cells[1].text for r in rows[1:])
         assert removed["text_draft"] not in [r.cells[2].text for r in rows[1:]]
         assert TestClient(app).get(f"/api/runs/{run}/outputs/export?list_kind=X").status_code == 422
+        # 목록에 올릴 항목을 모두 빼면 빈 파일을 만들지 않는다
+        for item in items[1:]:
+            review.act(RunContext(db, VERSION, None, None), run, "output_item", item["item_id"],
+                       "REJECT", reason="목록에서 뺌")
+        empty = TestClient(app).get(f"/api/runs/{run}/outputs/export?list_kind=DEVIATION")
+        assert empty.status_code == 409
+        assert "후보가 없습니다" in empty.json()["detail"]
     finally:
         get_settings.cache_clear()

@@ -120,6 +120,28 @@ def test_same_document_twice_gives_same_results(seeded_db, spec_docx):
     assert facts[0] == facts[1]
 
 
+def test_same_name_different_content_is_processed_again(seeded_db, tmp_path):
+    """이름·파일 번호가 같아도 내용이 다르면 저장된 처리 결과를 다시 쓰지 않는다."""
+    from docx import Document
+
+    name = "RFP_product_master_based_EN.docx"      # 파일 목록 23번
+    (tmp_path / "a").mkdir()
+    (tmp_path / "b").mkdir()
+    old = build_gis_spec(tmp_path / "a" / name)
+    new = build_gis_spec(tmp_path / "b" / name)
+    doc = Document(str(new))
+    doc.add_paragraph("The GIS shall be designed for indoor installation.")
+    doc.save(str(new))
+
+    first, _ = run_once(seeded_db, [old])
+    second, _ = run_once(seeded_db, [new])
+    third, _ = run_once(seeded_db, [new])
+    a, b, c = (queries.run_documents(seeded_db, r)[0] for r in (first, second, third))
+    assert a["file_no"] == b["file_no"]             # 문서 목록의 같은 번호
+    assert a["document_id"] != b["document_id"]     # 내용이 다르면 새로 처리
+    assert b["document_id"] == c["document_id"]     # 같은 내용이면 다시 쓴다
+
+
 def test_ai_failure_stops_run_with_message(seeded_db, spec_docx):
     run_id, stage = run_once(seeded_db, [spec_docx], llm=FakeLLM(fail=True))
     summary = queries.run_summary(seeded_db, run_id)
