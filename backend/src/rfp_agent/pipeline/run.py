@@ -16,7 +16,7 @@ from langgraph.graph import END, START, StateGraph
 from psycopg.types.json import Jsonb
 
 from rfp_agent.llm import tasks
-from rfp_agent.llm.client import FAILURE_MESSAGE, LLM, LLMFailure
+from rfp_agent.llm.client import FAILURE_MESSAGE, LLM, LLMFailure, Usage, usage_of
 from rfp_agent.llm.evidence import EvidenceSpan, evidence_id, parse_evidence_id
 from rfp_agent.pipeline import code_version, dictionaries
 from rfp_agent.pipeline.assignments import build_assignments
@@ -129,8 +129,20 @@ def cancel_message(conn: psycopg.Connection, run_id: int) -> str:
     return josa(f"{(who and who[0]) or '사용자'}이(가) 분석을 취소했습니다.")
 
 
+def _close_step(conn: psycopg.Connection, run_id: int) -> None:
+    conn.execute("UPDATE run_step_time SET finished_at = now() "
+                 "WHERE run_id = %s AND finished_at IS NULL", (run_id,))
+
+
 def _set_step(conn: psycopg.Connection, run_id: int, step: str) -> None:
     check_cancel(conn, run_id)
+    # 실행 기록(add-run-log): 앞 단계를 닫고 이 단계 시작 시각을 적는다. attempt = 다시 시도 횟수
+    _close_step(conn, run_id)
+    conn.execute(
+        """INSERT INTO run_step_time (run_id, attempt, step)
+           SELECT run_id, retry_count, %s FROM review_run WHERE run_id = %s
+           ON CONFLICT (run_id, attempt, step) DO UPDATE
+           SET started_at = now(), finished_at = NULL""", (step, run_id))
     # 단계가 바뀌면 세부 진행을 지우고 마지막 진행 시각을 새로 적는다
     conn.execute("UPDATE review_run SET graph_state = graph_state || %s || "
                  "jsonb_build_object('updated_at', now()) WHERE run_id = %s",
@@ -153,7 +165,7 @@ def _documents_node(ctx: RunContext):
         conn, run_id = ctx.conn, state["run_id"]
         _set_step(conn, run_id, "documents")
         dicts = dictionaries.load(conn)
-        ids = []
+        ids, reused = [], 0
         paths = state["paths"]
         choices = state.get("choices") or {}
         for i, path in enumerate(paths, 1):
@@ -165,6 +177,9 @@ def _documents_node(ctx: RunContext):
                          (run_id, result.document_id))
             conn.commit()
             ids.append(result.document_id)
+            reused += result.reused
+        conn.execute("UPDATE review_run SET documents_reused = %s WHERE run_id = %s",
+                     (reused, run_id))
         projects = {r[0] for r in conn.execute(
             "SELECT DISTINCT project_id FROM document WHERE document_id = ANY(%s)", (ids,))}
         if len(projects) == 1 and None not in projects:
@@ -416,6 +431,8 @@ def execute_run(ctx: RunContext, run_id: int, paths: list[Path],
                  (Jsonb({"inputs": {"paths": [str(p) for p in paths],
                                     "choices": choices or {}}}), run_id))
     conn.commit()
+    usage = usage_of(ctx.llm)
+    before = usage.copy() if usage else None
     try:
         state = build_graph(ctx).invoke({"run_id": run_id, "paths": [str(p) for p in paths],
                                          "choices": choices or {}})
@@ -433,6 +450,7 @@ def execute_run(ctx: RunContext, run_id: int, paths: list[Path],
         conn.execute(
             """UPDATE review_run SET stage = 'FAILED', failed_step = %s, error_message = %s,
                       finished_at = now() WHERE run_id = %s""", (step, message, run_id))
+        _finish_log(conn, run_id, usage, before)
         conn.commit()
         return "FAILED"
     conn.execute(
@@ -441,8 +459,25 @@ def execute_run(ctx: RunContext, run_id: int, paths: list[Path],
             WHERE run_id = %s""",
         (Jsonb({"step": "done", "detail": None, **{k: state.get(k, 0) for k in COUNTS}}),
          run_id))
+    _finish_log(conn, run_id, usage, before)
     conn.commit()
     return "ENGINEER_REVIEW"
+
+
+def _finish_log(conn: psycopg.Connection, run_id: int, usage: Usage | None,
+                before: Usage | None) -> None:
+    """실행 기록: 열린 단계를 닫고 이번 처리의 AI 사용량을 더한다 (다시 시도하면 쌓인다)."""
+    _close_step(conn, run_id)
+    if usage is None or before is None:
+        return
+    d = usage.minus(before)
+    conn.execute(
+        """UPDATE review_run SET llm_calls = llm_calls + %s, llm_retries = llm_retries + %s,
+                  llm_input_tokens = llm_input_tokens + %s,
+                  llm_output_tokens = llm_output_tokens + %s,
+                  llm_thinking_tokens = llm_thinking_tokens + %s
+            WHERE run_id = %s""",
+        (d.calls, d.retries, d.input_tokens, d.output_tokens, d.thinking_tokens, run_id))
 
 
 def switch_product(ctx: RunContext, run_id: int, group: str, product_code: str | None,

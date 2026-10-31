@@ -6,6 +6,7 @@ import psycopg
 import pytest
 
 from rfp_agent.config import get_settings
+from rfp_agent.llm.client import Usage
 
 FIXTURES = Path(__file__).parent / "fixtures"
 # 판정 이후 단계 테스트용 고정 제품표. 실제 제품표(data/seed/products)가 바뀌어도 시나리오가
@@ -85,9 +86,13 @@ class FakeLLM:
         self.fail = fail
         self.text = text            # 문장 초안 답 (없으면 자리표시자를 모두 쓴 문장)
         self.prompts: list[str] = []
+        self.usage = Usage()        # 실행 기록(add-run-log): 요청마다 토큰 100·10·5로 센다
 
     def generate_json(self, prompt: str, schema: dict) -> dict:
         self.prompts.append(prompt)
+        self.usage.input_tokens += 100
+        self.usage.output_tokens += 10
+        self.usage.thinking_tokens += 5
         if self.fail:
             raise TimeoutError("응답 시간 초과")
         field = next(iter(schema["properties"]))

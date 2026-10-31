@@ -952,6 +952,49 @@ export type RunListItem = {
   proposals: number
 }
 
+/** 실행 기록 한 줄 (add-run-log, NFR-09). 비용은 모델 단가(팀 가정)로 어림한 값. */
+export type RunLogItem = {
+  project_name: string | null
+  review_name: string | null
+  customer_name: string | null
+  country: string | null
+  due_date: string | null
+  engineer_id: number | null
+  business_id: number | null
+  business_no: string | null
+  run_id: number
+  review_no: string
+  engineer_name: string | null
+  stage: 'PROCESSING' | 'ENGINEER_REVIEW' | 'APPROVAL' | 'APPROVED' | 'REJECTED' | 'FAILED'
+  failed_step: string | null
+  cancelled: boolean
+  started_at: string
+  finished_at: string | null
+  seconds: number | null
+  llm_model: string | null
+  dict_version: string
+  llm_calls: number
+  llm_retries: number
+  llm_input_tokens: number
+  llm_output_tokens: number
+  llm_thinking_tokens: number
+  estimated_cost_krw: number | null
+  cost_assumed: boolean
+  documents: number
+  documents_reused: number
+  requirements: number
+  judgments: number
+  retries: number
+  steps: RunStepTime[]
+}
+
+/** 실행 기록의 단계 하나 (add-run-log). 끝나지 않은 단계는 seconds가 null. */
+export type RunStepTime = {
+  attempt: number
+  step: string
+  seconds: number | null
+}
+
 export type RunSummary = {
   project_name: string | null
   review_name: string | null

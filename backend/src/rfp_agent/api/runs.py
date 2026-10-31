@@ -41,6 +41,7 @@ from rfp_agent.api.schemas import (
     Risk,
     RunDocument,
     RunListItem,
+    RunLogItem,
     RunSummary,
     StageResult,
     SubmissionCheck,
@@ -60,6 +61,7 @@ from rfp_agent.pipeline import (
     review,
     review_info,
     run_control,
+    run_log,
     tbe,
 )
 from rfp_agent.pipeline.assignments import build_assignments
@@ -223,6 +225,13 @@ def users() -> list[User]:
 def runs(limit: int = Query(50, le=200)) -> list[RunListItem]:
     with connect() as conn:
         return queries.run_list(conn, limit)
+
+
+@router.get("/run-log")
+def get_run_log(limit: int = Query(200, le=500)) -> list[RunLogItem]:
+    """실행 기록: 검토마다 걸린 시간·단계별 시간·AI 사용량·추정 비용 (add-run-log)."""
+    with connect() as conn:
+        return run_log.run_log(conn, limit)
 
 
 @router.get("/requirements/{requirement_id}")
