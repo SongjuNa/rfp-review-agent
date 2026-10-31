@@ -719,6 +719,28 @@ class CostSummary(Out):
     impacts: list[CommercialImpact]
 
 
+class HandoffResult(Out):
+    """영업 인계 결과 (add-submission-package). 주소 없음·발송 실패도 200, error를 채운다."""
+    handoff_id: int
+    sent: bool
+    mail_to: str | None
+    error: str | None
+    empty: int | None        # 데이터시트: 비운 채 넘긴 확인 필요 칸 수
+    files: list[str]
+
+
+class SalesHandoff(Out):
+    handoff_id: int
+    kind: Literal["DATASHEET", "PACKAGE"]
+    table_id: int | None
+    file_names: list[str]
+    mail_to: str | None
+    mail_error: str | None
+    sent_at: datetime
+    sent_by: int
+    sent_by_name: str
+
+
 class SendResult(Out):
     sent: int           # 메일 보냄이 된 요청 수
     failed: int         # 발송 실패

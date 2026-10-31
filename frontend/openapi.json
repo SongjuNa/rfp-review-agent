@@ -2865,6 +2865,203 @@
         }
       }
     },
+    "/api/runs/{run_id}/datasheet/handoff": {
+      "post": {
+        "tags": [
+          "검토 실행"
+        ],
+        "summary": "Handoff Datasheet",
+        "description": "데이터시트 한 장을 영업 주소로 보낸다. 후보 칸이 남으면 409.",
+        "operationId": "handoff_datasheet_api_runs__run_id__datasheet_handoff_post",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Run Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HandoffRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HandoffResult"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/runs/{run_id}/package": {
+      "get": {
+        "tags": [
+          "검토 실행"
+        ],
+        "summary": "Download Package",
+        "description": "인계 패키지 zip (결재 승인 뒤). 승인 전이면 409.",
+        "operationId": "download_package_api_runs__run_id__package_get",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Run Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "파일",
+            "content": {
+              "application/zip": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/runs/{run_id}/package/handoff": {
+      "post": {
+        "tags": [
+          "검토 실행"
+        ],
+        "summary": "Handoff Package",
+        "description": "인계 패키지를 영업 주소로 보낸다.",
+        "operationId": "handoff_package_api_runs__run_id__package_handoff_post",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Run Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HandoffRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HandoffResult"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/runs/{run_id}/handoffs": {
+      "get": {
+        "tags": [
+          "검토 실행"
+        ],
+        "summary": "List Handoffs",
+        "description": "영업에 넘긴 기록, 최근 것부터.",
+        "operationId": "list_handoffs_api_runs__run_id__handoffs_get",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Run Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/SalesHandoff"
+                  },
+                  "title": "Response List Handoffs Api Runs  Run Id  Handoffs Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/products": {
       "get": {
         "summary": "Products",
@@ -7172,6 +7369,98 @@
         },
         "type": "object",
         "title": "HTTPValidationError"
+      },
+      "HandoffRequest": {
+        "properties": {
+          "actor_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Actor Id"
+          },
+          "table_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Table Id"
+          }
+        },
+        "type": "object",
+        "title": "HandoffRequest"
+      },
+      "HandoffResult": {
+        "properties": {
+          "handoff_id": {
+            "type": "integer",
+            "title": "Handoff Id"
+          },
+          "sent": {
+            "type": "boolean",
+            "title": "Sent"
+          },
+          "mail_to": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mail To"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "empty": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Empty"
+          },
+          "files": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Files"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "handoff_id",
+          "sent",
+          "mail_to",
+          "error",
+          "empty",
+          "files"
+        ],
+        "title": "HandoffResult",
+        "description": "영업 인계 결과 (add-submission-package). 주소 없음·발송 실패도 200, error를 채운다."
       },
       "Health": {
         "properties": {
@@ -11790,6 +12079,89 @@
           "proposals"
         ],
         "title": "RunSummary"
+      },
+      "SalesHandoff": {
+        "properties": {
+          "handoff_id": {
+            "type": "integer",
+            "title": "Handoff Id"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "DATASHEET",
+              "PACKAGE"
+            ],
+            "title": "Kind"
+          },
+          "table_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Table Id"
+          },
+          "file_names": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "File Names"
+          },
+          "mail_to": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mail To"
+          },
+          "mail_error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mail Error"
+          },
+          "sent_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Sent At"
+          },
+          "sent_by": {
+            "type": "integer",
+            "title": "Sent By"
+          },
+          "sent_by_name": {
+            "type": "string",
+            "title": "Sent By Name"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "handoff_id",
+          "kind",
+          "table_id",
+          "file_names",
+          "mail_to",
+          "mail_error",
+          "sent_at",
+          "sent_by",
+          "sent_by_name"
+        ],
+        "title": "SalesHandoff"
       },
       "SendRequests": {
         "properties": {

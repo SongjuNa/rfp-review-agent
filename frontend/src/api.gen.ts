@@ -472,6 +472,21 @@ export type FieldHistory = {
   cases: number
 }
 
+export type HandoffRequest = {
+  actor_id?: number | null
+  table_id?: number | null
+}
+
+/** 영업 인계 결과 (add-submission-package). 주소 없음·발송 실패도 200, error를 채운다. */
+export type HandoffResult = {
+  handoff_id: number
+  sent: boolean
+  mail_to: string | null
+  error: string | null
+  empty: number | null
+  files: string[]
+}
+
 export type Health = {
   status: string
   database: string
@@ -1074,6 +1089,18 @@ export type RunSummary = {
   output_items: number
   check_violations: number
   proposals: number
+}
+
+export type SalesHandoff = {
+  handoff_id: number
+  kind: 'DATASHEET' | 'PACKAGE'
+  table_id: number | null
+  file_names: string[]
+  mail_to: string | null
+  mail_error: string | null
+  sent_at: string
+  sent_by: number
+  sent_by_name: string
 }
 
 export type SendRequests = {
