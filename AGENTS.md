@@ -69,6 +69,7 @@ openspec/
 | 30 | `archive/2026-10-31-update-rejudge-busy` | 비교 제품을 바꿔 다시 판정하는 동안 화면 가운데 "다시 판정 중" 안내, 다른 단추 막기 (완료) |
 | 31 | `archive/2026-10-31-update-proposal-actions` | 입찰 영향 탭 채택·버림 단추와 알림(전달 담당·사유), 채택·버린 줄 색 (완료) |
 | 32 | `archive/2026-10-31-update-sentence-josa` | 자리표시자 뒤 조사를 채운 값에 맞춰 고르기("GIS-145-40은") (완료) |
+| 33 | `archive/2026-10-31-update-document-reuse-race` | 같은 파일을 거의 동시에 올려 문서 저장이 겹치면 먼저 저장된 결과를 다시 씀 (완료) |
 
 ## 3. 작업 흐름
 

@@ -118,3 +118,30 @@ def test_upload_with_choices(client, db, tmp_path):
 def test_preview_rejects_broken_docx(client):
     res = client.post("/api/runs/preview", files=[("files", ("빈 파일.docx", b""))])
     assert res.status_code == 400 and "열 수 없습니다" in res.json()["detail"]
+
+
+def test_same_file_uploaded_at_once(db, tmp_path, monkeypatch):
+    """Scenario: 같은 파일을 거의 동시에 두 번 올림.
+
+    늦게 넣은 쪽은 먼저 처리된 결과를 다시 쓴다.
+    """
+    from rfp_agent.pipeline import document
+    path = build_judgment_spec(tmp_path / "new_plain_datasheet.docx")
+    first = run_once(db, [path], {path.name: {"bundle": "B"}})
+    real = document._find_existing
+    calls = []
+
+    def missed_once(*args):
+        # 다른 검토가 아직 넣기 전에 찾아본 것처럼, 처음 한 번은 못 찾은 것으로 한다
+        calls.append(1)
+        return None if len(calls) == 1 else real(*args)
+
+    monkeypatch.setattr(document, "_find_existing", missed_once)
+    documents = count(db, "document")
+    second = run_once(db, [path], {path.name: {"bundle": "B"}})
+    assert len(calls) == 2                                   # 넣다가 겹쳐 다시 찾음
+    assert count(db, "document") == documents                # 새 문서 행 없음
+    assert queries.run_documents(db, second)[0]["document_id"] == \
+        queries.run_documents(db, first)[0]["document_id"]
+    assert db.execute("SELECT count(*) FROM judgment WHERE run_id = %s",
+                      (second,)).fetchone()[0] > 0
