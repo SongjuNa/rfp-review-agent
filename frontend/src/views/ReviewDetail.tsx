@@ -10,7 +10,7 @@ import { usePageCss } from '../shell/pageCss'
 import { href } from '../shell/router'
 import { DocumentsDialog } from './DocumentsDialog'
 import { DetailBody, DetailTabs, type DetailTab } from './detail/DetailBody'
-import { ProductSeg } from './detail/ProductSeg'
+import { ProductSeg, type Rejudging } from './detail/ProductSeg'
 import { FailView } from './FailView'
 import { ProcessingView } from './ProcessingView'
 import { ReviewInfoDialog } from './ReviewInfoDialog'
@@ -21,8 +21,9 @@ import { WaitView } from './WaitView'
 // 승인 대기인 검토는 SCR-12 결재 대기 화면(WaitView)으로 보인다.
 
 /** 머리글: 검토 번호·단계·마감, 제목(사업명 · 검토명), 사업·문서(누르면 문서 표)·판정 묶음·고객사·담당 줄, 검토 정보 고치기 */
-function ReviewHeader({ run, approver, onEdit, onSwitched }: {
+function ReviewHeader({ run, approver, onEdit, onSwitched, onBusy }: {
   run: RunSummary; approver: string | null; onEdit: () => void; onSwitched?: () => void
+  onBusy?: (b: Rejudging | null) => void
 }) {
   const due = run.due_date ? dday(run.due_date) : null
   const docs = useLoad(() => api.documents(run.run_id), [run.run_id, run.stage])
@@ -60,9 +61,23 @@ function ReviewHeader({ run, approver, onEdit, onSwitched }: {
             <span className="ms" aria-hidden="true" style={{ fontSize: 'var(--ic-s)' }}>edit</span>검토 정보 고치기</button>
         </div>
       </div>
-      {onSwitched && <ProductSeg run={run} onSwitched={onSwitched} />}
+      {onSwitched && <ProductSeg run={run} onSwitched={onSwitched} onBusy={onBusy} />}
       {docsOpen && docs.data && <DocumentsDialog run={run} docs={docs.data} onClose={() => setDocsOpen(false)} />}
     </>
+  )
+}
+
+/** 비교 제품을 바꿔 다시 판정하는 동안 화면 전체를 덮고 가운데에 크게 알린다. 막이 클릭을 받아 다른 단추가 눌리지 않는다 (update-rejudge-busy) */
+function RejudgeCover({ busy }: { busy: Rejudging }) {
+  return (
+    <div className="rjcover" role="alertdialog" aria-modal="true" aria-busy="true" aria-labelledby="rj-title">
+      <div className="rjbox">
+        <span className="rjspin" aria-hidden="true" />
+        <b id="rj-title">다시 판정 중…</b>
+        <span>{busy.group} · {busy.product} 기준으로 다시 판정하고 있습니다.</span>
+        <span className="rjsub">끝나면 판정·손실 환산·제안 포인트가 새로 보입니다. 그동안 다른 단추는 누를 수 없습니다.</span>
+      </div>
+    </div>
   )
 }
 
@@ -74,6 +89,7 @@ export function ReviewDetail({ runId }: { runId: number }) {
   const [tab, setTab] = useState<DetailTab>('judge')
   const [notice, setNotice] = useState('')
   const [version, setVersion] = useState(0)          // 비교 제품을 바꾸면 탭 본문을 새로 불러온다
+  const [rejudging, setRejudging] = useState<Rejudging | null>(null)
   usePageCss(run?.stage === 'APPROVAL' ? 'Wait' : run?.stage === 'FAILED' ? 'Fail' : 'Detail')
   useCrumbTail(run?.review_no)
   useEffect(() => {
@@ -96,12 +112,13 @@ export function ReviewDetail({ runId }: { runId: number }) {
     <main className="main">
       {ready && <DetailTabs run={run} tab={tab} onTab={setTab} />}
       <ReviewHeader run={run} approver={latest && latest.decision !== null ? latest.approver : null} onEdit={() => setEditing(true)}
-        onSwitched={ready ? () => { setVersion((v) => v + 1); reload() } : undefined} />
+        onSwitched={ready ? () => { setVersion((v) => v + 1); reload() } : undefined} onBusy={setRejudging} />
       {editing && <ReviewInfoDialog run={run} onClose={() => setEditing(false)} onSaved={() => { setEditing(false); reload() }} />}
       {submitting && <SubmitDialog run={run} onClose={() => setSubmitting(false)} onDone={() => { setSubmitting(false); reload() }} />}
       {ready
         ? <DetailBody key={`${run.stage}-${version}`} run={run} tab={tab} onTab={setTab} onChanged={reload} onSubmit={() => setSubmitting(true)} />
         : <ProcessingView run={run} />}
+      {rejudging && <RejudgeCover busy={rejudging} />}
       {notice && <div className="toast" role="status"><span className="ms" aria-hidden="true">check_circle</span>{notice}</div>}
     </main>
   )
