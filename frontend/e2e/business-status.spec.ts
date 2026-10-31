@@ -24,14 +24,18 @@ async function start(request: APIRequestContext, form: Record<string, string>): 
   return (await request.get(`/api/runs/${run.run_id}`)).json()
 }
 
-/** 합성 문서는 협조 요청을 만들어 "협조 대기"가 된다. 요청을 모두 끝내 "판정 확인"으로 둔다 */
+/** 합성 문서는 협조 요청을 만들어 "협조 대기"가 된다. 엔지니어가 요청을 보내고 회신 받음으로 표시해 "판정 확인"으로 둔다.
+ *  백엔드에 메일 서버·부서 주소(RFP_SMTP_HOST, RFP_MAIL_*)가 설정되어 있어야 한다 (docker compose의 Mailpit) */
 async function finishHelp(request: APIRequestContext, runId: number) {
-  const users = await (await request.get('/api/users')).json() as { user_id: number; role: string }[]
   for (const role of ['COST', 'QUALITY', 'SALES']) {
-    const actor = users.find((u) => u.role === role)!.user_id
     const tasks = await (await request.get(`/api/assignments?role=${role}`)).json() as { assignment_id: number; run_id: number }[]
-    for (const t of tasks.filter((x) => x.run_id === runId)) {
-      expect((await request.put(`/api/assignments/${t.assignment_id}`, { data: { status: 'DONE', actor_id: actor } })).ok()).toBe(true)
+    const mine = tasks.filter((x) => x.run_id === runId)
+    if (!mine.length) continue
+    const sent = await request.post(`/api/runs/${runId}/assignments/send`,
+      { data: { assignment_ids: mine.map((t) => t.assignment_id), actor_id: ENGINEER } })
+    expect((await sent.json()).sent).toBe(mine.length)
+    for (const t of mine) {
+      expect((await request.put(`/api/assignments/${t.assignment_id}`, { data: { status: 'DONE', actor_id: ENGINEER } })).ok()).toBe(true)
     }
   }
 }

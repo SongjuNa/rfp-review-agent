@@ -25,13 +25,14 @@ BUSINESS_NO = ("'PJ-' || extract(year FROM b.created_at)::int || '-' "
                "|| lpad(b.business_id::text, 3, '0')")
 
 # 범위(연결 검토) 하나의 진행 상태. 위에서부터 처음 맞는 것 (design 3).
-# 협조 대기는 홈 화면 "협조 대기" 열과 같은 기준: 확인하지 않은(TODO) 협조 요청이 남은 담당자 확인
+# 협조 대기는 홈 화면 "협조 대기" 열과 같은 기준: 회신 받지 않은(안 보냄·메일 보냄) 협조 요청이
+# 남은 담당자 확인 (update-role-handoff-mail)
 STATE = """
     CASE WHEN b.submitted_at IS NOT NULL THEN 'done'
          WHEN r.stage = 'PROCESSING' THEN 'an'
          WHEN r.stage = 'FAILED' THEN 'fail'
          WHEN r.stage = 'ENGINEER_REVIEW' AND EXISTS (
-              SELECT 1 FROM assignment a WHERE a.run_id = r.run_id AND a.status = 'TODO')
+              SELECT 1 FROM assignment a WHERE a.run_id = r.run_id AND a.status <> 'DONE')
               THEN 'co'
          WHEN r.stage = 'ENGINEER_REVIEW' THEN 'chk'
          WHEN r.stage = 'APPROVAL' THEN 'ap'
@@ -268,7 +269,7 @@ def _ranges(conn: psycopg.Connection, business_ids: list[int]) -> dict[int, list
                r.review_name, r.stage, r.due_date, r.started_at, r.engineer_id,
                (SELECT user_name FROM app_user WHERE user_id = r.engineer_id) AS engineer_name,
                (SELECT count(*) FROM assignment a WHERE a.run_id = r.run_id
-                  AND a.status = 'TODO') AS open_requests,
+                  AND a.status <> 'DONE') AS open_requests,
                {STATE} AS state
         FROM review_run r JOIN business b USING (business_id)
         WHERE r.business_id = ANY(%s) ORDER BY r.run_id""", (business_ids,))

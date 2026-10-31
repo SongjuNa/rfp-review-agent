@@ -43,6 +43,7 @@ from rfp_agent.api.schemas import (
     RunListItem,
     RunLogItem,
     RunSummary,
+    SendResult,
     StageResult,
     SubmissionCheck,
     SubmitResult,
@@ -66,6 +67,7 @@ from rfp_agent.pipeline import (
 )
 from rfp_agent.pipeline.assignments import build_assignments
 from rfp_agent.pipeline.export import outputs_docx
+from rfp_agent.pipeline.handoff_mail import send_requests
 from rfp_agent.pipeline.loss import recalculate
 from rfp_agent.pipeline.outputs import check_submission
 from rfp_agent.pipeline.proposals import build_proposals
@@ -152,6 +154,12 @@ class Actor(BaseModel):
 class TaskStatus(BaseModel):
     status: str = Field(pattern="^(TODO|DOING|DONE)$")
     actor_id: int
+    reply_note: str | None = None
+
+
+class SendRequests(BaseModel):
+    assignment_ids: list[int]
+    actor_id: int | None = None
 
 
 class Submit(BaseModel):
@@ -721,7 +729,21 @@ def role_assignments(role: str = Query(pattern="^(COST|QUALITY|SALES)$")) -> lis
 
 @router.put("/assignments/{assignment_id}")
 def update_assignment(assignment_id: int, body: TaskStatus) -> AssignmentStatus:
-    """담당자가 할 일 상태를 바꾼다 (할 일 → 하는 중 → 끝)."""
+    """엔지니어가 회신 받음을 기록하거나 되돌린다 (메일 보냄 ↔ 회신 받음)."""
     with connect() as conn:
         return _review(lambda: review.set_assignment_status(conn, assignment_id, body.status,
-                                                            body.actor_id))
+                                                            body.actor_id, body.reply_note))
+
+
+@router.post("/runs/{run_id}/assignments/send")
+def send_assignments(run_id: int, body: SendRequests) -> SendResult:
+    """엔지니어가 고른 요청을 부서 주소로 보낸다 (판정 없는 요청, 실패·주소 없음 다시 보내기)."""
+    _summary(run_id)
+    with connect() as conn:
+        actor_id = body.actor_id or review.default_user(conn, "ENGINEER")
+        if _review(lambda: review._user_role(conn, actor_id)) != "ENGINEER":
+            raise HTTPException(403, "협조 요청은 기술 검토 엔지니어만 보낼 수 있습니다.")
+        conn.execute("UPDATE assignment SET mail_error = NULL WHERE run_id = %s "
+                     "AND assignment_id = ANY(%s) AND mail_sent_at IS NULL",
+                     (run_id, body.assignment_ids))
+        return send_requests(conn, run_id, body.assignment_ids, actor_id)

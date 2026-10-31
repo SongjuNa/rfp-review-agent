@@ -1,5 +1,5 @@
 import type { LogEntry } from '../api'
-import { RESULT_NAMES, STATUS_NAMES } from './labels'
+import { RESULT_NAMES, ROLE_NAMES, STATUS_NAMES } from './labels'
 
 // SCR-08-9 이력 탭의 한 줄 문장 (목업 v4.57 Detail logs: '위험 조건 "주위 온도"를 정상으로 닫음').
 // 기록(before/after) 그대로 문장으로만 바꾼다. 값을 계산하거나 고치지 않는다.
@@ -39,6 +39,13 @@ export function historyText(l: LogEntry): string {
     case 'read_check':
       // 목업: "문서 읽기 점검 확인: <위치> (<무엇>)"
       return `문서 읽기 점검 ${l.action === 'UNDO' ? '확인 되돌림' : '확인'}: ${l.target_label ?? ''}`
+    case 'assignment': {
+      // 협조 요청 메일 (update-role-handoff-mail): 보낸 기록과 회신 기록
+      const dept = ROLE_NAMES[String(a.dept)] ?? '담당'
+      if (l.action === 'SEND') return `협조 요청 메일 보냄: ${dept} ${v(a.mail_to)} (${kw(a.count)}건)`
+      if (l.action === 'REPLY') return `협조 요청 회신 받음 표시${a.reply_note ? `: ${String(a.reply_note)}` : ''}`
+      return '협조 요청 회신 받음 표시 되돌림'
+    }
     case 'run_product_choice':
       return `비교 제품 바꿈: ${v(b.product_code === null ? '자동' : b.product_code)} → ${v(a.product_code === null ? '자동' : a.product_code)}`
     case 'review_run': {

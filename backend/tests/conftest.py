@@ -116,3 +116,15 @@ class FakeLLM:
 @pytest.fixture
 def fake_llm():
     return FakeLLM()
+
+
+@pytest.fixture(autouse=True)
+def fake_mailer():
+    """협조 요청 메일은 진짜로 보내지 않는다(update-role-handoff-mail). 보낸 메일은 .sent에."""
+    from rfp_agent.notify.mail import FakeMailer, set_mailer
+
+    mailer = FakeMailer(addresses={"COST": "cost@test", "QUALITY": "quality@test",
+                                   "SALES": "sales@test"})
+    set_mailer(mailer)
+    yield mailer
+    set_mailer(None)

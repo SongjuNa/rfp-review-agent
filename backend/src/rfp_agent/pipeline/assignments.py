@@ -18,6 +18,11 @@ from rfp_agent.pipeline.structure import normalize
 SENT_ROLES = ("COST", "QUALITY", "SALES")
 ADOPTED = ("ADOPTED", "EDITED")
 POINT_ROLES = {"MARGIN": ("SALES",), "FIELD": ("SALES",), "LOSS": ("SALES", "COST")}
+# 다시 만들 때 이어 쓰는 칸: 상태, 만든 시각, 메일 보낸 기록, 회신 기록 (update-role-handoff-mail)
+KEPT = ("status", "assignee_id", "sent_at", "updated_at", "mail_sent_at", "mail_to", "sent_by",
+        "mail_error", "replied_at", "replied_by", "reply_note")
+DEFAULTS = {"status": "TODO"}
+PLACES = ", ".join("COALESCE(%s, now())" if c == "sent_at" else "%s" for c in KEPT)
 LIST_MARK = re.compile(r"^\s*(?:\(?[0-9a-zA-Z가-힣]{1,3}[.)]\s*|-\s*)")
 
 REQUIREMENTS_SQL = """
@@ -83,22 +88,21 @@ def _point_tasks(conn: psycopg.Connection, run_id: int) -> list[dict]:
 
 
 def build_assignments(conn: psycopg.Connection, run_id: int) -> int:
-    """할 일을 다시 만든다. 같은 할 일 키면 진행 상태·처리한 사람·보낸 시각을 이어 쓴다."""
+    """할 일을 다시 만든다. 같은 할 일 키면 상태·보낸 기록·회신 요지를 이어 쓴다 (CR-11)."""
     tasks = _requirement_tasks(conn, run_id) + _point_tasks(conn, run_id)
     with conn.cursor(row_factory=dict_row) as cur:
         previous = {r["task_key"]: r for r in cur.execute(
-            "SELECT task_key, status, assignee_id, sent_at, updated_at FROM assignment "
-            "WHERE run_id = %s", (run_id,)).fetchall()}
+            f"SELECT task_key, {', '.join(KEPT)} FROM assignment WHERE run_id = %s",
+            (run_id,)).fetchall()}
     with conn.transaction():
         conn.execute("DELETE FROM assignment WHERE run_id = %s", (run_id,))
         for t in tasks:
             prev = previous.get(t["task_key"], {})
             conn.execute(
-                """INSERT INTO assignment (run_id, assignee_role, assignee_id, requirement_id,
-                       point_id, repeat_count, status, sent_at, task_key, requirement_ids,
-                       type_code, updated_at)
-                   VALUES (%s, %s, %s, %s, %s, %s, %s, COALESCE(%s, now()), %s, %s, %s, %s)""",
-                (run_id, t["role"], prev.get("assignee_id"), t["requirement_id"], t["point_id"],
-                 t["repeat_count"], prev.get("status", "TODO"), prev.get("sent_at"),
-                 t["task_key"], t["requirement_ids"], t["type_code"], prev.get("updated_at")))
+                f"""INSERT INTO assignment (run_id, assignee_role, requirement_id, point_id,
+                       repeat_count, task_key, requirement_ids, type_code, {', '.join(KEPT)})
+                   VALUES (%s, %s, %s, %s, %s, %s, %s, %s, {PLACES})""",
+                (run_id, t["role"], t["requirement_id"], t["point_id"], t["repeat_count"],
+                 t["task_key"], t["requirement_ids"], t["type_code"],
+                 *[prev.get(c, DEFAULTS.get(c)) for c in KEPT]))
     return len(tasks)

@@ -4,6 +4,7 @@ import pytest
 from docx import Document
 
 from rfp_agent.pipeline import queries, review
+from rfp_agent.pipeline.handoff_mail import send_requests
 from rfp_agent.pipeline.run import RunContext, create_run, execute_run
 from tests.docx_factory import build_judgment_spec
 
@@ -102,36 +103,59 @@ def test_adopted_point_goes_to_sales(tasks_run):
     assert task["locations"]
 
 
-def test_status_kept_after_rebuild(tasks_run):
-    """Scenario: 다시 만들어도 진행 상태 유지 — 판정을 고쳐 목록·제안을 다시 만들어도 "하는 중"."""
+def test_status_kept_after_rebuild(tasks_run, fake_mailer):
+    """Scenario: 다시 만들어도 진행 상태 유지 — 메일 보냄인 영업 할 일은 판정 확정 뒤에도 그대로."""
     conn, run_id = tasks_run
     point = queries.run_proposals(conn, run_id)[0]
     review.act(ctx(conn), run_id, "proposal_point", point["point_id"], "ADOPT")
-    sales = review.default_user(conn, "SALES")
-    for task in sent(conn, run_id, "SALES"):
-        review.set_assignment_status(conn, task["assignment_id"], "DOING", sales)
+    [before] = [t for t in sent(conn, run_id, "SALES") if t["point_id"]]
+    assert before["status"] == "DOING" and before["mail_sent_at"] is not None
     judgment = next(j for j in queries.run_judgments(conn, run_id, limit=500)
                     if j["result"] == "COMPLY")
     review.act(ctx(conn), run_id, "judgment", judgment["judgment_id"], "CONFIRM")
-    after = sent(conn, run_id, "SALES")
-    assert len(after) == 2 and {t["status"] for t in after} == {"DOING"}
-    assert {t["assignee"] for t in after} == {"기본 영업 담당"}
+    [after] = [t for t in sent(conn, run_id, "SALES") if t["point_id"]]
+    assert after["status"] == "DOING" and after["mail_sent_at"] == before["mail_sent_at"]
+    assert after["sent_by_name"] == before["sent_by_name"] == "기본 엔지니어"
+    assert after["mail_to"] == "sales@test"
+    assert len(fake_mailer.sent) == 1                   # 다시 보내지 않았다
 
 
-def test_only_role_user_changes_status(tasks_run):
-    """Scenario: 다른 역할 사용자 — 견적 할 일은 엔지니어가 바꿀 수 없다."""
+def test_engineer_records_reply(tasks_run):
+    """Scenario: 엔지니어가 회신 받음 기록 — 회신 요지, 기록한 사람, 시각이 남고 되돌릴 수 있다."""
+    conn, run_id = tasks_run
+    [task] = sent(conn, run_id, "QUALITY")
+    engineer = review.default_user(conn, "ENGINEER")
+    with pytest.raises(review.ReviewError) as err:      # 아직 안 보낸 요청
+        review.set_assignment_status(conn, task["assignment_id"], "DONE", engineer)
+    assert err.value.status == 409
+    send_requests(conn, run_id, [task["assignment_id"]], engineer)
+    review.set_assignment_status(conn, task["assignment_id"], "DONE", engineer,
+                                 "성적서 3종 11-05까지 보냄")
+    [done] = sent(conn, run_id, "QUALITY")
+    assert done["status"] == "DONE" and done["reply_note"] == "성적서 3종 11-05까지 보냄"
+    assert done["replied_by_name"] == "기본 엔지니어" and done["replied_at"] is not None
+    actions = [h["action"] for h in review.history(conn, run_id, "assignment")]
+    assert actions == ["SEND", "REPLY"]
+    review.set_assignment_status(conn, task["assignment_id"], "DOING", engineer)
+    [back] = sent(conn, run_id, "QUALITY")
+    assert back["status"] == "DOING" and back["reply_note"] is None
+
+
+def test_only_engineer_changes_status(tasks_run):
+    """Scenario: 다른 역할 사용자 — 견적 담당은 자기 할 일 상태를 바꿀 수 없다."""
     conn, run_id = tasks_run
     [task] = sent(conn, run_id, "COST")
+    cost = review.default_user(conn, "COST")
     engineer = review.default_user(conn, "ENGINEER")
-    for status, user, code in (("DONE", engineer, 403), ("LATER", engineer, 400)):
+    send_requests(conn, run_id, [task["assignment_id"]], engineer)
+    for status, user, code in (("DONE", cost, 403), ("LATER", engineer, 400)):
         with pytest.raises(review.ReviewError) as err:
             review.set_assignment_status(conn, task["assignment_id"], status, user)
         assert err.value.status == code
     with pytest.raises(review.ReviewError) as err:
         review.set_assignment_status(conn, 999999, "DONE", engineer)
     assert err.value.status == 404
-    cost = review.default_user(conn, "COST")
-    assert review.set_assignment_status(conn, task["assignment_id"], "DONE", cost)["status"] \
+    assert review.set_assignment_status(conn, task["assignment_id"], "DONE", engineer)["status"] \
         == "DONE"
 
 
@@ -168,12 +192,20 @@ def test_tasks_api(tasks_run, db_url, monkeypatch):
         [task] = [t for t in mine["assignments"] if t["run_id"] == run_id]
         assert mine["role"] == "QUALITY" and task["text"] == TYPE_TEST
         url = f"/api/assignments/{task['assignment_id']}"
-        assert client.put(url, json={"status": "DOING", "actor_id": quality}).status_code == 200
         engineer = review.default_user(conn, "ENGINEER")
-        assert client.put(url, json={"status": "DONE", "actor_id": engineer}).status_code == 403
-        assert client.put(url, json={"status": "LATER", "actor_id": quality}).status_code == 422
+        result = client.post(f"/api/runs/{run_id}/assignments/send",
+                             json={"assignment_ids": [task["assignment_id"]],
+                                   "actor_id": engineer}).json()
+        assert result == {"sent": 1, "failed": 0, "no_address": 0, "mails": 1}
+        assert client.put(url, json={"status": "DONE", "actor_id": quality}).status_code == 403
+        assert client.put(url, json={"status": "LATER", "actor_id": engineer}).status_code == 422
+        assert client.put(url, json={"status": "DONE", "actor_id": engineer,
+                                     "reply_note": "회신 받음"}).status_code == 200
         listed = client.get(f"/api/runs/{run_id}/assignments", params={"role": "QUALITY"}).json()
-        assert [t["status"] for t in listed] == ["DOING"]
+        assert [(t["status"], t["reply_note"]) for t in listed] == [("DONE", "회신 받음")]
+        refused = client.post(f"/api/runs/{run_id}/assignments/send",
+                              json={"assignment_ids": [], "actor_id": quality})
+        assert refused.status_code == 403
         assert client.get("/api/tasks", params={"user_id": 999999}).status_code == 400
     finally:
         get_settings.cache_clear()

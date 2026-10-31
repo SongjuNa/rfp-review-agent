@@ -75,6 +75,14 @@ export type Assignment = {
   business_no: string | null
   locations: Location[]
   file_name: string | null
+  mail_sent_at: string | null
+  mail_to: string | null
+  mail_error: string | null
+  sent_by_name: string | null
+  dept_address: string | null
+  replied_at: string | null
+  replied_by_name: string | null
+  reply_note: string | null
 }
 
 export type AssignmentStatus = {
@@ -1030,6 +1038,18 @@ export type RunSummary = {
   proposals: number
 }
 
+export type SendRequests = {
+  assignment_ids: number[]
+  actor_id?: number | null
+}
+
+export type SendResult = {
+  sent: number
+  failed: number
+  no_address: number
+  mails: number
+}
+
 export type StageResult = {
   stage: 'PROCESSING' | 'ENGINEER_REVIEW' | 'APPROVAL' | 'APPROVED' | 'REJECTED' | 'FAILED'
   approval_id?: number | null
@@ -1068,6 +1088,7 @@ export type SubmitResult = {
 export type TaskStatus = {
   status: string
   actor_id: number
+  reply_note?: string | null
 }
 
 export type Tbe = {

@@ -34,6 +34,8 @@ docker compose exec backend rfp-db seed-products   # 제품표 적재 (처음 �
 
 백엔드는 시작할 때 마이그레이션과 규칙 사전 적재를 자동으로 합니다. <http://localhost:5173> 에서 시스템 상태를 볼 수 있습니다.
 
+협조 요청 메일은 함께 뜨는 확인용 메일 서버 Mailpit으로만 갑니다. 보낸 메일은 <http://localhost:8025> 에서 봅니다(밖으로 나가지 않음). 로컬 실행은 `docker compose up mailpit`만 따로 켜고 `.env`의 `RFP_SMTP_*`·`RFP_MAIL_*` 값을 그대로 쓰면 됩니다.
+
 ### 로컬
 
 PostgreSQL 16, Python 3.12+, [uv](https://docs.astral.sh/uv/), Node 22가 필요합니다.

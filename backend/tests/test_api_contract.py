@@ -116,10 +116,11 @@ def test_every_api_passes_its_model(db, run, run_more, run_check, client):
     for check in ok(client.get(f"{base}/read-checks"))[:1]:
         ok(client.post(f"{base}/read-checks/{check['key']}", json={"actor_id": engineer}))
         ok(client.delete(f"{base}/read-checks/{check['key']}"))
-    quality = review.default_user(db, "QUALITY")
     for task in ok(client.get(f"/api/runs/{run}/assignments?role=QUALITY"))[:1]:
+        ok(client.post(f"{base}/assignments/send",
+                       json={"assignment_ids": [task["assignment_id"]], "actor_id": engineer}))
         ok(client.put(f"/api/assignments/{task['assignment_id']}",
-                      json={"status": "DOING", "actor_id": quality}))
+                      json={"status": "DONE", "actor_id": engineer, "reply_note": "받음"}))
     approver = review.default_user(db, "APPROVER")
     submit = {"approver_id": approver, "comment": "질의 회신 예정", "actor_id": engineer}
     ok(client.post(f"{base}/finish-review", json=submit))
