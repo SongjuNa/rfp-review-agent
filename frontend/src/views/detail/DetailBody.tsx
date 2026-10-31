@@ -15,7 +15,7 @@ import { RiskTab } from './RiskTab'
 import { SubmTab } from './SubmTab'
 
 // SCR-08 검토 상세 본문: 요약 칸 5개와 탭 9개 (목업 v4.57 Detail .kpis, .pgtabs).
-// 탭은 모두 목업대로 만들었다. 상업 조건·지난 RFP 비교는 API가 없어 예시 화면이다.
+// 탭은 모두 목업대로 만들었다. 지난 RFP 비교는 API가 없어 예시 화면이다. 상업 조건은 FR-16(add-cost-conditions).
 
 const TABS = [
   ['judge', '판정'], ['read', '문서 읽기 점검'], ['risk', '위험 조건'], ['loss', '손실 환산 (참고)'], ['bid', '입찰 영향'],
@@ -88,7 +88,7 @@ export function DetailBody({ run, tab, onTab, onChanged, onSubmit }: {
       {tab === 'risk' && <RiskTab run={run} tick={tick} onChanged={changed} />}
       {tab === 'loss' && <LossTab run={run} tick={tick} onChanged={changed} onGoBid={() => onTab('bid')} />}
       {tab === 'bid' && <BidTab run={run} tick={tick} onChanged={changed} />}
-      {tab === 'comm' && <CommTab />}
+      {tab === 'comm' && <CommTab run={run} tick={tick} onGoJudge={() => onTab('judge')} onGoLoss={() => onTab('loss')} />}
       {tab === 'cmp' && <CmpTab />}
       {tab === 'subm' && <SubmTab run={run} />}
       {tab === 'log' && <LogTab run={run} tick={tick} />}

@@ -18,6 +18,7 @@ from rfp_agent.api.schemas import (
     Assignment,
     AssignmentStatus,
     BulkResult,
+    CostSummary,
     Datasheet,
     DatasheetInfo,
     DecisionResult,
@@ -66,6 +67,7 @@ from rfp_agent.pipeline import (
     tbe,
 )
 from rfp_agent.pipeline.assignments import build_assignments
+from rfp_agent.pipeline.cost_conditions import cost_summary
 from rfp_agent.pipeline.export import outputs_docx
 from rfp_agent.pipeline.handoff_mail import send_requests
 from rfp_agent.pipeline.loss import recalculate
@@ -478,6 +480,14 @@ def update_loss(run_id: int, loss_calc_id: int, body: LossValues) -> LossResult:
         build_assignments(conn, run_id)
         conn.commit()
         return result
+
+
+@router.get("/runs/{run_id}/cost-conditions")
+def run_cost_conditions(run_id: int) -> CostSummary:
+    """상업 조건 탭 (FR-16): 비용 조건 요약과 기술 판단에서 생긴 상업 영향. 금액 계산 없음."""
+    _summary(run_id)
+    with connect() as conn:
+        return cost_summary(conn, run_id)
 
 
 @router.get("/runs/{run_id}/outputs")

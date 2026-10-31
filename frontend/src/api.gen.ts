@@ -237,6 +237,19 @@ export type BusinessSummary = {
   overdue: number
 }
 
+/** 기술 판단에서 생긴 상업 영향: 손실 환산 가산액(LOSS), 일탈 후보 가격 영향 확인(DEVIATION). */
+export type CommercialImpact = {
+  kind: 'LOSS' | 'DEVIATION'
+  loss_calc_id: number | null
+  item_id: number | null
+  judgment_id: number | null
+  product_code: string | null
+  total_usd: number | null
+  is_assumed: boolean
+  text: string | null
+  locations: Location[]
+}
+
 export type CompareRule = {
   compare_rule_id: number
   table_name: string | null
@@ -249,6 +262,31 @@ export type CompareRule = {
   own_strength_direction: string | null
   process_note: string | null
   used: number
+}
+
+/** 비용 조건 한 줄 (FR-16). 같은 조건이 반복되면 한 줄로 묶는다. 모든 줄은 후보다 (CR-08). */
+export type CostCondition = {
+  requirement_id: number
+  requirement_ids: number[]
+  kind: string
+  text: string
+  values: string[]
+  burden: string | null
+  risk: string | null
+  primary_type: string | null
+  primary_type_name: string | null
+  repeat_count: number
+  role: 'COST'
+  assignment_id: number | null
+  request_status: 'TODO' | 'DOING' | 'DONE' | null
+  mail_error: string | null
+  file_name: string | null
+  locations: Location[]
+}
+
+export type CostSummary = {
+  conditions: CostCondition[]
+  impacts: CommercialImpact[]
 }
 
 export type Criterion = {

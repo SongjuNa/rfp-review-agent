@@ -1,13 +1,13 @@
 // 백엔드 API (/api, Vite 프록시). 응답 타입은 백엔드 응답 모델에서 만든다 (api.gen.ts, `npm run gen:api`).
 import type {
-  ActionResult, ApprovalScreen, AssignmentStatus, BulkResult, BusinessDetail, BusinessList, BusinessLog,
+  ActionResult, ApprovalScreen, AssignmentStatus, BulkResult, CostSummary, BusinessDetail, BusinessList, BusinessLog,
   DecisionResult, DocumentChoice, DocumentPreview,
   LossResult, ProductSwitch, RuleEdit,
   RunLogItem, RunSummary, SendResult, StageResult, SubmitResult,
 } from './api.gen'
 
 export type {
-  ApprovalScreen, Assignment, BusinessDetail, BusinessEvent, BusinessList, BusinessListItem, BusinessLog, BusinessPerson,
+  ApprovalScreen, Assignment, BusinessDetail, CommercialImpact, CostCondition, CostSummary, BusinessEvent, BusinessList, BusinessListItem, BusinessLog, BusinessPerson,
   BusinessRange, CompareRule, Criterion, Datasheet, DatasheetInfo, DatasheetRow, DocKindRule,
   DocumentChoice, DocumentPreview, EngineeringCheck,
   Equipment, Health, ItemKey, Judgment, JudgmentCounts, Location, LogEntry, Loss, MyTasks, OutputItem, Product,
@@ -159,6 +159,8 @@ export const api = {
   updateLoss: (id: number, lossId: number, values: Record<string, number | null>) =>
     call<LossResult>(`/runs/${id}/losses/${lossId}`, json('PUT', values)),
   outputs: (id: number) => call<OutputItem[]>(`/runs/${id}/outputs`),
+  /** 상업 조건 탭 (FR-16): 비용 조건 요약과 기술 판단에서 생긴 상업 영향 */
+  costConditions: (id: number) => call<CostSummary>(`/runs/${id}/cost-conditions`),
   submissionCheck: (id: number) => call<SubmissionCheck>(`/runs/${id}/submission-check`),
   proposals: (id: number) => call<Proposal[]>(`/runs/${id}/proposals`),
   datasheets: (id: number) => call<DatasheetInfo[]>(`/runs/${id}/datasheets`),

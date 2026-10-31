@@ -20,3 +20,21 @@ T-SITE-04,seismic,SITE_ENV,WORD,30
 T-TECH-01,loss,TECH_PERF,WORD,50
 T-TECH-02,rated,TECH_PERF,WORD,60
 T-TECH-03,정격,TECH_PERF,WORD,60
+T-COST-05,liquidated damages,COST,WORD,25
+T-COST-06,delay damages,COST,WORD,25
+T-COST-07,지체상금,COST,REGEX,25
+T-COST-08,(?i)\b(defects? (liability|notification) period|warranty period|guarantee period)\b,COST,REGEX,25
+T-COST-09,하자\s?(보수|보증|담보),COST,REGEX,25
+T-COST-10,(?i)\b(performance (security|bond|guarantee)|advance payment (guarantee|security))\b|이행\s?보증,COST,REGEX,25
+T-COST-11,(?i)\b(terms of payment|payment terms|advance payment)\b|지급\s?조건,COST,REGEX,25
+T-COST-12,(?i)\b(bid validity|remain valid for)\b,COST,REGEX,25
+T-COST-13,\b(Incoterms|CIF|CIP|FOB|DAP|DDP|EXW)\b|(?i:\bdelivery terms\b),COST,REGEX,25
+T-COST-14,(?i)\b(exchange rate|currency of (the )?(bid|contract)|bid currency)\b|환율,COST,REGEX,25
+T-COST-15,(?i)\b(limitation of liability|total liability|unlimited liability)\b|책임\s?한도,COST,REGEX,25
+T-COST-16,(?i)\bspares\b|예비품,COST,REGEX,25
+T-COST-17,(?i)\b(special tools)\b|특수\s?공구,COST,REGEX,25
+T-COST-18,(?i)\b(packing|packaging|transportation|freight)\b|운반|포장,COST,REGEX,25
+T-COST-19,(?i)\b(witness(ed|ing)?)\b|입회,COST,REGEX,25
+T-COST-20,(?i)\b(supervision of (installation|erection|commissioning)|site supervision)\b|설치\s?감독,COST,REGEX,25
+T-COST-21,(?i)\btraining\b|교육\s?훈련,COST,REGEX,25
+T-COST-22,(?i)\b(free of charge|at no (additional|extra) cost|at the Contractor'?s (cost|expense))\b|무상,COST,REGEX,25

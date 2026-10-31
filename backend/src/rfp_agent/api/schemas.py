@@ -681,6 +681,44 @@ class AssignmentStatus(Out):
     status: TaskState
 
 
+class CostCondition(Out):
+    """비용 조건 한 줄 (FR-16). 같은 조건이 반복되면 한 줄로 묶는다. 모든 줄은 후보다 (CR-08)."""
+    requirement_id: int
+    requirement_ids: list[int]
+    kind: str                       # 조항 종류 (지체상금, 하자 보증, …, 기타 비용)
+    text: str
+    values: list[str]               # 값 원문 그대로 (CR-10)
+    burden: str | None              # "계약상대자 부담"
+    risk: str | None                # "책임 한도 없음", "가격 조정 없음"
+    primary_type: str | None
+    primary_type_name: str | None
+    repeat_count: int
+    role: Literal["COST"]
+    assignment_id: int | None       # 견적 담당 협조 요청 (없으면 협조 요청 없음)
+    request_status: TaskState | None
+    mail_error: str | None
+    file_name: str | None
+    locations: Locations
+
+
+class CommercialImpact(Out):
+    """기술 판단에서 생긴 상업 영향: 손실 환산 가산액(LOSS), 일탈 후보 가격 영향 확인(DEVIATION)."""
+    kind: Literal["LOSS", "DEVIATION"]
+    loss_calc_id: int | None
+    item_id: int | None
+    judgment_id: int | None
+    product_code: str | None
+    total_usd: float | None         # 이미 계산된 가산액. 없으면 확인 필요
+    is_assumed: bool
+    text: str | None
+    locations: Locations
+
+
+class CostSummary(Out):
+    conditions: list[CostCondition]
+    impacts: list[CommercialImpact]
+
+
 class SendResult(Out):
     sent: int           # 메일 보냄이 된 요청 수
     failed: int         # 발송 실패
