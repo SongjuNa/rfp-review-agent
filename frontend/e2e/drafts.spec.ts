@@ -33,6 +33,7 @@ test('사유 적어 문장 고치기', async ({ page }) => {
   await expect(save).toBeDisabled()
   await panel.getByLabel('고친 사유').fill('발주처 표현에 맞춤')
   await save.click()
+  await expect(page.locator('.toast')).toContainText('정상적으로 사유가 등록되었습니다.')
   await expect(panel.locator('label[for="draft"] .st')).toHaveText('확정')
   await expect(draft).toHaveValue('수정한 질의 문장입니다. 적용 값을 회신해 주십시오.')
 })

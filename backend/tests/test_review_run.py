@@ -71,6 +71,27 @@ def test_type_tags(seeded_db, spec_docx):
     assert primary["type_code"] == "TEST" and primary["rule_code"].startswith("T-TEST")
 
 
+class WritingRuleLLM(FakeLLM):
+    """문장을 모두 작성 규칙이라고 답하는 언어 모델 대역."""
+
+    def generate_json(self, prompt: str, schema: dict) -> dict:
+        answer = super().generate_json(prompt, schema)
+        if "labels" in answer:
+            answer["labels"] = ["WRITING_RULE"] * len(answer["labels"])
+        return answer
+
+
+def test_deemed_kept_when_ai_says_writing_rule(seeded_db, spec_docx):
+    """Scenario: deemed to be accepted.
+
+    언어 모델이 문장을 작성 규칙이라고 답해도 포괄 조항 후보 1건이 나온다.
+    """
+    run_id, _ = run_once(seeded_db, [spec_docx], llm=WritingRuleLLM())
+    blanket = [r for r in queries.run_risks(seeded_db, run_id) if r["risk_kind"] == "BLANKET"]
+    assert len(blanket) == 1
+    assert "deemed" in blanket[0]["facts"]
+
+
 def test_risk_candidates(seeded_db, spec_docx):
     """Scenario: 겹치는 열린 표현.
 

@@ -51,6 +51,8 @@ export function RiskTab({ run, tick, onChanged }: { run: RunSummary; tick: numbe
   const [why, setWhy] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [toast, setToast] = useState('')
+  const say = (m: string) => { setToast(m); setTimeout(() => setToast(''), 3000) }
   const canEdit = run.stage === 'ENGINEER_REVIEW' && user?.role === 'ENGINEER'
   const lock = run.stage !== 'ENGINEER_REVIEW' ? '담당자 확인 단계에서만 고칠 수 있습니다' : !canEdit ? '엔지니어만 고칠 수 있습니다' : undefined
 
@@ -120,7 +122,7 @@ export function RiskTab({ run, tick, onChanged }: { run: RunSummary; tick: numbe
                     })}
                     {(items.data ?? []).filter((i) => i.sources.some((s) => s.risk_id === r.risk_id)).map((i) => (
                       <div key={i.item_id} style={{ marginTop: 10, maxWidth: 640 }}>
-                        <OutputEditor key={`${i.item_id}-${i.text_draft}-${i.status}`} runId={id} item={i} id={`risk-draft-${i.item_id}`} canEdit={canEdit} onDone={onChanged} />
+                        <OutputEditor key={`${i.item_id}-${i.text_draft}-${i.status}`} runId={id} item={i} id={`risk-draft-${i.item_id}`} canEdit={canEdit} onDone={onChanged} onSaved={say} />
                       </div>
                     ))}
                   </td></tr>
@@ -131,6 +133,7 @@ export function RiskTab({ run, tick, onChanged }: { run: RunSummary; tick: numbe
         </tbody></table>
       )}
       {error && <p className="aphint" role="alert">{error}</p>}
+      {toast && <div className="toast" role="status"><span className="ms" aria-hidden="true">check_circle</span>{toast}</div>}
     </section>
   )
 }

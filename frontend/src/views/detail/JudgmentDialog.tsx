@@ -12,11 +12,11 @@ import { OutputEditor } from './OutputEditor'
 
 const LANGS: Record<string, string> = { en: 'EN · 영어', ko: 'KO · 한국어', image: '이미지' }
 
-export function JudgmentDialog({ runId, j, w, items, log, docs, pos, total, canEdit, onPrev, onNext, onClose, onEdit, onConfirm, onDone }: {
+export function JudgmentDialog({ runId, j, w, items, log, docs, pos, total, canEdit, onPrev, onNext, onClose, onEdit, onConfirm, onDone, onSaved }: {
   runId: number; j: Judgment; w?: Warranty; items: OutputItem[]; log: LogEntry[]; docs: RunDocument[]
   pos: number; total: number; canEdit: boolean
   onPrev: (() => void) | null; onNext: (() => void) | null; onClose: () => void; onEdit: () => void; onConfirm: () => Promise<void>
-  onDone: () => void
+  onDone: () => void; onSaved: (message: string) => void
 }) {
   const req = useLoad(() => api.requirement(j.requirement_id, runId), [j.requirement_id, runId])
   const [occ, setOcc] = useState(0)
@@ -103,7 +103,7 @@ export function JudgmentDialog({ runId, j, w, items, log, docs, pos, total, canE
                 : <span className="pend">아직 확정 안 함</span>}</td></tr>
             </tbody></table>
 
-            {draft && <div style={{ marginTop: 18 }}><OutputEditor key={`${draft.item_id}-${draft.text_draft}-${draft.status}`} runId={runId} item={draft} id="mdDraft" canEdit={canEdit} onDone={onDone} /></div>}
+            {draft && <div style={{ marginTop: 18 }}><OutputEditor key={`${draft.item_id}-${draft.text_draft}-${draft.status}`} runId={runId} item={draft} id="mdDraft" canEdit={canEdit} onDone={onDone} onSaved={onSaved} /></div>}
             {error && <p className="aphint" role="alert">{error}</p>}
           </section>
         </div>

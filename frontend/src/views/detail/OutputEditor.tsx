@@ -8,8 +8,15 @@ import { useSession } from '../../shell/useSession'
 
 const TONES: Record<string, string> = { CANDIDATE: 'c-grey', CONFIRMED: 'c-green', EDITED: 'c-green', REMOVED: 'c-grey' }
 
-export function OutputEditor({ runId, item, id, canEdit, onDone }: {
-  runId: number; item: OutputItem; id: string; canEdit: boolean; onDone: () => void
+// 저장·빼기·확정이 끝나면 부모 화면이 알림을 띄운다. 이 칸은 다시 그려지면서 사라지기 때문이다.
+const DONE_MESSAGES = {
+  EDIT: '정상적으로 사유가 등록되었습니다. 고친 문장을 저장했습니다.',
+  REJECT: '정상적으로 사유가 등록되었습니다. 목록에서 뺐습니다.',
+  CONFIRM: '문장을 확정했습니다.',
+}
+
+export function OutputEditor({ runId, item, id, canEdit, onDone, onSaved }: {
+  runId: number; item: OutputItem; id: string; canEdit: boolean; onDone: () => void; onSaved?: (message: string) => void
 }) {
   const { user } = useSession()
   const [text, setText] = useState(item.text_draft)
@@ -25,7 +32,7 @@ export function OutputEditor({ runId, item, id, canEdit, onDone }: {
     api.act(runId, {
       target: 'output_item', target_id: item.item_id, action, actor_id: user!.user_id,
       value: action === 'EDIT' ? { text: text.trim() } : undefined, reason: action === 'CONFIRM' ? undefined : why.trim(),
-    }).then(() => { setWhy(''); setDropping(false); onDone() }, (e: Error) => setError(e.message)).finally(() => setBusy(false))
+    }).then(() => { setWhy(''); setDropping(false); onSaved?.(DONE_MESSAGES[action]); onDone() }, (e: Error) => setError(e.message)).finally(() => setBusy(false))
   }
   return (
     <div>
