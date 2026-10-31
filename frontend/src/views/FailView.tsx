@@ -3,11 +3,12 @@ import { api, type RunSummary } from '../api'
 import { dday, dueText, reviewTitle, stamp } from '../components/format'
 import { DOC_KIND_NAMES, STEP_NAMES } from '../components/labels'
 import { useLoad } from '../components/useLoad'
+import { useSession } from '../shell/useSession'
 import { ExampleBand } from './detail/ExampleTab'
 
 // SCR-11 분석 실패 상세 (목업 v4.57 Fail). docs/screens/SCR-11-분석실패.md
 // 멈춘 단계·오류 문장·진행 상황·문서·지금 볼 수 있는 것·문의용 정보는 실제 값.
-// 다시 시도하는 API가 없어 "어떻게 계속할까요"는 예시 영역이다 (SCR-11_공유.md).
+// "어떻게 계속할까요"는 "다시 시도"만 실제로 처리하고(add-run-control) 나머지는 예시 영역이다 (SCR-11_공유.md).
 
 // 처리 단계(pipeline/run.py)를 목업처럼 다섯 묶음으로 보인다
 const GROUPS: { label: string; steps: string[]; note: (r: RunSummary) => string }[] = [
@@ -18,9 +19,9 @@ const GROUPS: { label: string; steps: string[]; note: (r: RunSummary) => string 
   { label: '입찰 영향 정리', steps: ['proposals', 'assign'], note: (r) => `제안 포인트 ${r.proposals}건` },
 ]
 const ICONS: Record<string, string> = { done: 'check', fail: 'priority_high', wait: 'more_horiz' }
-// 다시 시도 방법 (예시): 목업 opts의 이름과 설명
+// 계속하는 방법: 목업 opts의 이름과 설명. retry만 실제, 나머지는 예시
 const OPTIONS: [string, string, string][] = [
-  ['retry', '다시 시도', '멈춘 단계부터 이어서 처리합니다. 앞에서 만든 결과는 그대로 둡니다.'],
+  ['retry', '다시 시도', '같은 파일·분류로 다시 처리합니다. 이미 읽은 문서는 다시 쓰므로 멈춘 곳부터 이어서 처리하는 것과 같습니다.'],
   ['code', '코드 규칙만으로 계속', '남은 부분은 언어 모델 없이 코드 규칙으로만 처리합니다. 문맥을 봐야 하는 위험은 놓칠 수 있습니다.'],
   ['skip', '남은 부분은 직접 확인', '남은 부분을 "확인 필요"로 두고 검토를 엽니다. 결재 요청 사유에 올라갑니다.'],
   ['report', '시스템 담당자에게 알리기', '오른쪽 문의용 정보를 담아 IT 지원 요청을 보냅니다. 검토는 멈춘 상태로 둡니다.'],
@@ -38,7 +39,9 @@ function stepStates(run: RunSummary): { label: string; cls: string; note: string
   })
 }
 
-export function FailView({ run, approver }: { run: RunSummary; approver: string | null }) {
+export function FailView({ run, approver, onChanged }: { run: RunSummary; approver: string | null; onChanged: () => void }) {
+  const { user } = useSession()
+  const [busy, setBusy] = useState(false)
   const docs = useLoad(() => api.documents(run.run_id), [run.run_id])
   const others = useLoad(() => api.runs().then((rs) => rs.filter((r) => r.stage === 'FAILED' && r.run_id !== run.run_id)), [run.run_id])
   const [pick, setPick] = useState('retry')
@@ -50,6 +53,12 @@ export function FailView({ run, approver }: { run: RunSummary; approver: string 
   }, [toast])
 
   const stepName = STEP_NAMES[run.failed_step ?? ''] ?? run.failed_step ?? '처리'
+  const cancelled = Boolean(run.cancel_requested_at)          // 사람이 취소한 검토
+  const go = () => {
+    if (pick !== 'retry') { setToast('예시 화면이라 처리하지 않았습니다.'); return }
+    setBusy(true)
+    api.retryRun(run.run_id, user?.user_id ?? null).then(onChanged, (e: Error) => { setToast(e.message); setBusy(false) })
+  }
   const failedAt = run.finished_at ?? run.started_at
   const due = run.due_date ? dday(run.due_date) : null
   const other = others.data?.[0]
@@ -69,7 +78,7 @@ export function FailView({ run, approver }: { run: RunSummary; approver: string 
   return (
     <>
       <div className="fid">
-        <span>{run.review_no}</span><span className="st c-red">처리 실패</span>
+        <span>{run.review_no}</span><span className="st c-red">처리 실패</span>{cancelled && <span>취소함</span>}{run.retries > 0 && <span>다시 시도 {run.retries}회</span>}
         {run.due_date && due && <span>마감 {dueText(run.due_date)} <b className={due.cls}>{due.text}</b></span>}
         <span>등록 {stamp(run.started_at)}</span><span>담당 {run.engineer_name ?? '없음'}</span>
         {approver && <span>결재자 {approver}</span>}
@@ -82,7 +91,7 @@ export function FailView({ run, approver }: { run: RunSummary; approver: string 
       <div className="fgrid">
         <div style={{ minWidth: 0 }}>
           <div className="falert" role="alert"><span className="ms" aria-hidden="true">error</span>
-            <div><b>{stepName} 단계에서 멈췄습니다</b><div className="w">{stamp(failedAt)} · 문서 {run.documents}개</div>
+            <div><b>{stepName} 단계에서 {cancelled ? '취소했습니다' : '멈췄습니다'}</b><div className="w">{stamp(failedAt)} · 문서 {run.documents}개</div>
               <div className="c">{run.error_message ?? '오류 문장이 없습니다.'}</div></div></div>
 
           <section className="fcard"><h2>진행 상황</h2>
@@ -94,7 +103,7 @@ export function FailView({ run, approver }: { run: RunSummary; approver: string 
           </section>
 
           <section className="fcard"><h2>어떻게 계속할까요</h2>
-            <ExampleBand />
+            {pick !== 'retry' && <ExampleBand />}
             <div className="fopts">
               {OPTIONS.map(([k, label, desc]) => (
                 <label key={k} className={pick === k ? 'on' : undefined}><input type="radio" name="fopt" checked={pick === k} onChange={() => setPick(k)} />
@@ -102,7 +111,10 @@ export function FailView({ run, approver }: { run: RunSummary; approver: string 
               ))}
             </div>
             <div className="fact"><a className="bo" href="#/reviews">나중에</a>
-              <button type="button" className="bp" onClick={() => setToast('예시 화면이라 처리하지 않았습니다.')}>{OPTIONS.find(([k]) => k === pick)?.[1]}</button></div>
+              <button type="button" className="bp" disabled={busy || (pick === 'retry' && !run.retryable)} onClick={go}
+                title={pick === 'retry' && !run.retryable ? '이 검토는 다시 돌릴 파일 정보가 없습니다. 검토를 다시 등록해 주세요.' : undefined}>
+                {busy ? '다시 시작하는 중…' : OPTIONS.find(([k]) => k === pick)?.[1]}</button></div>
+            {pick === 'retry' && !run.retryable && <p className="fhave">이 검토는 다시 돌릴 파일 정보가 없습니다(다시 시도 기능 전에 등록). 검토를 다시 등록해 주세요.</p>}
           </section>
         </div>
 

@@ -24,6 +24,7 @@ from rfp_agent.pipeline.document import Choice, Report, process_document
 from rfp_agent.pipeline.engineering import build_checks
 from rfp_agent.pipeline.judge import judge_run
 from rfp_agent.pipeline.loss import build_losses
+from rfp_agent.pipeline.numbers import josa
 from rfp_agent.pipeline.outputs import build_outputs
 from rfp_agent.pipeline.proposals import build_proposals
 from rfp_agent.pipeline.risk import (
@@ -108,7 +109,28 @@ def create_run(conn: psycopg.Connection, version: str, llm: LLM | None,
     return run_id
 
 
+class RunCancelled(Exception):
+    """사람이 처리 중인 검토를 취소했다 (add-run-control)."""
+
+
+def check_cancel(conn: psycopg.Connection, run_id: int) -> None:
+    """취소 요청이 있으면 멈춘다. 진행을 기록할 때마다 부른다."""
+    row = conn.execute("SELECT cancel_requested_at FROM review_run WHERE run_id = %s",
+                       (run_id,)).fetchone()
+    if row and row[0] is not None:
+        raise RunCancelled(run_id)
+
+
+def cancel_message(conn: psycopg.Connection, run_id: int) -> str:
+    who = conn.execute(
+        """SELECT u.user_name FROM review_run r LEFT JOIN app_user u
+                ON u.user_id = r.cancel_requested_by WHERE r.run_id = %s""",
+        (run_id,)).fetchone()
+    return josa(f"{(who and who[0]) or '사용자'}이(가) 분석을 취소했습니다.")
+
+
 def _set_step(conn: psycopg.Connection, run_id: int, step: str) -> None:
+    check_cancel(conn, run_id)
     # 단계가 바뀌면 세부 진행을 지우고 마지막 진행 시각을 새로 적는다
     conn.execute("UPDATE review_run SET graph_state = graph_state || %s || "
                  "jsonb_build_object('updated_at', now()) WHERE run_id = %s",
@@ -118,6 +140,8 @@ def _set_step(conn: psycopg.Connection, run_id: int, step: str) -> None:
 
 def _reporter(ctx: RunContext, run_id: int, file_index: int, file_count: int) -> Report:
     def report(part: str, done: int | None = None, total: int | None = None) -> None:
+        # 문서 하나는 한 트랜잭션이라 여기서 멈추면 그 문서의 반쯤 만든 결과는 되돌려진다
+        check_cancel(ctx.conn, run_id)
         if ctx.progress:
             ctx.progress(run_id, {"part": part, "done": done, "total": total,
                                   "file_index": file_index, "file_count": file_count})
@@ -387,6 +411,11 @@ def execute_run(ctx: RunContext, run_id: int, paths: list[Path],
                 choices: dict[str, dict] | None = None) -> str:
     """실행을 끝까지 돌리고 마지막 단계를 돌려준다 (ENGINEER_REVIEW 또는 FAILED)."""
     conn = ctx.conn
+    # 다시 시도(add-run-control)할 때 같은 파일·분류로 돌리려고 입력을 남긴다
+    conn.execute("UPDATE review_run SET graph_state = graph_state || %s WHERE run_id = %s",
+                 (Jsonb({"inputs": {"paths": [str(p) for p in paths],
+                                    "choices": choices or {}}}), run_id))
+    conn.commit()
     try:
         state = build_graph(ctx).invoke({"run_id": run_id, "paths": [str(p) for p in paths],
                                          "choices": choices or {}})
@@ -394,8 +423,13 @@ def execute_run(ctx: RunContext, run_id: int, paths: list[Path],
         conn.rollback()
         step = conn.execute("SELECT graph_state->>'step' FROM review_run WHERE run_id = %s",
                             (run_id,)).fetchone()[0]
-        message = FAILURE_MESSAGE if isinstance(exc, LLMFailure) else f"{FAILURE_MESSAGE}: {exc}"
-        log.exception("검토 실행 %s 실패 (%s)", run_id, step)
+        if isinstance(exc, RunCancelled):
+            message = cancel_message(conn, run_id)
+            log.info("검토 실행 %s 취소 (%s)", run_id, step)
+        else:
+            message = (FAILURE_MESSAGE if isinstance(exc, LLMFailure)
+                       else f"{FAILURE_MESSAGE}: {exc}")
+            log.exception("검토 실행 %s 실패 (%s)", run_id, step)
         conn.execute(
             """UPDATE review_run SET stage = 'FAILED', failed_step = %s, error_message = %s,
                       finished_at = now() WHERE run_id = %s""", (step, message, run_id))

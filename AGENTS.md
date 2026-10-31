@@ -71,6 +71,7 @@ openspec/
 | 32 | `archive/2026-10-31-update-sentence-josa` | 자리표시자 뒤 조사를 채운 값에 맞춰 고르기("GIS-145-40은") (완료) |
 | 33 | `archive/2026-10-31-update-document-reuse-race` | 같은 파일을 거의 동시에 올려 문서 저장이 겹치면 먼저 저장된 결과를 다시 씀 (완료) |
 | 34 | `archive/2026-10-31-reject-unjudged-registration` | 판정 대상(묶음 A·B) 문서가 하나도 없으면 등록 거절, 등록 화면 안내·다음 막기 (완료) |
+| 35 | `archive/2026-10-31-add-run-control` | 처리 중 검토 취소, 실패·취소한 검토 다시 시도(처리한 문서는 다시 씀). 0018 (완료) |
 
 ## 3. 작업 흐름
 

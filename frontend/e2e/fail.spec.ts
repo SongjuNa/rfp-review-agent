@@ -39,8 +39,9 @@ test('분석 실패 상세', async ({ page }) => {
 test('계속하는 방법 예시', async ({ page }) => {
   await openFailed(page, '실패 예시')
   const card = page.locator('.fcard', { hasText: '어떻게 계속할까요' })
-  await expect(card.getByRole('note')).toContainText('예시 화면')
+  await expect(card.getByRole('note')).toHaveCount(0)              // 다시 시도는 실제로 처리한다 (add-run-control)
   await card.getByRole('radio', { name: /남은 부분은 직접 확인/ }).check()
+  await expect(card.getByRole('note')).toContainText('예시 화면')
   await card.getByRole('button', { name: '남은 부분은 직접 확인' }).click()
   await expect(page.getByRole('status')).toHaveText(/예시 화면이라 처리하지 않았습니다/)
   await expect(page.locator('.fid .st')).toHaveText('처리 실패')

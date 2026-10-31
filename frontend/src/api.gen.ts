@@ -972,6 +972,9 @@ export type RunSummary = {
   step_updated_at: string
   failed_step: string | null
   error_message: string | null
+  cancel_requested_at: string | null
+  retries: number
+  retryable: boolean
   started_at: string
   finished_at: string | null
   documents: number

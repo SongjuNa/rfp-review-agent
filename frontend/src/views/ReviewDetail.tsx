@@ -106,7 +106,7 @@ export function ReviewDetail({ runId }: { runId: number }) {
   }
   if (run.stage === 'APPROVAL') return <WaitView key={run.run_id} run={run} onChanged={reload} onWithdrawn={withdrawn} />
   const latest = approval.data?.approval
-  if (run.stage === 'FAILED') return <main className="main"><FailView run={run} approver={latest?.approver ?? null} /></main>
+  if (run.stage === 'FAILED') return <main className="main"><FailView run={run} approver={latest?.approver ?? null} onChanged={reload} /></main>
   const ready = run.stage !== 'PROCESSING'
   return (
     <main className="main">
@@ -117,7 +117,7 @@ export function ReviewDetail({ runId }: { runId: number }) {
       {submitting && <SubmitDialog run={run} onClose={() => setSubmitting(false)} onDone={() => { setSubmitting(false); reload() }} />}
       {ready
         ? <DetailBody key={`${run.stage}-${version}`} run={run} tab={tab} onTab={setTab} onChanged={reload} onSubmit={() => setSubmitting(true)} />
-        : <ProcessingView run={run} />}
+        : <ProcessingView run={run} onChanged={reload} />}
       {rejudging && <RejudgeCover busy={rejudging} />}
       {notice && <div className="toast" role="status"><span className="ms" aria-hidden="true">check_circle</span>{notice}</div>}
     </main>

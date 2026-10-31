@@ -84,6 +84,9 @@ class RunSummary(ReviewFields):
     step_updated_at: datetime
     failed_step: str | None
     error_message: str | None
+    cancel_requested_at: datetime | None    # 취소를 요청했으면 그 시각 (멈춘 뒤에도 남음)
+    retries: int                            # 다시 시도한 횟수
+    retryable: bool                         # 처리 실패이고 다시 돌릴 파일 정보가 있음
     started_at: datetime
     finished_at: datetime | None
     documents: int

@@ -38,6 +38,8 @@ def run_summary(conn: psycopg.Connection, run_id: int) -> dict | None:
     rows = _rows(conn, f"""
         SELECT r.run_id, r.stage, r.dict_version, r.llm_model, r.failed_step, r.error_message,
                r.started_at, r.finished_at, r.graph_state->>'step' AS step,
+               r.cancel_requested_at, r.retry_count AS retries,
+               (r.stage = 'FAILED' AND r.graph_state ? 'inputs') AS retryable,
                r.graph_state->'detail' AS step_detail,
                COALESCE((r.graph_state->>'updated_at')::timestamptz, r.started_at)
                    AS step_updated_at, {REVIEW_INFO},

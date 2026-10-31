@@ -59,6 +59,7 @@ from rfp_agent.pipeline import (
     read_checks,
     review,
     review_info,
+    run_control,
     tbe,
 )
 from rfp_agent.pipeline.assignments import build_assignments
@@ -619,6 +620,23 @@ def withdraw(run_id: int, body: Actor) -> StageResult:
     """결정 전인 상신을 취소하고 담당자 확인으로 되돌린다."""
     with connect() as conn:
         return _review(lambda: review.withdraw(conn, run_id, body.actor_id))
+
+
+@router.post("/runs/{run_id}/cancel")
+def cancel_run(run_id: int, body: Actor) -> RunSummary:
+    """처리 중인 검토를 취소한다. 처리는 다음 진행 기록 때 멈추고 처리 실패가 된다."""
+    with connect() as conn:
+        _review(lambda: run_control.request_cancel(conn, run_id, body.actor_id))
+    return _summary(run_id)
+
+
+@router.post("/runs/{run_id}/retry", status_code=202)
+def retry_run(run_id: int, body: Actor, background: BackgroundTasks) -> RunSummary:
+    """실패·취소한 검토를 같은 파일·분류로 다시 처리한다. 처리한 문서는 다시 쓴다."""
+    with connect() as conn:
+        paths, choices = _review(lambda: run_control.prepare_retry(conn, run_id, body.actor_id))
+    background.add_task(run_to_end, run_id, paths, choices)
+    return _summary(run_id)
 
 
 @router.get("/runs/{run_id}/approval")
