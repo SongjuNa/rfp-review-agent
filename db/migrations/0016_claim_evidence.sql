@@ -1,3 +1,6 @@
+-- AI 설명 문장(claim)과 그 근거 (환각 방지, add-claim-evidence).
+-- 문장마다 원문 인용과 근거 위치(source_location)를 남겨, 설명이 어디서 왔는지 되짚을 수 있게 한다.
+-- target_table·target_id: 설명이 붙은 결과 (지금은 risk_flag만).
 CREATE TABLE claim_evidence (
   claim_id BIGSERIAL PRIMARY KEY,
   run_id INT NOT NULL REFERENCES review_run(run_id),

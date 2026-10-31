@@ -1,3 +1,5 @@
+"""AI 설명의 근거 조각: ID(E-문서-위치)를 붙여 AI에 주고, 돌아온 ID·인용을 코드가 대조한다."""
+
 import re
 from dataclasses import dataclass
 
