@@ -43,7 +43,9 @@ function ClassifyCells({ p, chosen, onChange }: {
       <td><select className="fi" aria-label="문서 종류" value={now.doc_kind}
         onChange={(e) => onChange({ ...now, doc_kind: e.target.value as Kind })}>
         {KINDS.map((k) => <option key={k} value={k}>{DOC_KIND_NAMES[k]}</option>)}
-      </select></td>
+      </select>
+        {now.doc_kind === 'UNKNOWN' && <div style={{ margin: '4px 0 0' }}><span className="st c-ora">종류 확인 필요</span></div>}
+      </td>
       <td><select className="fi" aria-label="묶음" value={now.bundle} style={{ width: 96 }}
         onChange={(e) => onChange({ ...now, bundle: e.target.value as Bundle })}>
         {BUNDLES.map((b) => <option key={b} value={b}>묶음 {b}</option>)}
@@ -52,7 +54,8 @@ function ClassifyCells({ p, chosen, onChange }: {
       <td>
         {judged ? <span className="st c-green">판정 대상</span> : <span className="st c-red">판정 안 함</span>}
         {changed && <> <span className="st c-blue">사람이 바꿈</span></>}
-        <div className="en" style={{ margin: '4px 0 0' }}>{changed ? `추천: ${DOC_KIND_NAMES[p.doc_kind]} · 묶음 ${p.bundle}` : p.reason}</div>
+        <div className="en" style={{ margin: '4px 0 0' }}>{changed ? `추천: ${DOC_KIND_NAMES[p.doc_kind]} · 묶음 ${p.bundle}`
+          : p.doc_kind === 'UNKNOWN' ? `${p.reason} · 문서 종류는 직접 골라야 함` : p.reason}</div>
       </td>
     </>
   )

@@ -28,8 +28,12 @@ test('묶음을 바꿔 시작', async ({ page }) => {
   const row = page.locator('tr', { hasText: 'synthetic_judgment.docx' })
   await expect(row.getByLabel('묶음')).toHaveValue('C')
   await expect(row).toContainText('판정 안 함')
+  await expect(row).toContainText('종류 확인 필요')                 // 종류 모름 추천은 사람이 골라야 한다
   await row.getByLabel('묶음').selectOption('B')
   await expect(row).toContainText('사람이 바꿈')
+  await expect(row).toContainText('종류 확인 필요')                 // 묶음만 바꿔서는 종류가 아직 모름
+  await row.getByLabel('문서 종류').selectOption('REQUIREMENT_SPEC')
+  await expect(row).not.toContainText('종류 확인 필요')
   await expect(row).toContainText('판정 대상')
   await page.getByRole('button', { name: /다음/ }).click()
   await page.getByLabel('제출 마감일').fill(isoAfter(10))
