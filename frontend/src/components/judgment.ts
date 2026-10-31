@@ -42,7 +42,7 @@ export function prodCell(j: Judgment, w?: Warranty): { val: string; sub: string;
   const val = withUnit(j.product_value_raw, j.product_value_unit) ?? '—'
   const margin = j.margin_value !== null && j.margin_direction !== 'NOT_CALC' && Number(j.margin_value) !== 0
     ? ` · 여유 ${num(Number(j.margin_value))}${j.margin_kind === 'RATIO' ? '배' : ''}` : ''
-  return { val, sub: (j.product_code ?? '') + margin, cls: '' }
+  return { val, sub: (j.product_code ?? '') + margin + (j.is_assumed ? ' · 팀 가정' : ''), cls: '' }
 }
 
 /** 판정 근거의 비교 줄: "요구 4,000 A · 제품 3,150 A" */

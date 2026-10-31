@@ -32,6 +32,10 @@ const MORE: [string, string][] = [
   ['warranty_months', '보증 기간 (개월)'], ['std_lead_time_weeks', '표준 납기 (주)'], ['description', '설명'],
 ]
 const LOSS = new Set(['noload_loss_kw', 'load_loss_kw', 'aux_loss_kw'])
+// 비교값 칸 (백엔드 products.COMPARISON_COLUMNS). comparison_values_assumed가 참이면 팀 가정 (CR-06)
+const COMPARISON = new Set(['lightning_impulse_kv', 'power_freq_withstand_kv', 'switching_impulse_kv', 'peak_current_ka',
+  'making_current_ka', 'breaking_time_ms', 'closing_time_ms', 'gas_leakage_percent', 'partial_discharge_pc', 'cooling_type',
+  'insulation_medium', 'maintenance_months', 'service_life_years'])
 const LOCK = '제품표 고치기는 이 change 범위 밖입니다 (data/seed를 고쳐 다시 적재)'
 
 type Cell = { text: string; cls: string; sub: string; state: 'na' | 'empty' | 'assume' | 'ok' }
@@ -48,7 +52,7 @@ function cell(p: Product | ProductDetail, key: string): Cell {
   if (v === null || v === undefined || v === '') {
     return p.value_columns.includes(key) ? { text: '비어 있음', cls: 'c-ora', sub: '', state: 'empty' } : { text: '—', cls: 'dimv', sub: '', state: 'na' }
   }
-  const assumed = p.is_assumed || (LOSS.has(key) && !!p.loss_is_assumed)
+  const assumed = p.is_assumed || (LOSS.has(key) && !!p.loss_is_assumed) || (COMPARISON.has(key) && p.comparison_values_assumed)
   const text = key === 'rated_capacity' && p.rated_capacity_unit ? `${fmt(v)} ${p.rated_capacity_unit}` : fmt(v)
   return { text, cls: '', sub: assumed ? '팀 가정' : '', state: assumed ? 'assume' : 'ok' }
 }

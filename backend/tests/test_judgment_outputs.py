@@ -282,3 +282,26 @@ def test_locations_stay_within_the_run(db, spec, tmp_path):
     files |= {loc["file_no"] for j in queries.run_judgments(db, run_id, limit=500)
               for loc in j["locations"]}
     assert files == {91}
+
+
+def test_comparison_values_are_team_assumption(db, tmp_path):
+    """Scenario: 팀 가정 비교값으로 한 판정 / 비교값 팀 가정 (CR-06).
+
+    카탈로그 칸(정격 전압)은 팀 가정이 아니다.
+    """
+    doc = build_gis_spec(tmp_path / "synthetic_154kV_bundle_a.docx")
+
+    def assumed(run_id):
+        return dict(db.execute(
+            "SELECT v.item_key, bool_or(j.is_assumed) FROM judgment j JOIN req_value v "
+            "USING (value_id) WHERE j.run_id = %s AND j.product_value_raw IS NOT NULL "
+            "GROUP BY v.item_key", (run_id,)))
+
+    first = assumed(run_once(db, [doc]))
+    assert first["gas_leakage_rate"] is True          # gas_leakage_percent, 비교값 가정 Y
+    assert first["rated_voltage_um"] is False         # rated_voltage_kv, 카탈로그 값
+    # 비교값 출처를 확인해 N으로 바꾸면 팀 가정 표시가 빠진다
+    db.execute("UPDATE product_master SET comparison_values_assumed = 'N' "
+               "WHERE product_code = 'GIS-170'")
+    db.commit()
+    assert assumed(run_once(db, [doc]))["gas_leakage_rate"] is False

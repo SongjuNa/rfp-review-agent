@@ -50,6 +50,8 @@ def _decorate(row: dict, columns: dict[str, list[str]]) -> dict:
     row["empty_columns"] = [c for c in used if row.get(c) is None]
     row["empty_count"] = len(row["empty_columns"])
     row["is_assumed"] = row["is_assumed"] == "Y"
+    if "comparison_values_assumed" in row:
+        row["comparison_values_assumed"] = row["comparison_values_assumed"] == "Y"
     return row
 
 
@@ -98,7 +100,8 @@ def families(conn: psycopg.Connection) -> list[dict]:
         f["products"] += 1
         f["empty_cells"] += r["empty_count"]
         f["with_empty"] += 1 if r["empty_count"] else 0
-        f["assumed"] += 1 if r["is_assumed"] or r["loss_is_assumed"] else 0
+        f["assumed"] += 1 if r["is_assumed"] or r["loss_is_assumed"] \
+            or r["comparison_values_assumed"] else 0
         f["design_cards"] += 1 if r["is_design_card"] else 0
     return list(out.values())
 

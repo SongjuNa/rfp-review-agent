@@ -245,6 +245,7 @@ class Judged:
     rule: Rule | None
     product_raw: str | None = None
     product_unit: str | None = None
+    product_column: str | None = None
 
 
 def _is_heading(v: dict) -> bool:
@@ -289,7 +290,7 @@ def judge_value(v: dict, ref: Reference, products: list[Product], ctx: GroupCont
     verdict = compare(req, prod, direction or "", strength,
                       time_condition=bool(rule and rule.time_condition))
     return Judged(v, verdict, selection, rule, prod.raw if prod else None,
-                  prod.unit if prod else None)
+                  prod.unit if prod else None, prod.column if prod else None)
 
 
 def load_values(conn: psycopg.Connection, document_ids: list[int]) -> list[dict]:
@@ -330,7 +331,7 @@ def judge_run(conn: psycopg.Connection, run_id: int, document_ids: list[int],
             (j.product_raw or "")[:100] or None, j.product_unit, j.verdict.result,
             j.verdict.reason, j.verdict.reason_text, j.rule.rule_id if j.rule else None,
             j.verdict.margin, j.verdict.margin_kind, j.verdict.margin_direction, v["group"],
-            j.selection.chosen_by, bool(p and p.is_assumed and j.product_raw),
+            j.selection.chosen_by, bool(p and j.product_raw and p.value_assumed(j.product_column)),
         ))
     with conn.transaction():
         if only_groups is None:

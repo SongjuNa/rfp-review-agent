@@ -127,3 +127,12 @@ def test_reference_api(db, db_url, monkeypatch):
             assert client.get(path).json()
     finally:
         get_settings.cache_clear()
+
+
+def test_assumed_comparison_values(db):
+    """Scenario: 팀 가정 비교값 — 비교값 팀 가정 표시가 오고 제품군 팀 가정 수에 셈된다."""
+    rows = reference.products(db, family="GIS", limit=500)
+    gis = next(r for r in rows if r["comparison_values_assumed"] is True)
+    assert not gis["is_assumed"] and not gis["loss_is_assumed"]
+    fams = {f["family"]: f for f in reference.families(db)}
+    assert fams["GIS"]["assumed"] >= 1

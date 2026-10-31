@@ -27,6 +27,12 @@ DESCRIPTION_VALUES = {
 MAX_TEMPERATURE = re.compile(r"to\s*\+?\s*(-?\d+(?:\.\d+)?)\s*°C")
 IP_CODE = re.compile(r"IP\s*(\d)(\d)", re.IGNORECASE)
 BOUND_WORDS = {"이하": "<=", "미만": "<"}
+# 비교값 칸 (0012). comparison_values_assumed가 Y이면 이 칸의 값은 팀 가정이다 (CR-06)
+COMPARISON_COLUMNS = frozenset({
+    "lightning_impulse_kv", "power_freq_withstand_kv", "switching_impulse_kv", "peak_current_ka",
+    "making_current_ka", "breaking_time_ms", "closing_time_ms", "gas_leakage_percent",
+    "partial_discharge_pc", "cooling_type", "insulation_medium", "maintenance_months",
+    "service_life_years"})
 
 
 @dataclass
@@ -50,6 +56,11 @@ class Product:
     losses: tuple[float | None, float | None, float | None]
     loss_is_assumed: bool
     row: dict = field(repr=False, default_factory=dict)
+    comparison_assumed: bool = False
+
+    def value_assumed(self, column: str | None) -> bool:
+        """그 칸의 값이 팀 가정인가: 제품 전체가 가정이거나, 가정인 비교값 칸에서 읽었으면."""
+        return self.is_assumed or (column in COMPARISON_COLUMNS and self.comparison_assumed)
 
     @property
     def frequencies(self) -> list[str]:
@@ -101,6 +112,7 @@ def load_products(conn: psycopg.Connection) -> list[Product]:
         is_assumed=r["is_assumed"] == "Y",
         losses=(_num(r["noload_loss_kw"]), _num(r["load_loss_kw"]), _num(r["aux_loss_kw"])),
         loss_is_assumed=bool(r["loss_is_assumed"]), row=r,
+        comparison_assumed=r.get("comparison_values_assumed") == "Y",
     ) for r in rows]
 
 
