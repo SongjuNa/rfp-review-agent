@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
-import { api, type Judgment, type LogEntry, type OutputItem, type RunDocument, type Warranty } from '../../api'
+import { api, type EngineeringCheck, type Judgment, type LogEntry, type OutputItem, type RunDocument, type Warranty } from '../../api'
+import { CHECK_NAMES, checkLine } from '../../components/checks'
 import { stamp } from '../../components/format'
 import { compareText, confirmedBy, itemName, markSplit, prodCell, reqText, suggested, itemFor } from '../../components/judgment'
 import { RESULT_NAMES, RESULT_TONES, locationText } from '../../components/labels'
@@ -12,8 +13,8 @@ import { OutputEditor } from './OutputEditor'
 
 const LANGS: Record<string, string> = { en: 'EN · 영어', ko: 'KO · 한국어', image: '이미지' }
 
-export function JudgmentDialog({ runId, j, w, items, log, docs, pos, total, canEdit, onPrev, onNext, onClose, onEdit, onConfirm, onDone, onSaved }: {
-  runId: number; j: Judgment; w?: Warranty; items: OutputItem[]; log: LogEntry[]; docs: RunDocument[]
+export function JudgmentDialog({ runId, j, w, check, items, log, docs, pos, total, canEdit, onPrev, onNext, onClose, onEdit, onConfirm, onDone, onSaved }: {
+  runId: number; j: Judgment; w?: Warranty; check?: EngineeringCheck; items: OutputItem[]; log: LogEntry[]; docs: RunDocument[]
   pos: number; total: number; canEdit: boolean
   onPrev: (() => void) | null; onNext: (() => void) | null; onClose: () => void; onEdit: () => void; onConfirm: () => Promise<void>
   onDone: () => void; onSaved: (message: string) => void
@@ -45,6 +46,7 @@ export function JudgmentDialog({ runId, j, w, items, log, docs, pos, total, canE
     ['제품값 출처', j.result === 'WARRANTY_TO_FILL' ? p.sub : j.product_code ? `${j.product_code} · 제품표` : '—'],
   ]
   if (j.type_name) basis.push(['유형', j.type_name])
+  if (check) basis.push(['공학 검산', `${CHECK_NAMES[check.result]} · ${checkLine(check)}`])   // update-check-display
   const confirm = () => {
     setBusy(true)
     setError(null)

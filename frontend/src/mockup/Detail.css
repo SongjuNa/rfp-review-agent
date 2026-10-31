@@ -604,3 +604,8 @@ body,.app,.wk,.ws,.layout,.main{background:#fff}
 .subpk{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:14px;padding:12px 14px;border:1px solid #DCE3EC;border-radius:8px;background:#F7F9FC;font-size:var(--fs-sm);color:#475467}
 .subpk b{color:#344054}
 .subpk .grow{flex:1;min-width:220px}
+/* 공학 검산 표시 (update-check-display, 앱에서 더함) */
+.chkn{display:flex;gap:8px;align-items:flex-start;margin:0 0 10px;padding:8px 12px;border-radius:8px;background:#FEF3F2;border:1px solid #FECDCA;color:#344054;font-size:var(--fs-sm)}
+.chkn .ms{font-size:18px;color:#B42318}
+.tag.chk.bad{background:#FEE4E2;color:#B42318}
+.tag.chk.warn{background:#FEF0C7;color:#B54708}
