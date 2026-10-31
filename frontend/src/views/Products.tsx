@@ -1,10 +1,7 @@
 import { useState } from 'react'
 import { api, type ItemKey, type Product, type ProductDetail } from '../api'
 import { Pager } from '../components/Pager'
-<<<<<<< HEAD
 import { DOC_KINDS, isSourceCatalog, productDocs } from '../components/productDocs'
-=======
->>>>>>> origin/claude/project-thread-wrevp7
 import { productPhoto } from '../components/productPhotos'
 import { FAMILY_NAMES, POINT_KIND_NAMES, RESULT_NAMES, RESULT_TONES, STATUS_NAMES } from '../components/labels'
 import { useLoad } from '../components/useLoad'
@@ -263,7 +260,6 @@ function Photo({ sourceDoc }: { sourceDoc: string | null }) {
   )
 }
 
-<<<<<<< HEAD
 const DOC_SHOW = 5
 /** 문서 탭 (add-product-docs): 공식 자료실의 카탈로그·매뉴얼·시험 성적서·인증서 링크. 종류마다 5건까지, 나머지는 펼쳐 본다. */
 function Docs({ sourceDoc }: { sourceDoc: string | null }) {
@@ -299,8 +295,6 @@ function Docs({ sourceDoc }: { sourceDoc: string | null }) {
   )
 }
 
-=======
->>>>>>> origin/claude/project-thread-wrevp7
 /** 두세 제품을 칸마다 나란히. 값이 다른 줄은 노랗게, 강점 방향으로 가장 유리한 값에 ▲ */
 function Compare({ products, items, diffOnly, onDiff, onBack }: {
   products: ProductDetail[]; items: ItemKey[]; diffOnly: boolean; onDiff: (v: boolean) => void; onBack: () => void
