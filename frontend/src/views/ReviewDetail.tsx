@@ -72,6 +72,7 @@ export function ReviewDetail({ runId }: { runId: number }) {
   const [editing, setEditing] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [tab, setTab] = useState<DetailTab>('judge')
+  const [notice, setNotice] = useState('')
   const [version, setVersion] = useState(0)          // 비교 제품을 바꾸면 탭 본문을 새로 불러온다
   usePageCss(run?.stage === 'APPROVAL' ? 'Wait' : run?.stage === 'FAILED' ? 'Fail' : 'Detail')
   useCrumbTail(run?.review_no)
@@ -81,7 +82,13 @@ export function ReviewDetail({ runId }: { runId: number }) {
     return () => clearTimeout(timer)
   }, [run, reload])
   if (!run) return <main className="main"><ErrorText error={error} /></main>
-  if (run.stage === 'APPROVAL') return <WaitView key={run.run_id} run={run} onChanged={reload} />
+  const withdrawn = () => {
+    setTab('judge')
+    setNotice('상신을 취소했습니다. 판정을 고친 뒤 다시 결재 상신해 주세요.')
+    setTimeout(() => setNotice(''), 4000)
+    reload()
+  }
+  if (run.stage === 'APPROVAL') return <WaitView key={run.run_id} run={run} onChanged={reload} onWithdrawn={withdrawn} />
   const latest = approval.data?.approval
   if (run.stage === 'FAILED') return <main className="main"><FailView run={run} approver={latest?.approver ?? null} /></main>
   const ready = run.stage !== 'PROCESSING'
@@ -95,6 +102,7 @@ export function ReviewDetail({ runId }: { runId: number }) {
       {ready
         ? <DetailBody key={`${run.stage}-${version}`} run={run} tab={tab} onChanged={reload} onSubmit={() => setSubmitting(true)} />
         : <ProcessingView run={run} />}
+      {notice && <div className="toast" role="status"><span className="ms" aria-hidden="true">check_circle</span>{notice}</div>}
     </main>
   )
 }

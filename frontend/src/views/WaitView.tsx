@@ -48,7 +48,7 @@ function historyLine(l: LogEntry, approverName: (id: unknown) => string): string
   return null
 }
 
-export function WaitView({ run, onChanged }: { run: RunSummary; onChanged: () => void }) {
+export function WaitView({ run, onChanged, onWithdrawn }: { run: RunSummary; onChanged: () => void; onWithdrawn: () => void }) {
   const { user, users } = useSession()
   const id = run.run_id
   const screen = useLoad(() => api.approval(id), [id])
@@ -59,10 +59,8 @@ export function WaitView({ run, onChanged }: { run: RunSummary; onChanged: () =>
   const log = useLoad(() => api.history(id), [id])
   const waits = useLoad(() => api.runs().then((all) => all.filter((r) => r.stage === 'APPROVAL')), [])
   const [comment, setComment] = useState('')
-  const [canceled, setCanceled] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [toast, setToast] = useState('')
 
   const a = screen.data?.approval
   const ratio = screen.data?.review_ratio
@@ -92,12 +90,8 @@ export function WaitView({ run, onChanged }: { run: RunSummary; onChanged: () =>
     setError(null)
     p.then(done, (e: Error) => setError(e.message)).finally(() => setBusy(false))
   }
-  const withdraw = () => act(api.withdraw(id, user!.user_id), () => {
-    setCanceled(true)
-    log.reload()
-    setToast('상신을 취소했습니다.')
-    setTimeout(() => setToast(''), 3000)
-  })
+  // 취소되면 검토가 담당자 확인으로 돌아가므로 바로 검토 상세(판정 탭)로 보낸다. 알림은 검토 상세가 띄운다
+  const withdraw = () => act(api.withdraw(id, user!.user_id), onWithdrawn)
   const decide = (d: 'APPROVED' | 'REJECTED') => act(api.decide(id, d, comment.trim(), user!.user_id), onChanged)
 
   let barTitle = `${appr}의 결재를 기다리고 있습니다`
@@ -109,7 +103,7 @@ export function WaitView({ run, onChanged }: { run: RunSummary; onChanged: () =>
     <main className="main">
       <div className="fid">
         <span>{run.review_no}</span>
-        <span className={canceled ? 'st c-blue' : `st ${STAGE_TONES[run.stage]}`}>{canceled ? STAGE_NAMES.ENGINEER_REVIEW : STAGE_NAMES[run.stage]}</span>
+        <span className={`st ${STAGE_TONES[run.stage]}`}>{STAGE_NAMES[run.stage]}</span>
         {run.due_date && due && <span>마감 {dueText(run.due_date)} <b className={due.cls}>{due.text}</b></span>}
         <span>상신 {sent}</span><span>기안 {owner}</span><span>결재자 {appr}</span>
       </div>
@@ -125,7 +119,7 @@ export function WaitView({ run, onChanged }: { run: RunSummary; onChanged: () =>
 
       <div className="fgrid">
         <div style={{ minWidth: 0 }}>
-          {!canceled && a && (
+          {a && (
             <div className={'wbar' + (late ? ' late' : '')}>
               <span className="ms" aria-hidden="true">{late ? 'schedule' : 'hourglass_top'}</span>
               <div className="tx"><b>{barTitle}</b><span>{barSub}</span></div>
@@ -146,15 +140,9 @@ export function WaitView({ run, onChanged }: { run: RunSummary; onChanged: () =>
               </div>
             </div>
           )}
-          {canceled && (
-            <div className="wdone"><span className="ms" aria-hidden="true">undo</span>
-              <span>상신을 취소했습니다. 검토 중으로 돌아가 판정을 고칠 수 있습니다. 고친 뒤 다시 결재 상신해 주세요.{' '}
-                <a href={href(`/reviews/${id}`)} style={{ color: '#0569A0', fontWeight: 600 }}
-                  onClick={(e) => { e.preventDefault(); onChanged() }}>검토 화면으로</a></span></div>
-          )}
           {error && <p className="aphint" role="alert">{error}</p>}
 
-          {isApprover && !canceled && (
+          {isApprover && (
             <section className="fcard"><h2>결재 의견<span className="note">반려하려면 필수</span></h2>
               <textarea className="fi" rows={3} aria-label="결재 의견" value={comment} onChange={(e) => setComment(e.target.value)}
                 placeholder="예: 4,000 A 일탈 사유를 보완할 것" style={{ width: '100%' }} />
@@ -166,7 +154,7 @@ export function WaitView({ run, onChanged }: { run: RunSummary; onChanged: () =>
               <div className="wnode"><span className="r">기안</span><b>{owner}</b><span className="s ok">상신 {sent}</span></div>
               <span className="ms warr" aria-hidden="true">arrow_forward</span>
               <div className="wnode cur"><span className="r">결재</span><b>{appr}</b>
-                <span className={'s ' + (canceled ? '' : late ? 'late' : 'wait')}>{canceled ? '상신 취소됨' : '결재 대기'}</span></div>
+                <span className={'s ' + (late ? 'late' : 'wait')}>결재 대기</span></div>
             </div>
             <div className="wlock"><span className="ms" aria-hidden="true">lock</span>
               <span>결재가 끝날 때까지 판정은 상신한 내용 그대로 잠겨 있습니다. 고쳐야 하면 기안자가 상신을 취소한 뒤 다시 상신합니다.</span></div>
@@ -214,7 +202,6 @@ export function WaitView({ run, onChanged }: { run: RunSummary; onChanged: () =>
           </section>
         </aside>
       </div>
-      {toast && <div className="ftoast" role="status"><span className="ms" aria-hidden="true">check_circle</span>{toast}</div>}
     </main>
   )
 }
