@@ -207,6 +207,7 @@ export function Home() {
               return (
                 <div key={name || '-'} className="bpg">
                   <div className="bpg-h"><span className="bpg-n">{name || '사업 미지정'}</span>
+                    {first.business_no && <a className="hm-mut" href={href(`/projects/${first.business_no}`)}>{first.business_no} · 사업 상세</a>}
                     <span className="hm-mut ell">{[first.customer_name, first.country].filter(Boolean).join(' · ')}</span>
                     {first.due_date && <><span className={ddCls(n)}>{dday(first.due_date).text}</span><span className="hm-mut">제출 마감 {dueText(first.due_date)}</span></>}</div>
                   <div className="bpg-c">{rs.map((r) => cardEl(r, colOf(r, pending), true))}</div>

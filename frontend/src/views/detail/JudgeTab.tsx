@@ -3,7 +3,7 @@ import { api, type Judgment, type LogEntry, type OutputItem, type RunDocument, t
 import { Pager } from '../../components/Pager'
 import { stamp } from '../../components/format'
 import { confirmedBy, compareText, itemName, locShort, markSplit, prodCell, reqText, suggested, itemFor } from '../../components/judgment'
-import { RESULT_DOTS, RESULT_NAMES, RESULT_ORDER, RESULT_TONES } from '../../components/labels'
+import { RESULT_DOTS, RESULT_NAMES, RESULT_ORDER, RESULT_TONES, TYPE_NAMES } from '../../components/labels'
 import { useLoad } from '../../components/useLoad'
 import { useSession } from '../../shell/useSession'
 import { JudgmentDialog } from './JudgmentDialog'
@@ -12,10 +12,6 @@ import { OutputEditor } from './OutputEditor'
 // SCR-08-1 판정 탭 (목업 v4.57 Detail #judge). docs/screens/SCR-08-1-판정.md
 // 판정 칩·거르기·판정 순서 표, 줄을 누르면 판정 상세 창과 오른쪽 패널. 고른 줄·준수 모두를 한꺼번에 제안대로 확정 (add-bulk-confirm).
 
-const TYPES: [string, string][] = [
-  ['TECH_PERF', '기술 성능'], ['STANDARD_CERT', '적용 규격·인증'], ['SITE_ENV', '설치 환경'], ['MAKER_QUAL', '제조사 자격'],
-  ['TEST', '시험'], ['COST', '비용 영향'], ['RISK', '위험 조건'],
-]
 
 /** 검색어는 멈춘 뒤 0.3초 있다 보낸다 */
 function useDebounced(value: string, ms = 300): string {
@@ -158,7 +154,7 @@ export function JudgeTab({ run, tick, onChanged, head }: {
         <label className="sr" htmlFor="jtype">유형</label>
         <select className="fi" id="jtype" value={type} onChange={(e) => reset(() => setType(e.target.value))}>
           <option value="">모든 유형</option>
-          {TYPES.map(([code, name]) => <option key={code} value={code}>{name}</option>)}
+          {Object.entries(TYPE_NAMES).map(([code, name]) => <option key={code} value={code}>{name}</option>)}
         </select>
       </div>
       <div className={'work' + (curRow ? ' open' : '')}>
