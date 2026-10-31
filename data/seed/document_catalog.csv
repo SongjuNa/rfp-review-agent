@@ -23,3 +23,5 @@ file_no,file_key,bundle,language,project_key,note
 22,제Ⅳ편 제8장_154kV 송변전설비,D,ko,P-D,설비 14종 반복 (UPS 30 kVA)
 23,RFP_product_master_based_EN,B,en,,Product-master based demonstration RFP for GIS and power equipment
 24,RFP_Product_Master_Evaluat,B,en,,Product-master based evaluative RFP
+25,RFP_Product_Master_Evaluative_EN_With_Deviation,B,en,,"Product-master based evaluative RFP + Appendix B deviation-candidate requirements (파일 24와 다른 문서)"
+26,RFP_Product_Master_Evaluative_EN_With_Collaboration,B,en,,"파일 25 + 8장 견적·품질·영업 협조 요청 항목 (시험용)"

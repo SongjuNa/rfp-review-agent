@@ -37,6 +37,8 @@ services:
     command: sh -c "npm ci && npm run dev -- --port 5173"
     environment:
       VITE_API_TARGET: http://backend:8000
+      # 윈도우·맥에서 고친 파일을 컨테이너 안 개발 서버가 알아채게 한다 (vite.config.ts)
+      VITE_USE_POLLING: "1"
     volumes:
       - ./frontend:/app
       - /app/node_modules
