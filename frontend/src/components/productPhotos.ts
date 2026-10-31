@@ -8,25 +8,26 @@ export type ProductPhoto = {
   family: string     // 사진이 보여 주는 제품 계열
   page: string       // 사진이 실린 공식 페이지
   site: string       // 출처 사이트 이름
+  docs: string       // 관련 문서 묶음 (productDocs.json families 키, add-product-docs)
 }
 
 const GLOBAL = 'LS ELECTRIC 공식 사이트'
 const US = 'LS ELECTRIC America 공식 사이트'
 
 export const PRODUCT_PHOTOS: Record<string, ProductPhoto> = {
-  'CAT-C05001-26': { src: '/product-photos/susol-vcb.png', family: 'Susol VCB', site: GLOBAL,
+  'CAT-C05001-26': { docs: 'susol-vcb', src: '/product-photos/susol-vcb.png', family: 'Susol VCB', site: GLOBAL,
     page: 'https://www.ls-electric.com/products/view/Smart_Power_Solution/Medium_Voltage/VCB/Susol_VCB' },
-  'CAT-C050E2-13': { src: '/product-photos/susol-ul-vcb.webp', family: 'Susol UL VCB', site: US,
+  'CAT-C050E2-13': { docs: 'susol-ul-vcb', src: '/product-photos/susol-ul-vcb.webp', family: 'Susol UL VCB', site: US,
     page: 'https://www.lselectricamerica.com/product/1689/susol-ul-vcb?category=588' },
-  'CAT-C01551-07': { src: '/product-photos/uspc-spd.webp', family: 'USPC Series SPD', site: US,
+  'CAT-C01551-07': { docs: 'uspc-spd', src: '/product-photos/uspc-spd.webp', family: 'USPC Series SPD', site: US,
     page: 'https://www.lselectricamerica.com/product/1670/ul-spd?category=577' },
-  'CAT-C81001-08': { src: '/product-photos/gis.png', family: 'GIS', site: GLOBAL,
+  'CAT-C81001-08': { docs: 'gis', src: '/product-photos/gis.png', family: 'GIS', site: GLOBAL,
     page: 'https://www.ls-electric.com/products/category/Smart_Power_Solution/Power_Transmission/GIS' },
-  'CAT-C81021-04': { src: '/product-photos/gis.png', family: 'GIS', site: GLOBAL,
+  'CAT-C81021-04': { docs: 'gis-170', src: '/product-photos/gis.png', family: 'GIS', site: GLOBAL,
     page: 'https://www.ls-electric.com/products/category/Smart_Power_Solution/Power_Transmission/GIS' },
-  'CAT-C84501-10': { src: '/product-photos/power-transformer.webp', family: 'Power Transformer', site: US,
+  'CAT-C84501-10': { docs: 'power-transformer', src: '/product-photos/power-transformer.webp', family: 'Power Transformer', site: US,
     page: 'https://www.lselectricamerica.com/product/1696/power-transformer?category=594' },
-  'CAT-C80081-01': { src: '/product-photos/swgr-24kv.png', family: '특고압 일반배전반 (GSH-20V)', site: GLOBAL,
+  'CAT-C80081-01': { docs: 'swgr-24kv', src: '/product-photos/swgr-24kv.png', family: '특고압 일반배전반 (GSH-20V)', site: GLOBAL,
     page: 'https://www.ls-electric.com/ko/product/view/P01098' },
 }
 

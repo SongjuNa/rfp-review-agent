@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { api, type ItemKey, type Product, type ProductDetail } from '../api'
 import { Pager } from '../components/Pager'
+import { DOC_KINDS, isSourceCatalog, productDocs } from '../components/productDocs'
 import { productPhoto } from '../components/productPhotos'
 import { FAMILY_NAMES, POINT_KIND_NAMES, RESULT_NAMES, RESULT_TONES, STATUS_NAMES } from '../components/labels'
 import { useLoad } from '../components/useLoad'
@@ -10,6 +11,7 @@ import { usePageCss } from '../shell/pageCss'
 // SCR-16 제품표 (목업 v4.57 Products). docs/screens/SCR-16-제품표.md
 // 읽기만 한다. 빈 칸은 "비어 있음", 그 제품군에 없는 칸은 "—", 팀 가정 값은 "팀 가정" (CR-04, CR-06).
 
+type PanelTab = 'graph' | 'vals' | 'docs'
 type Col = { key: keyof Product & string; label: string; unit: string; item?: string; lower?: boolean }
 // 표의 주요 칸. item = 강점 방향을 읽는 표준 항목 (item_pm_mapping), lower = 작을수록 강점 (손실, FR-13)
 const COLS: Col[] = [
@@ -75,7 +77,7 @@ export function Products() {
   const [sel, setSel] = useState<string[]>([])
   // 목업처럼 처음에는 목록 첫 제품의 패널을 펼친다. 닫으면(null) 다시 열지 않는다
   const [picked, setCur] = useState<string | null | undefined>(undefined)
-  const [ptab, setPtab] = useState<'graph' | 'vals'>('graph')
+  const [ptab, setPtab] = useState<PanelTab>('graph')
   const [diffOnly, setDiffOnly] = useState(false)
   const fams = useLoad(() => api.productFamilies(), [])
   const items = useLoad(() => api.ruleItems(), [])
@@ -171,7 +173,7 @@ export function Products() {
 
 /** 오른쪽 제품 상세: 연결(판정에 쓰임, 제안 포인트, 값의 출처, 현장 이력) / 값(전체 칸) */
 function Panel({ code, data, error, tab, onTab, items, onClose }: {
-  code: string; data: ProductDetail | null; error: string | null; tab: 'graph' | 'vals'; onTab: (t: 'graph' | 'vals') => void; items: ItemKey[]; onClose: () => void
+  code: string; data: ProductDetail | null; error: string | null; tab: PanelTab; onTab: (t: PanelTab) => void; items: ItemKey[]; onClose: () => void
 }) {
   const p = data?.product_code === code ? data : null
   const groups = p ? [
@@ -198,6 +200,7 @@ function Panel({ code, data, error, tab, onTab, items, onClose }: {
       <div className="ptabs" role="tablist">
         <button type="button" role="tab" className={tab === 'graph' ? 'on' : ''} aria-selected={tab === 'graph'} onClick={() => onTab('graph')}>연결</button>
         <button type="button" role="tab" className={tab === 'vals' ? 'on' : ''} aria-selected={tab === 'vals'} onClick={() => onTab('vals')}>값</button>
+        <button type="button" role="tab" className={tab === 'docs' ? 'on' : ''} aria-selected={tab === 'docs'} onClick={() => onTab('docs')}>문서</button>
       </div>
       {error && <p role="alert" style={{ padding: '0 16px' }}>{error}</p>}
       {p && tab === 'graph' && (
@@ -220,6 +223,7 @@ function Panel({ code, data, error, tab, onTab, items, onClose }: {
           </div>
         </div>
       )}
+      {p && tab === 'docs' && <Docs sourceDoc={p.source_doc} />}
       {p && tab === 'vals' && (
         <div className="pb" style={{ gap: 0 }}>
           {[['제품 이름', p.product_name], ['제품군', FAMILY_NAMES[p.family] ?? p.family]].map(([l, v]) => (
@@ -253,6 +257,41 @@ function Photo({ sourceDoc }: { sourceDoc: string | null }) {
       <figcaption>{ph.family} 대표 사진 · 이 모델만의 사진은 아님<br />
         사진 출처: <a href={ph.page} target="_blank" rel="noreferrer">{ph.site}</a></figcaption>
     </figure>
+  )
+}
+
+const DOC_SHOW = 5
+/** 문서 탭 (add-product-docs): 공식 자료실의 카탈로그·매뉴얼·시험 성적서·인증서 링크. 종류마다 5건까지, 나머지는 펼쳐 본다. */
+function Docs({ sourceDoc }: { sourceDoc: string | null }) {
+  const d = productDocs(sourceDoc)
+  const [open, setOpen] = useState<Record<string, boolean>>({})
+  if (!d) return <div className="pb"><p className="en" style={{ margin: 0 }}>공식 자료실 문서 없음</p></div>
+  return (
+    <div className="pb" style={{ gap: 12 }}>
+      <p className="en" style={{ margin: 0 }}>
+        LS ELECTRIC 공식 자료실 문서 ({d.retrieved} 기준). 제품 계열 공통 문서라 이 모델에 해당하는지는 문서에서 확인하세요. <a href={d.page} target="_blank" rel="noreferrer">공식 페이지</a>
+      </p>
+      {DOC_KINDS.map(([kind, label]) => {
+        const list = d.docs.filter((x) => x.kind === kind)
+        const shown = open[kind] ? list : list.slice(0, DOC_SHOW)
+        return (
+          <div key={kind} className="g-group doc-group" aria-label={label}>
+            <div className="g-head">{label}<span className="g-n">{list.length}</span></div>
+            {!list.length && <div className="g-item none"><span>공식 자료실에 없음</span></div>}
+            {shown.map((x) => (
+              <a key={x.url} className="g-item" href={x.url} target="_blank" rel="noreferrer">
+                <span style={{ fontWeight: 600 }}>{x.title}{isSourceCatalog(x, sourceDoc) && <span className="c-green"> · 제품표 값의 출처</span>}</span>
+                <span className="en" style={{ margin: 0 }}>{[x.date, x.lang, x.org].filter(Boolean).join(' · ')}</span>
+              </a>
+            ))}
+            {list.length > DOC_SHOW && (
+              <button type="button" className="g-more" style={{ background: 'none', border: 0, cursor: 'pointer', textAlign: 'left' }}
+                onClick={() => setOpen({ ...open, [kind]: !open[kind] })}>{open[kind] ? '접기' : `외 ${list.length - DOC_SHOW}건 더 보기`}</button>
+            )}
+          </div>
+        )
+      })}
+    </div>
   )
 }
 

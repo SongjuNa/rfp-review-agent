@@ -147,6 +147,7 @@ mark{background:#FFE7A3;color:#1F2937;padding:0 2px;border-radius:2px}
 .g-groups{display:flex;flex-direction:column;gap:10px;padding-left:22px;margin-left:0;border-left:2px solid #C3CDDA;position:relative}
 .g-group{position:relative;padding:8px 10px;border-radius:6px;box-shadow:0 0 0 1px rgba(16,24,40,.14);background:#fff}
 .g-group::before{content:"";position:absolute;left:-24px;top:18px;width:22px;height:2px;background:#C3CDDA}
+.g-group.doc-group::before{display:none}
 .g-head{display:flex;align-items:center;gap:5px;font-size:var(--fs-xs);font-weight:600;color:#475467;margin-bottom:4px}
 .g-head .ms{font-size:var(--ic-s);color:#667085}
 .g-n{margin-left:auto;color:#667085;font-weight:400}
