@@ -31,6 +31,7 @@ test('제품 상세에 계열 사진', async ({ page }) => {
   expect(await photo.getByRole('img').evaluate((i: HTMLImageElement) => i.naturalWidth)).toBeGreaterThan(0)
 })
 
+<<<<<<< HEAD
 test('제품 상세 문서 탭', async ({ page }) => {
   // 명세 review-workspace "제품표 상세의 관련 문서" (change add-product-docs)
   await page.goto('/#/products')
@@ -59,6 +60,8 @@ test('공식 자료실에 없는 문서 종류', async ({ page }) => {
   await expect(panel.getByLabel('시험 성적서', { exact: true })).toContainText('공식 자료실에 없음')
 })
 
+=======
+>>>>>>> origin/claude/project-thread-wrevp7
 test('사진이 없는 카탈로그', async ({ page }) => {
   // 명세 review-workspace "제품표 상세의 제품 사진". 실제 제품표는 7개 카탈로그 모두 사진이 있어 응답을 바꿔 확인한다.
   await page.route(/\/api\/products\/(?!families)[^/?]+$/, async (route) => {
