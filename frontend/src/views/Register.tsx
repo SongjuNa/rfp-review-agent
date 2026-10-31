@@ -143,6 +143,14 @@ export function Register({ businessId = null }: { businessId?: number | null }) 
   if (step === 1) {
     if (!ok.length) { msg = 'docx 문서를 하나 이상 올려 주세요.'; msgCls = 'msg ok'; nextDis = true }
     else if (picked.length > ok.length) msg = 'docx가 아닌 파일은 빼고 진행합니다.'
+    // 추천이 모두 왔는데 판정할 문서가 없으면 분석해도 판정이 0건이라 막는다 (CR-09)
+    const rows = ok.map((p) => ({ pv: previews[p.name], c: chosen[p.name] }))
+    const judged = ({ pv, c }: (typeof rows)[number]) =>
+      typeof pv === 'object' && pv.readable && ['A', 'B'].includes((c ?? pv).bundle)
+    if (ok.length && rows.every((r) => typeof r.pv === 'object') && !rows.some(judged)) {
+      msg = '판정 대상 문서(묶음 A·B)가 없습니다. 묶음을 바꾸거나 판정할 문서를 더 올려 주세요.'
+      nextDis = true
+    }
   }
   if (step === 2 && !info.due_date) { msg = '제출 마감일을 입력해 주세요.'; nextDis = true }
   if (step === 2 && pjMode === 'old' && !chosenBiz) { msg = '연결할 사업을 골라 주세요.'; nextDis = true }

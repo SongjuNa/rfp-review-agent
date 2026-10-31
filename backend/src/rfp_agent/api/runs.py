@@ -179,10 +179,18 @@ def _summary(run_id: int) -> dict:
     return summary
 
 
+NO_JUDGE_TARGET = ("판정 대상 문서(묶음 A·B)가 없어 검토를 시작하지 않았습니다. "
+                   "묶음을 바꾸거나 판정할 문서를 더 올려 주세요.")
+
+
 def _start(paths: list[Path], background: BackgroundTasks, info: dict,
            actor_id: int | None, choices: Choices | None = None,
            business_id: int | None = None, new_business_name: str | None = None) -> dict:
+    bundles = {name: c.bundle for name, c in (choices or {}).items() if c.bundle}
     with connect() as conn:
+        # 판정할 문서가 없으면 10분 분석해도 판정이 0건이라 실행을 만들기 전에 거절한다 (CR-09)
+        if not preview.has_judge_target(conn, paths, bundles):
+            raise HTTPException(400, NO_JUDGE_TARGET)
         # 검토 정보·사업 칸이 틀리면 실행을 만들기 전에 막는다
         _review(lambda: review_info.clean(info))
         _review(lambda: review_info.check_engineer(conn, info.get("engineer_id") or None))

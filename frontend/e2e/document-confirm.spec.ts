@@ -46,3 +46,21 @@ test('묶음을 바꿔 시작', async ({ page }) => {
   expect(body).toContain('"bundle":"B"')
   await expect(page.getByRole('status')).toContainText(/RV-\d{4}-\d{3} 등록했습니다/)
 })
+
+// 명세 document-intake "판정 대상 없는 등록 거절" (change reject-unjudged-registration)
+test('등록 화면 판정 대상 없음 안내', async ({ page }) => {
+  await page.route('**/api/runs/preview', (r: Route) => r.fulfill({ json: [{
+    file_name: 'synthetic_judgment.docx', in_catalog: false, file_no: null, doc_kind: 'REQUIREMENT_SPEC', bundle: 'C',
+    language: 'en', standard_system: 'IEEE_UL', readable: true, judge_target: false, needs_review: false,
+    reason: '문서 목록에 없음 · IEEE·UL이라 판정하지 않음',
+  }] }))
+  await page.goto('/#/register')
+  await page.getByLabel('docx 올리기').setInputFiles(DOCX.pathname)
+  const row = page.locator('tr', { hasText: 'synthetic_judgment.docx' })
+  await expect(row).toContainText('판정 안 함')
+  await expect(page.locator('.foot2')).toContainText('판정 대상 문서(묶음 A·B)가 없습니다')
+  await expect(page.getByRole('button', { name: /다음/ })).toBeDisabled()
+  await row.getByLabel('묶음').selectOption('B')
+  await expect(page.locator('.foot2')).not.toContainText('판정 대상 문서')
+  await expect(page.getByRole('button', { name: /다음/ })).toBeEnabled()
+})

@@ -35,3 +35,24 @@ def preview(conn: psycopg.Connection, paths: list[Path]) -> list[dict]:
             readable=c.readable, judge_target=bundle in ("A", "B") and c.readable,
             needs_review=c.doc_kind == "UNKNOWN", reason=reason))
     return out
+
+
+def has_judge_target(conn: psycopg.Connection, paths: list[Path],
+                     bundles: dict[str, str]) -> bool:
+    """판정 대상 문서가 하나라도 있는가 (등록 거절, CR-09).
+
+    분석과 같은 규칙(문서 목록 묶음, 없으면 C)에 사람이 정한 묶음을 덮어쓴다
+    (bundles: 파일 이름 → 묶음).
+    열 수 없는 파일이 있으면 판단하지 않고 True를 돌려 분석 실패로 보이게 한다.
+    """
+    catalog = _catalog(conn)
+    kind_rules = cls.load_kind_rules(conn)
+    for path in paths:
+        try:
+            blocks = read_blocks(path)
+        except Exception:                 # 열 수 없는 docx는 지금처럼 분석 실패로 남긴다
+            return True
+        c = cls.classify(path.name, blocks, catalog, kind_rules)
+        if c.readable and bundles.get(path.name, c.bundle) in ("A", "B"):
+            return True
+    return False

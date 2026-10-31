@@ -35,14 +35,17 @@ export async function as(page: Page, userId: number) {
 }
 
 
-/** e2e/fixtures의 합성 문서로 실행을 만들고 담당자 확인 단계까지 기다린다 */
-async function upload(request: APIRequestContext, file: string, name: string) {
+/** e2e/fixtures의 합성 문서로 실행을 만들고 담당자 확인 단계까지 기다린다.
+ * 문서 목록에 없는 문서는 판정 대상이 없어 등록이 거절되므로(reject-unjudged-registration) 묶음을 정해 보낸다. */
+async function upload(request: APIRequestContext, file: string, name: string, bundle?: 'A' | 'B') {
   const res = await request.post('/api/runs', {
     multipart: {
       files: { name: file, mimeType: 'application/octet-stream', buffer: readFileSync(new URL(`./fixtures/${file}`, import.meta.url)) },
       review_name: name, actor_id: String(ENGINEER),
+      ...(bundle ? { choices: JSON.stringify({ [file]: { bundle } }) } : {}),
     },
   })
+  expect(res.status(), await res.text()).toBe(202)
   const run = await res.json() as { run_id: number; review_no: string }
   await expect.poll(async () => (await (await request.get(`/api/runs/${run.run_id}`)).json()).stage,
     { timeout: 60_000 }).toBe('ENGINEER_REVIEW')
@@ -50,7 +53,7 @@ async function upload(request: APIRequestContext, file: string, name: string) {
 }
 
 /** 위험 조건 후보(포괄 조항·값 불일치·범위 모호 하나씩)가 나오는 합성 사양서 (tests/docx_factory.build_gis_spec) */
-export const riskRun = (request: APIRequestContext, name: string) => upload(request, 'synthetic_154kV_GIS_spec.docx', name)
+export const riskRun = (request: APIRequestContext, name: string) => upload(request, 'synthetic_154kV_GIS_spec.docx', name, 'B')
 
 /** 손실 환산 단가 행 셋이 있고 비교 제품이 없는 합성 데이터시트 (tests/docx_factory.build_loss_spec).
  * 문서 목록 번호가 판정 데이터시트와 같으면 문서 판이 겹치므로 따로 넣는다:
@@ -58,4 +61,4 @@ export const riskRun = (request: APIRequestContext, name: string) => upload(requ
 export const lossRun = (request: APIRequestContext, name: string) => upload(request, 'synthetic_loss.docx', name)
 
 /** 문서 읽기 점검 줄(표·그림·단위·위치 하나씩)이 나오는 합성 문서 (tests/docx_factory.build_read_spec) */
-export const readRun = (request: APIRequestContext, name: string) => upload(request, 'synthetic_read.docx', name)
+export const readRun = (request: APIRequestContext, name: string) => upload(request, 'synthetic_read.docx', name, 'B')
