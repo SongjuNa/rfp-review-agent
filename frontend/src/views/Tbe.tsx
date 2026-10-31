@@ -57,8 +57,9 @@ export function Tbe({ runId }: { runId: number }) {
         <div><h1>TBE 준수표</h1><p className="tb-sub">{sub}</p></div>
         <div style={{ display: 'flex', gap: 8 }}>
           <a className="bo" href={href(`/reviews/${runId}`)}><span className="ms" aria-hidden="true" style={{ fontSize: 'var(--ic-s)' }}>arrow_back</span>검토 상세로</a>
-          <button type="button" className="bp" onClick={download} disabled={busy || !d}>
-            <span className="ms" aria-hidden="true" style={{ fontSize: 'var(--ic-s)' }}>download</span>{busy ? '만드는 중…' : '엑셀 내려받기'}</button>
+          <span title={d && d.rows.length === 0 ? '내려받을 줄이 없습니다' : undefined}>
+            <button type="button" className="bp" onClick={download} disabled={busy || !d || d.rows.length === 0}>
+              <span className="ms" aria-hidden="true" style={{ fontSize: 'var(--ic-s)' }}>download</span>{busy ? '만드는 중…' : '엑셀 내려받기'}</button></span>
         </div>
       </div>
       <div className="sh-note"><span className="ms" aria-hidden="true">info</span><span>1차 입찰 후 고객과의 기술 평가(TBE) 미팅에서 요구사항마다 준수 여부를 함께 보는 표입니다. 사람이 확정하지 않은 줄은 <b>"후보"</b>로 찍히고, 원문 위치가 없는 줄은 넣지 않습니다. 점수 예측은 하지 않습니다.</span></div>

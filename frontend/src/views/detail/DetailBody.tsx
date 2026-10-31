@@ -51,12 +51,17 @@ export function DetailBody({ run, tab, onChanged, onSubmit }: {
   const empty = useLoad(() => api.warrantyPage(id, { status: 'EMPTY_REVIEW', limit: 1 }).then((p) => p.total), [id, tick])
   const screen = useLoad(() => api.approval(id), [id, tick])
   const losses = useLoad(() => api.losses(id), [id, tick])
+  const outputs = useLoad(() => api.outputs(id), [id, tick])
+  // Word 파일에 들어갈 줄 수 (목록에서 뺀 줄은 들어가지 않는다). 0이면 내려받기를 막는다
+  const listed = (kind: string) => outputs.data?.filter((i) => i.list_kind === kind && i.status !== 'REMOVED').length
   const ratio = screen.data?.review_ratio
   const c = counts.data
   const head = (
     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-      <button type="button" className="bo" onClick={() => exporter.start('DEVIATION', c?.deviations ?? 0)}>일탈 목록 초안</button>
-      <button type="button" className="bo" onClick={() => exporter.start('QUERY', c?.queries ?? 0)}>질의서 초안</button>
+      <span title={listed('DEVIATION') === 0 ? '일탈 목록에 넣을 줄이 없습니다' : undefined}>
+        <button type="button" className="bo" disabled={!listed('DEVIATION')} onClick={() => exporter.start('DEVIATION', listed('DEVIATION') ?? 0)}>일탈 목록 초안</button></span>
+      <span title={listed('QUERY') === 0 ? '질의서에 넣을 줄이 없습니다' : undefined}>
+        <button type="button" className="bo" disabled={!listed('QUERY')} onClick={() => exporter.start('QUERY', listed('QUERY') ?? 0)}>질의서 초안</button></span>
       <a className="bo" href={href(`/reviews/${id}/tbe`)}>TBE 준수표</a>
       <a className="bo" href={href(`/reviews/${id}/datasheet`)}>데이터시트 채우기</a>
       {SUBMIT_LABELS[run.stage] && (
