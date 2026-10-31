@@ -10,6 +10,11 @@ import { useSession } from '../../shell/useSession'
 
 const TONES: Record<string, string> = { CANDIDATE: 'st c-grey', ADOPTED: 'st c-green', EDITED: 'st c-green', DISCARDED: 'st c-grey' }
 // 불리한 점의 대응 문장 (목업 cons)
+// 채택한 포인트를 받는 담당 (백엔드 assignments.POINT_ROLES와 같은 표, FR-11)
+const POINT_TO: Record<string, string> = { LOSS: '영업·견적 담당', MARGIN: '영업 담당', FIELD: '영업 담당' }
+/** 채택·버림을 누른 뒤 그 포인트에 남기는 알림 (update-proposal-actions) */
+type Acted = { action: 'ADOPT' | 'DISCARD'; reason?: string }
+
 const CONS: Record<string, [string, string]> = {
   DEVIATION_CANDIDATE: [' 미달', '일탈 목록에 올리고 대체 정격의 운전 조건을 설명'],
   QUERY_CANDIDATE: [' 값 불명확', '서면 질의로 적용 값을 확인한 뒤 판정'],
@@ -25,6 +30,7 @@ export function BidTab({ run, tick, onChanged }: { run: RunSummary; tick: number
   const canEdit = run.stage === 'ENGINEER_REVIEW' && user?.role === 'ENGINEER'
   const lock = run.stage !== 'ENGINEER_REVIEW' ? '담당자 확인 단계에서만 고칠 수 있습니다' : !canEdit ? '엔지니어만 고칠 수 있습니다' : undefined
   const tip = '설명 문장은 AI가 작성합니다. 채택한 항목만 영업과 견적 담당에 협조 요청으로 보냅니다.'
+  const [acted, setActed] = useState<Record<number, Acted>>({})
 
   return (
     <section className="sec" id="bid">
@@ -34,7 +40,8 @@ export function BidTab({ run, tick, onChanged }: { run: RunSummary; tick: number
           <div style={{ fontWeight: 600, fontSize: 'var(--fs-sm)', color: '#067647', paddingBottom: 4 }}>유리한 점</div>
           {points.error && <p role="alert">{points.error}</p>}
           {points.data?.length === 0 && <p style={{ color: '#667085', margin: '10px 0' }}>내세울 강점 후보가 없습니다.</p>}
-          {points.data?.map((p) => <Point key={p.point_id} runId={id} p={p} canEdit={canEdit} lock={lock} onDone={onChanged}
+          {points.data?.map((p) => <Point key={p.point_id} runId={id} p={p} canEdit={canEdit} lock={lock} acted={acted[p.point_id]}
+            onDone={(a) => { setActed((m) => ({ ...m, [p.point_id]: a })); onChanged() }}
             where={locShort(p, docs.data ?? [])} />)}
         </div>
         <div>
@@ -57,8 +64,8 @@ export function BidTab({ run, tick, onChanged }: { run: RunSummary; tick: number
   )
 }
 
-function Point({ runId, p, where, canEdit, lock, onDone }: {
-  runId: number; p: Proposal; where: string; canEdit: boolean; lock?: string; onDone: () => void
+function Point({ runId, p, where, canEdit, lock, acted, onDone }: {
+  runId: number; p: Proposal; where: string; canEdit: boolean; lock?: string; acted?: Acted; onDone: (a: Acted) => void
 }) {
   const { user } = useSession()
   const [dropping, setDropping] = useState(false)
@@ -69,13 +76,14 @@ function Point({ runId, p, where, canEdit, lock, onDone }: {
     setBusy(true)
     setError(null)
     api.act(runId, { target: 'proposal_point', target_id: p.point_id, action, reason: action === 'DISCARD' ? why.trim() : undefined, actor_id: user!.user_id })
-      .then(() => { setDropping(false); setWhy(''); onDone() })
+      .then(() => { onDone({ action, reason: action === 'DISCARD' ? why.trim() : undefined }); setDropping(false); setWhy('') })
       .catch((e: Error) => setError(e.message))
       .finally(() => setBusy(false))
   }
   const adopted = p.status === 'ADOPTED' || p.status === 'EDITED'
+  const rowCls = adopted ? 'li pt-adopted' : p.status === 'DISCARDED' ? 'li pt-dropped' : 'li'
   return (
-    <div className="li">
+    <div className={rowCls}>
       <span className="ms c-green" aria-hidden="true">trending_up</span>
       <div style={{ flex: '1 1 auto', minWidth: 0 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
@@ -93,10 +101,17 @@ function Point({ runId, p, where, canEdit, lock, onDone }: {
               <button type="button" className="bp" disabled={busy || !why.trim()} onClick={() => act('DISCARD')}>버리기</button>
               <button type="button" className="bo" onClick={() => { setDropping(false); setWhy('') }}>취소</button>
             </div>
-          : <div style={{ display: 'flex', gap: 12, marginTop: 4 }} title={lock}>
-              <button type="button" className="lnk" disabled={!canEdit || busy || adopted} onClick={() => act('ADOPT')}>채택</button>
-              <button type="button" className="lnk" disabled={!canEdit || busy || p.status === 'DISCARDED'} onClick={() => setDropping(true)}>버림</button>
+          : <div className="pt-acts" title={lock}>
+              <button type="button" className="bp" disabled={!canEdit || busy || adopted} onClick={() => act('ADOPT')}>
+                <span className="ms" aria-hidden="true">check</span>{adopted ? '채택함' : '채택'}</button>
+              <button type="button" className="bo" disabled={!canEdit || busy || p.status === 'DISCARDED'} onClick={() => setDropping(true)}>
+                <span className="ms" aria-hidden="true">close</span>버림</button>
             </div>}
+        {acted && <p className={`pt-note ${acted.action === 'ADOPT' ? 'ok' : ''}`} role="status">
+          <span className="ms" aria-hidden="true">{acted.action === 'ADOPT' ? 'check_circle' : 'do_not_disturb_on'}</span>
+          {acted.action === 'ADOPT'
+            ? `채택했습니다. ${POINT_TO[p.point_kind] ?? '영업 담당'}에게 협조 요청으로 전달합니다.`
+            : `버렸습니다. 사유: ${acted.reason}`}</p>}
         {error && <p className="aphint" role="alert">{error}</p>}
       </div>
     </div>
