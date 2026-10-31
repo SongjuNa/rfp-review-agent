@@ -12,9 +12,9 @@ const POINT = {
   drafted_by: 'CODE', is_assumed: false, status: 'CANDIDATE', locations: [],
 }
 
-async function fakePoints(page: Page, actions: unknown[]) {
+async function fakePoints(page: Page, actions: unknown[], kind = 'MARGIN') {
   let status = 'CANDIDATE'
-  await page.route(/\/api\/runs\/\d+\/proposals$/, (r: Route) => r.fulfill({ json: [{ ...POINT, status }] }))
+  await page.route(/\/api\/runs\/\d+\/proposals$/, (r: Route) => r.fulfill({ json: [{ ...POINT, point_kind: kind, status }] }))
   await page.route(/\/api\/runs\/\d+\/actions$/, (r: Route) => {
     const body = r.request().postDataJSON()
     actions.push(body)
@@ -90,4 +90,26 @@ test('비교 제품 바꾸기', async ({ page }) => {
   await expect(seg.getByRole('button', { name: 'GIS-145-40-P7' })).toHaveAttribute('aria-pressed', 'true')
   expect(puts).toEqual([expect.objectContaining({ url: expect.stringContaining('/equipment/T7|/product'), body: { product_code: 'GIS-145-40-P7' } })])
   await expect(page.getByRole('tab', { name: '입찰 영향' })).toHaveAttribute('aria-selected', 'true')
+})
+
+// change update-proposal-actions: 채택·버림 단추와 알림
+test('채택 알림', async ({ page }) => {
+  await fakePoints(page, [], 'LOSS')
+  await openBid(page, '채택 알림')
+  const point = page.locator('#bid .li', { hasText: '여유 시간 3배' })
+  await point.getByRole('button', { name: '채택' }).click()
+  await expect(point.getByRole('status')).toContainText('채택했습니다. 영업·견적 담당에게 협조 요청으로 전달합니다.')
+  await expect(point).toHaveClass(/pt-adopted/)
+  await expect(point.getByRole('button', { name: '채택함' })).toBeDisabled()
+})
+
+test('버림 알림', async ({ page }) => {
+  await fakePoints(page, [])
+  await openBid(page, '버림 알림')
+  const point = page.locator('#bid .li', { hasText: '여유 시간 3배' })
+  await point.getByRole('button', { name: '버림' }).click()
+  await point.getByLabel('버리는 사유').fill('이번 입찰에서는 내세우지 않음')
+  await point.getByRole('button', { name: '버리기' }).click()
+  await expect(point.getByRole('status')).toContainText('버렸습니다. 사유: 이번 입찰에서는 내세우지 않음')
+  await expect(point).toHaveClass(/pt-dropped/)
 })

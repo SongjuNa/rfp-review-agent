@@ -40,3 +40,12 @@
 .rjspin{width:40px;height:40px;border:4px solid #DCE3EC;border-top-color:#0A1E5A;border-radius:50%;animation:rjspin 1s linear infinite}
 @keyframes rjspin{to{transform:rotate(360deg)}}
 @media (prefers-reduced-motion:reduce){.rjspin{animation:none}}
+/* 입찰 영향 탭 채택·버림 (update-proposal-actions, SCR-08-5_공유.md 9) */
+.pt-acts{display:flex;gap:8px;margin-top:8px}
+.pt-acts .bp,.pt-acts .bo{height:30px;padding:0 12px;font-size:var(--fs-sm);display:inline-flex;align-items:center;gap:4px}
+.pt-acts .ms{font-size:16px}
+.li.pt-adopted{background:#ECFDF3;border-radius:8px;padding-left:8px;padding-right:8px}
+.li.pt-dropped{opacity:.55}
+.pt-note{display:flex;align-items:center;gap:6px;margin:8px 0 0;padding:8px 10px;border-radius:6px;background:#F2F4F7;color:#475467;font-size:var(--fs-sm)}
+.pt-note.ok{background:#D1FADF;color:#05603A}
+.pt-note .ms{font-size:16px}
