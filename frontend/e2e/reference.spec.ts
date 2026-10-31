@@ -31,6 +31,34 @@ test('제품 상세에 계열 사진', async ({ page }) => {
   expect(await photo.getByRole('img').evaluate((i: HTMLImageElement) => i.naturalWidth)).toBeGreaterThan(0)
 })
 
+test('제품 상세 문서 탭', async ({ page }) => {
+  // 명세 review-workspace "제품표 상세의 관련 문서" (change add-product-docs)
+  await page.goto('/#/products')
+  await page.locator('#pq').fill('GIS-145-40')
+  await page.locator('tbody tr', { hasText: 'GIS-145-40' }).first().click()
+  const panel = page.getByRole('complementary', { name: '제품 상세' })
+  await panel.getByRole('tab', { name: '문서' }).click()
+  const catalog = panel.getByLabel('카탈로그', { exact: true })
+  await expect(catalog).toContainText('[GIS] Total Solution')
+  await expect(catalog).toContainText('제품표 값의 출처')
+  await expect(catalog.getByRole('link').first()).toHaveAttribute('href', /^https:\/\/www\.ls-electric\.com\/ko\/cat\//)
+  const tests = panel.getByLabel('시험 성적서', { exact: true })
+  await expect(tests).toContainText('GIS_TypeTest')
+  await tests.getByRole('button', { name: /더 보기/ }).click()
+  expect(await tests.getByRole('link').count()).toBeGreaterThan(5)
+})
+
+test('공식 자료실에 없는 문서 종류', async ({ page }) => {
+  // 명세 review-workspace "제품표 상세의 관련 문서": GSH-20V는 시험 성적서가 공식 자료실에 없다
+  await page.goto('/#/products')
+  await page.locator('#pq').fill('SWGR-GSH20V-24')
+  await page.locator('tbody tr', { hasText: 'SWGR-GSH20V-24' }).first().click()
+  const panel = page.getByRole('complementary', { name: '제품 상세' })
+  await panel.getByRole('tab', { name: '문서' }).click()
+  await expect(panel.getByLabel('카탈로그', { exact: true })).toContainText('[GSH-20V]_국문')
+  await expect(panel.getByLabel('시험 성적서', { exact: true })).toContainText('공식 자료실에 없음')
+})
+
 test('사진이 없는 카탈로그', async ({ page }) => {
   // 명세 review-workspace "제품표 상세의 제품 사진". 실제 제품표는 7개 카탈로그 모두 사진이 있어 응답을 바꿔 확인한다.
   await page.route(/\/api\/products\/(?!families)[^/?]+$/, async (route) => {
