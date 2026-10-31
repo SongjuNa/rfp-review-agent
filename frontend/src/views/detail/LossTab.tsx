@@ -30,7 +30,7 @@ function lines(l: Loss): string {
   return a === b ? `단가 ${a}행` : `단가 ${a}~${b}행`
 }
 
-export function LossTab({ run, tick, onChanged }: { run: RunSummary; tick: number; onChanged: () => void }) {
+export function LossTab({ run, tick, onChanged, onGoBid }: { run: RunSummary; tick: number; onChanged: () => void; onGoBid: () => void }) {
   const { user } = useSession()
   const id = run.run_id
   const losses = useLoad(() => api.losses(id), [id, tick])
@@ -47,8 +47,9 @@ export function LossTab({ run, tick, onChanged }: { run: RunSummary; tick: numbe
     <section className="sec" id="loss">
       <div className="sech">
         <h2>손실 환산 (참고값){note && <span className="note">{note}</span>}</h2>
-        <span title="협조 요청은 입찰 영향 탭에서 손실 환산 제안 포인트를 채택하면 견적 담당에게 갑니다">
-          <button type="button" className="bo" disabled>견적 담당에 협조 요청</button></span>
+        {/* 협조 요청은 입찰 영향 탭에서 손실 환산 제안 포인트를 채택하면 견적 담당에게 간다. 이 단추는 그 탭으로 옮긴다 */}
+        <button type="button" className="bo" onClick={onGoBid}
+          title="입찰 영향 탭에서 손실 환산 제안 포인트를 채택하면 견적 담당에게 협조 요청이 갑니다">견적 담당에 협조 요청 <span aria-hidden="true">→</span></button>
       </div>
       {losses.error && <p role="alert">{losses.error} <button type="button" className="lnk" onClick={losses.reload}>다시 불러오기</button></p>}
       {losses.data?.length === 0 && (

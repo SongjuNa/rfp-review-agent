@@ -32,6 +32,9 @@ export function ProductSeg({ run, onSwitched }: { run: RunSummary; onSwitched: (
   }
   const products = Array.from(new Set(shown.map((s) => s.current).filter(Boolean)))
   const picked = shown.filter((s) => s.g.chosen_product).length
+  const optionsOf = (g: (typeof shown)[number]['g']) => Array.from(new Set([...g.candidates, ...(g.products ?? [])]))
+  // 후보가 하나뿐인 묶음만 있으면 바꿀 제품이 없다
+  const switchable = shown.some(({ g }) => optionsOf(g).length > 1)
   return (
     <details className="pseg" open={shown.length <= OPEN_MAX}>
       <summary>
@@ -39,11 +42,11 @@ export function ProductSeg({ run, onSwitched }: { run: RunSummary; onSwitched: (
         <b>비교 제품</b>
         <span className="pseg-sum">설비 {shown.length}개 · {products.slice(0, 3).join(', ')}{products.length > 3 ? ` 외 ${products.length - 3}개` : ''}
           {picked > 0 && ` · 엔지니어가 고름 ${picked}개`}</span>
-        <span className="pseg-tg">{canEdit ? '펼쳐서 바꾸기' : '펼쳐 보기'}</span>
+        <span className="pseg-tg">{canEdit && switchable ? '펼쳐서 바꾸기' : '펼쳐 보기'}</span>
       </summary>
       <div className="pseg-grid">
         {shown.map(({ g, name, current }) => {
-          const options = Array.from(new Set([...g.candidates, ...(g.products ?? [])]))
+          const options = optionsOf(g)
           return (
             <div className="pseg-row" key={g.equipment_group}>
               <div className="pseg-name" title={name}>{name}</div>
@@ -54,7 +57,8 @@ export function ProductSeg({ run, onSwitched }: { run: RunSummary; onSwitched: (
                     disabled={!canEdit || busy !== null} onClick={() => { if (c !== current) choose(g.equipment_group, c) }}>{c}</button>
                 ))}
               </div>
-              {busy === g.equipment_group && <span className="en">다시 판정 중…</span>}
+              {busy === g.equipment_group ? <span className="en">다시 판정 중…</span>
+                : options.length === 1 && <span className="en pseg-one" title="제품표에 요구 정격에 맞는 제품이 이것 하나뿐입니다">다른 후보 없음</span>}
             </div>
           )
         })}
