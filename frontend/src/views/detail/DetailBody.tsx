@@ -40,8 +40,8 @@ export function DetailTabs({ run, tab, onTab }: { run: RunSummary; tab: Tab; onT
   )
 }
 
-export function DetailBody({ run, tab, onChanged, onSubmit }: {
-  run: RunSummary; tab: Tab; onChanged: () => void; onSubmit: () => void
+export function DetailBody({ run, tab, onTab, onChanged, onSubmit }: {
+  run: RunSummary; tab: Tab; onTab: (t: Tab) => void; onChanged: () => void; onSubmit: () => void
 }) {
   const id = run.run_id
   const [tick, setTick] = useState(0)
@@ -86,7 +86,7 @@ export function DetailBody({ run, tab, onChanged, onSubmit }: {
       {tab === 'judge' && <JudgeTab run={run} tick={tick} onChanged={changed} head={head} />}
       {tab === 'read' && <ReadTab run={run} tick={tick} onChanged={changed} />}
       {tab === 'risk' && <RiskTab run={run} tick={tick} onChanged={changed} />}
-      {tab === 'loss' && <LossTab run={run} tick={tick} onChanged={changed} />}
+      {tab === 'loss' && <LossTab run={run} tick={tick} onChanged={changed} onGoBid={() => onTab('bid')} />}
       {tab === 'bid' && <BidTab run={run} tick={tick} onChanged={changed} />}
       {tab === 'comm' && <CommTab />}
       {tab === 'cmp' && <CmpTab />}

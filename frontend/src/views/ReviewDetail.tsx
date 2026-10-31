@@ -100,7 +100,7 @@ export function ReviewDetail({ runId }: { runId: number }) {
       {editing && <ReviewInfoDialog run={run} onClose={() => setEditing(false)} onSaved={() => { setEditing(false); reload() }} />}
       {submitting && <SubmitDialog run={run} onClose={() => setSubmitting(false)} onDone={() => { setSubmitting(false); reload() }} />}
       {ready
-        ? <DetailBody key={`${run.stage}-${version}`} run={run} tab={tab} onChanged={reload} onSubmit={() => setSubmitting(true)} />
+        ? <DetailBody key={`${run.stage}-${version}`} run={run} tab={tab} onTab={setTab} onChanged={reload} onSubmit={() => setSubmitting(true)} />
         : <ProcessingView run={run} />}
       {notice && <div className="toast" role="status"><span className="ms" aria-hidden="true">check_circle</span>{notice}</div>}
     </main>

@@ -46,3 +46,10 @@ test('조항 없는 RFP', async ({ page }) => {
   await expect(page.getByText('이 RFP에는 손실 환산 조항이 없어 계산하지 않았습니다.', { exact: false })).toBeVisible()
   await expect(page.locator('#loss table.mini')).toHaveCount(0)
 })
+
+test('견적 협조 요청 단추는 입찰 영향 탭으로 옮긴다', async ({ page }) => {
+  const run = await riskRun(page.request, `협조 요청 링크 ${Date.now()}`)
+  await openLoss(page, run.run_id)
+  await page.getByRole('button', { name: '견적 담당에 협조 요청' }).click()
+  await expect(page.getByRole('tab', { name: '입찰 영향' })).toHaveAttribute('aria-selected', 'true')
+})
