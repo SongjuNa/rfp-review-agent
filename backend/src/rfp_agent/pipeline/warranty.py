@@ -76,4 +76,4 @@ def _candidate(run_id, judgment_id, item_key, unit, product, mapping, fixed_valu
     else:
         text, value_unit = value.raw, None
     return (run_id, judgment_id, text[:200], value_unit, "PM", product.code, column, None,
-            "CANDIDATE", None, product.is_assumed)
+            "CANDIDATE", None, product.value_assumed(column))
