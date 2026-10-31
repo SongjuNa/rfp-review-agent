@@ -50,6 +50,8 @@ export function JudgeTab({ run, tick, onChanged, head }: {
   const [sel, setSel] = useState<Record<number, string>>({})   // 고른 판정 id → 판정 (쪽을 넘겨도 남는다)
   const [toast, setToast] = useState('')
   const [busy, setBusy] = useState(false)
+  const [applying, setApplying] = useState(false)
+  const [panelError, setPanelError] = useState<string | null>(null)
   const filters = { result: f === 'all' ? undefined : f, unconfirmed: onlyUnc, q, type_code: type || undefined }
   const key = JSON.stringify(filters)
   const counts = useLoad(() => api.judgmentCounts(id), [id, tick])
@@ -73,20 +75,24 @@ export function JudgeTab({ run, tick, onChanged, head }: {
 
   const reset = (fn: () => void) => { fn(); setPage(1); setCur(null) }
   const clearFilter = () => reset(() => { setF('all'); setOnlyUnc(false); setText(''); setType('') })
-  const open = (j: Judgment) => { setCur(j.judgment_id); setMd(j.judgment_id); setEdK(''); setEdWhy(''); setEdHint(false); setWVal(''); setWWhy('') }
+  const open = (j: Judgment) => { setCur(j.judgment_id); setMd(j.judgment_id); setEdK(''); setEdWhy(''); setEdHint(false); setPanelError(null); setWVal(''); setWWhy('') }
   const done = () => { onChanged() }
   const say = (m: string) => { setToast(m); setTimeout(() => setToast(''), 3000) }
   const act = (body: Parameters<typeof api.act>[1]) => api.act(id, { ...body, actor_id: user!.user_id }).then(done)
   const go = (d: number) => {
     const i = list.findIndex((r) => r.judgment_id === (curRow?.judgment_id ?? -1)) + d
-    if (list[i]) { setCur(list[i].judgment_id); setEdK(''); setEdWhy(''); setEdHint(false) }
+    if (list[i]) { setCur(list[i].judgment_id); setEdK(''); setEdWhy(''); setEdHint(false); setPanelError(null) }
   }
   const apply = () => {
     if (!curRow || !edK) return
     if (!edWhy.trim()) { setEdHint(true); return }
-    setError(null)
+    setPanelError(null)
+    setApplying(true)
+    const was = curRow.result
     act({ target: 'judgment', target_id: curRow.judgment_id, action: 'EDIT', value: { result: edK }, reason: edWhy.trim() })
-      .then(() => { setEdK(''); setEdWhy('') }, (e: Error) => setError(e.message))
+      .then(() => { say(`판정을 바꿨습니다: ${RESULT_NAMES[was]} → ${RESULT_NAMES[edK]}`); setEdK(''); setEdWhy('') },
+        (e: Error) => setPanelError(e.message))
+      .finally(() => setApplying(false))
   }
   const selIds = Object.keys(sel).map(Number)
   const selSum = RESULT_ORDER.map((r) => [r, Object.values(sel).filter((v) => v === r).length] as const)
@@ -204,7 +210,7 @@ export function JudgeTab({ run, tick, onChanged, head }: {
           <Panel runId={id} j={curRow} w={wOf(curRow)} items={items.data ?? []} log={log.data ?? []} docs={docs.data ?? []} canEdit={canEdit}
             edK={edK} edWhy={edWhy} edHint={edHint} wVal={wVal} wWhy={wWhy}
             setEdK={setEdK} setEdWhy={(v) => { setEdWhy(v); setEdHint(false) }} setWVal={setWVal} setWWhy={setWWhy}
-            onPrev={() => go(-1)} onNext={() => go(1)} onClose={() => setCur(-1)} onApply={apply} onSaveW={saveW} onDone={done} onSaved={say} />
+            onPrev={() => go(-1)} onNext={() => go(1)} onClose={() => setCur(-1)} onApply={apply} applying={applying} error={panelError} onSaveW={saveW} onDone={done} onSaved={say} />
         )}
       </div>
 
@@ -215,7 +221,7 @@ export function JudgeTab({ run, tick, onChanged, head }: {
           onNext={mdIdx < list.length - 1 ? () => { setMd(list[mdIdx + 1].judgment_id); setCur(list[mdIdx + 1].judgment_id) } : null}
           onClose={() => setMd(null)} onDone={done} onSaved={say}
           onEdit={() => { setMd(null); setTimeout(() => document.getElementById('newk')?.focus(), 0) }}
-          onConfirm={() => act({ target: 'judgment', target_id: mdRow.judgment_id, action: 'CONFIRM' })} />
+          onConfirm={() => act({ target: 'judgment', target_id: mdRow.judgment_id, action: 'CONFIRM' }).then(() => say('판정을 제안대로 확정했습니다.'))} />
       )}
       {toast && <div className="toast" role="status"><span className="ms" aria-hidden="true">check_circle</span>{toast}</div>}
     </section>
@@ -226,13 +232,14 @@ type PanelProps = {
   runId: number; j: Judgment; w?: Warranty; items: OutputItem[]; log: LogEntry[]; docs: RunDocument[]; canEdit: boolean
   edK: string; edWhy: string; edHint: boolean; wVal: string; wWhy: string
   setEdK: (v: string) => void; setEdWhy: (v: string) => void; setWVal: (v: string) => void; setWWhy: (v: string) => void
-  onPrev: () => void; onNext: () => void; onClose: () => void; onApply: () => void; onSaveW: (candidateId: number) => void
+  onPrev: () => void; onNext: () => void; onClose: () => void; onApply: () => void; applying: boolean; error: string | null
+  onSaveW: (candidateId: number) => void
   onDone: () => void; onSaved: (message: string) => void
 }
 
 /** 오른쪽 패널: 원문, 판정 근거, 판정 출처, 보증값, 목록 문장, 판정 바꾸기 */
 function Panel({ runId, j, w, items, log, docs, canEdit, edK, edWhy, edHint, wVal, wWhy, setEdK, setEdWhy, setWVal, setWWhy,
-  onPrev, onNext, onClose, onApply, onSaveW, onDone, onSaved }: PanelProps) {
+  onPrev, onNext, onClose, onApply, applying, error, onSaveW, onDone, onSaved }: PanelProps) {
   const req = useLoad(() => api.requirement(j.requirement_id, runId), [j.requirement_id, runId])
   const [a, m, b] = markSplit(req.data?.text_raw ?? '', j.req_value_raw)
   const sug = suggested(j, log)
@@ -298,9 +305,12 @@ function Panel({ runId, j, w, items, log, docs, canEdit, edK, edWhy, edHint, wVa
             <label className="sr" htmlFor="why">바꾸는 사유</label>
             <input className="fi" id="why" value={edWhy} disabled={!canEdit} onChange={(e) => setEdWhy(e.target.value)}
               placeholder="사유 (이력에 남음)" style={{ flex: '1 1 140px' }} />
-            <button type="button" className="bp" onClick={onApply} disabled={!canEdit || !edK || edK === j.result || !edWhy.trim()}>적용</button>
+            <button type="button" className="bp" onClick={onApply} disabled={!canEdit || applying || !edK || edK === j.result || !edWhy.trim()}>
+              {applying ? '적용 중…' : '적용'}</button>
           </div>
           {edHint && <div className="en" style={{ marginTop: 4 }}>판정을 바꾸려면 사유를 적어 주세요.</div>}
+          {applying && <div className="en" style={{ marginTop: 4 }}>판정을 바꾸고 일탈·질의 목록을 다시 만드는 중입니다…</div>}
+          {error && <p className="aphint" role="alert">{error}</p>}
           {!canEdit && <div className="en" style={{ marginTop: 4 }}>담당자 확인 단계에서 엔지니어만 바꿀 수 있습니다.</div>}
         </div>
       </div>

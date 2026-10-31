@@ -31,6 +31,11 @@ class Filled:
     detail: str | None          # 근거에 없는 숫자
 
 
+def filled_with(text: str, values: dict[str, str]) -> bool:
+    """이미 채운 문장에 지금 근거 값이 모두 들어 있는지. 값이 바뀌었으면 문장을 다시 써야 한다."""
+    return all(v in text for v in values.values() if v)
+
+
 def fill(template: str, values: dict[str, str]) -> Filled:
     """자리표시자를 채우고, 채운 문장 속 숫자가 모두 근거 값(values)에 있는지 본다."""
     text = PLACEHOLDER.sub(lambda m: values.get(m.group(1), m.group(0)), template)

@@ -1,9 +1,13 @@
 """합성 묶음 A 문서로 담당자 확인 → 승인까지 돌린다. 명세 review-approval의 Scenario."""
 
+import re
+
 import pytest
 
 from rfp_agent.pipeline import queries, review
+from rfp_agent.pipeline.outputs import build_outputs
 from rfp_agent.pipeline.run import RunContext, create_run, execute_run
+from tests.conftest import FakeLLM
 
 VERSION = "test-dict-v1"
 
@@ -79,6 +83,43 @@ def test_editing_judgment_logs_and_rebuilds_list(db, spec):
     assert again["status"] == "CONFIRMED"                   # 다시 만들어도 확인 결과는 남는다
     check = review.approval(db, run_id)["submission_check"]
     assert check["deviation_candidates"] == 5 and check["missing_judgment_ids"] == []
+
+
+def test_editing_judgment_redrafts_only_new_items(db, spec):
+    """판정을 바꾸면 새로 생긴 목록 문장만 언어 모델에 묻고, 나머지 문장은 그대로 둔다."""
+    llm = FakeLLM()
+    run_id = create_run(db, VERSION, llm)
+    assert execute_run(RunContext(db, VERSION, llm, None), run_id, [spec]) == "ENGINEER_REVIEW"
+    before = {i["item_id"]: i["text_draft"] for i in queries.run_outputs(db, run_id)}
+    j = judgment(db, run_id, "TS-115-GIS", "Rated normal current")
+    llm.prompts.clear()
+    review.act(RunContext(db, VERSION, llm, None), run_id, "judgment", j["judgment_id"], "EDIT",
+               {"result": "DEVIATION_CANDIDATE"}, "발주처 해석상 모선 기준 미달")
+    drafted = [p for p in llm.prompts if "자리표시자" in p]
+    assert len(drafted) == 1                    # 일탈 목록만 한 번, 제안 포인트는 묻지 않음
+    assert len(re.findall(r"^\d+\. ", drafted[0], re.MULTILINE)) == 1
+    after = queries.run_outputs(db, run_id)
+    assert len(after) == len(before) + 1
+    assert sorted(before.values()) == sorted(i["text_draft"] for i in after
+                                             if not any(s["judgment_id"] == j["judgment_id"]
+                                                        for s in i["sources"]))
+
+
+def test_changed_value_redrafts_sentence(db, spec):
+    """근거 값(제품값)이 바뀐 항목은 예전 문장을 쓰지 않고 다시 쓴다 (CR-07)."""
+    llm = FakeLLM()
+    run_id = create_run(db, VERSION, llm)
+    assert execute_run(RunContext(db, VERSION, llm, None), run_id, [spec]) == "ENGINEER_REVIEW"
+    j = judgment(db, run_id, "TS-230-GIS", "Rated normal current of main busbar")
+    db.execute("UPDATE judgment SET product_value_raw = '3777 A' WHERE judgment_id = %s",
+               (j["judgment_id"],))
+    llm.prompts.clear()
+    build_outputs(db, run_id, [d["document_id"] for d in queries.run_documents(db, run_id)], llm)
+    [drafted] = [p for p in llm.prompts if "자리표시자" in p]
+    assert len(re.findall(r"^\d+\. ", drafted, re.MULTILINE)) == 1
+    [item] = [i for i in queries.run_outputs(db, run_id, "DEVIATION")
+              if any(s["judgment_id"] == j["judgment_id"] for s in i["sources"])]
+    assert "3777 A" in item["text_draft"]
 
 
 def test_only_adopted_point_is_delivered(db, spec):
