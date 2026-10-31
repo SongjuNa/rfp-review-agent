@@ -10,7 +10,7 @@ from psycopg.rows import dict_row
 from rfp_agent.llm import tasks
 from rfp_agent.llm.client import LLM
 from rfp_agent.pipeline.field_history import find_matches
-from rfp_agent.pipeline.numbers import fill, fmt
+from rfp_agent.pipeline.numbers import Filled, fill, filled_with, fmt
 
 ASSUMED = " (팀 가정)"
 
@@ -106,30 +106,53 @@ def _field_points(conn: psycopg.Connection, run_id: int) -> list[dict]:
 
 def build_proposals(conn: psycopg.Connection, run_id: int, llm: LLM | None) -> int:
     points = _margin_points(conn, run_id) + _loss_points(conn, run_id)
-    if llm is not None and points:
+    with conn.cursor(row_factory=dict_row) as cur:
+        previous = {(r["point_kind"], r["requirement_id"], r["basis"]): r for r in cur.execute(
+            "SELECT point_kind, requirement_id, basis, status, text_draft, drafted_by, "
+            "number_check, number_detail FROM proposal_point WHERE run_id = %s",
+            (run_id,)).fetchall()}
+
+    def by_engineer(p: dict) -> bool:
+        old = previous.get((p["kind"], p["requirement_id"], p["basis"]))
+        return bool(old) and old["drafted_by"] == "ENGINEER"
+
+    def kept(p: dict) -> dict | None:
+        # 같은 근거·같은 값의 포인트는 언어 모델에 다시 묻지 않는다 (CR-11)
+        old = previous.get((p["kind"], p["requirement_id"], p["basis"]))
+        if old and not by_engineer(p) and filled_with(old["text_draft"], p["values"]):
+            return old
+        return None
+
+    fresh = [p for p in points if kept(p) is None and not by_engineer(p)]
+    if llm is not None and fresh:
         texts = tasks.draft_sentences(llm, "기술 제안 포인트",
-                                      [(p["facts"], p["marks"]) for p in points])
-        drafted = [(t, "AI") for t in texts]
+                                      [(p["facts"], p["marks"]) for p in fresh])
+        fresh_texts = {id(p): (t, "AI") for p, t in zip(fresh, texts, strict=True)}
     else:
-        drafted = [(p["template"], "CODE") for p in points]
+        fresh_texts = {id(p): (p["template"], "CODE") for p in fresh}
     field = _field_points(conn, run_id)
     points += field
-    drafted += [(p["template"], "CODE") for p in field]
-    with conn.cursor(row_factory=dict_row) as cur:
-        reviewed = {(r["point_kind"], r["requirement_id"], r["basis"]): r for r in cur.execute(
-            "SELECT point_kind, requirement_id, basis, status, text_draft, drafted_by "
-            "FROM proposal_point WHERE run_id = %s AND status <> 'CANDIDATE'",
-            (run_id,)).fetchall()}
+    fresh_texts |= {id(p): (p["template"], "CODE") for p in field}
+    reviewed = {k: r for k, r in previous.items() if r["status"] != "CANDIDATE"}
     with conn.transaction():
         conn.execute("DELETE FROM proposal_point WHERE run_id = %s", (run_id,))
-        for p, (template, by) in zip(points, drafted, strict=True):
+        for p in points:
             status = "CANDIDATE"
-            if prev := reviewed.get((p["kind"], p["requirement_id"], p["basis"])):
+            key = (p["kind"], p["requirement_id"], p["basis"])
+            if prev := reviewed.get(key):
                 # 다시 만들어도 같은 근거의 포인트면 채택·버림·고친 문장을 이어 쓴다
                 status = prev["status"]
-                if prev["drafted_by"] == "ENGINEER":
-                    template, by = prev["text_draft"].removesuffix(ASSUMED), "ENGINEER"
-            filled = fill(template, p["values"])
+            if by_engineer(p):
+                # 엔지니어가 쓴 문장은 이어 쓰고 숫자 대조만 지금 값으로 다시 한다
+                filled = fill(previous[key]["text_draft"].removesuffix(ASSUMED), p["values"])
+                by = "ENGINEER"
+            elif (old := kept(p)) and p["kind"] != "FIELD":
+                filled = Filled(old["text_draft"].removesuffix(ASSUMED), old["number_check"],
+                                old["number_detail"])
+                by = old["drafted_by"]
+            else:
+                template, by = fresh_texts[id(p)]
+                filled = fill(template, p["values"])
             text = filled.text + (ASSUMED if p["is_assumed"] else "")
             conn.execute(
                 """INSERT INTO proposal_point (run_id, point_kind, requirement_id, product_code,

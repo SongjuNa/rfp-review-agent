@@ -15,7 +15,7 @@ from rfp_agent.llm import tasks
 from rfp_agent.llm.client import LLM
 from rfp_agent.pipeline import queries
 from rfp_agent.pipeline.compare import unit_key
-from rfp_agent.pipeline.numbers import fill, fmt
+from rfp_agent.pipeline.numbers import Filled, fill, filled_with, fmt
 
 # 발주처 양식 이름 ("Clarification, Exception & Deviation List", "Schedule of Deviations")
 DEVIATION_FORM = re.compile(
@@ -181,7 +181,19 @@ def build_outputs(conn: psycopg.Connection, run_id: int, document_ids: list[int]
     drafts = (_judgment_drafts(conn, run_id) + _risk_drafts(conn, run_id)
               + _check_drafts(conn, run_id))
     drafts.sort(key=lambda d: (d.list_kind, min(d.requirement_ids)))
-    texts = _texts(llm, drafts)
+    previous = _previous_items(conn, run_id)
+
+    def kept(d: Draft) -> dict | None:
+        # 같은 항목이고 근거 값도 그대로인 문장은 언어 모델에 다시 묻지 않는다. 판정 하나를
+        # 고칠 때마다 모든 문장을 새로 쓰면 수십 초가 걸리고 같은 입력에 다른 문장이 나온다
+        # (CR-11). 엔지니어가 쓴 문장은 값이 바뀌어도 이어 쓰고 숫자 대조만 다시 한다.
+        old = previous.get((d.list_kind, repr(d.key)))
+        if old and (old["drafted_by"] == "ENGINEER" or filled_with(old["text_draft"], d.values)):
+            return old
+        return None
+
+    fresh = [d for d in drafts if kept(d) is None]
+    fresh_texts = dict(zip((id(d) for d in fresh), _texts(llm, fresh), strict=True))
     names = {kind: find_form(conn, document_ids, pattern)
              for kind, pattern in (("DEVIATION", DEVIATION_FORM), ("QUERY", QUERY_FORM))}
     _, clause = find_form(conn, document_ids, QUERY_CLAUSE)
@@ -189,14 +201,19 @@ def build_outputs(conn: psycopg.Connection, run_id: int, document_ids: list[int]
     with conn.transaction():
         clear_outputs(conn, run_id)
         by_requirement: dict[int, list[tuple[str, int]]] = defaultdict(list)
-        for draft, (template, drafted_by) in zip(drafts, texts, strict=True):
+        for draft in drafts:
             status = "DRAFT"
             if prev := reviewed.get((draft.list_kind, repr(draft.key))):
                 # 같은 항목을 다시 만들면 엔지니어 확인 결과(확정·빼기·고친 문장)를 이어 쓴다
                 status = prev["status"]
-                if prev["drafted_by"] == "ENGINEER":
-                    template, drafted_by = prev["text_draft"], "ENGINEER"
-            filled = fill(template, draft.values)
+            if (old := kept(draft)) and old["drafted_by"] == "ENGINEER":
+                filled, drafted_by = fill(old["text_draft"], draft.values), "ENGINEER"
+            elif old:
+                filled = Filled(old["text_draft"], old["number_check"], old["number_detail"])
+                drafted_by = old["drafted_by"]
+            else:
+                template, drafted_by = fresh_texts[id(draft)]
+                filled = fill(template, draft.values)
             name, form_req = names[draft.list_kind]
             basis = form_req if draft.list_kind == "DEVIATION" else (clause or form_req)
             item_id = conn.execute(
@@ -227,6 +244,14 @@ def build_outputs(conn: psycopg.Connection, run_id: int, document_ids: list[int]
             conn.execute("INSERT INTO output_item_link VALUES (%s, %s)", (a, b))
     check_submission(conn, run_id)
     return len(drafts)
+
+
+def _previous_items(conn: psycopg.Connection, run_id: int) -> dict[tuple, dict]:
+    with conn.cursor(row_factory=dict_row) as cur:
+        rows = cur.execute(
+            "SELECT list_kind, group_key, text_draft, number_check, number_detail, drafted_by "
+            "FROM output_item WHERE run_id = %s", (run_id,)).fetchall()
+    return {(r["list_kind"], r["group_key"]): r for r in rows}
 
 
 def _reviewed_items(conn: psycopg.Connection, run_id: int) -> dict[tuple, dict]:

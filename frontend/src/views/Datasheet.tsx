@@ -26,6 +26,7 @@ export function Datasheet({ runId }: { runId: number }) {
   const [size, setSize] = useState(10)
   const [tick, setTick] = useState(0)
   const [busy, setBusy] = useState(false)
+  const [confirming, setConfirming] = useState<string | null>(null)
   const [toast, setToast] = useState('')
   const [error, setError] = useState<string | null>(null)
   const run = useLoad(() => api.run(runId), [runId])
@@ -45,13 +46,14 @@ export function Datasheet({ runId }: { runId: number }) {
   const say = (m: string) => { setToast(m); setTimeout(() => setToast(''), 2800) }
   const confirm = (x: DatasheetRow) => {
     setError(null)
+    setConfirming(x.no)
     const body = x.target === 'warranty'
       ? { target: 'warranty_candidate', target_id: x.candidate_id!, action: 'CONFIRM' }
       : { target: 'judgment', target_id: x.judgment_id, action: 'CONFIRM' }
     api.act(runId, { ...body, actor_id: user!.user_id }).then(() => {
       setTick((t) => t + 1)
       say(`칸 ${x.no} ${x.item} 값을 확정했습니다.`)
-    }, (e: Error) => setError(e.message))
+    }, (e: Error) => setError(e.message)).finally(() => setConfirming(null))
   }
   const download = () => {
     if (busy || tableId === null) return
@@ -113,7 +115,7 @@ export function Datasheet({ runId }: { runId: number }) {
               <td>{x.value ? <b className="ds-v">{x.value}</b> : <span className="ds-e">비움</span>}</td>
               <td className="ds-b">{x.basis}{!x.value && <span className="c-ora">{x.why}</span>}</td>
               <td><span className={TONES[x.state]}>{x.status}</span>
-                {x.state === 'cand' && canEdit && <button type="button" className="ds-ok" onClick={() => confirm(x)} aria-label={`칸 ${x.no} ${x.item} 확정`}>확정</button>}</td>
+                {x.state === 'cand' && canEdit && <button type="button" className="ds-ok" onClick={() => confirm(x)} disabled={confirming !== null} aria-label={`칸 ${x.no} ${x.item} 확정`}>{confirming === x.no ? '확정하는 중…' : '확정'}</button>}</td>
             </tr>
           ))}</tbody>
         </table></div>
