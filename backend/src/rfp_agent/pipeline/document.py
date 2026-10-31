@@ -117,9 +117,14 @@ def _save_tables(conn, document_id: int, tables: list[LogicalTable], section_ids
     return row_ids
 
 
-def _refine_with_ai(llm: LLM, candidates: list[Candidate], report: Report) -> None:
+def _refine_with_ai(llm: LLM, candidates: list[Candidate], report: Report,
+                    risk_patterns: list[re.Pattern]) -> None:
     by_section: dict[int | None, list[Candidate]] = {}
     for c in candidates:
+        # 위험 표현이 든 문장은 언어 모델에 묻지 않고 요구사항으로 둔다.
+        # 작성 규칙·설명으로 바뀌면 위험 조건 찾기에서 빠지기 때문이다 (CR-01, FR-06).
+        if any(p.search(c.text) for p in risk_patterns):
+            continue
         if c.source_kind == "SENTENCE" and c.req_kind == "REQUIREMENT":
             by_section.setdefault(c.section.index if c.section else None, []).append(c)
     total = sum(len(g) for g in by_section.values())
@@ -204,7 +209,8 @@ def process_document(conn: psycopg.Connection, path: Path, dicts: PipelineDicts,
         report("extract")
         candidates = extract(blocks, sections, tables)
         if llm is not None:
-            _refine_with_ai(llm, candidates, report)
+            _refine_with_ai(llm, candidates, report,
+                            [e.pattern for e in dicts.risk_expressions])
 
         report("save")
 
