@@ -2304,6 +2304,101 @@
         }
       }
     },
+    "/api/runs/{run_id}/compare": {
+      "get": {
+        "tags": [
+          "검토 실행"
+        ],
+        "summary": "Compare Targets",
+        "description": "지난 RFP 비교 대상: 고객사 글자가 같은 처리를 마친 다른 검토 (SCR-08-7).",
+        "operationId": "compare_targets_api_runs__run_id__compare_get",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Run Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CompareTargets"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/runs/{run_id}/compare/{other_id}": {
+      "get": {
+        "tags": [
+          "검토 실행"
+        ],
+        "summary": "Compare Runs",
+        "description": "이번 검토와 지난 검토의 달라진 요구(값 바뀜·새로 생김·사라짐)와 판정 변화.",
+        "operationId": "compare_runs_api_runs__run_id__compare__other_id__get",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Run Id"
+            }
+          },
+          {
+            "name": "other_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Other Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PastCompare"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/runs/{run_id}/approval": {
       "get": {
         "tags": [
@@ -6100,6 +6195,112 @@
         "title": "CommercialImpact",
         "description": "기술 판단에서 생긴 상업 영향: 손실 환산 가산액(LOSS), 일탈 후보 가격 영향 확인(DEVIATION)."
       },
+      "CompareRow": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "chg",
+              "new",
+              "del"
+            ],
+            "title": "Kind"
+          },
+          "equipment": {
+            "type": "string",
+            "title": "Equipment"
+          },
+          "item_name": {
+            "type": "string",
+            "title": "Item Name"
+          },
+          "item_raw": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Item Raw"
+          },
+          "before": {
+            "type": "string",
+            "title": "Before"
+          },
+          "after": {
+            "type": "string",
+            "title": "After"
+          },
+          "before_result": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "COMPLY",
+                  "DEVIATION_CANDIDATE",
+                  "QUERY_CANDIDATE",
+                  "NEEDS_REVIEW",
+                  "WARRANTY_TO_FILL"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Before Result"
+          },
+          "after_result": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "COMPLY",
+                  "DEVIATION_CANDIDATE",
+                  "QUERY_CANDIDATE",
+                  "NEEDS_REVIEW",
+                  "WARRANTY_TO_FILL"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "After Result"
+          },
+          "note": {
+            "type": "string",
+            "title": "Note"
+          },
+          "requirement_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Requirement Id"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "kind",
+          "equipment",
+          "item_name",
+          "item_raw",
+          "before",
+          "after",
+          "before_result",
+          "after_result",
+          "note",
+          "requirement_id"
+        ],
+        "title": "CompareRow"
+      },
       "CompareRule": {
         "properties": {
           "compare_rule_id": {
@@ -6212,6 +6413,135 @@
           "used"
         ],
         "title": "CompareRule"
+      },
+      "CompareTarget": {
+        "properties": {
+          "run_id": {
+            "type": "integer",
+            "title": "Run Id"
+          },
+          "review_no": {
+            "type": "string",
+            "title": "Review No"
+          },
+          "stage": {
+            "type": "string",
+            "enum": [
+              "PROCESSING",
+              "ENGINEER_REVIEW",
+              "APPROVAL",
+              "APPROVED",
+              "REJECTED",
+              "FAILED"
+            ],
+            "title": "Stage"
+          },
+          "started_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Started At"
+          },
+          "project_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Project Name"
+          },
+          "review_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Review Name"
+          },
+          "customer_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Customer Name"
+          },
+          "files": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Files"
+          },
+          "judgments": {
+            "type": "integer",
+            "title": "Judgments"
+          },
+          "products": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Products"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "run_id",
+          "review_no",
+          "stage",
+          "started_at",
+          "project_name",
+          "review_name",
+          "customer_name",
+          "files",
+          "judgments",
+          "products"
+        ],
+        "title": "CompareTarget",
+        "description": "지난 RFP 비교 대상: 같은 고객사의 처리를 마친 다른 검토 (add-past-compare)."
+      },
+      "CompareTargets": {
+        "properties": {
+          "customer_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Customer Name"
+          },
+          "targets": {
+            "items": {
+              "$ref": "#/components/schemas/CompareTarget"
+            },
+            "type": "array",
+            "title": "Targets"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "customer_name",
+          "targets"
+        ],
+        "title": "CompareTargets"
       },
       "CostCondition": {
         "properties": {
@@ -8934,6 +9264,32 @@
           "requirement_id"
         ],
         "title": "OutputSource"
+      },
+      "PastCompare": {
+        "properties": {
+          "target": {
+            "$ref": "#/components/schemas/CompareTarget"
+          },
+          "rows": {
+            "items": {
+              "$ref": "#/components/schemas/CompareRow"
+            },
+            "type": "array",
+            "title": "Rows"
+          },
+          "same": {
+            "type": "integer",
+            "title": "Same"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "target",
+          "rows",
+          "same"
+        ],
+        "title": "PastCompare"
       },
       "Product": {
         "properties": {

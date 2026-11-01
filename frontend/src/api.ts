@@ -1,13 +1,13 @@
 // 백엔드 API (/api, Vite 프록시). 응답 타입은 백엔드 응답 모델에서 만든다 (api.gen.ts, `npm run gen:api`).
 import type {
-  ActionResult, ApprovalScreen, AssignmentStatus, BulkResult, CostSummary, BusinessDetail, BusinessList, BusinessLog,
+  ActionResult, ApprovalScreen, AssignmentStatus, BulkResult, CompareTargets, CostSummary, PastCompare, BusinessDetail, BusinessList, BusinessLog,
   DecisionResult, DocumentChoice, DocumentPreview, HandoffResult, SalesHandoff,
   LossResult, ProductSwitch, RuleEdit,
   RunLogItem, RunSummary, SendResult, StageResult, SubmitResult,
 } from './api.gen'
 
 export type {
-  ApprovalScreen, Assignment, BusinessDetail, CommercialImpact, CostCondition, CostSummary, BusinessEvent, BusinessList, BusinessListItem, BusinessLog, BusinessPerson,
+  ApprovalScreen, Assignment, BusinessDetail, CommercialImpact, CompareRow, CompareTarget, CompareTargets, PastCompare, CostCondition, CostSummary, BusinessEvent, BusinessList, BusinessListItem, BusinessLog, BusinessPerson,
   BusinessRange, CompareRule, Criterion, Datasheet, DatasheetInfo, DatasheetRow, DocKindRule,
   DocumentChoice, DocumentPreview, EngineeringCheck,
   Equipment, Health, ItemKey, Judgment, JudgmentCounts, Location, LogEntry, Loss, MyTasks, OutputItem, Product,
@@ -141,6 +141,9 @@ export const api = {
     if (actor_id !== null) form.append('actor_id', String(actor_id))
     return call<RunSummary>(`/runs/${id}/documents`, { method: 'POST', body: form })
   },
+  /** 지난 RFP 비교 (add-past-compare): 같은 고객사의 지난 검토와 달라진 요구 */
+  compareTargets: (id: number) => call<CompareTargets>(`/runs/${id}/compare`),
+  compare: (id: number, otherId: number) => call<PastCompare>(`/runs/${id}/compare/${otherId}`),
   /** 보낸 칸만 바꾼다. 빈 문자열은 비우기 */
   updateInfo: (id: number, info: Partial<Record<keyof ReviewInfo, string | number | null>>, actor_id: number | null) =>
     call<RunSummary>(`/runs/${id}/info`, json('PUT', { ...info, actor_id })),

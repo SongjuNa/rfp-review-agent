@@ -125,6 +125,29 @@ def build_judgment_spec(path: Path, title: str = "SCHEDULE OF TECHNICAL DATA") -
     return path
 
 
+def build_judgment_spec_next(path: Path) -> Path:
+    """같은 고객의 다음 입찰 데이터시트 (지난 RFP 비교용, add-past-compare).
+
+    build_judgment_spec과 비교해 230 kV 주모선 4,000 → 3,150 A(값 바뀜), 피더 3,500 A 빠짐(사라짐),
+    최대 순간 전류 125 kA 새로 생김. 나머지는 같다.
+    """
+    doc = Document()
+    doc.add_paragraph("SCHEDULE OF TECHNICAL DATA")
+    doc.add_paragraph("1. DATA SHEET")
+    _datasheet(doc, "TS-230-GIS", [
+        ["1", "Rated voltage", "kV", "245", ""],
+        ["2", "Rated frequency", "Hz", "50", ""],
+        ["3", "Rated normal current of main busbar", "A", "3150", ""],
+        ["4", "Rated normal current of bus coupler", "A", "4000", ""],
+        ["5", "Rated normal current of busbar disconnector", "A", "4000", ""],
+        ["7", "Rated short-time withstand current, (1 sec.)", "kA", "50", ""],
+        ["8", "Rated peak withstand current", "kA", "125", ""],
+    ])
+    _datasheet(doc, "TS-115-GIS", [*GIS_115_ROWS, FEEDER_QUERY_ROW])
+    doc.save(str(path))
+    return path
+
+
 def build_feeder_copy(path: Path) -> Path:
     """다른 문서에 같은 115 kV 행이 다시 나오는 경우 (같은 질의가 두 문서에)."""
     doc = Document()

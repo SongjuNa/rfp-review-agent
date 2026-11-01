@@ -27,19 +27,12 @@ test('탭으로 내용 바꾸기', async ({ page, request }) => {
 })
 
 test('예시 탭', async ({ page, request }) => {
-  // 상업 조건 탭은 실제 데이터가 되어(add-cost-conditions) 남은 예시 탭인 지난 RFP 비교로 확인한다
+  // 마지막 예시 탭이던 지난 RFP 비교도 실제 데이터가 되어(add-past-compare) 예시 띠가 없다
   const run = await deviationRun(request, `예시 탭 ${Date.now()}`)
   await page.goto(`/#/reviews/${run.run_id}`)
   await page.getByRole('tab', { name: '지난 RFP 비교' }).click()
-  const cmp = page.locator('#cmp')
-  await expect(cmp.getByRole('note')).toContainText('예시 화면 · 실제 데이터와 연결되지 않음')
-  const rows = cmp.locator('table.tbl tbody tr')
-  const before = await rows.count()
-  await cmp.getByRole('button', { name: /새로 생김/ }).click()
-  await expect(rows).not.toHaveCount(before)
-  await page.reload()                                  // 저장하지 않는다
-  await page.getByRole('tab', { name: '지난 RFP 비교' }).click()
-  await expect(rows).toHaveCount(before)
+  await expect(page.locator('#cmp h2')).toContainText('지난 RFP 비교')
+  await expect(page.locator('#cmp').getByRole('note')).toHaveCount(0)
 })
 
 test('판정 칩으로 거르기', async ({ page, request }) => {
