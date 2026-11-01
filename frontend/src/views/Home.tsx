@@ -171,6 +171,10 @@ export function Home() {
           )
         })}
       </div>
+      {engineer && (
+        <p className="mlink"><a href={href('/reviews?scope=submitted')}>내가 올린 결재 목록에서 보기
+          <span className="ms" aria-hidden="true">chevron_right</span></a></p>
+      )}
 
       <section className="sec" aria-labelledby="dueTitle">
         <div className="sech">

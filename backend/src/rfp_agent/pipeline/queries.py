@@ -443,8 +443,20 @@ def run_list(conn: psycopg.Connection, limit: int = 50) -> list[dict]:
                (SELECT string_agg(d.file_name, ', ' ORDER BY d.file_no)
                   FROM run_document rd JOIN document d USING (document_id)
                  WHERE rd.run_id = r.run_id) AS files,
-               {COUNTS}
-        FROM review_run r ORDER BY r.run_id DESC LIMIT %s""", (limit,))
+               {COUNTS},
+               ap.approver_id, ap.approver, ap.requested_by_id, ap.requested_by,
+               ap.requested_at, ap.decision, ap.decided_at
+        FROM review_run r
+        -- 가장 최근 상신 하나. 그것이 취소한 상신이면 결재 칸은 모두 비운다
+        LEFT JOIN LATERAL (
+            SELECT a.approver_id, u.user_name AS approver, a.requested_by AS requested_by_id,
+                   q.user_name AS requested_by, a.requested_at, a.decision, a.decided_at
+            FROM (SELECT * FROM approval WHERE run_id = r.run_id
+                  ORDER BY approval_id DESC LIMIT 1) a
+            LEFT JOIN app_user u ON u.user_id = a.approver_id
+            LEFT JOIN app_user q ON q.user_id = a.requested_by
+            WHERE a.decision IS DISTINCT FROM 'WITHDRAWN') ap ON TRUE
+        ORDER BY r.run_id DESC LIMIT %s""", (limit,))
 
 
 def requirement(conn: psycopg.Connection, requirement_id: int,
