@@ -15,7 +15,7 @@ from psycopg.rows import dict_row
 from psycopg.types.json import Jsonb
 
 from rfp_agent.notify.mail import get_mailer
-from rfp_agent.pipeline import queries
+from rfp_agent.pipeline import graph_flow, queries
 from rfp_agent.pipeline.assignments import build_assignments
 from rfp_agent.pipeline.handoff_mail import send_after_confirm
 from rfp_agent.pipeline.numbers import fill
@@ -391,6 +391,7 @@ def finish_review(conn: psycopg.Connection, run_id: int, approver_id: int | None
         log(conn, run_id, "review_run", run_id, "CONFIRM", {"stage": "ENGINEER_REVIEW"},
             {"stage": "APPROVAL", "approver_id": approver_id,
              "ar_codes": [c.ar_code for c in found]}, comment, actor_id)
+        graph_flow.advance(conn, run_id, "submit")
     return {"stage": "APPROVAL", "approval_id": approval_id,
             "criteria": [{"ar_code": c.ar_code, "detail": c.detail} for c in found]}
 
@@ -430,6 +431,7 @@ def decide(conn: psycopg.Connection, run_id: int, decision: str, comment: str | 
         log(conn, run_id, "review_run", run_id,
             "CONFIRM" if decision == "APPROVED" else "REJECT", {"stage": "APPROVAL"},
             {"stage": decision}, comment, actor_id)
+        graph_flow.advance(conn, run_id, "approve" if decision == "APPROVED" else "reject")
     return approval(conn, run_id) | {"approval_id": approval_id}
 
 
@@ -448,6 +450,7 @@ def withdraw(conn: psycopg.Connection, run_id: int, actor_id: int | None = None)
                      (Jsonb({"step": "engineer_review"}), run_id))
         log(conn, run_id, "review_run", run_id, "EDIT", {"stage": "APPROVAL"},
             {"stage": "ENGINEER_REVIEW"}, "상신 취소", actor_id)
+        graph_flow.advance(conn, run_id, "withdraw")
     return {"stage": "ENGINEER_REVIEW", "approval_id": approval_id}
 
 
@@ -461,6 +464,7 @@ def reopen(conn: psycopg.Connection, run_id: int, actor_id: int | None = None) -
                      (Jsonb({"step": "engineer_review"}), run_id))
         log(conn, run_id, "review_run", run_id, "EDIT", {"stage": "REJECTED"},
             {"stage": "ENGINEER_REVIEW"}, "반려 뒤 다시 확인", actor_id)
+        graph_flow.advance(conn, run_id, "reopen")
     return {"stage": "ENGINEER_REVIEW"}
 
 

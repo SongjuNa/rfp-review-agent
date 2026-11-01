@@ -14579,6 +14579,17 @@
             "title": "Type Examples",
             "default": 0
           },
+          "resumed_from": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resumed From"
+          },
           "explanations_unverified": {
             "type": "integer",
             "title": "Explanations Unverified"

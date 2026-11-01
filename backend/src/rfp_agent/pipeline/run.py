@@ -12,14 +12,16 @@ from pathlib import Path
 from typing import TypedDict
 
 import psycopg
+from langgraph.checkpoint.base import BaseCheckpointSaver
 from langgraph.graph import END, START, StateGraph
+from langgraph.types import interrupt
 from psycopg.types.json import Jsonb
 
 from rfp_agent.llm import tasks
 from rfp_agent.llm.client import FAILURE_MESSAGE, LLM, LLMConfigError, LLMFailure, Usage, usage_of
 from rfp_agent.llm.evidence import EvidenceSpan, evidence_id, parse_evidence_id
 from rfp_agent.llm.parallel import run_ordered, workers_of
-from rfp_agent.pipeline import code_version, dictionaries, doc_add, meaning
+from rfp_agent.pipeline import code_version, dictionaries, doc_add, graph_flow, meaning
 from rfp_agent.pipeline.assignments import build_assignments
 from rfp_agent.pipeline.document import Choice, Report, process_document
 from rfp_agent.pipeline.engineering import build_checks
@@ -57,6 +59,7 @@ class RunState(TypedDict, total=False):
     proposal_count: int
     assignment_count: int
     meaning_count: int
+    action: str                   # 사람 단계에서 받은 동작 (update-graph-stops)
 
 
 # 세부 진행 기록: (run_id, {"part", "done", "total", "file_index", "file_count"})
@@ -87,6 +90,7 @@ class RunContext:
     llm: LLM | None
     txt_dir: Path | None
     progress: ProgressWriter | None = None     # 없으면 세부 진행을 적지 않는다 (테스트·CLI)
+    checkpointer: BaseCheckpointSaver | None = None   # 없으면 같은 DB로 연결을 열어 만든다
 
     @property
     def processing_key(self) -> str:
@@ -470,22 +474,58 @@ STEPS = [
 COUNTS = ["risk_count", "judgment_count"] + [key for _, key, _ in STEPS]
 
 
-def build_graph(ctx: RunContext):
+# 사람 단계 노드(멈춤 자리) → 단계 칸 (update-graph-stops, C2)
+STOPS = {"engineer_review": "ENGINEER_REVIEW", "approval": "APPROVAL", "rejected": "REJECTED"}
+# 멈춤 자리마다 사람 동작 → 다음 노드. 갈 곳은 이 표로 코드가 고른다 (CR-01)
+NEXT = {
+    "engineer_review": {"submit": "approval", "add_documents": "documents"},
+    "approval": {"approve": END, "reject": "rejected", "withdraw": "engineer_review"},
+    "rejected": {"reopen": "engineer_review"},
+}
+PIPELINE = ["documents", "pairs", "risks", "judge", "meaning"] + [s for s, _, _ in STEPS]
+
+
+def _stop_node(name: str):
+    """흐름을 멈추고 사람 동작을 기다린다. 이어 갈 때 받은 동작을 상태에 남긴다."""
+    def node(state: RunState) -> RunState:
+        got = interrupt({"stop": STOPS[name]})
+        action = got["action"]
+        if action not in NEXT[name]:
+            raise ValueError(f"{name}에서 받을 수 없는 동작: {action}")
+        out: RunState = {"action": action}
+        if action == "add_documents":       # 처음 파일 + 더한 파일로 문서 처리부터 다시
+            out |= {"paths": got["paths"], "choices": got["choices"]}
+        return out
+    return node
+
+
+def _router(name: str):
+    def route(state: RunState) -> str:
+        return NEXT[name][state["action"]]
+    return route
+
+
+def build_graph(ctx: RunContext, checkpointer: BaseCheckpointSaver | None = None):
+    """처리 단계를 일직선으로 잇고, 저장소가 있으면 끝에 사람 단계 세 곳을 더한다."""
     graph = StateGraph(RunState)
     graph.add_node("documents", _documents_node(ctx))
     graph.add_node("pairs", _pairs_node(ctx))
     graph.add_node("risks", _risks_node(ctx))
     graph.add_node("judge", _judge_node(ctx))
     graph.add_node("meaning", _meaning_node(ctx))
-    order = ["documents", "pairs", "risks", "judge", "meaning"]
     for step, key, build in STEPS:
         graph.add_node(step, _step_node(ctx, step, key, build))
-        order.append(step)
-    graph.add_edge(START, order[0])
-    for a, b in zip(order, order[1:], strict=False):
+    graph.add_edge(START, PIPELINE[0])
+    for a, b in zip(PIPELINE, PIPELINE[1:], strict=False):
         graph.add_edge(a, b)
-    graph.add_edge(order[-1], END)
-    return graph.compile()
+    if checkpointer is None:
+        graph.add_edge(PIPELINE[-1], END)
+        return graph.compile()
+    for name in STOPS:
+        graph.add_node(name, _stop_node(name))
+        graph.add_conditional_edges(name, _router(name), list(set(NEXT[name].values())))
+    graph.add_edge(PIPELINE[-1], "engineer_review")
+    return graph.compile(checkpointer=checkpointer)
 
 
 def execute_run(ctx: RunContext, run_id: int, paths: list[Path],
@@ -499,9 +539,18 @@ def execute_run(ctx: RunContext, run_id: int, paths: list[Path],
     conn.commit()
     usage = usage_of(ctx.llm)
     before = usage.copy() if usage else None
+    inputs = {"run_id": run_id, "paths": [str(p) for p in paths], "choices": choices or {}}
     try:
-        state = build_graph(ctx).invoke({"run_id": run_id, "paths": [str(p) for p in paths],
-                                         "choices": choices or {}})
+        with graph_flow.saver_for(ctx) as saver:
+            graph = build_graph(ctx, saver)
+            config = graph_flow.config(run_id)
+            start, resumed = graph_flow.start_input(graph, run_id, inputs)
+            conn.execute(
+                "UPDATE review_run SET graph_state = graph_state || %s WHERE run_id = %s",
+                (Jsonb({"resumed_from": resumed,
+                        "skipped_steps": PIPELINE.index(resumed) if resumed else 0}), run_id))
+            conn.commit()
+            state = graph.invoke(start, config)
     except Exception as exc:
         conn.rollback()
         step = conn.execute("SELECT graph_state->>'step' FROM review_run WHERE run_id = %s",
