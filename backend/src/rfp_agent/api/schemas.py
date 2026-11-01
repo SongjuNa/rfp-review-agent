@@ -315,6 +315,8 @@ class Judgment(Out):
     type_code: str | None
     type_name: str | None
     past_decision: PastDecision | None
+    query_sent_at: datetime | None = None       # 질의 보냄 표시 시각 (add-query-sent)
+    query_sent_by_name: str | None = None
     # 마지막 개정에서 바뀜·추가 (add-revision-notice)
     revised: Literal["CHANGED", "ADDED"] | None = None
     locations: Locations

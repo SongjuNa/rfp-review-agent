@@ -3,7 +3,7 @@ import { api, type CompareRule, type Judgment, type Location, type RunDocument }
 import { PastDecisionRow } from '../components/PastDecisionRow'
 import { TypeFix } from '../components/TypeFix'
 import { CHECK_NAMES, checkLine, checksByRequirement } from '../components/checks'
-import { reviewTitle, stamp } from '../components/format'
+import { dueText, isoDay, reviewTitle, stamp } from '../components/format'
 import { filterParams, filterQuery, pageOf, parseFilter, type JudgeFilter } from '../components/judgeFilter'
 import { compareText, confirmedBy, itemFor, itemName, markSplit, prodCell, reqText, suggested } from '../components/judgment'
 import { DIRECTION_NAMES, RESULT_NAMES, RESULT_ORDER, RESULT_TONES, STAGE_NAMES, locationText } from '../components/labels'
@@ -167,6 +167,14 @@ function Detail({ runId, stage, j, docs, pos, total, onPrev, onNext, editing, se
       .then(() => { toast.show('판정을 제안대로 확정했습니다.'); onConfirmed() }, (e: Error) => setError(e.message))
       .finally(() => setBusy(false))
   }
+  // 질의 보냄 표시·되돌리기 (add-query-sent). 판정 결과는 바뀌지 않는다
+  const querySent = (sent: boolean) => {
+    setBusy(true)
+    setError(null)
+    api.act(runId, { target: 'judgment', target_id: j.judgment_id, action: sent ? 'QUERY_SENT' : 'QUERY_UNSENT', actor_id: user!.user_id })
+      .then(() => { toast.show(sent ? '질의 보냄으로 표시했습니다.' : '질의 보냄 표시를 되돌렸습니다.'); onChanged() }, (e: Error) => setError(e.message))
+      .finally(() => setBusy(false))
+  }
   const found = req.data ? (req.data.extracted_by === 'AI' ? 'AI가 찾음' : '코드 규칙으로 찾음') : null
   const confidence = req.data?.confidence != null ? `신뢰도 ${Number(req.data.confidence).toFixed(2)}` : null
 
@@ -229,7 +237,15 @@ function Detail({ runId, stage, j, docs, pos, total, onPrev, onNext, editing, se
               <PastDecisionRow j={j} />
             </tbody></table>
 
-            {isQuery && <div style={{ marginTop: 'var(--s-4)' }}><span className="tag" title="질의 보냄 표시는 다음 판에서 더합니다">질의 초안</span></div>}
+            {isQuery && (
+              <div className="jv-qs" style={{ marginTop: 'var(--s-4)', display: 'flex', alignItems: 'center', gap: 'var(--s-2)', flexWrap: 'wrap' }}>
+                <span className="tag" title={j.query_sent_at ? `${j.query_sent_by_name ?? ''} · ${stamp(j.query_sent_at)}` : '고객에게 아직 보내지 않은 질의'}>
+                  {j.query_sent_at ? `질의 보냄 · ${dueText(isoDay(new Date(j.query_sent_at)))}` : '질의 초안'}</span>
+                {j.review_status !== 'REJECTED' && (j.query_sent_at
+                  ? <Button onClick={() => querySent(false)} busy={busy} disabledReason={lock}>되돌리기</Button>
+                  : <Button icon="outgoing_mail" onClick={() => querySent(true)} busy={busy} disabledReason={lock}>질의 보냄 표시</Button>)}
+              </div>
+            )}
             {j.result === 'WARRANTY_TO_FILL' && (
               <div style={{ marginTop: 'var(--s-4)' }}>
                 <div className="lbl">보증값</div>

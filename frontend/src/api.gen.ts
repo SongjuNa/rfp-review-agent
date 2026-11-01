@@ -754,6 +754,8 @@ export type Judgment = {
   type_code: string | null
   type_name: string | null
   past_decision: PastDecision | null
+  query_sent_at?: string | null
+  query_sent_by_name?: string | null
   revised?: 'CHANGED' | 'ADDED' | null
   locations: Location[]
 }
