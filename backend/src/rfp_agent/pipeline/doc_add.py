@@ -114,6 +114,13 @@ def carry_judgments(conn: psycopg.Connection, run_id: int, old_ids: list[int]) -
             conn.execute("UPDATE judgment SET review_status = %s WHERE judgment_id = %s",
                          (status, new_id))
         carried += 1
+    # 질의 보냄 표시도 같은 줄로 옮긴다 (add-query-sent). 옮긴 뒤 판정이 질의 후보일 때만
+    for old_id, new_id, _ in pairs:
+        conn.execute("""UPDATE judgment n SET query_sent_at = o.query_sent_at,
+                               query_sent_by = o.query_sent_by
+                        FROM judgment o WHERE n.judgment_id = %s AND o.judgment_id = %s
+                          AND o.query_sent_at IS NOT NULL
+                          AND n.result = 'QUERY_CANDIDATE'""", (new_id, old_id))
     return carried
 
 

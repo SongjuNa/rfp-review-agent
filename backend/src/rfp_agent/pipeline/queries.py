@@ -223,7 +223,8 @@ JUDGMENTS = """
            j.product_value_unit, j.margin_value, j.margin_kind, j.margin_direction,
            j.is_assumed, j.review_status, v.raw_text AS req_value_raw, v.num_value AS req_num,
            v.unit_raw, v.cond_time_s, v.item_key, k.name_ko AS item_name, tr.item_name_raw,
-           tt.type_code, rt.type_name
+           tt.type_code, rt.type_name, j.query_sent_at,
+           (SELECT user_name FROM app_user WHERE user_id = j.query_sent_by) AS query_sent_by_name
     FROM judgment j
     JOIN req_value v ON v.value_id = j.value_id
     JOIN requirement q ON q.requirement_id = j.requirement_id

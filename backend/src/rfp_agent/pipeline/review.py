@@ -27,7 +27,7 @@ from rfp_agent.pipeline.warranty import build_warranty
 RESULTS = ("COMPLY", "DEVIATION_CANDIDATE", "QUERY_CANDIDATE", "NEEDS_REVIEW", "WARRANTY_TO_FILL")
 # 대상 표 → 할 수 있는 동작
 ACTIONS = {
-    "judgment": {"CONFIRM", "EDIT", "REJECT"},
+    "judgment": {"CONFIRM", "EDIT", "REJECT", "QUERY_SENT", "QUERY_UNSENT"},
     "warranty_candidate": {"CONFIRM", "EDIT", "REJECT"},
     "output_item": {"CONFIRM", "EDIT", "REJECT"},
     "proposal_point": {"ADOPT", "DISCARD", "EDIT"},
@@ -37,6 +37,9 @@ KEYS = {"judgment": "judgment_id", "warranty_candidate": "candidate_id",
         "output_item": "item_id", "proposal_point": "point_id", "risk_flag": "risk_id",
         "loss_calc": "loss_calc_id"}
 NEEDS_REASON = {"EDIT", "REJECT", "DISCARD"}
+# 질의 보냄 표시·되돌리기 (add-query-sent): 질의 후보 판정에만, 엔지니어만.
+# 판정 결과를 바꾸지 않으므로 보증값·목록을 다시 만들지 않는다
+QUERY_ACTIONS = {"QUERY_SENT", "QUERY_UNSENT"}
 DELIVERED_POINTS = ("ADOPTED", "EDITED")         # 채택한(고쳐 채택한) 제안 포인트만 전달 (AR-08)
 
 
@@ -121,7 +124,23 @@ def _apply(conn: psycopg.Connection, target: str, row: dict, action: str,
         cols = ", ".join(f"{c} = %s" for c in sets)
         conn.execute(f"UPDATE {target} SET {cols} WHERE {key} = %s", (*sets.values(), target_id))
 
-    if target == "judgment":
+    if target == "judgment" and action in QUERY_ACTIONS:
+        if row["result"] != "QUERY_CANDIDATE":
+            raise ReviewError(409, "질의 보냄은 질의 후보 판정에만 표시할 수 있습니다.")
+        if row["review_status"] == "REJECTED":
+            raise ReviewError(409, "반려한 판정에는 질의 보냄을 표시할 수 없습니다.")
+        sent = row["query_sent_at"] is not None
+        if action == "QUERY_SENT" and sent:
+            raise ReviewError(409, "이미 질의 보냄으로 표시한 판정입니다.")
+        if action == "QUERY_UNSENT" and not sent:
+            raise ReviewError(409, "질의 보냄으로 표시하지 않은 판정입니다.")
+        if action == "QUERY_SENT":
+            update({"query_sent_by": value["actor_id"]})
+            conn.execute("UPDATE judgment SET query_sent_at = now() WHERE judgment_id = %s",
+                         (target_id,))
+        else:
+            update({"query_sent_at": None, "query_sent_by": None})
+    elif target == "judgment":
         if action == "CONFIRM":
             update({"review_status": "CONFIRMED"})
         elif action == "REJECT":
@@ -263,6 +282,15 @@ def act(ctx: RunContext, run_id: int, target: str, target_id: int, action: str,
     before = row(conn, target, target_id, run_id)
     if target == "judgment" and not before["is_current"]:
         raise ReviewError(409, "현재 판정이 아닙니다 (비교 제품을 바꾸기 전 판정).")
+    if action in QUERY_ACTIONS:
+        if _user_role(conn, actor_id) != "ENGINEER":
+            raise ReviewError(403, "질의 보냄은 검토 엔지니어만 표시할 수 있습니다.")
+        _apply(conn, target, before, action, {"actor_id": actor_id})
+        after = row(conn, target, target_id, run_id)
+        log(conn, run_id, target, target_id, action, before, after, reason, actor_id)
+        conn.commit()
+        return {"before": _json(before).obj, "after": _json(after).obj,
+                "submission_check": _latest_check(conn, run_id)}
     _apply(conn, target, before, action, value or {})
     if target == "judgment" and action == "EDIT":
         conn.execute("UPDATE judgment SET reason_text = %s WHERE judgment_id = %s",

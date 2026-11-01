@@ -4,7 +4,7 @@ import { Pager } from '../../components/Pager'
 import { bulkMessage } from '../../components/bulk'
 import { PastDecisionRow } from '../../components/PastDecisionRow'
 import { CHECK_NAMES, CHECK_RULE, CHECK_TONES, checkLine, checksByRequirement } from '../../components/checks'
-import { stamp } from '../../components/format'
+import { dueText, isoDay, stamp } from '../../components/format'
 import { confirmedBy, compareText, itemName, locShort, markSplit, prodCell, reqText, suggested, itemFor } from '../../components/judgment'
 import { RESULT_DOTS, RESULT_NAMES, RESULT_ORDER, RESULT_TONES, TYPE_NAMES } from '../../components/labels'
 import { useLoad } from '../../components/useLoad'
@@ -191,6 +191,8 @@ export function JudgeTab({ run, tick, onChanged }: { run: RunSummary; tick: numb
                         disabled={!canEdit} aria-label={`${itemName(j)} 선택`} /></td>
                       <td><span className={`st ${RESULT_TONES[j.result]}`}>{RESULT_NAMES[j.result]}</span>
                         {j.revised && <div className="en c-blue" title={`문서 추가(개정 ${run.revision?.no ?? ''})로 ${j.revised === 'CHANGED' ? '판정 값이 바뀐' : '새로 생긴'} 줄`}>{j.revised === 'CHANGED' ? '바뀜(개정)' : '추가(개정)'}</div>}
+                        {j.result === 'QUERY_CANDIDATE' && <div className={'en' + (j.query_sent_at ? ' c-blue' : '')} title={j.query_sent_at ? `${j.query_sent_by_name ?? ''} · ${stamp(j.query_sent_at)}` : '고객에게 아직 보내지 않은 질의'}>
+                          {j.query_sent_at ? `질의 보냄 · ${dueText(isoDay(new Date(j.query_sent_at)))}` : '질의 초안'}</div>}
                         {j.review_status === 'EDITED' && <div className="en" title="사람이 바꾼 판정">바꿈</div>}
                         {(j.review_status === 'CONFIRMED' || j.review_status === 'EDITED') && <div className="cfm"><span className="ms" aria-hidden="true">check</span>확정</div>}
                         {j.past_decision && <div className={'en past' + (j.past_decision.same ? '' : ' c-ora')} title={`${j.past_decision.review_no}에서 사람이 ${RESULT_NAMES[j.past_decision.result]}(으)로 확정`}>
