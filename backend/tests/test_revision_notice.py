@@ -59,7 +59,7 @@ def test_revision_counts(db, spec, tmp_path):
 
 
 def test_changed_rows_filter(db, spec, tmp_path):
-    """Scenario: 바뀐 줄만 보기 — 판정 값이 달라진 같은 줄은 "바뀜", revised로 거르면 바뀜·추가 줄만."""
+    """Scenario: 바뀐 줄만 보기 — 판정 값이 달라진 같은 줄은 "바뀜", 거르면 바뀜·추가 줄만."""
     run_id = finished(db, spec)
     # 처음 분석에서 한 줄의 판정이 달랐던 것으로 만든다 (사람이 손대지 않은 후보 줄)
     jid, result = db.execute(
