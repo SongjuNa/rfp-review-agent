@@ -404,12 +404,14 @@ def run_risks(run_id: int) -> list[Risk]:
 def run_judgments(run_id: int, response: Response, result: str | None = None,
                   group: str | None = None, type_code: str | None = None,
                   q: str | None = None, unconfirmed: bool = False,
+                  past: str | None = Query(None, pattern="^differs$"),
                   order: str | None = Query(None, pattern="^priority$"),
                   limit: int = Query(100, le=500), offset: int = 0) -> list[Judgment]:
-    """판정 목록. order=priority면 일탈 → 질의 → 확인 필요 → 작성 필요 → 준수 순서."""
+    """판정 목록. order=priority면 일탈 → 질의 → 확인 필요 → 작성 필요 → 준수 순서.
+    past=differs면 지난 사람 판정과 다른 줄만 (add-review-memory)."""
     _summary(run_id)
     filters = {"result": result, "group": group, "type_code": type_code, "q": q,
-               "unconfirmed": unconfirmed}
+               "unconfirmed": unconfirmed, "past": past}
     with connect() as conn:
         response.headers["X-Total-Count"] = str(queries.count_judgments(conn, run_id, **filters))
         return queries.run_judgments(conn, run_id, **filters, priority=order == "priority",

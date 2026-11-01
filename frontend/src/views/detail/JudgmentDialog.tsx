@@ -5,6 +5,7 @@ import { stamp } from '../../components/format'
 import { compareText, confirmedBy, itemName, markSplit, prodCell, reqText, suggested, itemFor } from '../../components/judgment'
 import { RESULT_NAMES, RESULT_TONES, locationText } from '../../components/labels'
 import { useLoad } from '../../components/useLoad'
+import { PastDecisionRow } from '../../components/PastDecisionRow'
 import { OutputEditor } from './OutputEditor'
 
 // SCR-08-1 판정 상세 창 (목업 v4.57 Detail의 판정 줄을 누르면 뜨는 창 .mdw).
@@ -103,6 +104,7 @@ export function JudgmentDialog({ runId, j, w, check, items, log, docs, pos, tota
               <tr><th>담당자 확정</th><td>{conf
                 ? <><span className={`st ${RESULT_TONES[j.result]}`}>{RESULT_NAMES[j.result]}</span><span className="pvs">{conf.actor} · {stamp(conf.acted_at)}</span></>
                 : <span className="pend">아직 확정 안 함</span>}</td></tr>
+              <PastDecisionRow j={j} />
             </tbody></table>
 
             {draft && <div style={{ marginTop: 18 }}><OutputEditor key={`${draft.item_id}-${draft.text_draft}-${draft.status}`} runId={runId} item={draft} id="mdDraft" canEdit={canEdit} onDone={onDone} onSaved={onSaved} /></div>}

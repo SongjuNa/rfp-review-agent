@@ -77,3 +77,6 @@ export async function salesMailUnavailable(page: Page, sent: RegExp | string) {
   test.info().annotations.push({ type: 'note', description: `메일 환경 없음: ${await failed.first().textContent()}` })
   return true
 }
+
+/** 판정 데이터시트로 실행만 만든다(판정을 고치지 않음). 지난 확정 힌트 시험용 (add-review-memory) */
+export const judgmentRun = (request: APIRequestContext, name: string) => upload(request, 'synthetic_judgment.docx', name)

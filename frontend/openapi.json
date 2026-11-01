@@ -775,7 +775,7 @@
           "검토 실행"
         ],
         "summary": "Run Judgments",
-        "description": "판정 목록. order=priority면 일탈 → 질의 → 확인 필요 → 작성 필요 → 준수 순서.",
+        "description": "판정 목록. order=priority면 일탈 → 질의 → 확인 필요 → 작성 필요 → 준수 순서.\npast=differs면 지난 사람 판정과 다른 줄만 (add-review-memory).",
         "operationId": "run_judgments_api_runs__run_id__judgments_get",
         "parameters": [
           {
@@ -859,6 +859,23 @@
               "type": "boolean",
               "default": false,
               "title": "Unconfirmed"
+            }
+          },
+          {
+            "name": "past",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^differs$"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Past"
             }
           },
           {
@@ -8894,6 +8911,16 @@
             ],
             "title": "Type Name"
           },
+          "past_decision": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PastDecision"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "locations": {
             "items": {
               "$ref": "#/components/schemas/Location"
@@ -8930,6 +8957,7 @@
           "item_name_raw",
           "type_code",
           "type_name",
+          "past_decision",
           "locations"
         ],
         "title": "Judgment"
@@ -8963,6 +8991,14 @@
           "unconfirmed_comply": {
             "type": "integer",
             "title": "Unconfirmed Comply"
+          },
+          "past_seen": {
+            "type": "integer",
+            "title": "Past Seen"
+          },
+          "past_differs": {
+            "type": "integer",
+            "title": "Past Differs"
           }
         },
         "additionalProperties": false,
@@ -8971,7 +9007,9 @@
           "by_result",
           "total",
           "unconfirmed",
-          "unconfirmed_comply"
+          "unconfirmed_comply",
+          "past_seen",
+          "past_differs"
         ],
         "title": "JudgmentCounts"
       },
@@ -9871,6 +9909,89 @@
           "same"
         ],
         "title": "PastCompare"
+      },
+      "PastDecision": {
+        "properties": {
+          "run_id": {
+            "type": "integer",
+            "title": "Run Id"
+          },
+          "review_no": {
+            "type": "string",
+            "title": "Review No"
+          },
+          "result": {
+            "type": "string",
+            "enum": [
+              "COMPLY",
+              "DEVIATION_CANDIDATE",
+              "QUERY_CANDIDATE",
+              "NEEDS_REVIEW",
+              "WARRANTY_TO_FILL"
+            ],
+            "title": "Result"
+          },
+          "review_status": {
+            "type": "string",
+            "enum": [
+              "CONFIRMED",
+              "EDITED"
+            ],
+            "title": "Review Status"
+          },
+          "decided_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Decided By"
+          },
+          "decided_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Decided At"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "same": {
+            "type": "boolean",
+            "title": "Same"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "run_id",
+          "review_no",
+          "result",
+          "review_status",
+          "decided_by",
+          "decided_at",
+          "reason",
+          "same"
+        ],
+        "title": "PastDecision",
+        "description": "다른 검토에서 사람이 확정·수정한 같은 요구·같은 제품 판정 (add-review-memory). 힌트일 뿐."
       },
       "Product": {
         "properties": {
