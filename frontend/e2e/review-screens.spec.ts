@@ -8,7 +8,9 @@ test('요약 칸', async ({ page, request }) => {
   await as(page, ENGINEER)
   await page.goto(`/#/reviews/${run.run_id}`)
   const kpis = page.locator('.kpis')
-  await expect(kpis.locator('.kpi').nth(0)).toContainText('일탈 후보1')
+  // 고친 1건 말고도 제품표 값에 따라 일탈 후보가 더 나올 수 있어, 건수는 일탈 후보 판정 수와 맞춘다
+  const res = await request.get(`/api/runs/${run.run_id}/judgments?result=DEVIATION_CANDIDATE&limit=1`)
+  await expect(kpis.locator('.kpi').nth(0)).toContainText(`일탈 후보${res.headers()['x-total-count']}`)
   await expect(kpis).toContainText('질의 후보')
   await expect(kpis).toContainText(/확인 필요 비율\d+ %기준 20 %/)
   await expect(kpis).toContainText('보증값 작성 (비어 있음)')

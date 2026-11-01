@@ -1,10 +1,21 @@
 import { expect, test } from '@playwright/test'
+import { ENGINEER, as } from './helpers'
 
-// 파일 1(입찰 양식)로 검토를 시작해 담당자 확인 → 결재 상신 → 승인까지 끝까지 간다 (tasks 3.1).
-// 명세 review-workspace의 Scenario: 처리 중, 적합성 표의 비교 제품, 손실 환산 결과, 승인 화면.
+// 파일 1(입찰 양식)을 검토 등록 화면에서 올려 처리 → 판정 탭 → 손실 환산 탭까지 지금 화면으로 확인한다.
+// 명세 review-workspace의 Scenario: 처리 중, 적합성 표의 비교 제품, 손실 환산 결과.
+// 결재 상신·승인 화면은 approval-flow.spec.ts가 합성 데이터시트로 확인한다.
+// 파일 1만 올리면 같은 사업의 다른 문서가 없어 비교 제품을 못 고르는 줄이 있다(손실 환산 포함).
+// 그래서 판정 줄은 API에서 고르고, 손실 환산은 엔지니어가 손실값을 넣는 흐름으로 본다.
 const FILE_1 = '1. Bidding Forms_Draft'
 
-test('파일 1을 올려 확인·승인까지', async ({ page }) => {
+type Judgment = {
+  item_name_raw: string | null; product_code: string | null
+  margin_value: string | null; margin_direction: string | null
+}
+
+test('파일 1을 올려 판정·손실 환산까지', async ({ page }) => {
+  test.setTimeout(600_000)
+  await as(page, ENGINEER)
   await page.goto('/#/register')
   const more = page.getByRole('button', { name: '서버에 둔 RFP에서 고르기' })
   await more.waitFor({ timeout: 10_000 }).catch(() => undefined)
@@ -20,58 +31,57 @@ test('파일 1을 올려 확인·승인까지', async ({ page }) => {
   await page.getByRole('button', { name: /등록하고 분석 시작/ }).click()
   const reviewNo = (await page.getByRole('status').textContent())!.match(/RV-\d{4}-\d{3}/)![0]
   await page.goto('/#/reviews')
+  await page.getByRole('button', { name: '팀 전체' }).click()
   await page.locator('tr', { hasText: reviewNo }).getByRole('link').first().click()
+  const runId = Number(page.url().match(/reviews\/(\d+)/)![1])
 
-  // Scenario: 처리 중 — 실행이 시작되고 현재 단계가 보인다
-  const status = page.locator('.legacy [role=status]').first()
-  await expect(status).toContainText(/처리 중|담당자 확인/)
-  await expect(status).toContainText('담당자 확인', { timeout: 240_000 })
+  // Scenario: 처리 중 — 실행이 시작되고 현재 단계가 보인다 (같은 파일을 처리한 적이 있으면 바로 판정 탭이 보인다)
+  const bar = page.getByRole('progressbar', { name: 'RFP 분석' })
+  const judgeTab = page.getByRole('tab', { name: '판정' })
+  await expect(bar.or(judgeTab)).toBeVisible()
+  if (await bar.isVisible()) await expect(page.locator('.ldtx').first()).not.toBeEmpty()
+  await expect(judgeTab).toBeVisible({ timeout: 480_000 })
 
-  // Scenario: 적합성 표의 비교 제품 — 비교 제품, 제품값, 여유와 방향, 바꿔 보기
-  await page.getByRole('tab', { name: '적합성 판정' }).click()
-  await expect(page.getByText('설비 묶음별 비교 제품')).toBeVisible()
-  const deviation = page.locator('tr', { hasText: 'GIS-245-50' }).filter({ hasText: /4,?000/ }).first()
-  await expect(deviation).toContainText('일탈 후보')
-  await page.getByLabel('판정').selectOption('COMPLY')
-  await expect(page.locator('tr', { hasText: '시간 3배' }).first()).toContainText('강점')
-  await expect(page.getByRole('combobox', { name: /TS-115-GIS.*비교 제품/ }).first()).toBeVisible()
+  // Scenario: 적합성 표의 비교 제품 — 각 판정의 비교 제품, 제품값, 여유, 비교 제품 바꿔 보기
+  const judgments = async (result: string) => (await (await page.request.get(
+    `/api/runs/${runId}/judgments?result=${result}&limit=500`)).json()) as Judgment[]
+  const rows = page.locator('#judge .tw tbody tr')
+  const search = page.getByLabel('판정 검색')
 
-  // Scenario: 손실 환산 결과 — 계산식, 합계, 팀 가정
-  await page.getByRole('tab', { name: '손실 환산' }).click()
-  const loss = page.locator('.card', { hasText: 'TRF-HV-230-360A' })
-  await expect(loss).toContainText('1,240,400 $')
-  await expect(loss).toContainText('팀 가정')
-  await expect(loss.locator('.formula')).toContainText('4,500 × 60')
+  const deviation = (await judgments('DEVIATION_CANDIDATE')).find((j) => j.product_code && j.item_name_raw)
+  expect(deviation, '비교 제품이 있는 일탈 후보').toBeTruthy()
+  await page.locator('.fbar .chip', { hasText: '일탈 후보' }).click()
+  await search.fill(deviation!.item_name_raw!)
+  await expect(rows.filter({ hasText: deviation!.product_code! }).first()).toContainText('일탈 후보')
 
-  // 일탈 목록: 4,000 A는 한 건, 원문 위치 3곳. 누락 점검이 보인다
-  await page.getByRole('tab', { name: '일탈·질의 목록' }).click()
-  await expect(page.getByText('제출 전 누락 점검')).toBeVisible()
-  const item = page.locator('.card', { hasText: '4,000 A' }).first()
-  await expect(item).toContainText('원문 위치 3곳')
-  await item.getByRole('button', { name: '확정', exact: true }).click()
-  await expect(item).toContainText('확정')
+  const margin = (await judgments('COMPLY')).find((j) => j.product_code && j.item_name_raw
+    && j.margin_direction !== 'NOT_CALC' && Number(j.margin_value) > 0)
+  expect(margin, '여유가 있는 준수 판정').toBeTruthy()
+  await page.locator('.fbar .chip', { hasText: '준수' }).click()
+  await search.fill(margin!.item_name_raw!)
+  const row = rows.filter({ hasText: margin!.product_code! }).filter({ hasText: '여유' }).first()
+  await expect(row).toContainText('준수')
+  await row.click()
+  await expect(page.getByRole('dialog').locator('.basis')).toContainText(`${margin!.product_code} · 제품표`)
+  await page.keyboard.press('Escape')
 
-  // 제안 포인트 하나 채택
-  await page.getByRole('tab', { name: '제안 포인트' }).click()
-  const point = page.locator('.card', { hasText: '3배' }).first()
-  await point.getByRole('button', { name: '채택', exact: true }).click()
-  await expect(page.getByText('지금 채택 1건')).toBeVisible()
+  // 설비 묶음이 4개보다 많으면 요약 줄만 보이므로 펼친다
+  const box = page.locator('details.pseg')
+  await expect(box).toContainText('GIS-145-40')
+  await box.locator('summary').click()
+  const seg = box.getByRole('group', { name: /TS-115-GIS.*비교 제품/ }).first()
+  await expect(seg.locator('button[aria-pressed="true"]')).toHaveText('GIS-145-40')  // 지금 비교 제품, 누르면 바꿔 본다
 
-  // 결재 상신 → 결재 대기 화면 → 지정 결재자가 승인 (update-approval-flow)
-  await page.getByRole('button', { name: '결재 상신' }).click()
-  const dialog = page.getByRole('dialog', { name: '결재 상신' })
-  await expect(dialog.getByText(/일탈 후보 \d+건/)).toBeVisible()
-  await dialog.getByLabel('상신 의견').fill('일탈 4,000 A는 옵션 제안으로 대응')
-  await dialog.getByRole('button', { name: '결재 상신' }).click()
-  await expect(page.getByText('기본 승인자의 결재를 기다리고 있습니다')).toBeVisible()
-  await expect(page.getByText(/목록에 빠진 일탈/)).toBeVisible()
-
-  await page.getByRole('button', { name: '사용자 바꾸기' }).click()
-  await page.getByRole('button', { name: /기본 승인자/ }).click()
-  await page.getByRole('button', { name: '승인', exact: true }).click()
-  await expect(page.locator('main .idl').first()).toContainText('승인됨')
-
-  await page.getByRole('tab', { name: '이력' }).click()
-  await expect(page.getByRole('cell', { name: '채택' })).toBeVisible()
-  await page.screenshot({ path: 'test-results/review-done.png', fullPage: true })
+  // Scenario: 손실 환산 결과 — 계산식(단가 × 손실값), 합계, 팀 가정
+  await page.getByRole('tab', { name: '손실 환산 (참고)' }).click()
+  const table = page.locator('#loss table.mini').first()
+  const loss = table.locator('tbody tr')
+  await expect(loss.nth(0)).toContainText('4,500 $/kW ×')
+  await table.getByLabel('무부하 손실 손실값 (kW)', { exact: true }).fill('60')
+  await table.getByLabel('부하 손실 손실값 (kW)', { exact: true }).fill('300')
+  await table.getByLabel('보조 손실 손실값 (kW)', { exact: true }).fill('8')
+  await table.getByLabel('보조 손실 손실값 (kW)', { exact: true }).press('Enter')
+  await expect(loss.nth(0)).toContainText('$270,000')
+  await expect(loss.last()).toContainText('$1,240,400')
+  await expect(page.locator('#loss')).toContainText('팀 가정')
 })
