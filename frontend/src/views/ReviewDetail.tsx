@@ -9,6 +9,7 @@ import { useCrumbTail } from '../shell/crumb'
 import { usePageCss } from '../shell/pageCss'
 import { href } from '../shell/router'
 import { DocumentsDialog } from './DocumentsDialog'
+import { AssistantPanel } from './detail/AssistantPanel'
 import { DetailBody, DetailTabs, type DetailTab } from './detail/DetailBody'
 import { ProductSeg, type Rejudging } from './detail/ProductSeg'
 import { FailView } from './FailView'
@@ -20,7 +21,7 @@ import { WaitView } from './WaitView'
 // SCR-08 검토 상세 (목업 v4.57 Detail). 탭 줄, 머리글, 요약 칸과 탭 본문(detail/DetailBody), 결재 상신 창(SCR-08-10).
 // 승인 대기인 검토는 SCR-12 결재 대기 화면(WaitView)으로 보인다.
 
-/** 머리글: 검토 번호·단계·마감, 제목(사업명 · 검토명), 사업·문서(누르면 문서 표)·판정 묶음·고객사·담당 줄, 검토 정보 고치기 */
+/** 머리글: 검토 번호·단계·마감, 제목(사업명 · 검토명), 사업·문서(누르면 문서 표)·판정 묶음·고객사·담당 줄, 검토 도우미(add-review-assistant), 검토 정보 고치기 */
 function ReviewHeader({ run, approver, onEdit, onSwitched, onBusy, onAdded }: {
   run: RunSummary; approver: string | null; onEdit: () => void; onSwitched?: () => void
   onBusy?: (b: Rejudging | null) => void; onAdded?: () => void
@@ -28,6 +29,7 @@ function ReviewHeader({ run, approver, onEdit, onSwitched, onBusy, onAdded }: {
   const due = run.due_date ? dday(run.due_date) : null
   const docs = useLoad(() => api.documents(run.run_id), [run.run_id, run.stage])
   const [docsOpen, setDocsOpen] = useState(false)
+  const [asking, setAsking] = useState(false)
   const bundles = docs.data ? judgedBundles(docs.data) : null
   const ready = run.stage !== 'PROCESSING'
   const place = [run.customer_name, run.country].filter(Boolean).join(' · ')
@@ -57,11 +59,14 @@ function ReviewHeader({ run, approver, onEdit, onSwitched, onBusy, onAdded }: {
           </div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+          {ready && <button type="button" className="bo" onClick={() => setAsking(true)} aria-expanded={asking} title="이 검토의 요구사항·판정을 묻기 (읽기 전용)">
+            <span className="ms" aria-hidden="true" style={{ fontSize: 'var(--ic-s)' }}>forum</span>검토 도우미</button>}
           <button type="button" className="bo" onClick={onEdit}>
             <span className="ms" aria-hidden="true" style={{ fontSize: 'var(--ic-s)' }}>edit</span>검토 정보 고치기</button>
         </div>
       </div>
       {onSwitched && <ProductSeg run={run} onSwitched={onSwitched} onBusy={onBusy} />}
+      {asking && <AssistantPanel runId={run.run_id} docs={docs.data ?? []} onClose={() => setAsking(false)} />}
       {docsOpen && docs.data && <DocumentsDialog run={run} docs={docs.data} onClose={() => setDocsOpen(false)} onAdded={onAdded} />}
     </>
   )
