@@ -53,6 +53,7 @@ def test_equal_numbers_in_other_notation_are_not_candidates():
 
 
 def test_two_datasheets_in_one_document_are_different_equipment():
+    """Scenario: 같은 문서의 다른 데이터시트."""
     values = [ref(1, 1, 360, "변압기", item="rated_capacity", unit="MVA", table=10, row="1|p"),
               ref(2, 1, 240, "변압기", item="rated_capacity", unit="MVA", table=11, row="1|p")]
     assert find_value_mismatches(values, PARENTS) == []

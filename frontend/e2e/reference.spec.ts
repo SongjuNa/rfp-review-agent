@@ -23,6 +23,7 @@ test('제품 상세', async ({ page, request }) => {
   await expect(page.locator('.pinfo')).toContainText('정격 전압')
 })
 
+// Scenario: 제품표 내보내기
 test('제품표 엑셀 내보내기', async ({ page }) => {
   // 명세 review-workspace "제품표 화면"의 Scenario "제품표 내보내기" (change add-product-export)
   await page.goto('/#/products')

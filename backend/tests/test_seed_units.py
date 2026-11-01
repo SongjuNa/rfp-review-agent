@@ -8,6 +8,7 @@ from rfp_agent.db.seed import SeedError, direction_code, product_row, table_name
     [("≥ (+시간)", "GE"), ("<", "LT"), ("작성", "FILL"), ("< / ≤ / >", "SOURCE")],
 )
 def test_direction_code(text, code):
+    """Scenario: 시간 조건이 붙은 비교 방향."""
     assert direction_code(text, "test") == code
 
 
@@ -22,6 +23,7 @@ def test_table_name_of():
 
 
 def test_product_row_defaults_and_design_card():
+    """Scenario: 설계 사례 카드."""
     row = product_row({"product_code": "X", "description": "[설계 사례 카드, 판정 기준 아님]"})
     assert row["lifecycle_status"] == "UNKNOWN"
     assert row["is_assumed"] == "N"

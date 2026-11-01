@@ -48,7 +48,7 @@ def preview(client, *paths):
 
 
 def test_catalog_document_preview(client, db, spec):
-    """문서 목록에 있는 문서 추천"""
+    """Scenario: 문서 목록에 있는 문서 추천 — 문서 목록에 있는 문서 추천"""
     [p] = preview(client, spec)
     assert (p["bundle"], p["judge_target"], p["in_catalog"], p["file_no"]) == ("A", True, True, 91)
     assert p["reason"] == "문서 목록의 묶음 A"
@@ -56,14 +56,14 @@ def test_catalog_document_preview(client, db, spec):
 
 
 def test_iec_document_not_in_catalog_preview(client, tmp_path):
-    """문서 목록에 없는 IEC 문서 추천"""
+    """Scenario: 문서 목록에 없는 IEC 문서 추천 — 문서 목록에 없는 IEC 문서 추천"""
     [p] = preview(client, build_judgment_spec(tmp_path / "new_iec_datasheet.docx", IEC_TITLE))
     assert (p["bundle"], p["judge_target"], p["in_catalog"]) == ("B", True, False)
     assert p["standard_system"] == "IEC" and "IEC 규격 문서" in p["reason"]
 
 
 def test_not_judged_document_preview(client, tmp_path):
-    """판정하지 않는 문서 추천"""
+    """Scenario: 판정하지 않는 문서 추천 — 판정하지 않는 문서 추천"""
     [p] = preview(client, build_judgment_spec(tmp_path / "new_plain_datasheet.docx"))
     assert (p["bundle"], p["judge_target"], p["in_catalog"]) == ("C", False, False)
     assert "판정하지 않음" in p["reason"]
@@ -75,7 +75,7 @@ def test_library_preview_needs_existing_files(client):
 
 
 def test_bundle_c_document_set_to_b(db, tmp_path):
-    """묶음 C 문서를 B로 정하고 시작"""
+    """Scenario: 묶음 C 문서를 B로 정하고 시작 — 묶음 C 문서를 B로 정하고 시작"""
     path = build_judgment_spec(tmp_path / "new_plain_datasheet.docx")
     catalog = count(db, "document_catalog")
     run_id = run_once(db, [path], {path.name: {"bundle": "B"}})
@@ -87,7 +87,7 @@ def test_bundle_c_document_set_to_b(db, tmp_path):
 
 
 def test_same_file_with_another_bundle(db, tmp_path):
-    """같은 파일을 다른 묶음으로 다시 시작"""
+    """Scenario: 같은 파일을 다른 묶음으로 다시 시작 — 같은 파일을 다른 묶음으로 다시 시작"""
     path = build_judgment_spec(tmp_path / "new_plain_datasheet.docx")
     first = run_once(db, [path])
     second = run_once(db, [path], {path.name: {"bundle": "B"}})

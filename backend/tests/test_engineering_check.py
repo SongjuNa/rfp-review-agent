@@ -80,7 +80,8 @@ def test_115kv_gis_passes(checked):
 
 
 def test_230kv_breaker_violation_is_query(checked):
-    """Scenario: 230 kV 차단기 — 차단 50 kA, 최대 순간 100 kA, 50 Hz이면 위반(계산값 125)이고
+    """Scenario: 검산 위반 질의 ·
+    Scenario: 230 kV 차단기 — 차단 50 kA, 최대 순간 100 kA, 50 Hz이면 위반(계산값 125)이고
     질의 후보가 된다."""
     conn, run_id = checked
     c = check_in(conn, run_id, "TS-230-CB", 100, ik=50)
@@ -110,7 +111,8 @@ def test_only_same_part(checked):
 
 
 def test_standard_value_rounding(checked):
-    """Scenario: 규격 표준값 — 25 kA × 2.5 = 62.5는 표준값 63 kA와 같다고 보고 통과."""
+    """Scenario: 표준값 ·
+    Scenario: 규격 표준값 — 25 kA × 2.5 = 62.5는 표준값 63 kA와 같다고 보고 통과."""
     conn, run_id = checked
     assert check_in(conn, run_id, "TS-SG", 63)["result"] == "PASS"
 

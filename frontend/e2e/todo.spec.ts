@@ -42,6 +42,7 @@ test('24시간 넘게 미확인', async ({ page, request }) => {
   await expect(dlg.locator('.tl2')).toContainText('메일 보냄')
 })
 
+// Scenario: 받는 담당자의 확인
 test('보내기와 받는 담당자의 확인', async ({ page, request }) => {
   // 판정이 없는 형식시험 요청은 엔지니어가 [보내기]로 보낸다. 회신이 오면 엔지니어가 회신 요지와 함께 "회신 받음"을 표시한다
   const run = await riskRun(request, `협조 요청 확인 ${Date.now()}`)

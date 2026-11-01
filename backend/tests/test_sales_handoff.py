@@ -149,7 +149,8 @@ def test_send_package(db, run, fake_mailer):
 
 
 def test_handoff_api(db, db_url, run, fake_mailer, monkeypatch):
-    """Scenario: 엔지니어만 넘김 + API — 승인자는 403, 승인 전 패키지 409, 엔지니어는 200."""
+    """Scenario: 엔지니어만 넘김 ·
+    Scenario: 엔지니어만 넘김 + API — 승인자는 403, 승인 전 패키지 409, 엔지니어는 200."""
     from fastapi.testclient import TestClient
 
     from rfp_agent.api.main import app

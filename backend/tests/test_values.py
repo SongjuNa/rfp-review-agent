@@ -6,12 +6,14 @@ from rfp_agent.pipeline.values import cell_values, evaluate_formula, sentence_va
 
 
 def test_symbol_number_keeps_raw_text():
+    """Scenario: 기호가 붙은 숫자."""
     [v] = cell_values("<0.5", "%")
     assert (v.cell_form, v.num_value, v.operator, v.unit_raw, v.raw_text) == (
         "NUMBER", 0.5, "<", "%", "<0.5")
 
 
 def test_delegated_standard():
+    """Scenario: 규격 위임."""
     [v] = cell_values("As per IEC:62271-100", None)
     assert v.cell_form == "DELEGATED"
     assert v.delegated_std == "IEC 62271-100"
@@ -19,6 +21,7 @@ def test_delegated_standard():
 
 
 def test_formula_is_computed_by_code():
+    """Scenario: 1.1 × 125/√3."""
     [v] = cell_values("1.1 x 125/√3", "kV")
     assert v.cell_form == "FORMULA"
     assert v.num_value == pytest.approx(79.39, abs=0.01)
@@ -39,6 +42,7 @@ def test_units_are_not_converted():
 
 
 def test_redacted_value_is_empty_not_guessed():
+    """Scenario: 가림 표시."""
     [v] = cell_values("[REDACTED]", "kV")
     assert v.cell_form == "EMPTY" and v.flag == "REDACTED" and v.num_value is None
 

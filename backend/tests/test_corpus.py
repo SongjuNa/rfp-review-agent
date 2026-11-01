@@ -85,6 +85,7 @@ def document(conn, run_id, file_no):
 # ---------------------------------------------------------------- FR-01
 
 def test_bid_form_classification(conn, main_run):
+    """Scenario: 입찰 서식."""
     d = document(conn, main_run, 1)
     assert (d["bundle"], d["doc_kind"], d["judge_target"], d["standard_system"]) == (
         "A", "BID_FORM", True, "IEC")
@@ -92,12 +93,14 @@ def test_bid_form_classification(conn, main_run):
 
 
 def test_us_spec_is_not_judged(conn, main_run):
+    """Scenario: 판정 대상이 아닌 미국 사양서."""
     d = document(conn, main_run, 13)
     assert (d["bundle"], d["doc_kind"], d["judge_target"], d["standard_system"]) == (
         "C", "REQUIREMENT_SPEC", False, "IEEE_UL")
 
 
 def test_image_only_document(conn, main_run):
+    """Scenario: 이미지만 있는 문서."""
     d = document(conn, main_run, 8)
     assert (d["readable"], d["requirements"]) == (False, 0)
 
@@ -105,6 +108,7 @@ def test_image_only_document(conn, main_run):
 # ---------------------------------------------------------------- FR-02
 
 def test_toc_and_body(conn, main_run):
+    """Scenario: 목차와 본문."""
     doc_id = document(conn, main_run, 3)["document_id"]
     rows = conn.execute("SELECT line_start, is_toc FROM section WHERE document_id = %s AND "
                         "title LIKE 'CLARIFICATION, EXCEPTION%%' ORDER BY line_start",
@@ -113,6 +117,7 @@ def test_toc_and_body(conn, main_run):
 
 
 def test_split_gis_table(conn, main_run):
+    """Scenario: 4개로 나뉜 115 kV GIS 표 / 20번 아래 3줄."""
     doc_id = document(conn, main_run, 1)["document_id"]
     [(table_id, nos)] = conn.execute(
         "SELECT table_id, source_table_nos FROM doc_table WHERE document_id = %s "
@@ -133,6 +138,7 @@ def test_split_gis_table(conn, main_run):
 # ---------------------------------------------------------------- FR-03·04·05
 
 def test_datasheet_row_7459(conn, main_run):
+    """Scenario: 데이터시트 행 / 시간 조건."""
     req = requirement_at(conn, main_run, 1, 7459)
     assert req["source_kind"] == "TABLE_CELL"
     [loc] = [x for x in req["locations"] if x["file_no"] == 1]
@@ -143,22 +149,26 @@ def test_datasheet_row_7459(conn, main_run):
 
 
 def test_writing_rule_7419(conn, main_run):
+    """Scenario: 작성 규칙."""
     assert requirement_at(conn, main_run, 1, 7419)["req_kind"] == "WRITING_RULE"
 
 
 def test_loss_clause_types_8238(conn, main_run):
+    """Scenario: 손실 환산 조항."""
     types = requirement_at(conn, main_run, 1, 8238)["types"]
     assert [(t["type_code"], t["is_primary"]) for t in types][:2] == [
         ("COST", True), ("TECH_PERF", False)]
 
 
 def test_supplier_marks_are_separate(conn, main_run):
+    """Scenario: 공급사 표시."""
     req = requirement_at(conn, main_run, 18, 208)
     assert req["supplier_mark"] == "C"
     assert req["source_kind"] == "SUPPLIER_ANSWER"
 
 
 def test_fahrenheit_and_celsius_kept(conn, main_run):
+    """Scenario: 화씨와 섭씨."""
     values = requirement_at(conn, main_run, 13, 113)["values"]
     units = [(float(v["num_value"]), v["unit_raw"]) for v in values]
     assert (104, "deg F") in units and (40, "deg C") in units
@@ -181,6 +191,7 @@ def test_deemed_to_be_accepted(conn, main_run):
 
 
 def test_gas_leakage_mismatch(conn, main_run):
+    """Scenario: 적용 대상이 다른 가스 누설."""
     [hit] = [r for r in risks(conn, main_run, "VALUE_MISMATCH")
              if r["item_key"] == "gas_leakage_rate"]
     assert member_lines(hit) == [(6, 174), (6, 278)]
@@ -188,17 +199,20 @@ def test_gas_leakage_mismatch(conn, main_run):
 
 
 def test_ambient_temperature_is_not_a_candidate(conn, main_run):
+    """Scenario: 적용 대상이 다른 주위 온도."""
     assert not [r for r in risks(conn, main_run, "VALUE_MISMATCH")
                 if r["item_key"] == "ambient_temp_max" and member_lines(r)[0][0] == 1]
 
 
 def test_ups_capacity_across_documents(conn):
+    """Scenario: 문서를 넘는 UPS 용량."""
     run_id = run(conn, [19, 22])
     hits = [r for r in risks(conn, run_id, "VALUE_MISMATCH") if r["item_key"] == "rated_capacity"]
     assert [member_lines(r) for r in hits] == [[(19, 301), (22, 3008)]]
 
 
 def test_pair_candidate_and_section_sized_ai_inputs(conn):
+    """Scenario: 데이터시트가 겹치는 두 문서."""
     llm = FakeLLM()
     run_id = run(conn, [1, 2], llm=llm)
     [pair] = queries.run_pairs(conn, run_id)

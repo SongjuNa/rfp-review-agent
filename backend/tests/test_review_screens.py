@@ -129,7 +129,7 @@ def test_history_target_labels(db, run, tmp_path):
 
 
 def test_deviation_list_docx(db, run, db_url, monkeypatch):
-    """Scenario: 일탈 목록 초안 Word 파일."""
+    """Scenario: 넣을 항목이 없는 초안 · Scenario: 일탈 목록 초안 Word 파일."""
     from io import BytesIO
 
     from docx import Document

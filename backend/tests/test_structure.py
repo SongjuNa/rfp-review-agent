@@ -79,7 +79,8 @@ def _row(seq, table_no, row_no, cells):
 
 
 def test_table_name_from_caption_paragraph_right_before_table():
-    """표 안에 제목 줄이 없으면 바로 앞 단락 "TS-… — 설명"을 표 이름으로 쓴다."""
+    """Scenario: 표 바로 앞 단락의 표 이름 —
+    표 안에 제목 줄이 없으면 바로 앞 단락 "TS-… — 설명"을 표 이름으로 쓴다."""
     head = ["No.", "Description", "Unit", "Employer's Requirement"]
     blocks = [
         Block(seq=0, kind="P", text="TS-170-GIS — Added deviation-candidate requirements",

@@ -9,6 +9,7 @@ from .conftest import FIXTURES
 
 
 def test_migrate_applies_each_file_once(empty_db, settings):
+    """Scenario: 빈 DB에 처음 적용 / 두 번째 실행 / 유형 7종."""
     first = migrate(empty_db, settings.migrations_dir)
     assert first[:2] == ["0001_schema_v1", "0002_reference_codes"]
     assert migrate(empty_db, settings.migrations_dir) == []
@@ -18,6 +19,7 @@ def test_migrate_applies_each_file_once(empty_db, settings):
 
 
 def test_seed_rules_is_repeatable(empty_db, settings):
+    """Scenario: 두 번 적재."""
     migrate(empty_db, settings.migrations_dir)
     first = seed_rules(empty_db, settings.seed_dir)
     second = seed_rules(empty_db, settings.seed_dir)
@@ -35,6 +37,7 @@ def test_seed_rules_is_repeatable(empty_db, settings):
 
 
 def test_seed_products_later_file_wins_and_losses(empty_db, settings):
+    """Scenario: 뒤 파일이 이긴다 / 손실값과 팀 가정 / 제품표에 없는 손실값."""
     migrate(empty_db, settings.migrations_dir)
     report = seed_products(
         empty_db,
@@ -84,6 +87,7 @@ def test_seed_products_replace_clears_old_products_and_runs(empty_db, settings, 
 
 
 def test_unknown_direction_stops_without_loading(empty_db, settings, tmp_path):
+    """Scenario: 모르는 비교 방향."""
     migrate(empty_db, settings.migrations_dir)
     seed_dir = tmp_path / "seed"
     shutil.copytree(settings.seed_dir, seed_dir)

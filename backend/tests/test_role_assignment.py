@@ -54,7 +54,8 @@ def sent(conn, run_id, role):
 
 
 def test_cost_clause_goes_to_cost(tasks_run):
-    """Scenario: 비용 영향 유형 — 손실 환산 조항은 견적 담당 "내 할 일"에 원문 위치와 함께 1건."""
+    """Scenario: 비용 영향 유형 줄 ·
+    Scenario: 비용 영향 유형 — 손실 환산 조항은 견적 담당 "내 할 일"에 원문 위치와 함께 1건."""
     conn, run_id = tasks_run
     [task] = sent(conn, run_id, "COST")
     assert task["type_code"] == "COST" and task["text"] == LOSS_CLAUSE
@@ -66,13 +67,14 @@ def test_cost_clause_goes_to_cost(tasks_run):
 
 
 def test_test_clause_goes_to_quality(tasks_run):
-    """Scenario: 시험 유형 — 형식시험 조항은 품질 담당에게 간다."""
+    """Scenario: 시험 유형 줄 · Scenario: 시험 유형 — 형식시험 조항은 품질 담당에게 간다."""
     conn, run_id = tasks_run
     assert [t["text"] for t in sent(conn, run_id, "QUALITY")] == [TYPE_TEST]
 
 
 def test_repeated_condition_is_one_task(tasks_run):
-    """Scenario: 반복 조건 — 장비 세 곳에 같은 제조사 실적 조건이 있으면 영업에 1건, 반복 3."""
+    """Scenario: 장비마다 반복되는 제조사 자격 ·
+    Scenario: 반복 조건 — 장비 세 곳에 같은 제조사 실적 조건이 있으면 영업에 1건, 반복 3."""
     conn, run_id = tasks_run
     [task] = [t for t in sent(conn, run_id, "SALES") if t["point_id"] is None]
     assert task["type_code"] == "MAKER_QUAL" and task["repeat_count"] == 3
@@ -80,7 +82,8 @@ def test_repeated_condition_is_one_task(tasks_run):
 
 
 def test_engineer_types_are_not_sent(tasks_run):
-    """Scenario: 엔지니어 몫 — 기술 성능·위험 조건 요구사항은 담당자에게 보내지 않는다."""
+    """Scenario: 기술 성능 줄 ·
+    Scenario: 엔지니어 몫 — 기술 성능·위험 조건 요구사항은 담당자에게 보내지 않는다."""
     conn, run_id = tasks_run
     types = {t["type_code"] for role in ("COST", "QUALITY", "SALES")
              for t in sent(conn, run_id, role) if t["type_code"]}

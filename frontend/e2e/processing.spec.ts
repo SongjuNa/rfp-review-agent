@@ -19,6 +19,7 @@ async function fakeProcessing(page: Page, runId: number, patch: Record<string, u
 
 const typing = (done: number) => ({ part: 'type', done, total: 3397, file_index: 1, file_count: 1 })
 
+// Scenario: 처리 중
 test('처리 중인 검토', async ({ page, request }) => {
   const run = await deviationRun(request, `처리 상태 ${Date.now()}`)
   await fakeProcessing(page, run.run_id, { step: 'risks', step_detail: null })
