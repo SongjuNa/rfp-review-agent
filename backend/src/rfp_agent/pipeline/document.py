@@ -328,7 +328,8 @@ def _process_new(conn, path: Path, dicts: PipelineDicts, key: str, llm: LLM | No
         if llm is not None and unclassified:
             report("type", 0, len(unclassified))
             ai_types = tasks.type_unclassified(llm, [cand.text for _, cand in unclassified],
-                                               lambda done, total: report("type", done, total))
+                                               lambda done, total: report("type", done, total),
+                                               [type_context(cand) for _, cand in unclassified])
             for (req_id, _), code in zip(unclassified, ai_types, strict=True):
                 if code != "NONE":
                     conn.execute(
@@ -339,6 +340,18 @@ def _process_new(conn, path: Path, dicts: PipelineDicts, key: str, llm: LLM | No
 
 
 FIRST_TITLE_BLOCKS = 15
+
+
+def type_context(cand) -> str | None:
+    """AI 유형 질문에 줄 문맥: 절 번호·제목, 표 이름, 표 안 구분 행 (update-type-context)."""
+    parts = []
+    if cand.section is not None and (cand.section.number or cand.section.title):
+        parts.append(f"절 {cand.section.number} {cand.section.title}".strip())
+    if cand.table is not None and cand.table.name:
+        parts.append(f"표 {cand.table.name}")
+    if cand.part_title:
+        parts.append(f"구분 {cand.part_title}")
+    return " · ".join(parts) or None
 
 
 def _top_section(section: Section | None, sections: list[Section]) -> int | None:

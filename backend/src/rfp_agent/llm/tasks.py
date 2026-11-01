@@ -8,7 +8,7 @@ from rfp_agent.llm.client import LLM, LLMFailure, call_with_retry
 from rfp_agent.llm.evidence import EvidenceSpan, normalize_quote
 from rfp_agent.llm.parallel import run_ordered, workers_of
 
-PROMPT_VERSION = "p2"
+PROMPT_VERSION = "p3"           # p3: 유형 질문에 절·표 제목 문맥 (update-type-context)
 DOC_KINDS = ["BID_FORM", "REQUIREMENT_SPEC", "PURCHASE_SPEC", "TEST_SPEC", "SUPPLIER_SPEC",
              "UNKNOWN"]
 SENTENCE_LABELS = ["REQUIREMENT", "WRITING_RULE", "DESCRIPTION"]
@@ -137,20 +137,33 @@ def label_sentences(llm: LLM, section_title: str | None, sentences: list[str],
     return label_sections(llm, [(section_title, sentences)], on_progress)[0]
 
 
-def type_unclassified(llm: LLM, texts: list[str],
-                      on_progress: Progress | None = None) -> list[str]:
+CONTEXT_CHARS = 120
+
+
+def _with_context(text: str, context: str | None) -> str:
+    """'[절 3.2 Leakage · 표 TS-154-GIS] 문장'. 문맥이 없으면 문장만."""
+    line = one_line(text)[:400]
+    return f"[{one_line(context)[:CONTEXT_CHARS]}] {line}" if context else line
+
+
+def type_unclassified(llm: LLM, texts: list[str], on_progress: Progress | None = None,
+                      contexts: list[str | None] | None = None) -> list[str]:
+    """규칙에 안 걸린 요구사항마다 유형 하나. contexts는 줄마다 절·표 제목 문맥(없으면 None)."""
+    lines = [_with_context(t, c) for t, c in zip(texts, contexts or [None] * len(texts),
+                                                  strict=True)]
 
     def prompt_of(part: list[str]) -> str:
-        numbered = "\n".join(f"{i}. {one_line(t)[:400]}" for i, t in enumerate(part))
+        numbered = "\n".join(f"{i}. {line}" for i, line in enumerate(part))
         return (
-            "RFP 요구사항마다 유형 하나를 고른다. TECH_PERF=기술 성능, RISK=위험 조건, "
+            "RFP 요구사항마다 유형 하나를 고른다. 대괄호 안은 그 줄이 속한 절·표 제목(문맥)이다. "
+            "TECH_PERF=기술 성능, RISK=위험 조건, "
             "STANDARD_CERT=적용 규격·인증, COST=비용 영향, TEST=시험, MAKER_QUAL=제조사 자격, "
             "SITE_ENV=설치 환경, NONE=어느 것도 아님. 요구사항마다 앞의 번호(n)와 "
             "고른 유형(v)을 함께 낸다.\n" + numbered
         )
 
-    chunks = [(texts[start:start + CHUNK], prompt_of) for start in range(0, len(texts), CHUNK)]
-    answers = _pick_chunks(llm, chunks, "types", TYPE_CODES, len(texts), on_progress)
+    chunks = [(lines[start:start + CHUNK], prompt_of) for start in range(0, len(lines), CHUNK)]
+    answers = _pick_chunks(llm, chunks, "types", TYPE_CODES, len(lines), on_progress)
     return [code for part in answers for code in part]
 
 
