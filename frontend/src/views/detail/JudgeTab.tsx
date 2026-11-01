@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { api, type EngineeringCheck, type Judgment, type LogEntry, type OutputItem, type RunDocument, type RunSummary, type Warranty } from '../../api'
 import { Pager } from '../../components/Pager'
+import { PastDecisionRow } from '../../components/PastDecisionRow'
 import { CHECK_NAMES, CHECK_RULE, CHECK_TONES, checkLine, checksByRequirement } from '../../components/checks'
 import { stamp } from '../../components/format'
 import { confirmedBy, compareText, itemName, locShort, markSplit, prodCell, reqText, suggested, itemFor } from '../../components/judgment'
@@ -32,6 +33,7 @@ export function JudgeTab({ run, tick, onChanged, head }: {
   const id = run.run_id
   const [f, setF] = useState('all')
   const [onlyUnc, setOnlyUnc] = useState(false)
+  const [onlyPast, setOnlyPast] = useState(false)   // 지난 확정과 다른 줄만 (add-review-memory)
   const [text, setText] = useState('')
   const q = useDebounced(text)
   const [type, setType] = useState('')
@@ -50,7 +52,7 @@ export function JudgeTab({ run, tick, onChanged, head }: {
   const [busy, setBusy] = useState(false)
   const [applying, setApplying] = useState(false)
   const [panelError, setPanelError] = useState<string | null>(null)
-  const filters = { result: f === 'all' ? undefined : f, unconfirmed: onlyUnc, q, type_code: type || undefined }
+  const filters = { result: f === 'all' ? undefined : f, unconfirmed: onlyUnc, q, type_code: type || undefined, past: onlyPast ? 'differs' as const : undefined }
   const key = JSON.stringify(filters)
   const counts = useLoad(() => api.judgmentCounts(id), [id, tick])
   const rows = useLoad(() => api.judgmentPage(id, { ...filters, order: 'priority', offset: (page - 1) * size, limit: size }),
@@ -76,7 +78,7 @@ export function JudgeTab({ run, tick, onChanged, head }: {
   const chips: [string, string, number][] = [['all', '전체', c?.total ?? 0], ...RESULT_ORDER.map((r): [string, string, number] => [r, RESULT_NAMES[r], n(r)])]
 
   const reset = (fn: () => void) => { fn(); setPage(1); setCur(null) }
-  const clearFilter = () => reset(() => { setF('all'); setOnlyUnc(false); setText(''); setType('') })
+  const clearFilter = () => reset(() => { setF('all'); setOnlyUnc(false); setOnlyPast(false); setText(''); setType('') })
   const open = (j: Judgment) => { setCur(j.judgment_id); setMd(j.judgment_id); setEdK(''); setEdWhy(''); setEdHint(false); setPanelError(null); setWVal(''); setWWhy('') }
   const done = () => { onChanged() }
   const say = (m: string) => { setToast(m); setTimeout(() => setToast(''), 3000) }
@@ -152,6 +154,10 @@ export function JudgeTab({ run, tick, onChanged, head }: {
             {(k === 'DEVIATION_CANDIDATE' || k === 'QUERY_CANDIDATE') && cnt > 0 && <> <span className="n">{cnt}</span></>}
           </button>
         ))}
+        {c && (c.past_differs > 0 || onlyPast) && (
+          <button type="button" className={'chip' + (onlyPast ? ' on' : '')} aria-pressed={onlyPast} title="다른 검토에서 사람이 같은 요구·같은 제품을 다르게 확정한 줄"
+            onClick={() => reset(() => setOnlyPast(!onlyPast))}><i style={{ background: '#B54708' }} />지난 확정과 다름 <span className="n">{c.past_differs}</span></button>
+        )}
         <span style={{ flex: '1 1 0' }} />
         <label className="sr" htmlFor="jq">판정 검색</label>
         <label className="unc"><input type="checkbox" checked={onlyUnc} onChange={() => reset(() => setOnlyUnc(!onlyUnc))} />확정 안 한 줄만</label>
@@ -192,6 +198,8 @@ export function JudgeTab({ run, tick, onChanged, head }: {
                       <td><span className={`st ${RESULT_TONES[j.result]}`}>{RESULT_NAMES[j.result]}</span>
                         {j.review_status === 'EDITED' && <div className="en" title="사람이 바꾼 판정">바꿈</div>}
                         {(j.review_status === 'CONFIRMED' || j.review_status === 'EDITED') && <div className="cfm"><span className="ms" aria-hidden="true">check</span>확정</div>}
+                        {j.past_decision && <div className={'en past' + (j.past_decision.same ? '' : ' c-ora')} title={`${j.past_decision.review_no}에서 사람이 ${RESULT_NAMES[j.past_decision.result]}(으)로 확정`}>
+                          {j.past_decision.same ? `지난 확정 ${RESULT_NAMES[j.past_decision.result]}` : '지난 확정과 다름'}</div>}
                       </td>
                       <td style={{ minWidth: 180 }}><span style={{ fontWeight: 600 }}>{itemName(j)}</span>
                         {checkOf.get(j.requirement_id) && checkOf.get(j.requirement_id)!.result !== 'PASS' && (
@@ -295,6 +303,7 @@ function Panel({ runId, j, w, check, items, log, docs, canEdit, edK, edWhy, edHi
             <tr><th>담당자 확정</th><td>{conf
               ? <><span className={`st ${RESULT_TONES[j.result]}`}>{RESULT_NAMES[j.result]}</span><span className="pvs">{conf.actor} · {stamp(conf.acted_at)}</span></>
               : <span className="pend" title="확정하지 않으면 시스템 제안 그대로 상신됩니다">아직 확정 안 함</span>}</td></tr>
+            <PastDecisionRow j={j} />
           </tbody></table>
         </div>
         {j.result === 'WARRANTY_TO_FILL' && w && (

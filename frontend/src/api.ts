@@ -29,6 +29,7 @@ export type ReviewInfo = Pick<RunSummary, 'project_name' | 'review_name' | 'cust
 
 export type JudgmentQuery = {
   result?: string; group?: string; type_code?: string; q?: string; unconfirmed?: boolean; order?: 'priority'
+  past?: 'differs'   // 지난 사람 판정과 다른 줄만 (add-review-memory)
   offset?: number; limit?: number
 }
 

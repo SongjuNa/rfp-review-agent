@@ -648,6 +648,7 @@ export type Judgment = {
   item_name_raw: string | null
   type_code: string | null
   type_name: string | null
+  past_decision: PastDecision | null
   locations: Location[]
 }
 
@@ -656,6 +657,8 @@ export type JudgmentCounts = {
   total: number
   unconfirmed: number
   unconfirmed_comply: number
+  past_seen: number
+  past_differs: number
 }
 
 export type LibraryFiles = {
@@ -777,6 +780,18 @@ export type PastCompare = {
   target: CompareTarget
   rows: CompareRow[]
   same: number
+}
+
+/** 다른 검토에서 사람이 확정·수정한 같은 요구·같은 제품 판정 (add-review-memory). 힌트일 뿐. */
+export type PastDecision = {
+  run_id: number
+  review_no: string
+  result: 'COMPLY' | 'DEVIATION_CANDIDATE' | 'QUERY_CANDIDATE' | 'NEEDS_REVIEW' | 'WARRANTY_TO_FILL'
+  review_status: 'CONFIRMED' | 'EDITED'
+  decided_by: string | null
+  decided_at: string | null
+  reason: string | null
+  same: boolean
 }
 
 /** 제품표 한 줄 (add-reference-views). 빈 칸은 null 그대로 (CR-04). */

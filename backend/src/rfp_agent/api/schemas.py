@@ -236,6 +236,18 @@ class Risk(Out):
 
 # ── 판정 ────────────────────────────────────────────────────
 
+class PastDecision(Out):
+    """다른 검토에서 사람이 확정·수정한 같은 요구·같은 제품 판정 (add-review-memory). 힌트일 뿐."""
+    run_id: int
+    review_no: str
+    result: JudgmentResult
+    review_status: Literal["CONFIRMED", "EDITED"]
+    decided_by: str | None
+    decided_at: datetime | None
+    reason: str | None
+    same: bool                          # 지금 판정 값과 같은지
+
+
 class Judgment(Out):
     judgment_id: int
     requirement_id: int
@@ -261,6 +273,7 @@ class Judgment(Out):
     item_name_raw: str | None
     type_code: str | None
     type_name: str | None
+    past_decision: PastDecision | None
     locations: Locations
 
 
@@ -269,6 +282,8 @@ class JudgmentCounts(Out):
     total: int
     unconfirmed: int
     unconfirmed_comply: int
+    past_seen: int                      # 지난 사람 판정이 있는 줄
+    past_differs: int                   # 그중 지금 판정과 다른 줄
 
 
 class Equipment(Out):

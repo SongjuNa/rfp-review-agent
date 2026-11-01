@@ -219,7 +219,8 @@ JUDGMENTS_WHERE = """
           AND (%(type)s::text IS NULL OR tt.type_code = %(type)s)
           AND (%(q)s::text IS NULL OR k.name_ko ILIKE %(q)s OR tr.item_name_raw ILIKE %(q)s
                OR q.text_raw ILIKE %(q)s)
-          AND (NOT %(unconfirmed)s OR j.review_status = 'CANDIDATE')"""
+          AND (NOT %(unconfirmed)s OR j.review_status = 'CANDIDATE')
+          AND (%(ids)s::int[] IS NULL OR j.judgment_id = ANY(%(ids)s))"""
 
 # 판정 순서: 일탈 후보 → 질의 후보 → 확인 필요 → 작성 필요 → 준수
 PRIORITY = """CASE j.result WHEN 'DEVIATION_CANDIDATE' THEN 1 WHEN 'QUERY_CANDIDATE' THEN 2
@@ -227,30 +228,45 @@ PRIORITY = """CASE j.result WHEN 'DEVIATION_CANDIDATE' THEN 1 WHEN 'QUERY_CANDID
 
 
 def _judgment_params(run_id: int, result: str | None, group: str | None, type_code: str | None,
-                     q: str | None, unconfirmed: bool) -> dict:
+                     q: str | None, unconfirmed: bool, ids: list[int] | None = None) -> dict:
     text = (q or "").strip()
     return {"run": run_id, "result": result, "group": group, "type": type_code,
-            "q": f"%{text}%" if text else None, "unconfirmed": unconfirmed}
+            "q": f"%{text}%" if text else None, "unconfirmed": unconfirmed, "ids": ids}
+
+
+def _past_ids(conn: psycopg.Connection, run_id: int, past: str | None) -> list[int] | None:
+    """past=differs: 지난 사람 판정과 다른 줄만 (add-review-memory)."""
+    from rfp_agent.pipeline.review_memory import differing_ids
+
+    return differing_ids(conn, run_id) if past == "differs" else None
 
 
 def run_judgments(conn: psycopg.Connection, run_id: int, *, result: str | None = None,
                   group: str | None = None, type_code: str | None = None, q: str | None = None,
                   unconfirmed: bool = False, priority: bool = False, limit: int = 100,
-                  offset: int = 0) -> list[dict]:
+                  offset: int = 0, past: str | None = None) -> list[dict]:
+    from rfp_agent.pipeline.review_memory import hints
+
     order = f"{PRIORITY}, j.judgment_id" if priority else "j.judgment_id"
     rows = _rows(conn, JUDGMENTS + JUDGMENTS_WHERE + f"""
         ORDER BY {order} LIMIT %(limit)s OFFSET %(offset)s""",
-        _judgment_params(run_id, result, group, type_code, q, unconfirmed)
+        _judgment_params(run_id, result, group, type_code, q, unconfirmed,
+                         _past_ids(conn, run_id, past))
         | {"limit": limit, "offset": offset})
+    found = hints(conn, run_id, [r["judgment_id"] for r in rows]) if rows else {}
+    for r in rows:
+        r["past_decision"] = found.get(r["judgment_id"])
     return _with_locations(conn, rows, run_id)
 
 
 def count_judgments(conn: psycopg.Connection, run_id: int, *, result: str | None = None,
                     group: str | None = None, type_code: str | None = None,
-                    q: str | None = None, unconfirmed: bool = False) -> int:
+                    q: str | None = None, unconfirmed: bool = False,
+                    past: str | None = None) -> int:
     sql = JUDGMENTS.split("FROM judgment j", 1)[1]
     return _rows(conn, "SELECT count(*) AS n FROM judgment j" + sql + JUDGMENTS_WHERE,
-                 _judgment_params(run_id, result, group, type_code, q, unconfirmed))[0]["n"]
+                 _judgment_params(run_id, result, group, type_code, q, unconfirmed,
+                                  _past_ids(conn, run_id, past)))[0]["n"]
 
 
 def judgment_counts(conn: psycopg.Connection, run_id: int) -> dict:
@@ -260,10 +276,14 @@ def judgment_counts(conn: psycopg.Connection, run_id: int) -> dict:
                count(*) FILTER (WHERE review_status = 'CANDIDATE') AS open
         FROM judgment WHERE run_id = %s AND is_current AND review_status <> 'REJECTED'
         GROUP BY result""", (run_id,))
+    from rfp_agent.pipeline.review_memory import counts
+
     by_result = {r["result"]: r["n"] for r in rows}
+    seen, differs = counts(conn, run_id)
     return {"by_result": by_result, "total": sum(by_result.values()),
             "unconfirmed": sum(r["open"] for r in rows),
-            "unconfirmed_comply": sum(r["open"] for r in rows if r["result"] == "COMPLY")}
+            "unconfirmed_comply": sum(r["open"] for r in rows if r["result"] == "COMPLY"),
+            "past_seen": seen, "past_differs": differs}
 
 
 def run_equipment(conn: psycopg.Connection, run_id: int) -> list[dict]:
