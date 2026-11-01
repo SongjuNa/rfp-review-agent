@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { api, type ItemKey, type Product, type ProductDetail } from '../api'
+import { saveFile } from '../components/download'
 import { Pager } from '../components/Pager'
 import { DOC_KINDS, isSourceCatalog, productDocs } from '../components/productDocs'
 import { productPhoto } from '../components/productPhotos'
@@ -79,6 +80,7 @@ export function Products() {
   const [picked, setCur] = useState<string | null | undefined>(undefined)
   const [ptab, setPtab] = useState<PanelTab>('graph')
   const [diffOnly, setDiffOnly] = useState(false)
+  const [exp, setExp] = useState<{ busy: boolean; note: { ok: boolean; text: string } | null }>({ busy: false, note: null })
   const fams = useLoad(() => api.productFamilies(), [])
   const items = useLoad(() => api.ruleItems(), [])
   const list = useLoad(() => api.products({ family: fam === 'all' ? undefined : fam, q: q.trim() || undefined, offset: (page - 1) * size, limit: size, cards: cards ? undefined : 'false' }),
@@ -91,6 +93,14 @@ export function Products() {
   const rows = list.data?.items ?? []
   const cur = picked === undefined ? rows[0]?.product_code ?? null : picked
   const detail = useLoad(() => (cur ? api.product(cur) : Promise.resolve(null)), [cur])
+  // 내보내기 (add-product-export): 지금 목록과 같은 거르기(제품군·검색어·설계 사례 카드)로 엑셀 한 장
+  const exportXlsx = () => {
+    if (exp.busy) return
+    setExp({ busy: true, note: null })
+    api.exportProducts({ family: fam === 'all' ? undefined : fam, q: q.trim() || undefined, cards: cards ? undefined : 'false' })
+      .then(({ name, blob }) => { saveFile(name, blob); setExp({ busy: false, note: { ok: true, text: `${name} 를 내려받았습니다.` } }) },
+        (e: Error) => setExp({ busy: false, note: { ok: false, text: e.message } }))
+  }
   const toggle = (code: string) => setSel(sel.includes(code) ? sel.filter((c) => c !== code) : [...sel, code])
 
   return (
@@ -104,9 +114,10 @@ export function Products() {
         <h1>제품표</h1>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <span title={LOCK}><button type="button" className="bo" disabled><span className="ms" aria-hidden="true" style={{ fontSize: 'var(--ic-s)' }}>upload</span>엑셀 가져오기</button></span>
-          <span title="내보내기는 내보내기 change에서 만듭니다"><button type="button" className="bo" disabled><span className="ms" aria-hidden="true" style={{ fontSize: 'var(--ic-s)' }}>download</span>내보내기</button></span>
+          <button type="button" className="bo" onClick={exportXlsx} disabled={exp.busy} title="지금 목록의 거르기(제품군·검색어·설계 사례 카드)대로 엑셀로 내려받습니다"><span className="ms" aria-hidden="true" style={{ fontSize: 'var(--ic-s)' }}>download</span>{exp.busy ? '만드는 중…' : '내보내기'}</button>
         </div>
       </div>
+      {exp.note && <p role={exp.note.ok ? 'status' : 'alert'} className={exp.note.ok ? 'pxnote' : 'pxnote c-red'}>{exp.note.text}</p>}
       <div className="kpis">
         <div className="kpi"><div className="l">비어 있는 칸</div><b className="c-ora">{fams.data ? sum('empty_cells') : '—'}</b><div className="s">판정에 쓰는 칸 · 제품 {sum('with_empty')}개</div></div>
         <div className="kpi"><div className="l">팀 가정 값</div><b className="c-blue">{fams.data ? sum('assumed') : '—'}</b><div className="s">변압기 손실값 등</div></div>
