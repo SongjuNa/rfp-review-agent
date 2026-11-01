@@ -112,6 +112,11 @@ class FakeLLM:
                                 "relation": "INFERRED"}]}
         # 묶음 답은 줄 번호(n)와 함께 낸다 (update-ai-answer-checks)
         count = len(re.findall(r"^\d+\. ", prompt, re.MULTILINE))
+        if field == "asks":
+            # 협조 요청 확인할 점 (add-handoff-questions): asks에 n → 문장을 두면 그 답
+            return {"asks": [{"n": n, "text": self.asks.get(n, "이 조건을 반영할 수 있는지 "
+                                                         "확인 부탁드립니다.")}
+                             for n in range(count - self.asks_short)]}
         if field == "texts":
             lines = re.findall(r"^\d+\. .*\(자리표시자: (.*)\)$", prompt, re.MULTILINE)
             # text의 "{all}"은 그 줄의 자리표시자 전부로 바꾼다 (자리표시자를 모두 써야 AI 문장)
@@ -120,6 +125,9 @@ class FakeLLM:
                 for n, marks in enumerate(lines)]}
         default = {"labels": "REQUIREMENT", "types": "NONE", "verdicts": "YES"}[field]
         return {field: [{"n": n, "v": default} for n in range(count)]}
+
+    asks: dict[int, str] = {}
+    asks_short = 0                  # 답에서 뺄 줄 수 (줄 번호 형식 오류 시험)
 
     # 뜻 찾기(add-meaning-search): 단어를 해시해 세는 벡터. 같은 단어가 많을수록 가깝다.
     # vectors에 글을 넣으면 그 벡터를 쓰고, embed_fail이면 매번 실패한다.

@@ -739,6 +739,9 @@ class Assignment(Out):
     replied_at: datetime | None
     replied_by_name: str | None
     reply_note: str | None
+    # 메일에 넣은 부서 관점 확인할 점과 쓴 이 (add-handoff-questions, C4)
+    ask_text: str | None = None
+    ask_by: Literal["AI", "CODE"] | None = None
 
 
 class ReviewCard(RunListItem):

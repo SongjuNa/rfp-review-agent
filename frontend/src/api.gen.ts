@@ -110,6 +110,8 @@ export type Assignment = {
   replied_at: string | null
   replied_by_name: string | null
   reply_note: string | null
+  ask_text?: string | null
+  ask_by?: 'AI' | 'CODE' | null
 }
 
 export type AssignmentStatus = {

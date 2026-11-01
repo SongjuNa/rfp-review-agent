@@ -217,7 +217,7 @@ def bulk_confirm(ctx: RunContext, run_id: int, judgment_ids: list[int],
     build_proposals(conn, run_id, ctx.llm)
     build_assignments(conn, run_id)
     conn.commit()
-    send_after_confirm(conn, run_id, actor_id)      # 확인을 마친 요청은 부서로 메일 (FR-11)
+    send_after_confirm(conn, run_id, actor_id, ctx.llm)  # 확인을 마친 요청은 부서로 메일
     return {"confirmed": len(befores), "skipped": skipped,
             "submission_check": _latest_check(conn, run_id)}
 
@@ -282,7 +282,7 @@ def act(ctx: RunContext, run_id: int, target: str, target_id: int, action: str,
         check_submission(conn, run_id)
     build_assignments(conn, run_id)                 # 채택한 제안 포인트는 영업·견적에 전달 (FR-11)
     conn.commit()
-    send_after_confirm(conn, run_id, actor_id)      # 확인을 마친 요청은 부서로 메일
+    send_after_confirm(conn, run_id, actor_id, ctx.llm)      # 확인을 마친 요청은 부서로 메일
     return {"before": _json(before).obj, "after": _json(after).obj,
             "submission_check": _latest_check(conn, run_id)}
 
@@ -634,6 +634,7 @@ def assignments_for(conn: psycopg.Connection, role: str, run_id: int | None = No
                       a.type_code, t.type_name, u.user_name AS assignee,
                       a.mail_sent_at, a.mail_to, a.mail_error, su.user_name AS sent_by_name,
                       a.replied_at, ru.user_name AS replied_by_name, a.reply_note,
+                      a.ask_text, a.ask_by,
                       COALESCE(q.text_raw, p.text_draft) AS text, p.point_kind,
                       p.requirement_id AS point_requirement_id, p.is_assumed, r.stage,
                       {queries.REVIEW_INFO}

@@ -5648,6 +5648,32 @@
               }
             ],
             "title": "Reply Note"
+          },
+          "ask_text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ask Text"
+          },
+          "ask_by": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "AI",
+                  "CODE"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ask By"
           }
         },
         "additionalProperties": false,

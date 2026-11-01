@@ -58,6 +58,7 @@ from rfp_agent.api.schemas import (
 )
 from rfp_agent.config import get_settings
 from rfp_agent.db.connection import connect
+from rfp_agent.llm.client import make_llm
 from rfp_agent.pipeline import (
     business,
     datasheet,
@@ -815,7 +816,8 @@ def send_assignments(run_id: int, body: SendRequests) -> SendResult:
         conn.execute("UPDATE assignment SET mail_error = NULL WHERE run_id = %s "
                      "AND assignment_id = ANY(%s) AND mail_sent_at IS NULL",
                      (run_id, body.assignment_ids))
-        return send_requests(conn, run_id, body.assignment_ids, actor_id)
+        return send_requests(conn, run_id, body.assignment_ids, actor_id,
+                             make_llm(get_settings()))
 
 
 # ── 영업 인계 (add-submission-package, FR-11 확장) ──────────────
