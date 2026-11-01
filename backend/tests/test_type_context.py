@@ -31,5 +31,6 @@ def test_line_without_context_is_text_only():
     out = tasks.type_unclassified(llm, ["The panel shall be grey.", "Rated current / A / 3150"],
                                   contexts=[None, "절 3 DATA SHEET · 표 TS-230-GIS · 구분 CB"])
     assert out == ["NONE", "NONE"]
-    assert type_lines(llm) == ["The panel shall be grey.",
-                               "[절 3 DATA SHEET · 표 TS-230-GIS · 구분 CB] Rated current / A / 3150"]
+    assert type_lines(llm) == [
+        "The panel shall be grey.",
+        "[절 3 DATA SHEET · 표 TS-230-GIS · 구분 CB] Rated current / A / 3150"]
