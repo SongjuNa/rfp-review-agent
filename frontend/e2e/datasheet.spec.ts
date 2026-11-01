@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { ENGINEER, as, deviationRun } from './helpers'
+import { ENGINEER, as, deviationRun, salesMailUnavailable } from './helpers'
 
 // 명세 review-workspace "데이터시트 채우기 화면"의 Scenario (change add-datasheet-export).
 
@@ -62,6 +62,7 @@ test('데이터시트 영업에 넘기기', async ({ page, request }) => {
   await page.goto(`/#/reviews/${run.run_id}/datasheet`)
   await expect(page.locator('table.ds-t tbody tr').first()).toBeVisible()
   await page.getByRole('button', { name: '영업에 넘기기' }).click()
+  if (await salesMailUnavailable(page, '영업 담당(')) return
   await expect(page.getByRole('status')).toContainText('영업 담당(')
   await expect(page.getByRole('status')).toContainText('비운 채로 넘어갑니다.')
   await expect(page.getByRole('button', { name: '다시 넘기기' })).toBeEnabled()

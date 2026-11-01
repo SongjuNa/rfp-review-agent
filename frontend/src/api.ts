@@ -4,6 +4,7 @@ import type {
   DecisionResult, DocumentChoice, DocumentPreview, HandoffResult, SalesHandoff,
   LossResult, ProductSwitch, RuleEdit,
   RunLogItem, RunSummary, SendResult, StageResult, SubmitResult,
+  AnswerKey, EvalRun, EvalScore,
 } from './api.gen'
 
 export type {
@@ -12,7 +13,7 @@ export type {
   DocumentChoice, DocumentPreview, EngineeringCheck,
   Equipment, Health, ItemKey, Judgment, JudgmentCounts, Location, LogEntry, Loss, MyTasks, OutputItem, Product,
   ProductDetail, ProductFamily, Proposal, ReadCheck, Requirement, ReviewCard, Risk, RiskExpression, RuleEdit, RunDocument,
-  RunListItem, RunLogItem, RunSummary, SalesHandoff, SubmissionCheck, Tbe, TbeRow, User, Warranty,
+  AnswerKey, EvalMetric, EvalRun, EvalScore, RunListItem, RunLogItem, RunSummary, SalesHandoff, SubmissionCheck, Tbe, TbeRow, User, Warranty,
 } from './api.gen'
 import type {
   CompareRule, DatasheetInfo, Datasheet, DocKindRule, EngineeringCheck, Equipment, Health, ItemKey, Judgment, JudgmentCounts,
@@ -196,6 +197,12 @@ export const api = {
     call<SubmitResult>(`/runs/${id}/finish-review`, json('POST', { approver_id, comment, actor_id })),
   withdraw: (id: number, actor_id: number) => call<StageResult>(`/runs/${id}/withdraw`, json('POST', { actor_id })),
   runLog: () => call<RunLogItem[]>('/run-log'),
+  // 정답지·채점 (add-evaluation). 정답지 넣기는 명령 `rfp-db load-answer-key`
+  evalKeys: () => call<AnswerKey[]>('/eval/keys'),
+  evalRuns: () => call<EvalRun[]>('/eval/runs'),
+  evalScores: () => call<EvalScore[]>('/eval/scores'),
+  score: (run_ids: number[], key_id: number | null, note: string, actor_id: number | null) =>
+    call<EvalScore>('/eval/scores', json('POST', { run_ids, key_id, note, actor_id })),
   // 처리 중 취소, 실패·취소한 검토 다시 시도 (add-run-control)
   cancelRun: (id: number, actor_id: number | null) => call<RunSummary>(`/runs/${id}/cancel`, json('POST', { actor_id })),
   retryRun: (id: number, actor_id: number | null) => call<RunSummary>(`/runs/${id}/retry`, json('POST', { actor_id })),

@@ -21,6 +21,18 @@ export type Actor = {
   actor_id?: number | null
 }
 
+/** 유형 정답지. made_by가 CLAUDE_DRAFT면 사람 확인 전 초안. */
+export type AnswerKey = {
+  key_id: number
+  key_name: string
+  key_kind: 'TYPE'
+  made_by: 'CLAUDE_DRAFT' | 'HUMAN'
+  created_at: string
+  rows: number
+  human_checked: number
+  ambiguous: number
+}
+
 export type Approval = {
   approval_id: number
   decision: 'APPROVED' | 'REJECTED' | 'WITHDRAWN' | null
@@ -496,6 +508,69 @@ export type Equipment = {
   judgments: number
   deviations: number
   ambiguous: number
+}
+
+/** 지표 하나. 값이 없으면(분모 0) null. 목표가 없으면 passed는 null. */
+export type EvalMetric = {
+  code: string
+  name: string
+  measure: string
+  unit: string
+  value: number | null
+  num: number | null
+  den: number | null
+  target: number | null
+  better: 'up' | 'down'
+  passed: boolean | null
+  note: string | null
+}
+
+export type EvalMetrics = {
+  items: EvalMetric[]
+  types: EvalTypeDetail | null
+  not_measured: EvalNotMeasured[]
+}
+
+export type EvalNotMeasured = {
+  code: string
+  name: string
+  note: string
+}
+
+/** 채점에 넣을 수 있는 검토 (사람이 확정·수정한 판정 줄이 있음). */
+export type EvalRun = {
+  run_id: number
+  review_no: string
+  review_name: string | null
+  stage: 'PROCESSING' | 'ENGINEER_REVIEW' | 'APPROVAL' | 'APPROVED' | 'REJECTED' | 'FAILED'
+  reviewed: number
+  reviewer: string | null
+  last_reviewed_at: string | null
+}
+
+/** 채점 기록 한 줄. */
+export type EvalScore = {
+  score_id: number
+  run_ids: number[]
+  key_id: number | null
+  key_name: string | null
+  key_made_by: 'CLAUDE_DRAFT' | 'HUMAN' | null
+  metrics: EvalMetrics
+  note: string | null
+  code_version: string | null
+  scored_by: number | null
+  scored_by_name: string | null
+  scored_at: string
+}
+
+export type EvalTypeDetail = {
+  rows: number
+  matched: number
+  hit: number
+  miss: number
+  not_found: number
+  ambiguous: number
+  ambiguous_hit: number
 }
 
 export type FieldHistory = {
@@ -1160,6 +1235,13 @@ export type SalesHandoff = {
   sent_at: string
   sent_by: number
   sent_by_name: string
+}
+
+export type ScoreRequest = {
+  run_ids: number[]
+  key_id?: number | null
+  note?: string | null
+  actor_id?: number | null
 }
 
 export type SendRequests = {

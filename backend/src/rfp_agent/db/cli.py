@@ -1,5 +1,6 @@
 """DB 명령: rfp-db migrate | seed-rules [--reset-edits] | seed-products [--replace] | setup
-| demo-businesses --business 사업명 a.docx [b.docx ...] (시연용 사업, add-project-status)"""
+| demo-businesses --business 사업명 a.docx [b.docx ...] (시연용 사업, add-project-status)
+| load-answer-key 정답지.csv --name 이름 [--human] (유형 정답지, add-evaluation)"""
 
 import argparse
 import sys
@@ -62,10 +63,27 @@ def demo_businesses(groups: list[list[str]], customer: str | None, due_in: int) 
                 print(f"[시연 사업] {name}: 검토 {run_id} {path.name} → {stage}")
 
 
+def load_answer_key(path: Path, name: str, human: bool) -> None:
+    from rfp_agent.pipeline.evaluation import load_key
+
+    if not path.exists():
+        sys.exit(f"정답지 파일이 없습니다: {path}")
+    with connect() as conn:
+        report = load_key(conn, path, name, human)
+    who = "사람" if human else "Claude 초안"
+    print(f"[정답지] {name} ({who}): {report.rows}줄, 사람 확인 {report.human_checked}줄")
+    for line in report.skipped:
+        print(f"  건너뜀: {line}")
+
+
 def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(prog="rfp-db")
     parser.add_argument("command", choices=["migrate", "seed-rules", "seed-products", "setup",
-                                            "demo-businesses"])
+                                            "demo-businesses", "load-answer-key"])
+    parser.add_argument("path", nargs="?", help="load-answer-key: 정답지 CSV 파일")
+    parser.add_argument("--name", help="load-answer-key: 정답지 이름 (같은 이름이면 줄을 바꿈)")
+    parser.add_argument("--human", action="store_true",
+                        help="load-answer-key: 사람이 만든 정답지 (주지 않으면 Claude 초안)")
     parser.add_argument("--business", action="append", nargs="+", metavar=("사업명", "DOCX"),
                         help="demo-businesses: 사업명과 docx 파일들 (여러 번 줄 수 있음)")
     parser.add_argument("--customer", help="demo-businesses: 고객사 (주지 않으면 비움)")
@@ -81,6 +99,11 @@ def main(argv: list[str] | None = None) -> None:
         if not args.business or any(len(g) < 2 for g in args.business):
             parser.error("--business 사업명 a.docx [b.docx ...] 가 필요합니다")
         demo_businesses(args.business, args.customer, args.due_in)
+        return
+    if args.command == "load-answer-key":
+        if not args.path or not args.name:
+            parser.error("load-answer-key 정답지.csv --name 이름 이 필요합니다")
+        load_answer_key(Path(args.path), args.name, args.human)
         return
     with connect() as conn:
         if args.command in ("migrate", "setup"):
