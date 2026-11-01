@@ -4,7 +4,7 @@ import { Pager } from '../../components/Pager'
 import { PastDecisionRow } from '../../components/PastDecisionRow'
 import { CHECK_NAMES, CHECK_RULE, CHECK_TONES, checkLine, checksByRequirement } from '../../components/checks'
 import { stamp } from '../../components/format'
-import { confirmedBy, compareText, itemName, locShort, markSplit, prodCell, reqText, suggested, itemFor } from '../../components/judgment'
+import { confirmedBy, compareText, itemName, locShort, marginText, markSplit, prodCell, reqText, suggested, itemFor } from '../../components/judgment'
 import { RESULT_DOTS, RESULT_NAMES, RESULT_ORDER, RESULT_TONES, TYPE_NAMES } from '../../components/labels'
 import { useLoad } from '../../components/useLoad'
 import { useSession } from '../../shell/useSession'
@@ -215,7 +215,8 @@ export function JudgeTab({ run, tick, onChanged, head }: {
                             {checkOf.get(j.requirement_id)!.result === 'VIOLATION' ? '검산 위반' : '검산 확인 필요'}</span>)}
                         {j.item_name && j.item_name_raw && <div className="en">{j.item_name_raw}</div>}</td>
                       <td style={{ whiteSpace: 'nowrap' }}>{reqText(j)}</td>
-                      <td style={{ whiteSpace: 'nowrap' }}><span className={p.cls}>{p.val}</span><div className="en">{p.sub}</div></td>
+                      <td style={{ whiteSpace: 'nowrap' }}><span className={p.cls}>{p.val}</span><div className="en">{p.sub}</div>
+                        {p.margin && <div className={'en' + (p.strong ? ' c-green' : '')}>{p.margin}</div>}</td>
                       <td className="loc">{locShort(j, docs.data ?? [])}</td>
                     </tr>
                   )
@@ -295,6 +296,7 @@ function Panel({ runId, j, w, check, items, log, docs, canEdit, edK, edWhy, edHi
         <div>
           <div className="lbl">판정 근거</div>
           <div><span className={`st ${RESULT_TONES[j.result]}`}>{RESULT_NAMES[j.result]}</span> <span style={{ marginLeft: 6 }}>{compareText(j, w)}</span></div>
+          {marginText(j) && <div className={j.margin_direction === 'STRENGTH' ? 'c-green' : ''} style={{ marginTop: 2 }}>{marginText(j)}</div>}
           <div className="en" style={{ marginTop: 2 }}>{j.reason_text}</div>
         </div>
         {check && (

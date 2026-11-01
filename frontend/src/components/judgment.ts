@@ -32,17 +32,27 @@ export function reqText(j: Judgment): string {
   return withUnit(j.req_value_raw, j.unit_raw) ?? '—'
 }
 
-/** 제품값 칸: 보증값 작성 줄은 보증값 후보, 나머지는 제품값. sub는 아래 작은 줄 */
-export function prodCell(j: Judgment, w?: Warranty): { val: string; sub: string; cls: string } {
+const DIRECTION_NAMES: Record<string, string> = { STRENGTH: '강점', NOT_STRENGTH: '강점 아님' }
+
+/** 여유와 강점 방향: "여유 시간 3배 · 강점" (명세 compliance-judgment "여유와 강점 방향"). 여유가 없으면 null */
+export function marginText(j: Judgment): string | null {
+  if (j.margin_value === null || j.margin_direction === 'NOT_CALC' || Number(j.margin_value) === 0) return null
+  const v = num(Number(j.margin_value))
+  const margin = j.margin_kind === 'TIME_RATIO' ? `여유 시간 ${v}배` : j.margin_kind === 'RATIO' ? `여유 ${v}배` : `여유 ${v}`
+  return `${margin} · ${DIRECTION_NAMES[j.margin_direction]}`
+}
+
+/** 제품값 칸: 보증값 작성 줄은 보증값 후보, 나머지는 제품값. sub는 아래 작은 줄, margin은 여유와 강점 방향 */
+export function prodCell(j: Judgment, w?: Warranty): { val: string; sub: string; cls: string; margin: string | null; strong: boolean } {
   if (j.result === 'WARRANTY_TO_FILL') {
     const v = w ? withUnit(w.candidate_value, w.candidate_unit) : null
-    if (v) return { val: v, sub: w!.source_kind === 'ENGINEER' ? '직접 입력' : (w!.product_code ?? '제품표'), cls: '' }
-    return { val: '비어 있음', sub: '근거 값 없음', cls: 'c-ora' }
+    if (v) return { val: v, sub: w!.source_kind === 'ENGINEER' ? '직접 입력' : (w!.product_code ?? '제품표'), cls: '', margin: null, strong: false }
+    return { val: '비어 있음', sub: '근거 값 없음', cls: 'c-ora', margin: null, strong: false }
   }
   const val = withUnit(j.product_value_raw, j.product_value_unit) ?? '—'
-  const margin = j.margin_value !== null && j.margin_direction !== 'NOT_CALC' && Number(j.margin_value) !== 0
-    ? ` · 여유 ${num(Number(j.margin_value))}${j.margin_kind === 'RATIO' ? '배' : ''}` : ''
-  return { val, sub: (j.product_code ?? '') + margin + (j.is_assumed ? ' · 팀 가정' : ''), cls: '' }
+  const margin = marginText(j)
+  return { val, sub: (j.product_code ?? '') + (j.is_assumed ? ' · 팀 가정' : ''), cls: '', margin,
+    strong: margin !== null && j.margin_direction === 'STRENGTH' }
 }
 
 /** 판정 근거의 비교 줄: "요구 4,000 A · 제품 3,150 A" */

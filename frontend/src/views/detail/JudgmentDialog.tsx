@@ -46,6 +46,7 @@ export function JudgmentDialog({ runId, j, w, check, items, log, docs, pos, tota
     ['적용 규칙', j.reason_text ?? '—'], ['비교', compareText(j, w)],
     ['제품값 출처', j.result === 'WARRANTY_TO_FILL' ? p.sub : j.product_code ? `${j.product_code} · 제품표` : '—'],
   ]
+  if (p.margin) basis.push(['여유와 방향', p.margin])
   if (j.type_name) basis.push(['유형', j.type_name])
   if (check) basis.push(['공학 검산', `${CHECK_NAMES[check.result]} · ${checkLine(check)}`])   // update-check-display
   const confirm = () => {

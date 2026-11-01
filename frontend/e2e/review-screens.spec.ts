@@ -95,3 +95,30 @@ test('사유 없이 판정 바꾸기', async ({ page, request }) => {
   await page.locator('#judge .tw tbody tr', { hasText: '바꿈' }).first().click()
   await expect(page.getByRole('dialog').locator('.pv')).toContainText('기본 엔지니어')    // 담당자 확정이 바뀜
 })
+
+test('적합성 표의 비교 제품 — 여유와 강점 방향', async ({ page, request }) => {
+  // 명세 review-workspace "적합성 표의 비교 제품", compliance-judgment "40 kA 1초 요구, 3초 제품"·"강점이 아닌 여유".
+  // 제품표에 따라 여유 있는 준수 판정이 없을 수 있어, 준수 판정 두 줄의 여유 칸만 바꿔 끼워 화면 표시를 본다.
+  const run = await deviationRun(request, `여유 방향 ${Date.now()}`)
+  await page.route(/\/api\/runs\/\d+\/judgments\?/, async (r) => {
+    const res = await r.fetch()
+    const rows = (await res.json()) as Record<string, unknown>[]
+    const comply = rows.filter((j) => j.result === 'COMPLY')
+    if (comply[0]) Object.assign(comply[0], { margin_kind: 'TIME_RATIO', margin_value: '3', margin_direction: 'STRENGTH' })
+    if (comply[1]) Object.assign(comply[1], { margin_kind: 'DIFF', margin_value: '15', margin_direction: 'NOT_STRENGTH' })
+    await r.fulfill({ response: res, json: rows })
+  })
+  await as(page, ENGINEER)
+  await page.goto(`/#/reviews/${run.run_id}`)
+  await page.locator('.fbar .chip', { hasText: '준수' }).click()
+  const rows = page.locator('#judge .tw tbody tr')
+  const strong = rows.filter({ hasText: '여유 시간 3배 · 강점' })
+  await expect(strong).toHaveCount(1)
+  await expect(strong.locator('div.c-green')).toHaveText('여유 시간 3배 · 강점')   // 강점은 초록 글자
+  await expect(rows.filter({ hasText: '여유 15 · 강점 아님' })).toHaveCount(1)
+  await strong.click()
+  await expect(page.getByRole('dialog').locator('.basis')).toContainText('여유와 방향여유 시간 3배 · 강점')
+  await page.keyboard.press('Escape')
+  await expect(page.getByRole('complementary', { name: '원문과 판정' })).toContainText('여유 시간 3배 · 강점')
+  await page.unrouteAll({ behavior: 'ignoreErrors' })
+})
