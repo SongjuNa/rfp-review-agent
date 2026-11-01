@@ -9,7 +9,7 @@ test('결재 상신 창', async ({ page, request }) => {
   await page.goto(`/#/reviews/${run.run_id}`)
   await page.getByRole('button', { name: '결재 상신' }).click()
   const dialog = page.getByRole('dialog', { name: '결재 상신' })
-  await expect(dialog.locator('.apck li').first()).toContainText('일탈 후보 1건')      // 지금 걸리는 AR-01
+  await expect(dialog.locator('.apck li').first()).toContainText(`일탈 후보 ${run.deviations}건`)  // 지금 걸리는 AR-01
   await expect(dialog.getByLabel('결재자')).toHaveValue(String(APPROVER))               // 승인자가 1명이면 미리 고름
   const send = dialog.getByRole('button', { name: '결재 상신' })
   await expect(send).toBeDisabled()                                                      // 의견 전에는 눌리지 않는다
@@ -34,7 +34,7 @@ test('승인 화면', async ({ page, request }) => {
   await expect(page.getByText('결재할 검토입니다')).toBeVisible()
   await expect(page.locator('.wop')).toContainText(COMMENT)                              // 상신 의견
   const checks = page.locator('.wck')
-  await expect(checks).toContainText('일탈 후보 1건')                                     // 걸린 기준, 일탈 후보 수
+  await expect(checks).toContainText(`일탈 후보 ${run.deviations}건`)                     // 걸린 기준, 일탈 후보 수
   await expect(checks).toContainText(/일탈 목록에 \d+건/)                                  // 목록에 들어간 수
   await expect(checks).toContainText(/목록에 (빠진 일탈 없음|없는 일탈 \d+건)/)              // 빠진 일탈
   const reject = page.getByRole('button', { name: '반려' })

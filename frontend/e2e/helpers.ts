@@ -3,6 +3,7 @@ import { expect, test, type APIRequestContext, type Page } from '@playwright/tes
 
 // e2e 공용: 합성 데이터시트(e2e/fixtures/synthetic_judgment.docx, 백엔드 tests/docx_factory.py로 만듦, 고객 원문 아님)로
 // 실행을 만들고, 판정 하나를 일탈 후보로 고쳐 AR-01이 걸리게 한다.
+// 제품표에 따라 처음부터 일탈인 판정이 있을 수 있어, 일탈 후보 수는 고정하지 않고 고친 뒤의 수(deviations)를 돌려준다.
 // 판정하려면 문서 목록에 묶음 A로 있어야 한다. 로컬 DB에 한 번 넣는다:
 //   INSERT INTO document_catalog (file_no, file_key, bundle, language) VALUES (91, 'synthetic_judgment', 'A', 'en');
 const DOCX = new URL('./fixtures/synthetic_judgment.docx', import.meta.url)
@@ -27,7 +28,9 @@ export async function deviationRun(request: APIRequestContext, name: string) {
       reason: '시험용 일탈', actor_id: ENGINEER },
   })
   expect(edit.status()).toBe(200)
-  return run
+  const summary = await (await request.get(`/api/runs/${run.run_id}`)).json() as { deviation_candidates: number }
+  expect(summary.deviation_candidates).toBeGreaterThanOrEqual(1)
+  return { ...run, deviations: summary.deviation_candidates }
 }
 
 export async function as(page: Page, userId: number) {

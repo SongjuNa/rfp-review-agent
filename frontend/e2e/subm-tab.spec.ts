@@ -18,7 +18,7 @@ test('승인된 실행의 제출본', async ({ page, request }) => {
   await expect(row).toHaveCount(1)
   await expect(row.locator('td').first()).toHaveText('v1')
   await expect(row).toContainText(`${summary.judgments}줄`)
-  await expect(row).toContainText('일탈 1 · 질의')
+  await expect(row).toContainText(`일탈 ${run.deviations} · 질의`)
   await expect(row).toContainText('기본 승인자')
   await expect(row.locator('.st')).toHaveText('현재 제출본')
 })

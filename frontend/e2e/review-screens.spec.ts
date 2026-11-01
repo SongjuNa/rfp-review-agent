@@ -8,7 +8,7 @@ test('요약 칸', async ({ page, request }) => {
   await as(page, ENGINEER)
   await page.goto(`/#/reviews/${run.run_id}`)
   const kpis = page.locator('.kpis')
-  await expect(kpis.locator('.kpi').nth(0)).toContainText('일탈 후보1')
+  await expect(kpis.locator('.kpi').nth(0)).toContainText(`일탈 후보${run.deviations}`)
   await expect(kpis).toContainText('질의 후보')
   await expect(kpis).toContainText(/확인 필요 비율\d+ %기준 20 %/)
   await expect(kpis).toContainText('보증값 작성 (비어 있음)')

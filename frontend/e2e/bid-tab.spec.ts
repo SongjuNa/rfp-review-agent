@@ -56,10 +56,10 @@ test('사유 없이 버리기', async ({ page }) => {
 })
 
 test('불리한 점 목록', async ({ page }) => {
-  await openBid(page, '불리한 점')
+  const run = await openBid(page, '불리한 점')
   const cons = page.locator('#bid .cols > div').nth(1)
-  await expect(cons.locator('.li', { hasText: '미달' })).toHaveCount(1)
-  await expect(cons.locator('.li', { hasText: '미달' })).toContainText('대응: 일탈 목록에 올리고')
+  await expect(cons.locator('.li', { hasText: '미달' })).toHaveCount(run.deviations)
+  await expect(cons.locator('.li', { hasText: '미달' }).first()).toContainText('대응: 일탈 목록에 올리고')
   await expect(cons.locator('.li', { hasText: '값 불명확' }).first()).toContainText('대응: 서면 질의로')
 })
 
