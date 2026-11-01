@@ -18,6 +18,7 @@ from psycopg.types.json import Jsonb
 from rfp_agent.llm import tasks
 from rfp_agent.llm.client import FAILURE_MESSAGE, LLM, LLMFailure, Usage, usage_of
 from rfp_agent.llm.evidence import EvidenceSpan, evidence_id, parse_evidence_id
+from rfp_agent.llm.parallel import run_ordered, workers_of
 from rfp_agent.pipeline import code_version, dictionaries, doc_add
 from rfp_agent.pipeline.assignments import build_assignments
 from rfp_agent.pipeline.document import Choice, Report, process_document
@@ -293,8 +294,10 @@ def _save_risks(ctx: RunContext, run_id: int, candidates: list[RiskCandidate],
     AI에 다시 묻지 않고 이전 설명과 근거 문장을 이어 쓴다 (문서 추가·다시 시도)."""
     conn = ctx.conn
     known = dict(known or {})
+    # (가) 이어 쓸 설명을 찾고, AI에 물을 후보는 근거 조각을 DB에서 먼저 읽는다
+    plans: list[tuple[RiskCandidate, int | None, tuple | None, list[EvidenceSpan]]] = []
     for cand in candidates:
-        explained = reused = None
+        reused, spans = None, []
         expr_id = cand.expression.expr_id if cand.expression else None
         hit = known.pop((cand.risk_kind, expr_id, cand.item_key, tuple(sorted(set(cand.members)))),
                         None)
@@ -309,8 +312,17 @@ def _save_risks(ctx: RunContext, run_id: int, candidates: list[RiskCandidate],
                             JOIN requirement_location rl USING (requirement_id)
                             WHERE q.requirement_id = ANY(%s)
                             ORDER BY q.document_id, rl.location_id""", (cand.members,))]
-            if spans:
-                explained = tasks.explain_risk(ctx.llm, cand.risk_kind, cand.facts, spans)
+        plans.append((cand, expr_id, reused, spans))
+    # (나) AI 설명은 동시에 받는다 (NFR-10). 결과는 후보 순서대로
+    llm = ctx.llm
+    asks = [i for i, p in enumerate(plans) if p[3]]
+    answers = run_ordered([lambda p=plans[i]: tasks.explain_risk(llm, p[0].risk_kind, p[0].facts,
+                                                                 p[3]) for i in asks],
+                          workers_of(llm)) if asks else []
+    explanations = dict(zip(asks, answers, strict=True))
+    # (다) 원래 순서대로 저장한다 (risk_id 순서가 차례로 할 때와 같음)
+    for n, (cand, expr_id, reused, _) in enumerate(plans):
+        explained = explanations.get(n)
         risk_id = conn.execute(
             """INSERT INTO risk_flag (run_id, risk_kind, expr_id, explanation_ai, status, facts,
                                       item_key)

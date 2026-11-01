@@ -22,6 +22,8 @@ services:
     environment:
       DATABASE_URL: postgresql://rfp:rfp@db:5432/rfp
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      RFP_LLM_WORKERS: ${RFP_LLM_WORKERS:-4}
+      RFP_LLM_TIMEOUT_S: ${RFP_LLM_TIMEOUT_S:-120}
       # 협조 요청 메일 (update-role-handoff-mail). 기본은 Mailpit이라 밖으로 나가지 않는다
       RFP_SMTP_HOST: ${RFP_SMTP_HOST:-mailpit}
       RFP_SMTP_PORT: ${RFP_SMTP_PORT:-1025}

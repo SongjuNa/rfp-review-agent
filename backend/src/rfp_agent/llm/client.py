@@ -1,5 +1,6 @@
 import json
 import logging
+import threading
 from dataclasses import astuple, dataclass, replace
 from typing import Protocol
 
@@ -7,6 +8,9 @@ log = logging.getLogger(__name__)
 
 MAX_RETRIES = 2                 # CR-12: 정해진 횟수만 재시도
 FAILURE_MESSAGE = "처리 실패 — 다시 시도"
+
+
+_USAGE_LOCK = threading.Lock()
 
 
 class LLMFailure(RuntimeError):
@@ -21,6 +25,12 @@ class Usage:
     input_tokens: int = 0
     output_tokens: int = 0
     thinking_tokens: int = 0
+
+    def add(self, **counts: int) -> None:
+        """여러 스레드가 동시에 더해도 빠지지 않게 잠금 안에서 더한다 (동시 호출)."""
+        with _USAGE_LOCK:
+            for name, n in counts.items():
+                setattr(self, name, getattr(self, name) + n)
 
     def copy(self) -> "Usage":
         return replace(self)
@@ -47,8 +57,7 @@ def call_with_retry(llm: LLM, prompt: str, schema: dict, validate) -> dict:
     usage = usage_of(llm)
     for attempt in range(MAX_RETRIES + 1):
         if usage:
-            usage.calls += 1
-            usage.retries += attempt > 0
+            usage.add(calls=1, retries=int(attempt > 0))
         try:
             data = llm.generate_json(prompt, schema)
             validate(data)
@@ -60,12 +69,16 @@ def call_with_retry(llm: LLM, prompt: str, schema: dict, validate) -> dict:
 
 
 class GeminiLLM:
-    def __init__(self, api_key: str, model: str):
+    def __init__(self, api_key: str, model: str, workers: int = 4, timeout_s: float = 120):
         from google import genai
 
         self.model = model
         self.usage = Usage()
-        self._client = genai.Client(api_key=api_key)
+        self.workers = workers              # 동시에 보낼 묶음 수 (llm/parallel.py)
+        self.timeout_s = timeout_s
+        # 요청 하나의 시간 제한(밀리초). 넘으면 예외 → call_with_retry가 다시 시도(CR-12)
+        self._client = genai.Client(api_key=api_key,
+                                    http_options={"timeout": int(timeout_s * 1000)})
 
     def generate_json(self, prompt: str, schema: dict) -> dict:
         response = self._client.models.generate_content(
@@ -76,12 +89,13 @@ class GeminiLLM:
         )
         meta = getattr(response, "usage_metadata", None)
         if meta is not None:
-            self.usage.input_tokens += meta.prompt_token_count or 0
-            self.usage.output_tokens += meta.candidates_token_count or 0
-            self.usage.thinking_tokens += getattr(meta, "thoughts_token_count", 0) or 0
+            self.usage.add(input_tokens=meta.prompt_token_count or 0,
+                           output_tokens=meta.candidates_token_count or 0,
+                           thinking_tokens=getattr(meta, "thoughts_token_count", 0) or 0)
         return json.loads(response.text)
 
 
-def make_llm(api_key: str | None, model: str) -> LLM | None:
+def make_llm(api_key: str | None, model: str, workers: int = 4,
+             timeout_s: float = 120) -> LLM | None:
     """키가 없으면 None. 그때는 AI 보조 단계를 건너뛰고 코드 규칙만으로 처리한다."""
-    return GeminiLLM(api_key, model) if api_key else None
+    return GeminiLLM(api_key, model, workers, timeout_s) if api_key else None

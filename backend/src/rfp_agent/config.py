@@ -12,6 +12,9 @@ class Settings(BaseSettings):
     database_url: str = "postgresql://rfp:rfp@localhost:5433/rfp"
     gemini_api_key: str | None = None
     gemini_model: str = "gemini-3.8-flash"
+    # AI 묶음 동시 호출 개수와 요청 하나의 시간 제한(초) (update-llm-concurrency, NFR-10)
+    rfp_llm_workers: int = 4
+    rfp_llm_timeout_s: float = 120
     migrations_dir: Path = REPO_ROOT / "db" / "migrations"
     seed_dir: Path = REPO_ROOT / "data" / "seed"
     # RFP 원문처럼 저장소에 올리지 않는 자료 (data/private/README.md)
