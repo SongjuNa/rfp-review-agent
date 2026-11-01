@@ -85,11 +85,16 @@ def snapshot(db, run_id):
     return reqs, risks, outputs, points
 
 
-def test_same_result_regardless_of_workers(db, spec, tmp_path):
+def test_same_result_regardless_of_workers(db, spec, tmp_path, monkeypatch):
     """Scenario: 동시 개수와 상관없이 같은 결과.
 
     같은 문서를 동시 1개와 동시 4개로 처리하면 구분·유형·설명·초안과 요청 수·토큰이 같다.
     """
+    # AI 묶음 동시 개수만 보려고 문서는 차례로 처리한다 (문서 병렬은 add-document-processors)
+    from rfp_agent.config import get_settings
+    from rfp_agent.pipeline import run as run_mod
+    one_doc = get_settings().model_copy(update={"rfp_doc_workers": 1})
+    monkeypatch.setattr(run_mod, "get_settings", lambda: one_doc)
     # 처리 키가 겹치면 두 번째 실행이 문서를 다시 쓰므로 모델 이름을 달리한다
     one, four = EchoLLM(1, "fake-a"), EchoLLM(4, "fake-b")
     gis = build_gis_spec(tmp_path / "synthetic_154kV_GIS_spec.docx")

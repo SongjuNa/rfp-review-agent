@@ -49,6 +49,12 @@ def _saver_conn(conn: psycopg.Connection) -> psycopg.Connection:
                            prepare_threshold=0, row_factory=dict_row)
 
 
+def open_like(conn: psycopg.Connection) -> psycopg.Connection:
+    """같은 DB로 보통(트랜잭션) 연결을 하나 더 연다 (문서 병렬 처리의 스레드마다)."""
+    info = conn.info
+    return psycopg.connect(info.dsn, password=info.password)
+
+
 @contextmanager
 def saver_for(ctx) -> Iterator[PostgresSaver]:
     if getattr(ctx, "checkpointer", None) is not None:
