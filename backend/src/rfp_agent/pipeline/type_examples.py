@@ -20,17 +20,19 @@ EXAMPLE_CHARS = 200
 Example = tuple[str, str]          # (사람이 고친 줄 문장, 유형 코드)
 
 
-def pool(conn: psycopg.Connection, document_id: int) -> list[tuple[int, str, str]]:
-    """(요구사항 번호, 문장, 유형) — 다른 문서의 사람 주 유형, 정답지 문장 뺌."""
+def pool(conn: psycopg.Connection, content_hash: str) -> list[tuple[int, str, str]]:
+    """(요구사항 번호, 문장, 유형) — 내용이 다른 문서의 사람 주 유형, 정답지 문장 뺌.
+
+    처리 중인 문서는 아직 저장 전이라 내용 해시로 같은 파일(이전 판 처리 포함)을 뺀다.
+    """
     rows = conn.execute(
         """SELECT q.requirement_id, q.text_raw, t.type_code
              FROM requirement_type_tag t JOIN requirement q USING (requirement_id)
              JOIN document d ON d.document_id = q.document_id
-            WHERE t.is_primary AND t.decided_by = 'HUMAN' AND q.document_id <> %(doc)s
-              AND d.content_hash IS DISTINCT FROM
-                  (SELECT content_hash FROM document WHERE document_id = %(doc)s)
+            WHERE t.is_primary AND t.decided_by = 'HUMAN'
+              AND d.content_hash IS DISTINCT FROM %(hash)s
             ORDER BY q.requirement_id DESC LIMIT %(n)s""",
-        {"doc": document_id, "n": MAX_POOL}).fetchall()
+        {"hash": content_hash, "n": MAX_POOL}).fetchall()
     keys = {normalize(t) for (t,) in conn.execute("SELECT text_raw FROM answer_key_row")}
     seen: set[str] = set()
     out = []
@@ -43,13 +45,13 @@ def pool(conn: psycopg.Connection, document_id: int) -> list[tuple[int, str, str
     return out
 
 
-def pick(conn: psycopg.Connection, llm, document_id: int,
+def pick(conn: psycopg.Connection, llm, content_hash: str,
          texts: list[str]) -> list[list[Example]]:
     """줄마다 가까운 사람 예시(최대 2개). 후보·벡터가 없으면 모두 빈 목록."""
     empty: list[list[Example]] = [[] for _ in texts]
     if llm is None or not hasattr(llm, "embed") or not texts:
         return empty
-    candidates = pool(conn, document_id)
+    candidates = pool(conn, content_hash)
     if not candidates:
         return empty
     try:

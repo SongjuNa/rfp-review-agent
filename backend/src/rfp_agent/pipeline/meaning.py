@@ -87,11 +87,14 @@ def vectors(conn: psycopg.Connection, llm, texts: list[str]) -> dict[str, list[f
     have = stored(conn, unique, model)
     missing = [t for t in unique if t not in have]
     if missing:
-        for text, vec in zip(missing, embed_with_retry(llm, missing), strict=True):
+        got = dict(zip(missing, embed_with_retry(llm, missing), strict=True))
+        # 글 해시 순서로 넣는다: 문서를 동시에 처리할 때 같은 글을 넣는 연결끼리 서로 기다리며
+        # 막히지 않게(잠금 순서를 하나로) (add-document-processors)
+        for text in sorted(got, key=text_hash):
             conn.execute("INSERT INTO text_vector (model, text_hash, vec) VALUES (%s, %s, %s) "
                          "ON CONFLICT DO NOTHING",
-                         (model, text_hash(text), [float(x) for x in vec]))
-            have[text] = vec
+                         (model, text_hash(text), [float(x) for x in got[text]]))
+            have[text] = got[text]
     return have
 
 

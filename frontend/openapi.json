@@ -13983,6 +13983,33 @@
           "requirements": {
             "type": "integer",
             "title": "Requirements"
+          },
+          "processor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Processor"
+          },
+          "process_check": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Process Check"
+          },
+          "reprocessed": {
+            "type": "boolean",
+            "title": "Reprocessed",
+            "default": false
           }
         },
         "additionalProperties": false,
@@ -14589,6 +14616,11 @@
               }
             ],
             "title": "Resumed From"
+          },
+          "documents_reprocessed": {
+            "type": "integer",
+            "title": "Documents Reprocessed",
+            "default": 0
           },
           "explanations_unverified": {
             "type": "integer",

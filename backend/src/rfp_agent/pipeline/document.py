@@ -6,6 +6,7 @@
 import hashlib
 import re
 from collections.abc import Callable
+from contextlib import AbstractContextManager, nullcontext
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -20,6 +21,7 @@ from rfp_agent.pipeline.dictionaries import PipelineDicts
 from rfp_agent.pipeline.docx_reader import find_figures, read_blocks
 from rfp_agent.pipeline.extract import Candidate, extract
 from rfp_agent.pipeline.line_map import map_lines
+from rfp_agent.pipeline.processors import GENERAL, Processor, Stats, processor_for
 from rfp_agent.pipeline.structure import (
     LogicalTable,
     Section,
@@ -47,6 +49,9 @@ class DocumentResult:
     readable: bool
     requirement_count: int = 0
     type_examples: int = 0          # 사람 예시를 붙여 물은 줄 수 (add-type-examples)
+    reprocessed: bool = False       # 점검 뒤 일반 처리기로 다시 처리함 (add-document-processors)
+
+
 
 
 def _next_file_no(conn: psycopg.Connection) -> int:
@@ -127,7 +132,7 @@ def _save_tables(conn, document_id: int, tables: list[LogicalTable], section_ids
 
 
 def _refine_with_ai(llm: LLM, candidates: list[Candidate], report: Report,
-                    risk_patterns: list[re.Pattern]) -> None:
+                    risk_patterns: list[re.Pattern], doc_hint: str | None = None) -> None:
     by_section: dict[int | None, list[Candidate]] = {}
     for c in candidates:
         # 위험 표현이 든 문장은 언어 모델에 묻지 않고 요구사항으로 둔다.
@@ -143,7 +148,7 @@ def _refine_with_ai(llm: LLM, candidates: list[Candidate], report: Report,
     answers = tasks.label_sections(
         llm, [(g[0].section.title if g[0].section else None, [c.text for c in g])
               for g in groups],
-        lambda done, _: report("label", done, total))
+        lambda done, _: report("label", done, total), doc_hint)
     for group, labels in zip(groups, answers, strict=True):
         for c, label in zip(group, labels, strict=True):
             if label == "WRITING_RULE":
@@ -161,7 +166,10 @@ class Choice:
 
 def process_document(conn: psycopg.Connection, path: Path, dicts: PipelineDicts, key: str,
                      llm: LLM | None, txt_dir: Path | None,
-                     report: Report = _no_report, choice: Choice | None = None) -> DocumentResult:
+                     report: Report = _no_report, choice: Choice | None = None,
+                     ordered: Callable[[], AbstractContextManager] = nullcontext,
+                     dedup: bool = True) -> DocumentResult:
+    """ordered는 저장 차례를 기다리는 문맥(문서 병렬 처리, C1). 차례로 할 때는 바로 들어간다."""
     report("classify")
     blocks = read_blocks(path)
     line_basis = "DOCX"
@@ -187,8 +195,24 @@ def process_document(conn: psycopg.Connection, path: Path, dicts: PipelineDicts,
         c = cls.apply_ai_kind(c, tasks.classify_document(llm, path.name,
                                                          cls.first_page_text(blocks)))
 
+    prep, proc, check, again = None, None, None, False
+    if c.readable:
+        proc = processor_for(c.doc_kind)
+        prep = _prepare(conn, path, dicts, llm, report, blocks, digest, proc)
+        # 처리 뒤 점검 (처리기 표). 걸리면 걸린 이유를 남기고, AI가 있으면 틀린 종류 설명이
+        # AI를 잘못 이끌었을 수 있어 일반 처리기로 한 번만 다시 한다 (CR-01: 코드가 정함)
+        check = proc.check(prep.stats) if proc.check else None
+        if check and llm is not None and proc is not GENERAL:
+            proc, again = GENERAL, True
+            prep = _prepare(conn, path, dicts, llm, report, blocks, digest, proc)
+    # 준비 중 저장한 문장 벡터(캐시)를 먼저 커밋한다. 동시에 처리하는 다른 문서가 같은 글을
+    # 넣으려다 이 연결을 기다리며 막히지 않게
+    if conn.info.transaction_status == psycopg.pq.TransactionStatus.INTRANS:
+        conn.commit()
     try:
-        return _process_new(conn, path, dicts, key, llm, report, c, blocks, line_basis, digest)
+        with ordered():
+            return _save(conn, path, dicts, key, report, c, blocks, line_basis, digest, dedup,
+                         prep, proc, check, again)
     except psycopg.errors.UniqueViolation:
         # 같은 파일을 거의 동시에 두 검토가 올리면 먼저 넣은 쪽이 이긴다.
         # 진 쪽은 자기 작업을 되돌리고 먼저 처리된 결과를 다시 쓴다
@@ -219,20 +243,81 @@ def _reused(conn: psycopg.Connection, existing: tuple[int, int],
     return DocumentResult(existing[0], existing[1], True, c.readable, count)
 
 
-def _process_new(conn, path: Path, dicts: PipelineDicts, key: str, llm: LLM | None,
-                 report: Report, c: cls.Classification, blocks, line_basis: str,
-                 digest: str) -> DocumentResult:
+@dataclass
+class _Prepared:
+    """DB에 쓰기 전에 끝내는 일(구조·추출·AI 문장 구분·유형)의 결과 (C1).
+
+    문서를 동시에 처리할 때 이 일은 동시에 하고, 저장(_save)만 올린 순서대로 한다.
+    그래야 문서·요구사항 번호와 같은 요구 묶기가 차례로 할 때와 같다(CR-11).
+    """
+    sections: list[Section]
+    tables: list[LogicalTable]
+    candidates: list[Candidate]
+    tags: dict[int, list]                       # 후보 번호 → 규칙 유형 표시
+    ai_types: dict[int, str]                    # 후보 번호 → AI 유형 (NONE 포함)
+    with_examples: int
+    stats: Stats
+
+
+def _prepare(conn, path: Path, dicts: PipelineDicts, llm: LLM | None, report: Report,
+             blocks, digest: str, proc: Processor) -> _Prepared:
+    report("structure")
+    sections = find_sections(blocks)
+    tables = build_tables(blocks, dicts.column_roles,
+                          supplier_marks=bool(re.search(r"C: Complied", "\n".join(
+                              b.text for b in blocks[:400]))))
+
+    report("extract")
+    candidates = extract(blocks, sections, tables)
+    risk_terms = [e.pattern for e in dicts.risk_expressions]
+    if llm is not None:
+        _refine_with_ai(llm, candidates, report, risk_terms, proc.hint)
+
+    tags: dict[int, list] = {}
+    unclassified: list[int] = []
+    for i, cand in enumerate(candidates):
+        if cand.req_kind != "REQUIREMENT":
+            continue
+        tags[i] = tag(cand, dicts.type_rules, risk_terms)
+        if not tags[i]:
+            unclassified.append(i)
+
+    ai_types: dict[int, str] = {}
+    with_examples = 0
+    if llm is not None and unclassified:
+        report("type", 0, len(unclassified))
+        texts = [candidates[i].text for i in unclassified]
+        examples = type_examples.pick(conn, llm, digest, texts)
+        with_examples = sum(1 for e in examples if e)
+        codes = tasks.type_unclassified(llm, texts,
+                                        lambda done, total: report("type", done, total),
+                                        [type_context(candidates[i]) for i in unclassified],
+                                        examples, proc.hint)
+        ai_types = dict(zip(unclassified, codes, strict=True))
+
+    kept = [c for c in candidates if c.req_kind != "DESCRIPTION"]
+    stats = Stats(
+        table_cells=sum(1 for c in kept if c.source_kind == "TABLE_CELL"),
+        requirements=sum(1 for c in kept if c.req_kind == "REQUIREMENT"),
+        tests=sum(1 for i in tags if any(t.type_code == "TEST" for t in tags[i])
+                  or ai_types.get(i) == "TEST"),
+        marks=sum(1 for c in kept if c.supplier_mark is not None))
+    return _Prepared(sections, tables, candidates, tags, ai_types, with_examples, stats)
+
+
+def _save(conn, path: Path, dicts: PipelineDicts, key: str, report: Report,
+          c: cls.Classification, blocks, line_basis: str, digest: str, dedup: bool,
+          prep: _Prepared | None, proc: Processor | None, check: str | None,
+          reprocessed: bool) -> DocumentResult:
+    """준비한 결과를 한 트랜잭션으로 저장한다. prep이 없으면 판독 불가 문서."""
     with conn.transaction():
         doc_id, file_no = _insert_document(conn, path, c, dicts, line_basis, key, digest)
-        if not c.readable:
+        if prep is None:
             # 판독 불가 문서는 이후 단계를 건너뛴다 (FR-01 예외).
             return DocumentResult(doc_id, file_no, False, False)
 
-        report("structure")
-        sections = find_sections(blocks)
-        tables = build_tables(blocks, dicts.column_roles,
-                              supplier_marks=bool(re.search(r"C: Complied", "\n".join(
-                                  b.text for b in blocks[:400]))))
+        report("save")
+        sections, tables, candidates = prep.sections, prep.tables, prep.candidates
         index = SectionIndex(sections)
         section_ids = _save_sections(conn, doc_id, sections)
         row_ids = _save_tables(conn, doc_id, tables, section_ids, index)
@@ -244,23 +329,12 @@ def _process_new(conn, path: Path, dicts: PipelineDicts, key: str, llm: LLM | No
                          (doc_id, section_ids.get(sec.index) if sec else None, block.line_no,
                           caption))
 
-        report("extract")
-        candidates = extract(blocks, sections, tables)
-        if llm is not None:
-            _refine_with_ai(llm, candidates, report,
-                            [e.pattern for e in dicts.risk_expressions])
-
-        report("save")
-
         doc_title = " ".join(b.text for b in blocks[:FIRST_TITLE_BLOCKS]) + " " + path.stem
         doc_target = target_of(doc_title, dicts.values)
-        risk_terms = [e.pattern for e in dicts.risk_expressions]
-        unclassified: list[tuple[int, Candidate]] = []
-        with_examples = 0
         saved = 0
         recent_text: list[str] = []
         current_top: int | None = None
-        for cand in candidates:
+        for i, cand in enumerate(candidates):
             if cand.req_kind == "DESCRIPTION":
                 continue
             sec_id = section_ids.get(cand.section.index) if cand.section else None
@@ -275,7 +349,7 @@ def _process_new(conn, path: Path, dicts: PipelineDicts, key: str, llm: LLM | No
                 "SELECT r.requirement_id FROM requirement r JOIN document d USING (document_id) "
                 "WHERE r.dedup_key = %s AND r.dedup_of IS NULL AND r.document_id <> %s "
                 "AND d.processing_key = %s ORDER BY r.requirement_id LIMIT 1",
-                (cand.dedup_key, doc_id, key)).fetchone() if cand.dedup_key else None
+                (cand.dedup_key, doc_id, key)).fetchone() if cand.dedup_key and dedup else None
             req_id = conn.execute(
                 """INSERT INTO requirement (document_id, section_id, row_id, source_kind,
                      text_raw, req_kind, dedup_of, extracted_by, confidence, rule_id,
@@ -296,10 +370,7 @@ def _process_new(conn, path: Path, dicts: PipelineDicts, key: str, llm: LLM | No
 
             if cand.req_kind != "REQUIREMENT":
                 continue
-            tags = tag(cand, dicts.type_rules, risk_terms)
-            if not tags:
-                unclassified.append((req_id, cand))
-            for t in tags:
+            for t in prep.tags.get(i, []):
                 conn.execute(
                     """INSERT INTO requirement_type_tag (requirement_id, type_code, is_primary,
                                                          decided_by, type_rule_id)
@@ -307,6 +378,11 @@ def _process_new(conn, path: Path, dicts: PipelineDicts, key: str, llm: LLM | No
                     (req_id, t.type_code, t.is_primary, t.decided_by,
                      t.rule.rule_id if t.rule else None),
                 )
+            code = prep.ai_types.get(i)
+            if code and code != "NONE":
+                conn.execute(
+                    "INSERT INTO requirement_type_tag (requirement_id, type_code, is_primary, "
+                    "decided_by) VALUES (%s, %s, TRUE, 'AI')", (req_id, code))
 
             top = _top_section(cand.section, sections)
             if top != current_top:
@@ -328,22 +404,12 @@ def _process_new(conn, path: Path, dicts: PipelineDicts, key: str, llm: LLM | No
                      dicts.projects.get(c.project_key) if c.project_key else None, v.flag, v.seq),
                 )
 
-        if llm is not None and unclassified:
-            report("type", 0, len(unclassified))
-            texts = [cand.text for _, cand in unclassified]
-            examples = type_examples.pick(conn, llm, doc_id, texts)
-            with_examples = sum(1 for e in examples if e)
-            ai_types = tasks.type_unclassified(llm, texts,
-                                               lambda done, total: report("type", done, total),
-                                               [type_context(cand) for _, cand in unclassified],
-                                               examples)
-            for (req_id, _), code in zip(unclassified, ai_types, strict=True):
-                if code != "NONE":
-                    conn.execute(
-                        "INSERT INTO requirement_type_tag (requirement_id, type_code, is_primary, "
-                        "decided_by) VALUES (%s, %s, TRUE, 'AI')", (req_id, code))
+        conn.execute(
+            """UPDATE document SET processor = %s, process_check = %s, reprocessed = %s,
+                      needs_review = needs_review OR %s WHERE document_id = %s""",
+            (proc.kind, check, reprocessed, check is not None, doc_id))
 
-    return DocumentResult(doc_id, file_no, False, True, saved, with_examples)
+    return DocumentResult(doc_id, file_no, False, True, saved, prep.with_examples, reprocessed)
 
 
 FIRST_TITLE_BLOCKS = 15

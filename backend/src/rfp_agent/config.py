@@ -15,6 +15,8 @@ class Settings(BaseSettings):
     # AI 묶음 동시 호출 개수와 요청 하나의 시간 제한(초) (update-llm-concurrency, NFR-10)
     rfp_llm_workers: int = 4
     rfp_llm_timeout_s: float = 120
+    # 한 검토의 문서를 동시에 처리하는 개수 (add-document-processors, NFR-10). 1이면 차례로
+    rfp_doc_workers: int = 2
     # AI 사용 방식 (add-ai-mode, NFR-07): gemini(외부) | local(사내 OpenAI 호환 주소) | off(규칙만)
     rfp_ai_mode: str = "gemini"
     rfp_local_llm_url: str | None = None        # 예: http://llm.사내/v1

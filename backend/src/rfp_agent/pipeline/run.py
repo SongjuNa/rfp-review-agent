@@ -6,7 +6,10 @@
 """
 
 import logging
+import threading
 from collections.abc import Callable
+from concurrent.futures import ThreadPoolExecutor
+from contextlib import contextmanager
 from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import TypedDict
@@ -17,13 +20,14 @@ from langgraph.graph import END, START, StateGraph
 from langgraph.types import interrupt
 from psycopg.types.json import Jsonb
 
+from rfp_agent.config import get_settings
 from rfp_agent.llm import tasks
 from rfp_agent.llm.client import FAILURE_MESSAGE, LLM, LLMConfigError, LLMFailure, Usage, usage_of
 from rfp_agent.llm.evidence import EvidenceSpan, evidence_id, parse_evidence_id
 from rfp_agent.llm.parallel import run_ordered, workers_of
 from rfp_agent.pipeline import code_version, dictionaries, doc_add, graph_flow, meaning
 from rfp_agent.pipeline.assignments import build_assignments
-from rfp_agent.pipeline.document import Choice, Report, process_document
+from rfp_agent.pipeline.document import Choice, DocumentResult, Report, process_document
 from rfp_agent.pipeline.engineering import build_checks
 from rfp_agent.pipeline.judge import judge_run
 from rfp_agent.pipeline.loss import build_losses
@@ -156,10 +160,11 @@ def _set_step(conn: psycopg.Connection, run_id: int, step: str) -> None:
     conn.commit()
 
 
-def _reporter(ctx: RunContext, run_id: int, file_index: int, file_count: int) -> Report:
+def _reporter(ctx: RunContext, run_id: int, file_index: int, file_count: int,
+              conn: psycopg.Connection | None = None) -> Report:
     def report(part: str, done: int | None = None, total: int | None = None) -> None:
         # 문서 하나는 한 트랜잭션이라 여기서 멈추면 그 문서의 반쯤 만든 결과는 되돌려진다
-        check_cancel(ctx.conn, run_id)
+        check_cancel(conn or ctx.conn, run_id)
         if ctx.progress:
             ctx.progress(run_id, {"part": part, "done": done, "total": total,
                                   "file_index": file_index, "file_count": file_count})
@@ -171,23 +176,16 @@ def _documents_node(ctx: RunContext):
         conn, run_id = ctx.conn, state["run_id"]
         _set_step(conn, run_id, "documents")
         dicts = dictionaries.load(conn)
-        ids, reused, examples = [], 0, 0
         paths = state["paths"]
-        choices = state.get("choices") or {}
-        for i, path in enumerate(paths, 1):
-            chosen = choices.get(Path(path).name)
-            result = process_document(conn, Path(path), dicts, ctx.processing_key, ctx.llm,
-                                      ctx.txt_dir, _reporter(ctx, run_id, i, len(paths)),
-                                      Choice(**chosen) if chosen else None)
-            conn.execute("INSERT INTO run_document VALUES (%s, %s) ON CONFLICT DO NOTHING",
-                         (run_id, result.document_id))
-            conn.commit()
-            ids.append(result.document_id)
-            reused += result.reused
-            examples += result.type_examples
+        results = _process_all(ctx, run_id, paths, state.get("choices") or {}, dicts)
+        ids = [r.document_id for r in results]
+        reused = sum(r.reused for r in results)
+        examples = sum(r.type_examples for r in results)
+        reprocessed = sum(r.reprocessed for r in results)
         conn.execute("UPDATE review_run SET documents_reused = %s, graph_state = graph_state || "
-                     "jsonb_build_object('type_examples', %s::int) WHERE run_id = %s",
-                     (reused, examples, run_id))
+                     "jsonb_build_object('type_examples', %s::int, "
+                     "'documents_reprocessed', %s::int) WHERE run_id = %s",
+                     (reused, examples, reprocessed, run_id))
         projects = {r[0] for r in conn.execute(
             "SELECT DISTINCT project_id FROM document WHERE document_id = ANY(%s)", (ids,))}
         if len(projects) == 1 and None not in projects:
@@ -196,6 +194,92 @@ def _documents_node(ctx: RunContext):
             conn.commit()
         return {"document_ids": ids}
     return node
+
+
+def _save_run_document(conn: psycopg.Connection, run_id: int, document_id: int) -> None:
+    conn.execute("INSERT INTO run_document VALUES (%s, %s) ON CONFLICT DO NOTHING",
+                 (run_id, document_id))
+    conn.commit()
+
+
+class _Turns:
+    """문서 저장 차례: 올린 순서대로 한 문서씩 저장한다 (문서 병렬 처리, C1).
+
+    무거운 일(구조·추출·AI)은 동시에 하고 저장만 차례로 해서, 문서·요구사항 번호와
+    같은 요구 묶기·파일 번호가 차례로 처리할 때와 같다(CR-11).
+    """
+
+    def __init__(self) -> None:
+        self._next = 0
+        self._cond = threading.Condition()
+
+    @contextmanager
+    def wait(self, i: int):
+        with self._cond:
+            self._cond.wait_for(lambda: self._next == i)
+        yield
+
+    def finish(self, i: int) -> None:
+        """i번 문서가 끝났다(저장했거나, 다시 썼거나, 실패). 앞 문서가 끝난 뒤 차례를 넘긴다."""
+        with self._cond:
+            self._cond.wait_for(lambda: self._next >= i)
+            if self._next == i:
+                self._next = i + 1
+            self._cond.notify_all()
+
+
+def _process_all(ctx: RunContext, run_id: int, paths: list[str], choices: dict[str, dict],
+                 dicts) -> list[DocumentResult]:
+    """문서들을 처리한다. RFP_DOC_WORKERS가 2 이상이고 문서가 여럿이면 동시에 (C1).
+
+    한 문서가 실패해도 나머지 문서는 저장한 뒤 올린 순서로 첫 오류를 낸다
+    (다시 시도하면 저장한 문서는 다시 쓴다, NFR-05).
+    """
+    conn = ctx.conn
+    workers = max(1, get_settings().rfp_doc_workers)
+
+    def choice_of(path: str) -> Choice | None:
+        chosen = choices.get(Path(path).name)
+        return Choice(**chosen) if chosen else None
+
+    if workers <= 1 or len(paths) <= 1:
+        results = []
+        for i, path in enumerate(paths, 1):
+            result = process_document(conn, Path(path), dicts, ctx.processing_key, ctx.llm,
+                                      ctx.txt_dir, _reporter(ctx, run_id, i, len(paths)),
+                                      choice_of(path))
+            _save_run_document(conn, run_id, result.document_id)
+            results.append(result)
+        return results
+
+    conn.commit()
+    turns = _Turns()
+
+    def job(i: int, path: str) -> DocumentResult:
+        try:
+            with graph_flow.open_like(conn) as own:
+                result = process_document(own, Path(path), dicts, ctx.processing_key, ctx.llm,
+                                          ctx.txt_dir,
+                                          _reporter(ctx, run_id, i + 1, len(paths), own),
+                                          choice_of(path), lambda: turns.wait(i))
+                _save_run_document(own, run_id, result.document_id)
+                return result
+        finally:
+            turns.finish(i)
+
+    outcomes: list[DocumentResult | BaseException] = []
+    with ThreadPoolExecutor(max_workers=min(workers, len(paths)),
+                            thread_name_prefix="rfp-doc") as pool:
+        futures = [pool.submit(job, i, p) for i, p in enumerate(paths)]
+        for fut in futures:
+            try:
+                outcomes.append(fut.result())
+            except BaseException as exc:  # noqa: BLE001 - 나머지를 저장한 뒤 다시 올린다
+                outcomes.append(exc)
+    for o in outcomes:
+        if isinstance(o, BaseException):
+            raise o
+    return outcomes  # type: ignore[return-value]
 
 
 PAIR_MIN_SHARED = 50          # 데이터시트 항목이 이만큼 겹치면 같은 문서의 다른 판 후보
