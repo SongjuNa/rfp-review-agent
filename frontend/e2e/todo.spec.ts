@@ -26,7 +26,7 @@ test('수신 부서별 요청 현황', async ({ page, request }) => {
 test('24시간 넘게 미확인', async ({ page, request }) => {
   const run = await riskRun(request, `협조 요청 늦음 ${Date.now()}`)
   const old = new Date(Date.now() - 2 * 86_400_000).toISOString()
-  await page.route('**/api/assignments?role=QUALITY', async (route) => {
+  await page.route('**/api/assignments', async (route) => {
     const res = await route.fetch()
     const rows = (await res.json()) as { run_id: number }[]
     await route.fulfill({ response: res, json: rows.map((a) => (a.run_id === run.run_id
@@ -69,7 +69,7 @@ test('보내기와 받는 담당자의 확인', async ({ page, request }) => {
 
 test('발송 실패 다시 보내기와 담당자는 읽기만', async ({ page, request }) => {
   const run = await riskRun(request, `협조 요청 실패 ${Date.now()}`)
-  await page.route('**/api/assignments?role=QUALITY', async (route) => {
+  await page.route('**/api/assignments', async (route) => {
     const res = await route.fetch()
     const rows = (await res.json()) as { run_id: number; status: string }[]
     await route.fulfill({ response: res, json: rows.map((a) => (a.run_id === run.run_id && a.status === 'TODO'

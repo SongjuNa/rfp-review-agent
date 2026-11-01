@@ -68,8 +68,8 @@ async function call<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 /** 내려받을 파일: 이름(Content-Disposition filename*)과 내용 */
-async function file(path: string): Promise<{ name: string; blob: Blob }> {
-  const res = await send(path)
+async function file(path: string, init?: RequestInit): Promise<{ name: string; blob: Blob }> {
+  const res = await send(path, init)
   const m = /filename\*=UTF-8''([^;]+)/.exec(res.headers.get('Content-Disposition') ?? '')
   return { name: m ? decodeURIComponent(m[1]) : 'download', blob: await res.blob() }
 }
@@ -249,13 +249,17 @@ export const api = {
     call<RuleSuggestion>(`/rule-suggestions/${id}/accept`, json('POST', { value, reason, actor_id })),
   declineSuggestion: (id: number, reason: string, actor_id: number) =>
     call<RuleSuggestion>(`/rule-suggestions/${id}/decline`, json('POST', { reason, actor_id })),
-  assignments: (role: string) => call<Assignment[]>(`/assignments?role=${role}`),
+  /** role을 빼면 세 부서 요청 모두 (update-todo-search) */
+  assignments: (role?: string) => call<Assignment[]>(role ? `/assignments?role=${role}` : '/assignments'),
+  /** 화면이 거른 협조 요청을 엑셀로 (SCR-13 내보내기) */
+  exportAssignments: (role: string | null, assignment_ids: number[]) =>
+    file('/assignments/export', json('POST', { role, assignment_ids })),
   /** 엔지니어가 회신 받음을 기록하거나 되돌린다 (메일 보냄 ↔ 회신 받음) */
   setTaskStatus: (assignmentId: number, status: 'DOING' | 'DONE', actor_id: number, reply_note?: string) =>
     call<AssignmentStatus>(`/assignments/${assignmentId}`, json('PUT', { status, actor_id, reply_note })),
   /** 협조 요청 메일 보내기·다시 보내기 (판정 없는 요청, 발송 실패·주소 없음) */
-  sendRequests: (runId: number, assignment_ids: number[], actor_id: number) =>
-    call<SendResult>(`/runs/${runId}/assignments/send`, json('POST', { assignment_ids, actor_id })),
+  sendRequests: (runId: number, assignment_ids: number[], actor_id: number, resend = false) =>
+    call<SendResult>(`/runs/${runId}/assignments/send`, json('POST', { assignment_ids, actor_id, resend })),
   /** 영업 인계 (add-submission-package): 데이터시트 한 장, 결재 승인 뒤 인계 패키지 */
   handoffDatasheet: (runId: number, table_id: number, actor_id: number) =>
     call<HandoffResult>(`/runs/${runId}/datasheet/handoff`, json('POST', { table_id, actor_id })),

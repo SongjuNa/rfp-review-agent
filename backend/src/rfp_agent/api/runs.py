@@ -62,6 +62,7 @@ from rfp_agent.config import get_settings
 from rfp_agent.db.connection import connect
 from rfp_agent.llm.client import make_llm
 from rfp_agent.pipeline import (
+    assignment_export,
     business,
     datasheet,
     doc_add,
@@ -185,6 +186,12 @@ class HandoffRequest(BaseModel):
 class SendRequests(BaseModel):
     assignment_ids: list[int]
     actor_id: int | None = None
+    resend: bool = False             # 메일 보냄(회신 대기) 요청 재요청 (update-todo-search)
+
+
+class ExportAssignments(BaseModel):
+    role: str | None = Field(None, pattern="^(COST|QUALITY|SALES)$")
+    assignment_ids: list[int]
 
 
 class Submit(BaseModel):
@@ -827,10 +834,25 @@ def run_assignments(run_id: int, role: str) -> list[Assignment]:
 
 
 @router.get("/assignments")
-def role_assignments(role: str = Query(pattern="^(COST|QUALITY|SALES)$")) -> list[Assignment]:
-    """협조 요청 현황 (SCR-13): 한 수신 부서에 보낸 요청을 모든 검토에서 모은다."""
+def role_assignments(role: str | None = Query(None, pattern="^(COST|QUALITY|SALES)$")
+                     ) -> list[Assignment]:
+    """협조 요청 현황 (SCR-13): 한 수신 부서(없으면 세 부서)에 보낸 요청을 모든 검토에서 모은다."""
     with connect() as conn:
         return review.assignments_for(conn, role)
+
+
+@router.post("/assignments/export", response_class=Response, responses=_file(XLSX_TYPE))
+def export_assignments(body: ExportAssignments) -> Response:
+    """화면이 거른 협조 요청을 엑셀로 (SCR-13 내보내기). X-Row-Count = 줄 수."""
+    with connect() as conn:
+        try:
+            name, data, n = assignment_export.assignments_xlsx(conn, body.role,
+                                                               body.assignment_ids)
+        except assignment_export.NothingToExport as e:
+            raise HTTPException(400, str(e)) from e
+    return Response(data, media_type=XLSX_TYPE, headers={
+        "Content-Disposition": f"attachment; filename*=UTF-8''{quote(name)}",
+        "X-Row-Count": str(n), "Access-Control-Expose-Headers": "X-Row-Count"})
 
 
 @router.put("/assignments/{assignment_id}")
@@ -853,7 +875,7 @@ def send_assignments(run_id: int, body: SendRequests) -> SendResult:
                      "AND assignment_id = ANY(%s) AND mail_sent_at IS NULL",
                      (run_id, body.assignment_ids))
         return send_requests(conn, run_id, body.assignment_ids, actor_id,
-                             make_llm(get_settings()))
+                             make_llm(get_settings()), resend=body.resend)
 
 
 # ── 영업 인계 (add-submission-package, FR-11 확장) ──────────────

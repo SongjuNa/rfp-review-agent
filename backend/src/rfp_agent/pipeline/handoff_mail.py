@@ -144,8 +144,11 @@ def build_message(run: dict, role: str, items: list[dict], names: dict[int, str]
 
 
 def send_requests(conn: psycopg.Connection, run_id: int, assignment_ids: list[int],
-                  actor_id: int, llm=None) -> dict:
-    """고른 요청 가운데 아직 보내지 않은 것을 부서별로 한 통씩 보낸다. 결과 수를 돌려준다."""
+                  actor_id: int, llm=None, resend: bool = False) -> dict:
+    """고른 요청 가운데 아직 보내지 않은 것을 부서별로 한 통씩 보낸다. 결과 수를 돌려준다.
+
+    resend면 메일 보냄(회신 대기) 요청도 다시 보낸다 (엔지니어 재요청, update-todo-search).
+    자동 발송(send_after_confirm)은 resend 없이 부르므로 같은 요청은 한 번만 나간다."""
     from rfp_agent.pipeline.review import assignments_for, log  # review가 이 모듈을 부른다
 
     wanted = set(assignment_ids)
@@ -157,7 +160,8 @@ def send_requests(conn: psycopg.Connection, run_id: int, assignment_ids: list[in
     by_role: dict[str, list[dict]] = defaultdict(list)
     for role in DEPT_NAMES:
         for a in assignments_for(conn, role, run_id):    # 원문 위치 없는 요청은 이미 빠진다
-            if a["assignment_id"] in wanted and a["status"] == "TODO":
+            if a["assignment_id"] in wanted and (
+                    a["status"] == "TODO" or (resend and a["status"] == "DOING")):
                 by_role[role].append(a)
     out = {"sent": 0, "failed": 0, "no_address": 0, "mails": 0}
     for role, items in by_role.items():
@@ -186,7 +190,8 @@ def send_requests(conn: psycopg.Connection, run_id: int, assignment_ids: list[in
                          "WHERE assignment_id = %s", (ask, by, a["assignment_id"]))
         log(conn, run_id, "assignment", ids[0], "SEND", None,
             {"dept": role, "mail_to": to, "count": len(ids),
-             "subject": message["Subject"]}, None, actor_id)
+             "subject": message["Subject"], **({"resend": True} if resend else {})},
+            None, actor_id)
         out["sent"] += len(ids)
         out["mails"] += 1
     conn.commit()
