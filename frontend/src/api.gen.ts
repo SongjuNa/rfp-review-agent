@@ -754,6 +754,7 @@ export type Judgment = {
   type_code: string | null
   type_name: string | null
   past_decision: PastDecision | null
+  revised?: 'CHANGED' | 'ADDED' | null
   locations: Location[]
 }
 
@@ -1154,6 +1155,7 @@ export type ReviewCard = {
   requested_at: string | null
   decision: 'APPROVED' | 'REJECTED' | null
   decided_at: string | null
+  revision?: Revision | null
   summary: RunSummary
   criteria: Criterion[]
   approval?: Approval | null
@@ -1175,6 +1177,16 @@ export type ReviewRatio = {
   total: number
   threshold: number
   hand_fill: number
+}
+
+/** 문서 추가로 다시 분석한 결과 (add-revision-notice). 줄 수는 같은 줄(요구값·비교 제품·비교 규칙) 기준. */
+export type Revision = {
+  no: number
+  at: string
+  files: string[]
+  changed: number
+  added: number
+  removed: number
 }
 
 export type Risk = {
@@ -1317,6 +1329,7 @@ export type RunListItem = {
   requested_at: string | null
   decision: 'APPROVED' | 'REJECTED' | null
   decided_at: string | null
+  revision?: Revision | null
 }
 
 /** 실행 기록 한 줄 (add-run-log, NFR-09). 비용은 모델 단가(팀 가정)로 어림한 값. */
@@ -1400,6 +1413,7 @@ export type RunSummary = {
   output_items: number
   check_violations: number
   proposals: number
+  revision?: Revision | null
 }
 
 export type SalesHandoff = {

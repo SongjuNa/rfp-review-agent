@@ -46,6 +46,8 @@
 
 구현됨 (change `update-detail-header`): 제목 줄, 내보내기 ▾, 정보 3묶음, 탭 5개 + 더 보기, 아래 행동 줄. 요약 상자·개정 표시·개정 안내 띠는 `add-screen-summary`·`add-revision-notice`에서. 목업과 다른 곳은 `SCR-08_공유.md` "v4.96".
 
+구현됨 (change `add-revision-notice`, 2026-11-01): 제목 줄 "개정 n 반영", 판정 탭 위 개정 안내 띠(`RunSummary.revision`), [바뀐 줄만 보기](`GET /judgments?revised=true`, 주소 `?rev=1`), 판정 칸 "바뀜(개정)"·"추가(개정)"(판정 `revised`). 띠의 마감 바뀜 덧붙임은 하지 않음(`SCR-08_공유.md`).
+
 ### 화면 구성 (v4.96)
 
 | 영역 | 보이는 항목 | API 칸 | 비고 |

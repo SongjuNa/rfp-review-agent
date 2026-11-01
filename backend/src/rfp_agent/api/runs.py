@@ -440,12 +440,14 @@ def run_judgments(run_id: int, response: Response, result: str | None = None,
                   q: str | None = None, unconfirmed: bool = False,
                   past: str | None = Query(None, pattern="^differs$"),
                   order: str | None = Query(None, pattern="^priority$"),
+                  revised: bool = False,
                   limit: int = Query(100, le=500), offset: int = 0) -> list[Judgment]:
     """판정 목록. order=priority면 일탈 → 질의 → 확인 필요 → 작성 필요 → 준수 순서.
-    past=differs면 지난 사람 판정과 다른 줄만 (add-review-memory)."""
+    past=differs면 지난 사람 판정과 다른 줄만 (add-review-memory).
+    revised면 마지막 문서 추가 개정에서 바뀌거나 추가된 줄만 (add-revision-notice)."""
     _summary(run_id)
     filters = {"result": result, "group": group, "type_code": type_code, "q": q,
-               "unconfirmed": unconfirmed, "past": past}
+               "unconfirmed": unconfirmed, "past": past, "revised": revised}
     with connect() as conn:
         response.headers["X-Total-Count"] = str(queries.count_judgments(conn, run_id, **filters))
         return queries.run_judgments(conn, run_id, **filters, priority=order == "priority",

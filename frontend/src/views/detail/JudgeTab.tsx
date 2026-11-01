@@ -12,6 +12,7 @@ import { currentPath, navigate, pathQuery } from '../../shell/router'
 import { useSession } from '../../shell/useSession'
 import { filterQuery, parseFilter } from '../../components/judgeFilter'
 import { OutputEditor } from './OutputEditor'
+import { RevisionBar } from './RevisionBar'
 
 // SCR-08-1 판정 탭 (목업 v4.57 Detail #judge). docs/screens/SCR-08-1-판정.md
 // 판정 칩·거르기·판정 순서 표, 줄을 누르면 판정 상세 화면(add-judgment-view), 오른쪽 패널은 돌아온 줄. 고른 줄·준수 모두를 한꺼번에 제안대로 확정 (add-bulk-confirm).
@@ -40,6 +41,7 @@ export function JudgeTab({ run, tick, onChanged }: { run: RunSummary; tick: numb
   const [f, setF] = useState(init.f)
   const [onlyUnc, setOnlyUnc] = useState(init.unc)
   const [onlyPast, setOnlyPast] = useState(init.past)   // 지난 확정과 다른 줄만 (add-review-memory)
+  const [onlyRev, setOnlyRev] = useState(!!init.rev)     // 개정에서 바뀐 줄만 (add-revision-notice)
   const [text, setText] = useState(init.q)
   const q = useDebounced(text)
   const [type, setType] = useState(init.type)
@@ -57,7 +59,7 @@ export function JudgeTab({ run, tick, onChanged }: { run: RunSummary; tick: numb
   const [busy, setBusy] = useState(false)
   const [applying, setApplying] = useState(false)
   const [panelError, setPanelError] = useState<string | null>(null)
-  const filters = { result: f === 'all' ? undefined : f, unconfirmed: onlyUnc, q, type_code: type || undefined, past: onlyPast ? 'differs' as const : undefined }
+  const filters = { result: f === 'all' ? undefined : f, unconfirmed: onlyUnc, q, type_code: type || undefined, past: onlyPast ? 'differs' as const : undefined, revised: onlyRev || undefined }
   const key = JSON.stringify(filters)
   const counts = useLoad(() => api.judgmentCounts(id), [id, tick])
   const rows = useLoad(() => api.judgmentPage(id, { ...filters, order: 'priority', offset: (page - 1) * size, limit: size }),
@@ -81,9 +83,9 @@ export function JudgeTab({ run, tick, onChanged }: { run: RunSummary; tick: numb
   const chips: [string, string, number][] = [['all', '전체', c?.total ?? 0], ...RESULT_ORDER.map((r): [string, string, number] => [r, RESULT_NAMES[r], n(r)])]
 
   const reset = (fn: () => void) => { fn(); setPage(1); setCur(null) }
-  const clearFilter = () => reset(() => { setF('all'); setOnlyUnc(false); setOnlyPast(false); setText(''); setType('') })
+  const clearFilter = () => reset(() => { setF('all'); setOnlyUnc(false); setOnlyPast(false); setOnlyRev(false); setText(''); setType('') })
   // 줄을 누르면 판정 상세 화면. 지금 거르기·쪽을 주소로 넘겨 이전·다음과 목록으로 돌아오기에 쓴다
-  const open = (j: Judgment) => navigate(`/reviews/${id}/judgments/${j.judgment_id}${filterQuery({ f, unc: onlyUnc, q: text, type, past: onlyPast, page, size })}`)
+  const open = (j: Judgment) => navigate(`/reviews/${id}/judgments/${j.judgment_id}${filterQuery({ f, unc: onlyUnc, q: text, type, past: onlyPast, rev: onlyRev, page, size })}`)
   const done = () => { onChanged() }
   const say = (m: string) => { setToast(m); setTimeout(() => setToast(''), 3000) }
   const act = (body: Parameters<typeof api.act>[1]) => api.act(id, { ...body, actor_id: user!.user_id }).then(done)
@@ -141,6 +143,7 @@ export function JudgeTab({ run, tick, onChanged }: { run: RunSummary; tick: numb
   return (
     <section className="sec" id="judge">
       <div className="sech"><h2>판정</h2></div>
+      {run.revision && <RevisionBar runId={id} revision={run.revision} only={onlyRev} onToggle={() => reset(() => setOnlyRev(!onlyRev))} />}
       <div className="fbar">
         {chips.map(([k, label, cnt]) => (
           <button key={k} type="button" className={'chip' + (f === k ? ' on' : '')} aria-pressed={f === k}
@@ -187,6 +190,7 @@ export function JudgeTab({ run, tick, onChanged }: { run: RunSummary; tick: numb
                       <td onClick={(e) => e.stopPropagation()}><input type="checkbox" className="jck" checked={!!sel[j.judgment_id]} onChange={() => toggle(j)}
                         disabled={!canEdit} aria-label={`${itemName(j)} 선택`} /></td>
                       <td><span className={`st ${RESULT_TONES[j.result]}`}>{RESULT_NAMES[j.result]}</span>
+                        {j.revised && <div className="en c-blue" title={`문서 추가(개정 ${run.revision?.no ?? ''})로 ${j.revised === 'CHANGED' ? '판정 값이 바뀐' : '새로 생긴'} 줄`}>{j.revised === 'CHANGED' ? '바뀜(개정)' : '추가(개정)'}</div>}
                         {j.review_status === 'EDITED' && <div className="en" title="사람이 바꾼 판정">바꿈</div>}
                         {(j.review_status === 'CONFIRMED' || j.review_status === 'EDITED') && <div className="cfm"><span className="ms" aria-hidden="true">check</span>확정</div>}
                         {j.past_decision && <div className={'en past' + (j.past_decision.same ? '' : ' c-ora')} title={`${j.past_decision.review_no}에서 사람이 ${RESULT_NAMES[j.past_decision.result]}(으)로 확정`}>

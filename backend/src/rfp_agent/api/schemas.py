@@ -72,6 +72,18 @@ class StepDetail(Out):
     file_count: int
 
 
+class Revision(Out):
+    """문서 추가로 다시 분석한 결과 (add-revision-notice).
+
+    줄 수는 같은 줄(요구값·비교 제품·비교 규칙) 기준."""
+    no: int                             # 개정 번호 (문서를 더한 횟수)
+    at: datetime                        # 다시 판정한 시각
+    files: list[str]                    # 이번에 더한 파일 이름
+    changed: int                        # 판정 값이 바뀐 줄
+    added: int                          # 새로 생긴 줄
+    removed: int                        # 사라진 줄
+
+
 class RunSummary(ReviewFields):
     run_id: int
     review_no: str
@@ -97,6 +109,7 @@ class RunSummary(ReviewFields):
     output_items: int
     check_violations: int
     proposals: int
+    revision: Revision | None = None    # 문서 추가로 다시 분석했으면 마지막 개정
 
 
 class RunListItem(ReviewFields):
@@ -124,6 +137,8 @@ class RunListItem(ReviewFields):
     requested_at: datetime | None
     decision: Literal["APPROVED", "REJECTED"] | None
     decided_at: datetime | None
+    # 문서 추가로 다시 분석했으면 마지막 개정 (add-revision-notice)
+    revision: Revision | None = None
 
 
 class RunDocument(Out):
@@ -300,6 +315,8 @@ class Judgment(Out):
     type_code: str | None
     type_name: str | None
     past_decision: PastDecision | None
+    # 마지막 개정에서 바뀜·추가 (add-revision-notice)
+    revised: Literal["CHANGED", "ADDED"] | None = None
     locations: Locations
 
 

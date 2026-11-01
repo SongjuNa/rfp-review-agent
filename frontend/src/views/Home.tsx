@@ -11,6 +11,7 @@ import { usePageCss } from '../shell/pageCss'
 import { useSession } from '../shell/useSession'
 import { Button, useToast } from '../ui'
 import { ExampleBand } from './detail/ExampleTab'
+import { revisionText } from '../components/revision'
 import './detail.css'
 
 // SCR-03 홈 (목업 v4.96 Home). docs/screens/SCR-03-홈.md "v4.96 바뀐 점", change update-home-projects
@@ -391,18 +392,27 @@ function Week({ runs, turn, now }: { runs: RunListItem[]; turn: (r: RunListItem)
   )
 }
 
-/** 어제 이후 바뀐 것 (design.md 4): 어제 0시 뒤 분석이 끝나거나 멈춘 내 검토. 문서 추가는 7단계(add-revision-notice) */
+/** 어제 이후 바뀐 것 (update-home-projects design.md 4): 어제 0시 뒤 분석이 끝나거나 멈춘 내 검토,
+ * 문서를 더해 다시 판정한 검토(add-revision-notice: 끝났으면 "분석 끝남" 대신 "문서 추가") */
 function Changes({ runs, now }: { runs: RunListItem[]; now: number }) {
   const [open, setOpen] = useState(false)
   const t = new Date(now)
   const since = new Date(t.getFullYear(), t.getMonth(), t.getDate() - 1).getTime()
-  const rows = runs.filter((r) => r.finished_at && new Date(r.finished_at).getTime() >= since && r.stage !== 'PROCESSING')
-    .sort((a, b) => b.finished_at!.localeCompare(a.finished_at!))
-  const fails = rows.filter((r) => r.stage === 'FAILED').length
-  const parts = [fails && `분석 실패 ${fails}`, rows.length - fails && `분석 끝남 ${rows.length - fails}`].filter(Boolean)
+  const after = (iso: string | null | undefined) => !!iso && new Date(iso).getTime() >= since
+  type Row = { r: RunListItem; kind: 'fail' | 'done' | 'add'; at: string }
+  const rows: Row[] = runs.flatMap((r): Row[] => {
+    if (r.stage === 'PROCESSING') return []
+    if (r.stage === 'FAILED') return after(r.finished_at) ? [{ r, kind: 'fail', at: r.finished_at! }] : []
+    if (r.revision && after(r.revision.at)) return [{ r, kind: 'add', at: r.revision.at }]
+    return after(r.finished_at) ? [{ r, kind: 'done', at: r.finished_at! }] : []
+  }).sort((a, b) => b.at.localeCompare(a.at))
+  const n = (k: Row['kind']) => rows.filter((x) => x.kind === k).length
+  const parts = [n('fail') && `분석 실패 ${n('fail')}`, n('add') && `문서 추가 ${n('add')}`, n('done') && `분석 끝남 ${n('done')}`].filter(Boolean)
   if (!rows.length) {
     return <section className="chg2" aria-label="어제 이후 바뀐 것"><div className="chg2-h"><b>어제 이후 바뀐 것 없음</b></div></section>
   }
+  const ICON = { fail: 'error', done: 'task_alt', add: 'published_with_changes' }
+  const TITLE = { fail: '분석이 멈췄습니다', done: '분석이 끝났습니다', add: '문서를 더해 다시 분석했습니다' }
   return (
     <section className="chg2" aria-label="어제 이후 바뀐 것">
       <button type="button" className="chg2-h" onClick={() => setOpen(!open)} aria-expanded={open}>
@@ -410,17 +420,16 @@ function Changes({ runs, now }: { runs: RunListItem[]; now: number }) {
         <span className="ms" aria-hidden="true">{open ? 'expand_less' : 'expand_more'}</span></button>
       {open && (
         <ul className="chg2-l">
-          {rows.map((r) => {
-            const fail = r.stage === 'FAILED'
-            return (
-              <li key={r.run_id} className={fail ? 'red' : 'ok'}>
-                <span className="ms" aria-hidden="true">{fail ? 'error' : 'task_alt'}</span>
-                <span className="tx"><b>{r.review_no} {reviewTitle(r)} · {fail ? '분석이 멈췄습니다' : '분석이 끝났습니다'}</b>
-                  <span>{fail ? `${STEP_NAMES[r.failed_step ?? ''] ?? '처리'} 단계` : `요구사항 ${r.requirements}줄 · 일탈 후보 ${r.deviation_candidates}`} · {stamp(r.finished_at!)}</span></span>
-                <span className="ac"><a className="bo sm" href={href(`/reviews/${r.run_id}`)} aria-label={`${r.review_no} 가기`}>{fail ? '오류 내용 보기' : '가기'}</a></span>
-              </li>
-            )
-          })}
+          {rows.map(({ r, kind, at }) => (
+            <li key={r.run_id} className={kind === 'fail' ? 'red' : kind === 'add' ? 'warn' : 'ok'}>
+              <span className="ms" aria-hidden="true">{ICON[kind]}</span>
+              <span className="tx"><b>{r.review_no} {reviewTitle(r)} · {TITLE[kind]}</b>
+                <span>{kind === 'fail' ? `${STEP_NAMES[r.failed_step ?? ''] ?? '처리'} 단계`
+                  : kind === 'add' ? `${r.revision!.files.join(', ')} · ${revisionText(r.revision!)}`
+                    : `요구사항 ${r.requirements}줄 · 일탈 후보 ${r.deviation_candidates}`} · {stamp(at)}</span></span>
+              <span className="ac"><a className="bo sm" href={href(`/reviews/${r.run_id}${kind === 'add' ? '?rev=1' : ''}`)} aria-label={`${r.review_no} 가기`}>{kind === 'fail' ? '오류 내용 보기' : kind === 'add' ? '바뀐 줄 보기' : '가기'}</a></span>
+            </li>
+          ))}
         </ul>
       )}
     </section>
