@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
-import { APPROVER, ENGINEER, as, readRun } from './helpers'
+import { APPROVER, ENGINEER, as, deviationRun, readRun } from './helpers'
 
 // 명세 review-workspace "문서 읽기 점검 탭"·"상신 전 확인의 문서 읽기 점검"의 Scenario (change update-review-screens).
 
@@ -57,4 +57,21 @@ test('상신 창의 점검 미확인', async ({ page }) => {
   await expect(line).toHaveCount(1)
   await expect(line.locator('.apic')).toHaveClass(/warn/)
   await expect(line).toContainText('빠진 요구사항이 있을 수 있습니다')
+})
+
+test('읽지 못한 곳이 없는 검토', async ({ page }) => {
+  // 합성 데이터시트(synthetic_judgment.docx)는 표 머리글이 분명하고 그림·단위 빠진 값·절 번호 문제가 없어 점검 줄이 0개다
+  const run = await deviationRun(page.request, `점검 0줄 ${Date.now()}`)
+  await as(page, ENGINEER)
+  await page.goto(`/#/reviews/${run.run_id}`)
+  const tab = page.getByRole('tab', { name: '문서 읽기 점검' })
+  await tab.click()
+  const read = page.locator('#read')
+  await expect(read.locator('.rdempty')).toContainText('모든 문서를 끝까지 읽었습니다')
+  await expect(read.locator('.rdempty')).toContainText('직접 확인할 곳이 없습니다')
+  await expect(read.locator('table.rdt')).toHaveCount(0)
+  await expect(read.locator('.rdi')).toHaveCount(0)
+  await expect(read.locator('.sech > .st')).toHaveText('읽지 못한 곳 없음')
+  await expect(read.locator('.sech .note')).toHaveText('표 0 · 그림 0 · 단위 0 · 위치 0')
+  await expect(tab.locator('.tabn')).toHaveCount(0)
 })
