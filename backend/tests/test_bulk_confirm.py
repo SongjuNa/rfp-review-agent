@@ -86,3 +86,65 @@ def test_bulk_confirm_api(db, db_url, spec, monkeypatch):
         assert res.status_code == 200 and res.json()["confirmed"] == 2
     finally:
         get_settings.cache_clear()
+
+
+# ── 한꺼번에 확정 가드 (update-bulk-confirm-guard) ─────────────────────
+
+def candidates(conn, run_id, result="COMPLY"):
+    rows = conn.execute("SELECT judgment_id, value_id FROM judgment WHERE run_id = %s "
+                        "AND result = %s AND review_status = 'CANDIDATE' AND is_current "
+                        "AND value_id IS NOT NULL ORDER BY judgment_id", (run_id, result))
+    return [{"judgment_id": i, "value_id": v} for i, v in rows]
+
+
+def status_of(conn, judgment_id):
+    return conn.execute("SELECT review_status FROM judgment WHERE judgment_id = %s",
+                        (judgment_id,)).fetchone()[0]
+
+
+def test_bulk_confirm_skips_check_violation(db, spec):
+    """Scenario: 검산 위반 줄은 뺌 — 준수 2줄만 확정, 위반 줄은 후보 그대로."""
+    run_id = run_once(db, [spec])
+    bad, *ok = candidates(db, run_id)[:3]
+    v = bad["value_id"]
+    db.execute("INSERT INTO engineering_check (run_id, ik_value_id, peak_value_id, freq_value_id, "
+               "expected_ka, factor, result) VALUES (%s, %s, %s, %s, 125, 2.5, 'VIOLATION')",
+               (run_id, v, v, v))
+    ids = [bad["judgment_id"]] + [j["judgment_id"] for j in ok]
+    out = review.bulk_confirm(ctx(db), run_id, ids)
+    assert out["confirmed"] == 2
+    assert out["skipped"] == [{"judgment_id": bad["judgment_id"], "reason": "CHECK"}]
+    assert status_of(db, bad["judgment_id"]) == "CANDIDATE"
+    assert all(status_of(db, j["judgment_id"]) == "CONFIRMED" for j in ok)
+    assert logs(db, run_id) == 2
+
+
+def test_bulk_confirm_skips_number_mismatch(db, spec):
+    """Scenario: 숫자 불일치 줄은 뺌 — 연결된 목록 문장이 불일치인 판정은 빠진다."""
+    run_id = run_once(db, [spec])
+    item_id, judgment_id = db.execute(
+        """SELECT s.item_id, s.judgment_id FROM output_item_source s JOIN output_item o
+           USING (item_id) WHERE o.run_id = %s AND s.judgment_id IS NOT NULL LIMIT 1""",
+        (run_id,)).fetchone()
+    db.execute("UPDATE output_item SET number_check = 'MISMATCH' WHERE item_id = %s", (item_id,))
+    other = next(j["judgment_id"] for j in candidates(db, run_id)
+                 if j["judgment_id"] != judgment_id)
+    out = review.bulk_confirm(ctx(db), run_id, [judgment_id, other])
+    assert out["confirmed"] == 1
+    assert out["skipped"] == [{"judgment_id": judgment_id, "reason": "MISMATCH"}]
+    assert status_of(db, other) == "CONFIRMED"
+
+
+def test_bulk_confirm_skips_empty_value(db, spec):
+    """Scenario: 값이 빈 줄은 뺌 — 모두 빠지면 오류, 아무것도 바뀌지 않음."""
+    run_id = run_once(db, [spec])
+    j = candidates(db, run_id)[0]
+    db.execute("UPDATE judgment SET result = 'NEEDS_REVIEW', product_value_raw = NULL, "
+               "margin_direction = 'NOT_CALC' WHERE judgment_id = %s", (j["judgment_id"],))
+    with pytest.raises(review.ReviewError) as err:
+        review.bulk_confirm(ctx(db), run_id, [j["judgment_id"]])
+    assert err.value.status == 400 and "한 줄씩" in str(err.value)
+    assert status_of(db, j["judgment_id"]) == "CANDIDATE" and logs(db, run_id) == 0
+    other = candidates(db, run_id)[0]["judgment_id"]
+    out = review.bulk_confirm(ctx(db), run_id, [j["judgment_id"], other])
+    assert out["confirmed"] == 1 and out["skipped"][0]["reason"] == "NO_VALUE"

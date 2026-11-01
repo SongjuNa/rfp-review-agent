@@ -6025,6 +6025,13 @@
             "type": "integer",
             "title": "Confirmed"
           },
+          "skipped": {
+            "items": {
+              "$ref": "#/components/schemas/BulkSkipped"
+            },
+            "type": "array",
+            "title": "Skipped"
+          },
           "submission_check": {
             "anyOf": [
               {
@@ -6040,9 +6047,35 @@
         "type": "object",
         "required": [
           "confirmed",
+          "skipped",
           "submission_check"
         ],
         "title": "BulkResult"
+      },
+      "BulkSkipped": {
+        "properties": {
+          "judgment_id": {
+            "type": "integer",
+            "title": "Judgment Id"
+          },
+          "reason": {
+            "type": "string",
+            "enum": [
+              "CHECK",
+              "MISMATCH",
+              "NO_VALUE"
+            ],
+            "title": "Reason"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "judgment_id",
+          "reason"
+        ],
+        "title": "BulkSkipped",
+        "description": "한꺼번에 확정에서 뺀 줄 (update-bulk-confirm-guard). 한 줄씩 확인해 확정한다."
       },
       "BusinessDetail": {
         "properties": {

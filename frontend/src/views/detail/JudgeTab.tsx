@@ -26,6 +26,9 @@ function useDebounced(value: string, ms = 300): string {
   return v
 }
 
+/** 한꺼번에 확정에서 뺀 이유 (update-bulk-confirm-guard) */
+const SKIP_REASONS = [['CHECK', '검산'], ['MISMATCH', '숫자 불일치'], ['NO_VALUE', '값 없음']] as const
+
 export function JudgeTab({ run, tick, onChanged, head }: {
   run: RunSummary; tick: number; onChanged: () => void; head: React.ReactNode
 }) {
@@ -117,9 +120,13 @@ export function JudgeTab({ run, tick, onChanged, head }: {
     setBusy(true)
     setError(null)
     try {
-      await api.bulkConfirm(id, ids, user!.user_id)
+      const out = await api.bulkConfirm(id, ids, user!.user_id)
       setSel({})
-      say(`판정 ${ids.length}줄을 제안대로 확정했습니다.`)
+      // 검산 위반·숫자 불일치·값이 빈 줄은 서버가 빼고 확정한다 (update-bulk-confirm-guard)
+      const left = SKIP_REASONS.map(([k, name]) => [name, out.skipped.filter((x) => x.reason === k).length] as const)
+        .filter(([, n]) => n).map(([name, n]) => `${name} ${n}`).join(' · ')
+      say(`판정 ${out.confirmed}줄을 제안대로 확정했습니다.` +
+        (out.skipped.length ? ` ${out.skipped.length}줄은 뺐습니다(${left}). 한 줄씩 확인해 확정하세요.` : ''))
       done()
     } catch (e) {
       setError((e as Error).message)
