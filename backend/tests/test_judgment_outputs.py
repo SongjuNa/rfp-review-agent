@@ -126,7 +126,7 @@ def test_gas_leakage_query_and_deviation_are_linked(db, tmp_path):
 
 def test_number_mismatch_is_flagged(db, spec):
     """Scenario: 근거와 다른 숫자 (목록·제안 포인트) — 숫자 불일치로 표시된다."""
-    run_id = run_once(db, [spec], FakeLLM(text="초안 {v1} 값은 9999입니다."))
+    run_id = run_once(db, [spec], FakeLLM(text="초안 {all} 값은 9999입니다."))
     outputs = queries.run_outputs(db, run_id)
     points = queries.run_proposals(db, run_id)
     assert outputs and points

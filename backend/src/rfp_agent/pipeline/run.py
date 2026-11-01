@@ -322,14 +322,17 @@ def _save_risks(ctx: RunContext, run_id: int, candidates: list[RiskCandidate],
     explanations = dict(zip(asks, answers, strict=True))
     # (다) 원래 순서대로 저장한다 (risk_id 순서가 차례로 할 때와 같음)
     for n, (cand, expr_id, reused, _) in enumerate(plans):
-        explained = explanations.get(n)
+        answer = explanations.get(n)
+        # 근거 대조에서 버린 설명은 이유만 남긴다 (update-ai-answer-checks)
+        explained = answer if isinstance(answer, tasks.RiskExplanation) else None
+        dropped = answer.reason if isinstance(answer, tasks.DroppedExplanation) else None
         risk_id = conn.execute(
             """INSERT INTO risk_flag (run_id, risk_kind, expr_id, explanation_ai, status, facts,
-                                      item_key)
-               VALUES (%s, %s, %s, %s, 'CANDIDATE', %s, %s) RETURNING risk_id""",
+                                      item_key, explanation_drop_reason)
+               VALUES (%s, %s, %s, %s, 'CANDIDATE', %s, %s, %s) RETURNING risk_id""",
             (run_id, cand.risk_kind, expr_id,
              reused[1] if reused else explained.text if explained else None, cand.facts,
-             cand.item_key),
+             cand.item_key, dropped),
         ).fetchone()[0]
         if reused:
             conn.execute("UPDATE claim_evidence SET target_id = %s WHERE run_id = %s "

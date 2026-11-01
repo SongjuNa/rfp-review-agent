@@ -39,7 +39,9 @@ def run_log(conn: psycopg.Connection, limit: int = 200) -> list[dict]:
                    (SELECT count(*) FROM requirement q JOIN run_document rd USING (document_id)
                      WHERE rd.run_id = r.run_id AND q.req_kind = 'REQUIREMENT') AS requirements,
                    (SELECT count(*) FROM judgment WHERE run_id = r.run_id AND is_current)
-                       AS judgments
+                       AS judgments,
+                   (SELECT count(*) FROM risk_flag WHERE run_id = r.run_id
+                     AND explanation_drop_reason IS NOT NULL) AS explanations_dropped
             FROM review_run r ORDER BY r.run_id DESC LIMIT %s""", (limit,)).fetchall()
         steps = cur.execute(
             """SELECT run_id, attempt, step,

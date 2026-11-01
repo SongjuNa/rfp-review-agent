@@ -178,7 +178,9 @@ def _texts(llm: LLM | None, drafts: list[Draft]) -> list[tuple[str, str]]:
     if llm is None or not drafts:
         return [(d.template, "CODE") for d in drafts]
     texts = tasks.draft_sentences(llm, "일탈·질의 목록", [(d.facts, d.marks) for d in drafts])
-    return [(t, "AI") for t in texts]
+    # 자리표시자를 다 쓰지 않은 줄 등은 그 줄만 코드 기본 문장 (update-ai-answer-checks)
+    return [(t, "AI") if t is not None else (d.template, "CODE")
+            for t, d in zip(texts, drafts, strict=True)]
 
 
 def build_outputs(conn: psycopg.Connection, run_id: int, document_ids: list[int],

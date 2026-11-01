@@ -79,7 +79,7 @@ export function RunLog() {
                   <td>{stamp(r.started_at)}</td>
                   <td style={{ textAlign: 'right' }}>{r.stage === 'PROCESSING' ? '처리 중' : secs(r.seconds)}</td>
                   <td>{r.llm_model ?? '규칙만'}<div className="en">사전 {r.dict_version}</div></td>
-                  <td style={{ textAlign: 'right' }}>{noLog(r) ? <span className="dimv">기록 없음</span> : <>{num(r.llm_calls)}{r.llm_retries > 0 && <div className="en c-ora">재시도 {r.llm_retries}</div>}</>}</td>
+                  <td style={{ textAlign: 'right' }}>{noLog(r) ? <span className="dimv">기록 없음</span> : <>{num(r.llm_calls)}{r.llm_retries > 0 && <div className="en c-ora">재시도 {r.llm_retries}</div>}{r.explanations_dropped > 0 && <div className="en c-ora" title="근거 조각·인용·숫자 대조에서 버린 위험 조건 설명">AI 설명 버림 {r.explanations_dropped}</div>}</>}</td>
                   <td style={{ textAlign: 'right' }}>{noLog(r) ? '—' : num(tokens(r))}</td>
                   <td style={{ textAlign: 'right' }}>{noLog(r) ? '—' : <>{won(r.estimated_cost_krw)}{r.cost_assumed && <div className="en">추정 · 팀 가정</div>}</>}</td>
                   <td style={{ textAlign: 'right' }}>{r.documents}{r.documents_reused > 0 && <div className="en">다시 씀 {r.documents_reused}</div>}</td>
