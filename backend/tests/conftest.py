@@ -1,5 +1,6 @@
 import os
 import re
+import zlib
 from pathlib import Path
 
 import psycopg
@@ -77,6 +78,13 @@ def spec(tmp_path):
     return build_judgment_spec(tmp_path / "synthetic_judgment.docx")
 
 
+def word_vector(text: str, dims: int = 256) -> list[float]:
+    vec = [0.0] * dims
+    for word in re.findall(r"\w+", text.lower()):
+        vec[zlib.crc32(word.encode()) % dims] += 1.0
+    return vec
+
+
 class FakeLLM:
     """언어 모델 대역. 받은 프롬프트를 모두 기록하고, 스키마에 맞는 기본 답을 낸다."""
 
@@ -112,6 +120,17 @@ class FakeLLM:
                 for n, marks in enumerate(lines)]}
         default = {"labels": "REQUIREMENT", "types": "NONE", "verdicts": "YES"}[field]
         return {field: [{"n": n, "v": default} for n in range(count)]}
+
+    # 뜻 찾기(add-meaning-search): 단어를 해시해 세는 벡터. 같은 단어가 많을수록 가깝다.
+    # vectors에 글을 넣으면 그 벡터를 쓰고, embed_fail이면 매번 실패한다.
+    vectors: dict[str, list[float]] = {}
+    embed_fail = False
+
+    def embed(self, texts: list[str]) -> list[list[float]]:
+        self.embedded = getattr(self, "embedded", []) + list(texts)
+        if self.embed_fail:
+            raise TimeoutError("응답 시간 초과")
+        return [self.vectors.get(t) or word_vector(t) for t in texts]
 
 
 @pytest.fixture

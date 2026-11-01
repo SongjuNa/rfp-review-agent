@@ -9,6 +9,9 @@ log = logging.getLogger(__name__)
 MAX_RETRIES = 2                 # CR-12: 정해진 횟수만 재시도
 FAILURE_MESSAGE = "처리 실패 — 다시 시도"
 CONFIG_FAILURE_MESSAGE = "AI 키 또는 모델 설정 오류 — 설정 확인"
+EMBED_MODEL = "gemini-embedding-001"   # 뜻 찾기 문장 벡터 (add-meaning-search)
+EMBED_DIMS = 768
+EMBED_BATCH = 100
 CONFIG_ERROR_CODES = {400, 401, 403, 404}   # 다시 물어도 안 되는 요청 오류 (429 요청 많음은 재시도)
 
 
@@ -100,6 +103,33 @@ def call_with_retry(llm: LLM, prompt: str, schema: dict, validate) -> dict:
     raise LLMFailure(FAILURE_MESSAGE) from last
 
 
+def embed_with_retry(llm: object, texts: list[str]) -> list[list[float]]:
+    """문장 벡터를 EMBED_BATCH개씩 받는다. 재시도·오류 종류는 call_with_retry와 같다.
+
+    벡터 요청은 실행 기록의 AI 호출 수에 넣지 않는다(토큰 수를 주지 않음).
+    """
+    out: list[list[float]] = []
+    for start in range(0, len(texts), EMBED_BATCH):
+        part = texts[start:start + EMBED_BATCH]
+        last: Exception | None = None
+        for attempt in range(MAX_RETRIES + 1):
+            try:
+                vectors = llm.embed(part)
+            except Exception as exc:  # noqa: BLE001 - 연결·시간 초과·서버 오류는 재시도
+                if _is_config_error(exc):
+                    raise LLMConfigError(CONFIG_FAILURE_MESSAGE) from exc
+                last = exc
+                log.warning("문장 벡터 요청 실패 (%d/%d): %s", attempt + 1, MAX_RETRIES + 1, exc)
+                continue
+            if len(vectors) != len(part) or not all(vectors):
+                raise LLMFormatError(FAILURE_MESSAGE)
+            out.extend(vectors)
+            break
+        else:
+            raise LLMFailure(FAILURE_MESSAGE) from last
+    return out
+
+
 class GeminiLLM:
     def __init__(self, api_key: str, model: str, workers: int = 4, timeout_s: float = 120):
         from google import genai
@@ -125,6 +155,12 @@ class GeminiLLM:
                            output_tokens=meta.candidates_token_count or 0,
                            thinking_tokens=getattr(meta, "thoughts_token_count", 0) or 0)
         return json.loads(response.text)
+
+    def embed(self, texts: list[str]) -> list[list[float]]:
+        """문장 벡터 (뜻 찾기, add-meaning-search)."""
+        response = self._client.models.embed_content(
+            model=EMBED_MODEL, contents=texts, config={"output_dimensionality": EMBED_DIMS})
+        return [list(e.values) for e in response.embeddings]
 
 
 def make_llm(api_key: str | None, model: str, workers: int = 4,

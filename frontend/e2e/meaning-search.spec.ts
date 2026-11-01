@@ -1,0 +1,50 @@
+import { expect, test } from '@playwright/test'
+import { ENGINEER, as, riskRun } from './helpers'
+
+// 명세 review-workspace "뜻 찾기 표시"의 Scenario (change add-meaning-search).
+// 뜻 찾기 후보는 문장 벡터(언어 모델)가 있어야 생겨서, 응답을 넣어 화면만 본다. 후보 계산은 백엔드 tests/test_meaning_search.py.
+
+const LOC = { file_no: 91, section_no: null, section_title: null, table_name: 'TS-230-GIS', item_no: '4', line_start: 12, line_end: 12 }
+
+test('사전 추가 후보 보기', async ({ page }) => {
+  const run = await riskRun(page.request, `뜻 찾기 ${Date.now()}`)
+  const sentence = 'Any item not listed shall be considered as fully complied with by the Vendor.'
+  await page.route(`**/api/runs/${run.run_id}/meaning-candidates`, (route) => route.fulfill({ json: { status: 'DONE', items: [{
+    candidate_id: 5, run_id: run.run_id, review_no: run.review_no, kind: 'RISK_SENTENCE', requirement_id: 1, text_raw: sentence,
+    near_text: 'Any item not listed shall be deemed to be accepted by the Vendor.', target: 'BLANKET', score: 0.793,
+    second_target: null, second_score: null, status: 'OPEN', locations: [LOC],
+  }] } }))
+  await as(page, ENGINEER)
+  await page.goto(`/#/reviews/${run.run_id}`)
+  await page.getByRole('tab', { name: '위험 조건' }).click()
+  const cand = page.getByTestId('meaning-candidate')
+  await expect(page.getByTestId('meaning-head')).toContainText('사전 추가 후보 1')
+  await expect(cand).toContainText(sentence)
+  await expect(cand).toContainText('뜻 비슷 0.79')
+  await expect(cand).toContainText('deemed to be accepted')
+  await cand.getByRole('button', { name: '사전 추가 제안' }).click()
+  await expect(page.getByLabel('놓친 위험 표현')).toHaveValue(sentence)
+  await expect(page.getByLabel('제안 메모')).toHaveValue('뜻이 비슷한 문장 (점수 0.79)')
+})
+
+test('항목 연결 후보 받아들이기', async ({ page }) => {
+  let accepted = false
+  const cand = { candidate_id: 9, run_id: 3, review_no: 'RV-2026-003', kind: 'ITEM_LINK', requirement_id: 2, text_raw: 'Busbar ampacity',
+    near_text: 'Rated normal current', target: 'rated_current', score: 0.912, second_target: 'rated_frequency', second_score: 0.71,
+    status: 'OPEN', locations: [LOC] }
+  await page.route('**/api/item-candidates', (route) => route.fulfill({ json: accepted ? [] : [cand] }))
+  await page.route('**/api/item-candidates/9/accept', (route) => {
+    accepted = true
+    return route.fulfill({ json: { edit_id: 1, dictionary: 'items', row_key: { item_key: 'rated_current' }, action: 'EDIT', before_value: {}, after_value: {},
+      reason: '뜻으로 찾은 연결 후보', actor_id: 1, actor_name: '엔지니어', edited_at: '2026-11-01T03:00:00Z', discarded_at: null, after_key: { item_key: 'rated_current' } } })
+  })
+  await as(page, ENGINEER)
+  await page.goto('/#/rules')
+  await page.getByRole('tab', { name: /항목 이름/ }).click()
+  const row = page.getByTestId('item-link')
+  await expect(row).toContainText('Busbar ampacity')
+  await expect(row).toContainText('rated_current')
+  await row.getByRole('button', { name: '같은 뜻 표현으로 추가' }).click()
+  await expect(page.getByRole('status')).toContainText('rated_current의 같은 뜻 표현에 넣었습니다')
+  await expect(page.getByTestId('item-link')).toHaveCount(0)
+})

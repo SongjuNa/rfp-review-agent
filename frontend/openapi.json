@@ -4581,6 +4581,170 @@
         }
       }
     },
+    "/api/runs/{run_id}/meaning-candidates": {
+      "get": {
+        "tags": [
+          "사전 추가 제안"
+        ],
+        "summary": "Risk Meaning",
+        "operationId": "risk_meaning_api_runs__run_id__meaning_candidates_get",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Run Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RiskMeaning"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/item-candidates": {
+      "get": {
+        "tags": [
+          "사전 추가 제안"
+        ],
+        "summary": "Item Candidates",
+        "operationId": "item_candidates_api_item_candidates_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/MeaningCandidate"
+                  },
+                  "type": "array",
+                  "title": "Response Item Candidates Api Item Candidates Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/item-candidates/{candidate_id}/accept": {
+      "post": {
+        "tags": [
+          "사전 추가 제안"
+        ],
+        "summary": "Accept Item",
+        "operationId": "accept_item_api_item_candidates__candidate_id__accept_post",
+        "parameters": [
+          {
+            "name": "candidate_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Candidate Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ActorBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RuleEdit"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/item-candidates/{candidate_id}/hide": {
+      "post": {
+        "tags": [
+          "사전 추가 제안"
+        ],
+        "summary": "Hide Item",
+        "operationId": "hide_item_api_item_candidates__candidate_id__hide_post",
+        "parameters": [
+          {
+            "name": "candidate_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Candidate Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ActorBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/runs/{run_id}/assistant": {
       "post": {
         "tags": [
@@ -4810,6 +4974,23 @@
         },
         "type": "object",
         "title": "Actor"
+      },
+      "ActorBody": {
+        "properties": {
+          "actor_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Actor Id"
+          }
+        },
+        "type": "object",
+        "title": "ActorBody"
       },
       "AnswerKey": {
         "properties": {
@@ -10484,6 +10665,115 @@
         "type": "object",
         "title": "LossValues"
       },
+      "MeaningCandidate": {
+        "properties": {
+          "candidate_id": {
+            "type": "integer",
+            "title": "Candidate Id"
+          },
+          "run_id": {
+            "type": "integer",
+            "title": "Run Id"
+          },
+          "review_no": {
+            "type": "string",
+            "title": "Review No"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "RISK_SENTENCE",
+              "ITEM_LINK"
+            ],
+            "title": "Kind"
+          },
+          "requirement_id": {
+            "type": "integer",
+            "title": "Requirement Id"
+          },
+          "text_raw": {
+            "type": "string",
+            "title": "Text Raw"
+          },
+          "near_text": {
+            "type": "string",
+            "title": "Near Text"
+          },
+          "target": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target"
+          },
+          "score": {
+            "type": "number",
+            "title": "Score"
+          },
+          "second_target": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Second Target"
+          },
+          "second_score": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Second Score"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "OPEN",
+              "ACCEPTED",
+              "HIDDEN"
+            ],
+            "title": "Status"
+          },
+          "locations": {
+            "items": {
+              "$ref": "#/components/schemas/Location"
+            },
+            "type": "array",
+            "minItems": 1,
+            "title": "Locations"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "candidate_id",
+          "run_id",
+          "review_no",
+          "kind",
+          "requirement_id",
+          "text_raw",
+          "near_text",
+          "target",
+          "score",
+          "second_target",
+          "second_score",
+          "status",
+          "locations"
+        ],
+        "title": "MeaningCandidate",
+        "description": "뜻으로 찾은 후보 (add-meaning-search). RISK_SENTENCE = 사전 추가 후보(B5),\nITEM_LINK = 항목 연결 후보(B3). 후보일 뿐 판정·위험 조건이 아니다."
+      },
       "MyTasks": {
         "properties": {
           "role": {
@@ -10798,6 +11088,26 @@
           "same": {
             "type": "boolean",
             "title": "Same"
+          },
+          "match": {
+            "type": "string",
+            "enum": [
+              "TEXT",
+              "MEANING"
+            ],
+            "title": "Match",
+            "default": "TEXT"
+          },
+          "score": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Score"
           }
         },
         "additionalProperties": false,
@@ -13052,6 +13362,41 @@
           "used"
         ],
         "title": "RiskExpression"
+      },
+      "RiskMeaning": {
+        "properties": {
+          "status": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "DONE",
+                  "NO_AI",
+                  "SKIPPED"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/MeaningCandidate"
+            },
+            "type": "array",
+            "title": "Items"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "status",
+          "items"
+        ],
+        "title": "RiskMeaning",
+        "description": "위험 조건 탭 사전 추가 후보.\n\nstatus: DONE / NO_AI(언어 모델 없음) / SKIPPED(실패) / null(예전 검토)."
       },
       "RiskMember": {
         "properties": {

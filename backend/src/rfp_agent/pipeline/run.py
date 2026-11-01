@@ -19,7 +19,7 @@ from rfp_agent.llm import tasks
 from rfp_agent.llm.client import FAILURE_MESSAGE, LLM, LLMConfigError, LLMFailure, Usage, usage_of
 from rfp_agent.llm.evidence import EvidenceSpan, evidence_id, parse_evidence_id
 from rfp_agent.llm.parallel import run_ordered, workers_of
-from rfp_agent.pipeline import code_version, dictionaries, doc_add
+from rfp_agent.pipeline import code_version, dictionaries, doc_add, meaning
 from rfp_agent.pipeline.assignments import build_assignments
 from rfp_agent.pipeline.document import Choice, Report, process_document
 from rfp_agent.pipeline.engineering import build_checks
@@ -56,6 +56,7 @@ class RunState(TypedDict, total=False):
     output_count: int
     proposal_count: int
     assignment_count: int
+    meaning_count: int
 
 
 # 세부 진행 기록: (run_id, {"part", "done", "total", "file_index", "file_count"})
@@ -433,6 +434,17 @@ def _judge_node(ctx: RunContext):
     return node
 
 
+def _meaning_node(ctx: RunContext):
+    """뜻 찾기 벡터와 후보 (add-meaning-search). 실패해도 분석은 계속한다."""
+    def node(state: RunState) -> RunState:
+        conn, run_id = ctx.conn, state["run_id"]
+        _set_step(conn, run_id, "meaning")
+        count = meaning.build(conn, run_id, state["readable_ids"], ctx.llm)
+        conn.commit()
+        return {"meaning_count": count}
+    return node
+
+
 def _step_node(ctx: RunContext, step: str, key: str, build):
     def node(state: RunState) -> RunState:
         _set_step(ctx.conn, state["run_id"], step)
@@ -462,7 +474,8 @@ def build_graph(ctx: RunContext):
     graph.add_node("pairs", _pairs_node(ctx))
     graph.add_node("risks", _risks_node(ctx))
     graph.add_node("judge", _judge_node(ctx))
-    order = ["documents", "pairs", "risks", "judge"]
+    graph.add_node("meaning", _meaning_node(ctx))
+    order = ["documents", "pairs", "risks", "judge", "meaning"]
     for step, key, build in STEPS:
         graph.add_node(step, _step_node(ctx, step, key, build))
         order.append(step)

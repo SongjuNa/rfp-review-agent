@@ -4,7 +4,7 @@ import type {
   DecisionResult, DocumentChoice, DocumentPreview, HandoffResult, SalesHandoff,
   LossResult, ProductSwitch, RuleEdit,
   RunLogItem, RunSummary, SendResult, StageResult, SubmitResult,
-  AnswerKey, EvalRun, EvalScore, RuleSuggestion, AssistantAnswer,
+  AnswerKey, EvalRun, EvalScore, RuleSuggestion, AssistantAnswer, MeaningCandidate, RiskMeaning,
 } from './api.gen'
 
 export type {
@@ -13,7 +13,7 @@ export type {
   DocumentChoice, DocumentPreview, EngineeringCheck,
   Equipment, Health, ItemKey, Judgment, JudgmentCounts, Location, LogEntry, Loss, MyTasks, OutputItem, Product,
   ProductDetail, ProductFamily, Proposal, ReadCheck, Requirement, ReviewCard, Risk, RiskExpression, RuleEdit, RunDocument,
-  AnswerKey, EvalMetric, EvalRun, EvalScore, AssistantAnswer, AssistantEvidence, RunListItem, RunLogItem, RunSummary, RuleSuggestion, SalesHandoff, SubmissionCheck, Tbe, TbeRow, User, Warranty,
+  AnswerKey, EvalMetric, EvalRun, EvalScore, AssistantAnswer, AssistantEvidence, RunListItem, RunLogItem, RunSummary, RuleSuggestion, MeaningCandidate, RiskMeaning, SalesHandoff, SubmissionCheck, Tbe, TbeRow, User, Warranty,
 } from './api.gen'
 import type {
   CompareRule, DatasheetInfo, Datasheet, DocKindRule, EngineeringCheck, Equipment, Health, ItemKey, Judgment, JudgmentCounts,
@@ -234,6 +234,11 @@ export const api = {
   suggestRule: (runId: number, expression: string, note: string, actor_id: number) =>
     call<RuleSuggestion>(`/runs/${runId}/rule-suggestions`, json('POST', { expression, note, actor_id })),
   ruleSuggestions: () => call<RuleSuggestion[]>('/rule-suggestions'),
+  // 뜻으로 찾은 후보 (add-meaning-search): 사전 추가 후보(위험 조건 탭), 항목 연결 후보(판정 규칙 화면)
+  riskMeaning: (runId: number) => call<RiskMeaning>(`/runs/${runId}/meaning-candidates`),
+  itemCandidates: () => call<MeaningCandidate[]>('/item-candidates'),
+  acceptItem: (id: number, actor_id: number) => call<RuleEdit>(`/item-candidates/${id}/accept`, json('POST', { actor_id })),
+  hideItem: (id: number, actor_id: number) => send(`/item-candidates/${id}/hide`, json('POST', { actor_id })).then(() => undefined),
   acceptSuggestion: (id: number, value: RuleValue, reason: string, actor_id: number) =>
     call<RuleSuggestion>(`/rule-suggestions/${id}/accept`, json('POST', { value, reason, actor_id })),
   declineSuggestion: (id: number, reason: string, actor_id: number) =>
