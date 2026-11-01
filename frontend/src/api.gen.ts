@@ -62,6 +62,10 @@ export type ApprovalScreen = {
   read_unchecked: number
 }
 
+export type AskBody = {
+  question: string
+}
+
 export type Assignment = {
   assignment_id: number
   run_id: number
@@ -106,6 +110,47 @@ export type Assignment = {
 export type AssignmentStatus = {
   assignment_id: number
   status: 'TODO' | 'DOING' | 'DONE'
+}
+
+/** 검토 도우미 답 (add-review-assistant, FR-17). mode SEARCH = AI 없이 글자로 찾음. */
+export type AssistantAnswer = {
+  mode: 'AI' | 'SEARCH'
+  sentences: AssistantSentence[]
+  evidence: AssistantEvidence[]
+  dropped: number
+  steps: AssistantStep[]
+  note: string | null
+}
+
+/** 검토 도우미 근거 줄: 요구사항(R…) 또는 판정(J…). 원문 위치 필수 (CR-02). */
+export type AssistantEvidence = {
+  ref: string
+  kind: 'REQUIREMENT' | 'JUDGMENT'
+  requirement_id: number
+  judgment_id: number | null
+  text_raw: string
+  type_code: string | null
+  result: 'COMPLY' | 'DEVIATION_CANDIDATE' | 'QUERY_CANDIDATE' | 'NEEDS_REVIEW' | 'WARRANTY_TO_FILL' | null
+  item_name: string | null
+  req_value_raw: string | null
+  product_value_raw: string | null
+  locations: Location[]
+}
+
+/** AI가 쓴 답 문장. 근거 번호는 코드가 대조했다 (CR-07). */
+export type AssistantSentence = {
+  text: string
+  evidence_ids: string[]
+}
+
+/** 찾은 경로 한 단계: 도구와 인자, 찾은 줄 수. */
+export type AssistantStep = {
+  tool: 'search_requirements' | 'find_judgments' | 'get_requirement'
+  words: string | null
+  type_code: string | null
+  result: string | null
+  ref: string | null
+  found: number
 }
 
 export type Body_add_documents_api_runs__run_id__documents_post = {

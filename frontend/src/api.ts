@@ -4,7 +4,7 @@ import type {
   DecisionResult, DocumentChoice, DocumentPreview, HandoffResult, SalesHandoff,
   LossResult, ProductSwitch, RuleEdit,
   RunLogItem, RunSummary, SendResult, StageResult, SubmitResult,
-  AnswerKey, EvalRun, EvalScore, RuleSuggestion,
+  AnswerKey, EvalRun, EvalScore, RuleSuggestion, AssistantAnswer,
 } from './api.gen'
 
 export type {
@@ -13,7 +13,7 @@ export type {
   DocumentChoice, DocumentPreview, EngineeringCheck,
   Equipment, Health, ItemKey, Judgment, JudgmentCounts, Location, LogEntry, Loss, MyTasks, OutputItem, Product,
   ProductDetail, ProductFamily, Proposal, ReadCheck, Requirement, ReviewCard, Risk, RiskExpression, RuleEdit, RunDocument,
-  AnswerKey, EvalMetric, EvalRun, EvalScore, RunListItem, RunLogItem, RunSummary, RuleSuggestion, SalesHandoff, SubmissionCheck, Tbe, TbeRow, User, Warranty,
+  AnswerKey, EvalMetric, EvalRun, EvalScore, AssistantAnswer, AssistantEvidence, RunListItem, RunLogItem, RunSummary, RuleSuggestion, SalesHandoff, SubmissionCheck, Tbe, TbeRow, User, Warranty,
 } from './api.gen'
 import type {
   CompareRule, DatasheetInfo, Datasheet, DocKindRule, EngineeringCheck, Equipment, Health, ItemKey, Judgment, JudgmentCounts,
@@ -226,6 +226,8 @@ export const api = {
     call<RuleEdit>(`/rules/${dictionary}/${encodeURIComponent(id)}`, json('PUT', { value, reason, actor_id })),
   deleteRule: (dictionary: RuleDictionary, id: string, reason: string, actor_id: number) =>
     call<RuleEdit>(`/rules/${dictionary}/${encodeURIComponent(id)}`, json('DELETE', { reason, actor_id })),
+  /** 검토 도우미: 읽기 도구만 쓰는 AI에 묻기 (add-review-assistant) */
+  ask: (runId: number, question: string) => call<AssistantAnswer>(`/runs/${runId}/assistant`, json('POST', { question })),
   /** 위험 표현 사전에 추가 제안 (add-rule-suggestion) */
   runSuggestions: (runId: number) => call<RuleSuggestion[]>(`/runs/${runId}/rule-suggestions`),
   suggestRule: (runId: number, expression: string, note: string, actor_id: number) =>

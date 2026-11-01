@@ -245,3 +245,55 @@ def draft_sentences(llm: LLM, purpose: str, items: list[tuple[str, dict[str, str
     jobs = [lambda part=items[start:start + CHUNK]: ask(part)
             for start in range(0, len(items), CHUNK)]
     return [t for part in run_ordered(jobs, workers_of(llm)) for t in part]
+
+
+ASSISTANT_VERSION = "a1"
+ASSISTANT_ACTIONS = ["search_requirements", "find_judgments", "get_requirement", "answer"]
+JUDGMENT_RESULTS = ["COMPLY", "DEVIATION_CANDIDATE", "QUERY_CANDIDATE", "NEEDS_REVIEW",
+                    "WARRANTY_TO_FILL"]
+
+
+def assistant_step(llm: LLM, question: str, observations: str, can_search: bool) -> dict:
+    """검토 도우미 한 단계 (add-review-assistant, FR-17).
+
+    다음에 쓸 읽기 도구와 인자, 또는 답 문장(근거 번호 함께)을 JSON 하나로 받는다.
+    도구를 실행하고 답을 검증하는 일은 코드(pipeline/assistant.py)가 한다.
+    """
+    tools = (
+        "도구(읽기만 한다):\n"
+        "- search_requirements: 이 검토 요구사항 원문에서 words(문서 언어로, 보통 영어 낱말)가 "
+        "모두 들어간 줄. type_code로 유형을 거를 수 있다 "
+        f"({', '.join(TYPE_CODES[:-1])}).\n"
+        "- find_judgments: 이 검토의 판정. result로 판정 값을 거르고 "
+        f"({', '.join(JUDGMENT_RESULTS)}), words로 항목 이름·원문을 거른다.\n"
+        "- get_requirement: 근거 번호 하나(ref, 예: R12)의 원문.\n"
+        "- answer: 답한다.\n"
+    ) if can_search else "더 찾을 수 없다. action은 answer만 쓴다.\n"
+    prompt = (
+        "너는 입찰 기술 검토 엔지니어를 돕는 검토 도우미다. 값을 바꾸거나 판정하지 않고, "
+        "도구가 돌려준 줄만 근거로 한국어로 짧게 답한다. 문장마다 쓴 근거 번호(evidence_ids, "
+        "예: R12, J30)를 단다. 근거에 없는 사실이나 숫자는 쓰지 않는다. 근거가 없으면 "
+        "sentences를 비운다.\n"
+        + tools
+        + f"질문: {one_line(question)[:500]}\n"
+        + (f"지금까지 찾은 것:\n{observations}\n" if observations else "아직 찾은 것이 없다.\n")
+    )
+    actions = ASSISTANT_ACTIONS if can_search else ["answer"]
+    schema = {"type": "object", "properties": {
+        "action": {"type": "string", "enum": actions},
+        "words": {"type": "string"},
+        "type_code": {"type": "string", "enum": TYPE_CODES[:-1] + [""]},
+        "result": {"type": "string", "enum": JUDGMENT_RESULTS + [""]},
+        "ref": {"type": "string"},
+        "sentences": {"type": "array", "items": {"type": "object", "properties": {
+            "text": {"type": "string"},
+            "evidence_ids": {"type": "array", "items": {"type": "string"}}},
+            "required": ["text", "evidence_ids"]}},
+    }, "required": ["action"]}
+
+    def check(d):
+        assert d["action"] in actions
+        if d["action"] == "answer":
+            assert isinstance(d.get("sentences", []), list)
+
+    return call_with_retry(llm, prompt, schema, check)

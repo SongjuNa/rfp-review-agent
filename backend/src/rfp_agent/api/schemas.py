@@ -1197,3 +1197,44 @@ class RuleSuggestion(Out):
     decision_reason: str | None
     edit_id: int | None
     locations: Locations
+
+
+class AssistantEvidence(Out):
+    """검토 도우미 근거 줄: 요구사항(R…) 또는 판정(J…). 원문 위치 필수 (CR-02)."""
+    ref: str
+    kind: Literal["REQUIREMENT", "JUDGMENT"]
+    requirement_id: int
+    judgment_id: int | None
+    text_raw: str
+    type_code: str | None
+    result: JudgmentResult | None
+    item_name: str | None
+    req_value_raw: str | None
+    product_value_raw: str | None
+    locations: Locations
+
+
+class AssistantSentence(Out):
+    """AI가 쓴 답 문장. 근거 번호는 코드가 대조했다 (CR-07)."""
+    text: str
+    evidence_ids: list[str]
+
+
+class AssistantStep(Out):
+    """찾은 경로 한 단계: 도구와 인자, 찾은 줄 수."""
+    tool: Literal["search_requirements", "find_judgments", "get_requirement"]
+    words: str | None
+    type_code: str | None
+    result: str | None
+    ref: str | None
+    found: int
+
+
+class AssistantAnswer(Out):
+    """검토 도우미 답 (add-review-assistant, FR-17). mode SEARCH = AI 없이 글자로 찾음."""
+    mode: Literal["AI", "SEARCH"]
+    sentences: list[AssistantSentence]
+    evidence: list[AssistantEvidence]
+    dropped: int
+    steps: list[AssistantStep]
+    note: str | None
