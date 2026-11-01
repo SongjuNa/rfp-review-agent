@@ -593,6 +593,7 @@ class ReviewRatio(Out):
     review: int
     total: int
     threshold: float
+    hand_fill: int          # 직접 작성할 칸: 제품표에 연결되지 않은 보증값 빈칸 (비율에서 뺌)
 
 
 class ApprovalScreen(Out):

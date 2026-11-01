@@ -42,7 +42,9 @@ export function checkItems(found: Criterion[], ratio: Ratio, listed?: number, un
     const pct = ratioText(ratio)
     const okLine = code === 'AR-03' ? `확인 필요 ${pct} (기준 ${Math.round(ratio.threshold * 100)} % 이하)` : okText
     const lv = !hit ? 'ok' : code === 'AR-01' ? 'bad' : 'warn'
-    const text = hit ? hit.detail + (code === 'AR-01' && listed !== undefined ? ` · 일탈 목록에 ${listed}건` : '') : okLine
+    // AR-03: 직접 작성할 칸(제품표에 연결되지 않은 보증값 빈칸)은 비율에서 뺐다는 것을 적는다
+    const handFill = code === 'AR-03' && ratio.hand_fill ? ` · 직접 작성할 칸 ${ratio.hand_fill}개는 뺌` : ''
+    const text = (hit ? hit.detail + (code === 'AR-01' && listed !== undefined ? ` · 일탈 목록에 ${listed}건` : '') : okLine) + handFill
     return { code, lv, text, sub: hit ? sub : '' }
   })
   if (unread === undefined) return items
