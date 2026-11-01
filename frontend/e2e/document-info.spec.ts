@@ -9,7 +9,7 @@ test('판정 묶음 보기', async ({ page, request }) => {
   await as(page, ENGINEER)
   await page.goto(`/#/reviews/${run.run_id}`)
   await expect(page.getByRole('button', { name: '문서 1개' })).toBeVisible()
-  await expect(page.locator('.hbun')).toHaveText('묶음 A')
+  await expect(page.locator('.hf', { hasText: '제출 마감' })).toContainText('묶음 A')
 })
 
 test('문서 표 열기', async ({ page, request }) => {
@@ -37,7 +37,7 @@ test('판정하지 않는 문서', async ({ page, request }) => {
   })
   await as(page, ENGINEER)
   await page.goto(`/#/reviews/${run.run_id}`)
-  await expect(page.locator('.hbun.warn')).toHaveText('판정 문서 없음')
+  await expect(page.locator('.hf', { hasText: '제출 마감' }).locator('.c-red')).toHaveText('판정 문서 없음')
   await page.getByRole('button', { name: '문서 1개' }).click()
   const row = page.getByRole('dialog').locator('tbody tr')
   await expect(row).toHaveClass(/skip/)

@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { expect, test, type APIRequestContext } from '@playwright/test'
-import { ENGINEER, as, deviationRun } from './helpers'
+import { as, deviationRun, ENGINEER, openTab } from './helpers'
 
 // 명세 review-workspace "지난 RFP 비교 탭"의 Scenario (change add-past-compare).
 // 같은 고객사로 합성 데이터시트(지난 입찰)와 다음 입찰 데이터시트(e2e/fixtures/next_datasheet.docx,
@@ -27,7 +27,7 @@ test('같은 고객사 지난 검토와 비교', async ({ page, request }) => {
   const now = await upload(request, 'next_datasheet.docx', customer)
   await as(page, ENGINEER)
   await page.goto(`/#/reviews/${now.run_id}`)
-  await page.getByRole('tab', { name: '지난 RFP 비교' }).click()
+  await openTab(page, '지난 RFP 비교')
   const cmp = page.locator('#cmp')
   await expect(cmp.getByLabel('비교 대상')).toHaveValue(String(past.run_id))
   await expect(cmp.getByRole('note')).toHaveCount(0)                     // 예시 띠 없음
@@ -47,7 +47,7 @@ test('고객사 없음 안내', async ({ page, request }) => {
   const run = await deviationRun(request, `지난 비교 고객 없음 ${Date.now()}`)
   await as(page, ENGINEER)
   await page.goto(`/#/reviews/${run.run_id}`)
-  await page.getByRole('tab', { name: '지난 RFP 비교' }).click()
+  await openTab(page, '지난 RFP 비교')
   const cmp = page.locator('#cmp')
   await expect(cmp.locator('.cmempty')).toContainText('고객사를 넣으면')
   await expect(cmp.locator('table')).toHaveCount(0)

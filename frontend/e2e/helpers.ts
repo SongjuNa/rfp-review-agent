@@ -80,3 +80,19 @@ export async function salesMailUnavailable(page: Page, sent: RegExp | string) {
 
 /** 판정 데이터시트로 실행만 만든다(판정을 고치지 않음). 지난 확정 힌트 시험용 (add-review-memory) */
 export const judgmentRun = (request: APIRequestContext, name: string) => upload(request, 'synthetic_judgment.docx', name)
+
+/** 검토 상세 탭 열기. 손실 환산·입찰 영향·지난 RFP 비교·제출본은 "더 보기" 안에 있다 (update-detail-header) */
+export async function openTab(page: Page, name: string) {
+  if (['손실 환산 (참고)', '입찰 영향', '지난 RFP 비교', '제출본'].includes(name)) {
+    await page.getByRole('button', { name: '더 보기' }).click()
+    await page.getByRole('menuitem', { name }).click()
+  } else {
+    await page.getByRole('tab', { name: new RegExp(`^${name}`) }).click()
+  }
+}
+
+/** 검토 상세 머리 "내보내기 ▾"에서 고르기 (일탈 목록 초안 (Word) · 질의서 초안 (Word) · TBE 준수표 · 데이터시트 채우기) */
+export async function exportItem(page: Page, name: string) {
+  await page.getByRole('button', { name: '내보내기' }).click()
+  await page.getByRole('menuitem', { name }).click()
+}

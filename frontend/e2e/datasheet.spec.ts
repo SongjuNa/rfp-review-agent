@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { ENGINEER, as, deviationRun, salesMailUnavailable } from './helpers'
+import { as, deviationRun, ENGINEER, exportItem, salesMailUnavailable } from './helpers'
 
 // 명세 review-workspace "데이터시트 채우기 화면"의 Scenario (change add-datasheet-export).
 
@@ -7,7 +7,7 @@ test('칸 확정', async ({ page, request }) => {
   const run = await deviationRun(request, `데이터시트 ${Date.now()}`)
   await as(page, ENGINEER)
   await page.goto(`/#/reviews/${run.run_id}`)
-  await page.getByRole('link', { name: '데이터시트 채우기' }).click()
+  await exportItem(page, '데이터시트 채우기')
   await expect(page).toHaveURL(new RegExp(`#/reviews/${run.run_id}/datasheet$`))
   const ok = page.getByLabel('요약').locator('div', { hasText: '채움 · 확정' }).locator('b')
   await expect(page.locator('table.ds-t tbody tr').first()).toBeVisible()

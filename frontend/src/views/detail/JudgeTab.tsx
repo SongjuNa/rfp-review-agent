@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { api, type EngineeringCheck, type Judgment, type LogEntry, type OutputItem, type RunDocument, type RunSummary, type Warranty } from '../../api'
 import { Pager } from '../../components/Pager'
+import { bulkMessage } from '../../components/bulk'
 import { PastDecisionRow } from '../../components/PastDecisionRow'
 import { CHECK_NAMES, CHECK_RULE, CHECK_TONES, checkLine, checksByRequirement } from '../../components/checks'
 import { stamp } from '../../components/format'
@@ -26,12 +27,7 @@ function useDebounced(value: string, ms = 300): string {
   return v
 }
 
-/** 한꺼번에 확정에서 뺀 이유 (update-bulk-confirm-guard) */
-const SKIP_REASONS = [['CHECK', '검산'], ['MISMATCH', '숫자 불일치'], ['NO_VALUE', '값 없음']] as const
-
-export function JudgeTab({ run, tick, onChanged, head }: {
-  run: RunSummary; tick: number; onChanged: () => void; head: React.ReactNode
-}) {
+export function JudgeTab({ run, tick, onChanged }: { run: RunSummary; tick: number; onChanged: () => void }) {
   const { user } = useSession()
   const id = run.run_id
   const [f, setF] = useState('all')
@@ -123,26 +119,13 @@ export function JudgeTab({ run, tick, onChanged, head }: {
       const out = await api.bulkConfirm(id, ids, user!.user_id)
       setSel({})
       // 검산 위반·숫자 불일치·값이 빈 줄은 서버가 빼고 확정한다 (update-bulk-confirm-guard)
-      const left = SKIP_REASONS.map(([k, name]) => [name, out.skipped.filter((x) => x.reason === k).length] as const)
-        .filter(([, n]) => n).map(([name, n]) => `${name} ${n}`).join(' · ')
-      say(`판정 ${out.confirmed}줄을 제안대로 확정했습니다.` +
-        (out.skipped.length ? ` ${out.skipped.length}줄은 뺐습니다(${left}). 한 줄씩 확인해 확정하세요.` : ''))
+      say(bulkMessage(out))
       done()
     } catch (e) {
       setError((e as Error).message)
     } finally {
       setBusy(false)
     }
-  }
-  /** 확정하지 않은 준수 판정을 쪽마다 모두 모은다 */
-  const quickComply = async () => {
-    const ids: number[] = []
-    for (let off = 0; ; off += 500) {
-      const p = await api.judgmentPage(id, { result: 'COMPLY', unconfirmed: true, offset: off, limit: 500 })
-      ids.push(...p.items.map((j) => j.judgment_id))
-      if (off + 500 >= p.total) break
-    }
-    await confirmIds(ids)
   }
   const saveW = (candidateId: number) => {
     setError(null)
@@ -152,7 +135,7 @@ export function JudgeTab({ run, tick, onChanged, head }: {
 
   return (
     <section className="sec" id="judge">
-      <div className="sech"><h2>판정</h2>{head}</div>
+      <div className="sech"><h2>판정</h2></div>
       <div className="fbar">
         {chips.map(([k, label, cnt]) => (
           <button key={k} type="button" className={'chip' + (f === k ? ' on' : '')} aria-pressed={f === k}
@@ -187,10 +170,6 @@ export function JudgeTab({ run, tick, onChanged, head }: {
             <div className="bulk"><b>{selIds.length}줄 선택</b><span className="en" style={{ margin: 0 }}>{selSum}</span><span style={{ flex: '1 1 0' }} />
               <button type="button" className="bo" onClick={() => setSel({})}>선택 해제</button>
               <button type="button" className="bp" disabled={busy} onClick={() => confirmIds(selIds)}><span className="ms" aria-hidden="true" style={{ fontSize: 'var(--ic-s)' }}>done_all</span>제안대로 확정</button></div>
-          )}
-          {canEdit && selIds.length === 0 && c && c.unconfirmed_comply > 0 && (
-            <div className="bulk q"><span>아직 확정하지 않은 판정 <b>{c.unconfirmed}줄</b> · 그중 준수 {c.unconfirmed_comply}줄</span><span style={{ flex: '1 1 0' }} />
-              <button type="button" className="bo" disabled={busy} onClick={quickComply}><span className="ms" aria-hidden="true" style={{ fontSize: 'var(--ic-s)' }}>done_all</span>준수 {c.unconfirmed_comply}줄 모두 확정</button></div>
           )}
           <div className="tw">
             <table className="tbl">

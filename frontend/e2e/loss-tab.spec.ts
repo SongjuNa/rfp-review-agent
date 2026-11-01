@@ -1,12 +1,12 @@
 import { expect, test, type Page } from '@playwright/test'
-import { ENGINEER, as, lossRun, riskRun } from './helpers'
+import { as, ENGINEER, lossRun, openTab, riskRun } from './helpers'
 
 // 명세 review-workspace "손실 환산 탭"의 Scenario (change update-review-screens).
 
 async function openLoss(page: Page, runId: number) {
   await as(page, ENGINEER)
   await page.goto(`/#/reviews/${runId}`)
-  await page.getByRole('tab', { name: '손실 환산 (참고)' }).click()
+  await openTab(page, '손실 환산 (참고)')
   return page.locator('#loss table.mini tbody tr')
 }
 
@@ -37,7 +37,7 @@ test('손실값 넣어 다시 계산', async ({ page }) => {
   await expect(rows.nth(2)).toContainText('$10,400')
   await expect(rows.nth(3)).toContainText('$1,240,400')
   await expect(page.locator('#loss')).toContainText('팀 가정')
-  await expect(page.locator('.kpis')).toContainText('$1,240,400')
+  await expect(page.locator('.hf-k')).toContainText('$1,240,400')
 })
 
 test('조항 없는 RFP', async ({ page }) => {

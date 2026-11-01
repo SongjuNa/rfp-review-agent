@@ -15,10 +15,7 @@ test('직접 작성할 칸 표시', async ({ page, request }) => {
   })
   await as(page, ENGINEER)
   await page.goto(`/#/reviews/${run.run_id}`)
-  const kpis = page.locator('.kpis')
-  await expect(kpis.locator('.kpi', { hasText: '확인 필요 비율' })).toContainText('직접 작성할 칸 3개 뺌')
-  await expect(kpis.locator('.kpi', { hasText: '보증값 작성' })).toContainText('직접 작성할 칸 3')
-  // 결재 상신 창의 AR-03 줄에도 뺀 칸 수를 적는다
+  // 확인 필요 비율은 v4.96부터 결재 상신 창에만 있다 (update-detail-header). AR-03 줄에 뺀 칸 수를 적는다
   await page.getByRole('button', { name: '결재 상신' }).click()
   await expect(page.getByRole('dialog', { name: '결재 상신' })).toContainText('직접 작성할 칸 3개는 뺌')
 })

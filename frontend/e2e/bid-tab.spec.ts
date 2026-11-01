@@ -1,5 +1,5 @@
 import { expect, test, type Page, type Route } from '@playwright/test'
-import { ENGINEER, as, deviationRun } from './helpers'
+import { as, deviationRun, ENGINEER, openTab } from './helpers'
 
 // 명세 review-workspace "입찰 영향 탭"·"머리글 비교 제품 고르기"의 Scenario (change update-review-screens).
 // 언어 모델 키와 강점 여유가 있는 제품값이 없으면 로컬에서 제안 포인트가 생기지 않아, 포인트 목록과
@@ -27,7 +27,7 @@ async function openBid(page: Page, name: string) {
   const run = await deviationRun(page.request, `${name} ${Date.now()}`)
   await as(page, ENGINEER)
   await page.goto(`/#/reviews/${run.run_id}`)
-  await page.getByRole('tab', { name: '입찰 영향' }).click()
+  await openTab(page, '입찰 영향')
   return run
 }
 

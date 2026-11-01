@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { expect, test } from '@playwright/test'
-import { ENGINEER, as, deviationRun } from './helpers'
+import { as, deviationRun, ENGINEER, exportItem } from './helpers'
 
 // 명세 review-workspace "TBE 준수표 화면"의 Scenario (change add-tbe-export).
 
@@ -8,7 +8,7 @@ test('넣을 줄 바꾸기', async ({ page, request }) => {
   const run = await deviationRun(request, `TBE ${Date.now()}`)     // 판정 하나를 일탈로 고쳐 확정
   await as(page, ENGINEER)
   await page.goto(`/#/reviews/${run.run_id}`)
-  await page.getByRole('link', { name: 'TBE 준수표' }).click()
+  await exportItem(page, 'TBE 준수표')
   await expect(page).toHaveURL(new RegExp(`#/reviews/${run.run_id}/tbe$`))
   await expect(page.getByRole('navigation', { name: '현재 위치' })).toContainText(run.review_no)
   const sum = page.getByLabel('요약')

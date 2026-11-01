@@ -7,7 +7,8 @@ const BAND = '예시 화면 · 실제 데이터와 연결되지 않음'
 
 test('예시 띠', async ({ page }) => {
   const calls: string[] = []
-  page.on('request', (r) => { if (r.url().includes('/api/runs')) calls.push(r.url()) })
+  // 머리글 분석 진행 표시(update-header-progress)는 모든 화면에서 실행 목록(/api/runs?limit=)을 부르므로 뺀다
+  page.on('request', (r) => { if (r.url().includes('/api/runs') && !r.url().includes('/api/runs?limit=')) calls.push(r.url()) })
   await page.goto('/#/')
   const nav = page.getByRole('navigation', { name: '메뉴' })
   await nav.getByRole('button', { name: 'RFP 관리' }).click()   // 홈에서는 목업처럼 묶음이 모두 접혀 있다
