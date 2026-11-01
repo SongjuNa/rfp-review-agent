@@ -3,8 +3,8 @@
 - 연결 요구사항: `reference-data` 제품표 조회·제품이 쓰인 곳, FR-07 판정 근거, FR-13 손실값, FR-15 현장 이력
 - 기준 목업: `Spec2Win_목업_v4.57.html#Products`
 - 구현 방식: 실제, 읽기 전용 (`add-reference-views`). 화면 CSS는 목업 Products CSS 그대로(`frontend/src/mockup/Products.css`)
-- 사용 API: `GET /products?family=&q=&cards=&offset=&limit=`(X-Total-Count), `GET /products/families`, `GET /products/{code}`, `GET /rules/items`(강점 방향)
-- 예정 API: 엑셀 가져오기, 내보내기, 요구 조건으로 찾기, 제품 고치기
+- 사용 API: `GET /products?family=&q=&cards=&offset=&limit=`(X-Total-Count), `GET /products/families`, `GET /products/{code}`, `GET /rules/items`(강점 방향), `GET /products/export?family=&q=&cards=`(엑셀, X-Row-Count, `add-product-export`)
+- 예정 API: 엑셀 가져오기, 요구 조건으로 찾기, 제품 고치기
 
 ## 화면 구성
 
@@ -12,7 +12,7 @@
 |---|---|---|---|
 | 화면 탭(`.pgtabs`) | 제품 목록 · 비교 (n) | — | 비교 탭 수 = 고른 제품 수 |
 | 식별 줄(`.idl`) | product_master, 제품 수 · 제품군 수, 적재 판 안내 | `families` | 마지막 수정자·수정일은 기록이 없어 적재 판 안내로 바꿈 |
-| 제목(`.ttl`) | 제품표, 엑셀 가져오기, 내보내기 | — | 둘 다 잠김 |
+| 제목(`.ttl`) | 제품표, 엑셀 가져오기, 내보내기, 내려받은 뒤 알림 "제품표_<제품군>.xlsx 를 내려받았습니다." | `GET /products/export` | 가져오기는 잠김. 내보내기는 지금 거르기(제품군·검색어·설계 사례 카드)대로 거른 제품 전부, 쪽 나누기 없음 (`add-product-export`) |
 | 요약 칸(`.kpis`) | 비어 있는 칸(제품 n개), 팀 가정 값, 설계 사례 카드 | `empty_cells`, `with_empty`, `assumed`, `design_cards` | 비어 있는 칸 = 그 제품군에서 판정에 쓰는 칸 중 빈 칸 |
 | 거르기 줄(`.fbar`) | 제품군 칩(수), 설계 사례 카드 포함, 제품 검색, 요구 조건으로 찾기, 선택한 n개 비교 | `family`, `cards`, `q` | 요구 조건으로 찾기 잠김. 비교는 3개까지 |
 | 제품 표(`.tbl`) | 고르기, 제품 코드·이름·설계 사례, 제품군, 전압·전류·단시간·주파수·용량·무부하손·부하손·중량 | 목록 칸 | "—" 그 제품군에 없는 칸, "비어 있음"(주황) 빈 칸, "팀 가정" 표시. 10·20·50개씩 쪽 나눔 |

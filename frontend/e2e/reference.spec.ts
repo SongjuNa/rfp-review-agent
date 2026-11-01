@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs'
 import { expect, test } from '@playwright/test'
 import { as, ENGINEER } from './helpers'
 
@@ -16,6 +17,18 @@ test('제품 상세', async ({ page, request }) => {
   await expect(panel.getByLabel('판정에 쓰임')).toContainText(String(detail.used))
   await panel.getByRole('tab', { name: '값' }).click()
   await expect(panel).toContainText('정격 전압')
+})
+
+test('제품표 엑셀 내보내기', async ({ page }) => {
+  // 명세 review-workspace "제품표 화면"의 Scenario "제품표 내보내기" (change add-product-export)
+  await page.goto('/#/products')
+  await page.getByRole('button', { name: /^GIS/ }).click()
+  const wait = page.waitForEvent('download')
+  await page.getByRole('button', { name: '내보내기' }).click()
+  const file = await wait
+  // 헤드리스 Chromium은 한글 파일 이름을 "download"로 줄 때가 있어 이름은 알림으로 확인한다
+  expect(readFileSync(await file.path()).subarray(0, 2).toString()).toBe('PK')
+  await expect(page.getByRole('status')).toHaveText('제품표_GIS.xlsx 를 내려받았습니다.')
 })
 
 test('제품 상세에 계열 사진', async ({ page }) => {

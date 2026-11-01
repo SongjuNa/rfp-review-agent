@@ -3183,6 +3183,80 @@
         }
       }
     },
+    "/api/products/export": {
+      "get": {
+        "summary": "Export Products",
+        "description": "제품표 엑셀 (SCR-16 내보내기). 목록과 같은 거르기. X-Row-Count = 제품 수.",
+        "operationId": "export_products_api_products_export_get",
+        "parameters": [
+          {
+            "name": "family",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Family"
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Q"
+            }
+          },
+          {
+            "name": "cards",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": true,
+              "title": "Cards"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "엑셀 파일",
+            "content": {
+              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/products/{code}": {
       "get": {
         "summary": "Product",

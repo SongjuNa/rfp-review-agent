@@ -192,6 +192,8 @@ export const api = {
     call<DecisionResult>(`/runs/${id}/approval`, json('POST', { decision, comment, actor_id })),
   tasks: (user_id: number) => call<MyTasks>(`/tasks?user_id=${user_id}`),
   products: (params: { family?: string; q?: string; offset?: number; limit?: number; cards?: 'false' }) => page<Product>(`/products?${query(params)}`),
+  /** 제품표 엑셀 (add-product-export): 목록과 같은 거르기 */
+  exportProducts: (params: { family?: string; q?: string; cards?: 'false' }) => file(`/products/export?${query(params)}`),
   productFamilies: () => call<ProductFamily[]>('/products/families'),
   product: (code: string) => call<ProductDetail>(`/products/${encodeURIComponent(code)}`),
   compareRules: () => call<CompareRule[]>('/rules/compare'),

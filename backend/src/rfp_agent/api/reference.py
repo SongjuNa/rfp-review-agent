@@ -1,6 +1,7 @@
 """기준 데이터 API (SCR-16 제품표, SCR-17 판정 규칙). 제품표는 읽기만, 규칙 사전은 고친다."""
 
 from typing import Any
+from urllib.parse import quote
 
 from fastapi import APIRouter, HTTPException, Query, Response
 from pydantic import BaseModel
@@ -17,7 +18,7 @@ from rfp_agent.api.schemas import (
     RuleEdit,
 )
 from rfp_agent.db.connection import connect
-from rfp_agent.pipeline import reference, rule_edit
+from rfp_agent.pipeline import product_export, reference, rule_edit
 
 router = APIRouter(prefix="/api")
 
@@ -36,6 +37,24 @@ def product_families() -> list[ProductFamily]:
     """제품군 탭과 위 요약 칸."""
     with connect() as conn:
         return reference.families(conn)
+
+
+XLSX_TYPE = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+
+
+XLSX_FILE = {200: {"content": {XLSX_TYPE: {"schema": {"type": "string", "format": "binary"}}},
+                   "description": "엑셀 파일"}}
+
+
+@router.get("/products/export", response_class=Response, responses=XLSX_FILE)
+def export_products(family: str | None = None, q: str | None = None,
+                    cards: bool = True) -> Response:
+    """제품표 엑셀 (SCR-16 내보내기). 목록과 같은 거르기. X-Row-Count = 제품 수."""
+    with connect() as conn:
+        name, body, n = product_export.products_xlsx(conn, family, q or None, cards)
+    return Response(body, media_type=XLSX_TYPE, headers={
+        "Content-Disposition": f"attachment; filename*=UTF-8''{quote(name)}",
+        "X-Row-Count": str(n), "Access-Control-Expose-Headers": "X-Row-Count"})
 
 
 @router.get("/products/{code}")
