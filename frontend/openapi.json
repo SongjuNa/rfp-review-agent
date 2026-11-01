@@ -578,6 +578,76 @@
         }
       }
     },
+    "/api/runs/{run_id}/documents/{file_no}/lines": {
+      "get": {
+        "tags": [
+          "검토 실행"
+        ],
+        "summary": "Document Lines",
+        "description": "원문 줄 범위 (최대 40줄). 분석 때와 같은 줄 번호 (판정 상세 화면, add-judgment-view).",
+        "operationId": "document_lines_api_runs__run_id__documents__file_no__lines_get",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Run Id"
+            }
+          },
+          {
+            "name": "file_no",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "File No"
+            }
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "From"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "To"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocumentLines"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/runs/{run_id}/pairs": {
       "get": {
         "tags": [
@@ -8553,6 +8623,49 @@
         "title": "DocumentChoice",
         "description": "등록 화면에서 사람이 정한 문서 분류. 비운 칸은 규칙 결과를 쓴다."
       },
+      "DocumentLines": {
+        "properties": {
+          "file_no": {
+            "type": "integer",
+            "title": "File No"
+          },
+          "file_name": {
+            "type": "string",
+            "title": "File Name"
+          },
+          "line_from": {
+            "type": "integer",
+            "title": "Line From"
+          },
+          "line_to": {
+            "type": "integer",
+            "title": "Line To"
+          },
+          "partial": {
+            "type": "boolean",
+            "title": "Partial"
+          },
+          "lines": {
+            "items": {
+              "$ref": "#/components/schemas/SourceLine"
+            },
+            "type": "array",
+            "title": "Lines"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "file_no",
+          "file_name",
+          "line_from",
+          "line_to",
+          "partial",
+          "lines"
+        ],
+        "title": "DocumentLines",
+        "description": "원문 줄 범위 (add-judgment-view). partial이면 파일이 없어 DB에 남은 줄만 왔다."
+      },
       "DocumentPair": {
         "properties": {
           "pair_id": {
@@ -15204,6 +15317,25 @@
           "mails"
         ],
         "title": "SendResult"
+      },
+      "SourceLine": {
+        "properties": {
+          "line_no": {
+            "type": "integer",
+            "title": "Line No"
+          },
+          "text": {
+            "type": "string",
+            "title": "Text"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "line_no",
+          "text"
+        ],
+        "title": "SourceLine"
       },
       "StageResult": {
         "properties": {

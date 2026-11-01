@@ -25,6 +25,7 @@ from rfp_agent.api.schemas import (
     DecisionResult,
     Deliverables,
     DocKind,
+    DocumentLines,
     DocumentPair,
     DocumentPreview,
     EngineeringCheck,
@@ -73,6 +74,7 @@ from rfp_agent.pipeline import (
     run_control,
     run_log,
     sales_handoff,
+    source_lines,
     tbe,
 )
 from rfp_agent.pipeline.assignments import build_assignments
@@ -380,6 +382,23 @@ def run_documents(run_id: int) -> list[RunDocument]:
     _summary(run_id)
     with connect() as conn:
         return queries.run_documents(conn, run_id)
+
+
+@router.get("/runs/{run_id}/documents/{file_no}/lines")
+def document_lines(run_id: int, file_no: int, from_: int = Query(alias="from"),
+                   to: int = Query()) -> DocumentLines:
+    """원문 줄 범위 (최대 40줄). 분석 때와 같은 줄 번호 (판정 상세 화면, add-judgment-view)."""
+    _summary(run_id)
+    settings = get_settings()
+    txt_dir = settings.txt_dir if settings.txt_dir.exists() else None
+    with connect() as conn:
+        try:
+            out = source_lines.document_lines(conn, run_id, file_no, from_, to, txt_dir)
+        except source_lines.LineRangeError as exc:
+            raise HTTPException(400, str(exc)) from exc
+    if out is None:
+        raise HTTPException(404, f"이 검토에 파일 {file_no} 문서가 없습니다.")
+    return out
 
 
 @router.get("/runs/{run_id}/pairs")

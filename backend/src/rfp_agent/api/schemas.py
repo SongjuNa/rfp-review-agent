@@ -145,6 +145,21 @@ class RunDocument(Out):
     reprocessed: bool = False               # 점검 뒤 일반 처리기로 다시 처리함
 
 
+class SourceLine(Out):
+    line_no: int
+    text: str
+
+
+class DocumentLines(Out):
+    """원문 줄 범위 (add-judgment-view). partial이면 파일이 없어 DB에 남은 줄만 왔다."""
+    file_no: int
+    file_name: str
+    line_from: int
+    line_to: int
+    partial: bool
+    lines: list[SourceLine]
+
+
 DocKind = Literal["BID_FORM", "REQUIREMENT_SPEC", "PURCHASE_SPEC", "TEST_SPEC", "SUPPLIER_SPEC",
                   "UNKNOWN"]
 

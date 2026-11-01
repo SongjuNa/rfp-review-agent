@@ -10,14 +10,14 @@ import type {
 export type {
   ApprovalScreen, Assignment, BusinessDetail, CommercialImpact, CompareRow, CompareTarget, CompareTargets, PastCompare, CostCondition, CostSummary, BusinessEvent, BusinessList, BusinessListItem, BusinessLog, BusinessPerson,
   BusinessRange, CompareRule, Criterion, Datasheet, DatasheetInfo, DatasheetRow, DocKindRule,
-  DocumentChoice, DocumentPreview, EngineeringCheck,
+  DocumentChoice, DocumentLines, DocumentPreview, EngineeringCheck,
   Equipment, Health, ItemKey, Judgment, JudgmentCounts, Location, LogEntry, Loss, MyTasks, OutputItem, Product,
   ProductDetail, ProductFamily, Proposal, ReadCheck, Requirement, ReviewCard, Risk, RiskExpression, RuleEdit, RunDocument,
   AnswerKey, EvalMetric, EvalRun, EvalScore, AssistantAnswer, AssistantEvidence, RunListItem, RunLogItem, RunSummary, RuleSuggestion, MeaningCandidate, RiskMeaning, SalesHandoff, SubmissionCheck, Tbe, TbeRow, User, Warranty,
 } from './api.gen'
 import type {
   CompareRule, DatasheetInfo, Datasheet, DocKindRule, EngineeringCheck, Equipment, Health, ItemKey, Judgment, JudgmentCounts,
-  LogEntry, Loss, MyTasks, OutputItem, Product, ProductDetail, ProductFamily, Proposal, ReadCheck, Requirement,
+  DocumentLines, LogEntry, Loss, MyTasks, OutputItem, Product, ProductDetail, ProductFamily, Proposal, ReadCheck, Requirement,
   Risk, RiskExpression, RunDocument, RunListItem, SubmissionCheck, Tbe, User, Warranty, Assignment,
 } from './api.gen'
 
@@ -153,6 +153,9 @@ export const api = {
   judgmentCounts: (id: number) => call<JudgmentCounts>(`/runs/${id}/judgment-counts`),
   run: (id: number) => call<RunSummary>(`/runs/${id}`),
   documents: (id: number) => call<RunDocument[]>(`/runs/${id}/documents`),
+  /** 원문 줄 범위 (최대 40줄, add-judgment-view). partial이면 파일이 없어 저장된 줄만 */
+  documentLines: (id: number, fileNo: number, from: number, to: number) =>
+    call<DocumentLines>(`/runs/${id}/documents/${fileNo}/lines?from=${from}&to=${to}`),
   requirements: (id: number, params: { type_code?: string; offset?: number; limit?: number }) =>
     call<Requirement[]>(`/runs/${id}/requirements?${query(params)}`),
   requirement: (reqId: number, runId: number) => call<Requirement>(`/requirements/${reqId}?run_id=${runId}`),

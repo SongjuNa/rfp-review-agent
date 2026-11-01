@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { as, deviationRun, ENGINEER, openTab } from './helpers'
+import { as, deviationRun, ENGINEER, openTab, backFromJudgment } from './helpers'
 
 // 명세 review-workspace "검토 상세 요약 칸과 탭"·"판정 표 거르기"·"판정 상세 패널"의 Scenario (change update-review-screens).
 
@@ -52,7 +52,8 @@ test('줄을 눌러 원문 보기', async ({ page, request }) => {
   await page.goto(`/#/reviews/${run.run_id}`)
   await page.locator('.fbar .chip', { hasText: '질의 후보' }).click()
   await page.locator('#judge .tw tbody tr').first().click()
-  const dialog = page.getByRole('dialog')
+  const dialog = page.locator('.jv')                                                // 판정 상세 화면 (add-judgment-view)
+  await expect(page).toHaveURL(/\/judgments\/\d+\?f=QUERY_CANDIDATE$/)
   await expect(dialog.locator('.mdpos')).toContainText('판정 1 /')
   await expect(dialog.locator('.paper')).toContainText(j.req_value_raw)            // 원문 문장
   await expect(dialog.locator('.basis')).toContainText(j.reason_text)               // 판정 근거
@@ -71,7 +72,7 @@ test('사유 없이 판정 바꾸기', async ({ page, request }) => {
   await page.locator('.fbar .chip', { hasText: '확인 필요' }).click()
   const first = page.locator('#judge .tw tbody tr').first()
   await first.click()
-  await page.keyboard.press('Escape')
+  await backFromJudgment(page)
   const panel = page.getByRole('complementary', { name: '원문과 판정' })
   await panel.getByLabel('새 판정').selectOption('QUERY_CANDIDATE')
   const apply = panel.getByRole('button', { name: '적용' })
@@ -81,5 +82,5 @@ test('사유 없이 판정 바꾸기', async ({ page, request }) => {
   await page.locator('.fbar .chip', { hasText: '질의 후보' }).click()
   await expect(page.locator('#judge .tw tbody tr', { hasText: '바꿈' }).first()).toBeVisible()
   await page.locator('#judge .tw tbody tr', { hasText: '바꿈' }).first().click()
-  await expect(page.getByRole('dialog').locator('.pv')).toContainText('기본 엔지니어')    // 담당자 확정이 바뀜
+  await expect(page.locator('.jv .pv')).toContainText('기본 엔지니어')    // 담당자 확정이 바뀜 (판정 상세 화면)
 })
