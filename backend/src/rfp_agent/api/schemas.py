@@ -116,6 +116,14 @@ class RunListItem(ReviewFields):
     risks: int
     deviation_candidates: int
     proposals: int
+    # 가장 최근 상신의 결재 정보 (취소했거나 상신 전이면 비어 있음, update-review-list-approval)
+    approver_id: int | None
+    approver: str | None
+    requested_by_id: int | None
+    requested_by: str | None
+    requested_at: datetime | None
+    decision: Literal["APPROVED", "REJECTED"] | None
+    decided_at: datetime | None
 
 
 class RunDocument(Out):

@@ -931,6 +931,13 @@ export type ReviewCard = {
   risks: number
   deviation_candidates: number
   proposals: number
+  approver_id: number | null
+  approver: string | null
+  requested_by_id: number | null
+  requested_by: string | null
+  requested_at: string | null
+  decision: 'APPROVED' | 'REJECTED' | null
+  decided_at: string | null
   summary: RunSummary
   criteria: Criterion[]
   approval?: Approval | null
@@ -1055,6 +1062,13 @@ export type RunListItem = {
   risks: number
   deviation_candidates: number
   proposals: number
+  approver_id: number | null
+  approver: string | null
+  requested_by_id: number | null
+  requested_by: string | null
+  requested_at: string | null
+  decision: 'APPROVED' | 'REJECTED' | null
+  decided_at: string | null
 }
 
 /** 실행 기록 한 줄 (add-run-log, NFR-09). 비용은 모델 단가(팀 가정)로 어림한 값. */

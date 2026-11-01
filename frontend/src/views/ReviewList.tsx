@@ -5,8 +5,9 @@ import { STAGE_NAMES, STAGE_TONES, STEP_NAMES } from '../components/labels'
 import { Pager } from '../components/Pager'
 import { useLoad, useRepeat } from '../components/useLoad'
 import { progress } from '../components/progress'
-import { href } from '../shell/router'
+import { currentPath, href } from '../shell/router'
 import { useSession } from '../shell/useSession'
+import './detail.css'
 
 // SCR-06 검토 목록 (목업 v4.57 Main). docs/screens/SCR-06-검토목록.md
 
@@ -15,6 +16,10 @@ type Has = '' | 'requirements' | 'risks' | 'deviation_candidates' | 'proposals'
 type Field = 'all' | 'name' | 'id' | 'file'
 type SortKey = 'started' | 'requirements' | 'dev'
 type Search = { stage: string; has: Has; field: Field; q: string }
+type Scope = 'mine' | 'all' | 'submitted' | number
+// "내가 올린 결재" 보기의 결정 칩 (update-review-list-approval)
+type Ap = 'all' | 'wait' | 'rej' | 'ok'
+const APS: [Ap, string][] = [['all', '전체'], ['wait', '결재 대기'], ['rej', '반려'], ['ok', '승인']]
 
 const PERIODS: [Period, string][] = [['1w', '1주'], ['1m', '1개월'], ['all', '전체']]
 const HAS: [Has, string][] = [['', '전체'], ['requirements', '요구사항'], ['risks', '위험'], ['deviation_candidates', '일탈'],
@@ -45,12 +50,37 @@ function matches(r: RunListItem, field: Field, q: string): boolean {
   return text.toLowerCase().includes(q.toLowerCase())
 }
 
+function apState(r: RunListItem): Ap | null {
+  if (!r.requested_at) return null
+  return r.decision === 'REJECTED' ? 'rej' : r.decision === 'APPROVED' ? 'ok' : 'wait'
+}
+
+/** 첫 화면 담당 범위: `#/reviews?scope=submitted`면 내가 올린 결재 */
+function initialScope(): Scope {
+  const q = currentPath().split('?')[1] ?? ''
+  return new URLSearchParams(q).get('scope') === 'submitted' ? 'submitted' : 'mine'
+}
+
+function ApprovalCell({ r, now }: { r: RunListItem; now: number }) {
+  const st = apState(r)
+  if (!st) return <span className="dimv">—</span>
+  const days = Math.max(0, Math.floor((now - new Date(r.requested_at!).getTime()) / 86_400_000))
+  return (
+    <div style={{ whiteSpace: 'nowrap' }}>
+      <span style={{ fontWeight: 600 }}>{r.approver ?? '결재자 없음'}</span>
+      <div className="cond" style={{ marginTop: 1 }}>
+        {st === 'wait' ? `상신 ${days}일째` : `${st === 'rej' ? '반려' : '승인'} ${stamp(r.decided_at!)}`}
+      </div>
+    </div>
+  )
+}
+
 function Count({ v, hot, processing }: { v: number; hot?: string; processing: boolean }) {
   if (processing) return <span className="dimv">—</span>
   return <span className={v === 0 ? 'dimv' : hot ?? ''}>{num(v)}</span>
 }
 
-function Row({ r, seq, me }: { r: RunListItem; seq: number; me: number | null }) {
+function Row({ r, seq, me, now }: { r: RunListItem; seq: number; me: number | null; now: number | null }) {
   const scope = scopeName(r)
   const detail = href(`/reviews/${r.run_id}`)
   const processing = r.stage === 'PROCESSING'
@@ -89,6 +119,7 @@ function Row({ r, seq, me }: { r: RunListItem; seq: number; me: number | null })
       <td className="num"><Count v={r.risks} processing={processing || failed} /></td>
       <td className="num"><Count v={r.deviation_candidates} hot="neg" processing={processing || failed} /></td>
       <td className="num"><Count v={r.proposals} processing={processing || failed} /></td>
+      {now !== null && <td><ApprovalCell r={r} now={now} /></td>}
       <td><a className="dots" href={detail} aria-label={`${r.review_no} 열기`}><span className="ms" aria-hidden="true">more_horiz</span></a></td>
     </tr>
   )
@@ -112,7 +143,9 @@ export function ReviewList() {
   const runs = useLoad(() => api.runs(), [])
   useRepeat(!!runs.data?.some((r) => r.stage === 'PROCESSING'), runs.reload)   // 처리 중이면 5초마다 다시 본다
   const [period, setPeriod] = useState<Period>('all')
-  const [scope, setScope] = useState<'mine' | 'all' | number>('mine')
+  const [scope, setScope] = useState<Scope>(initialScope)
+  const [ap, setAp] = useState<Ap>('all')
+  const [now] = useState(() => Date.now())          // 상신 후 날 수 기준 (화면을 연 때)
   const [draft, setDraft] = useState<Search>(EMPTY)
   const [search, setSearch] = useState<Search>(EMPTY)
   const [sort, setSort] = useState<{ key: SortKey; dir: 'asc' | 'desc' }>({ key: 'started', dir: 'desc' })
@@ -120,16 +153,23 @@ export function ReviewList() {
   const [size, setSize] = useState(10)
   const me = user?.user_id ?? null
   const all = runs.data ?? []
-  const owned = all.filter((r) => scope === 'all' || r.engineer_id === (scope === 'mine' ? me : scope))
+  const submitted = scope === 'submitted'
+  // 내가 올린 결재: 머리글에서 고른 사용자가 가장 최근에 상신한 검토 (취소한 상신은 빠짐)
+  const owned = all.filter((r) => scope === 'all' || (submitted ? r.requested_by_id === me && me !== null
+    : r.engineer_id === (scope === 'mine' ? me : scope)))
   const from = FROM[period]
   const key = { started: (r: RunListItem) => r.started_at, requirements: (r: RunListItem) => r.requirements,
     dev: (r: RunListItem) => r.deviation_candidates }[sort.key]
   const dir = sort.dir === 'asc' ? 1 : -1
-  const rows = owned
+  const base = owned
     .filter((r) => !from || r.started_at.slice(0, 10) >= isoDay(from))
     .filter((r) => search.stage === 'all' || r.stage === search.stage)
     .filter((r) => !search.has || r[search.has] > 0)
     .filter((r) => matches(r, search.field, search.q.trim()))
+  // 결정 칩 개수는 다른 거름(기간·찾기)을 적용한 뒤의 수
+  const apCount = (k: Ap) => base.filter((r) => k === 'all' || apState(r) === k).length
+  const rows = base
+    .filter((r) => !submitted || ap === 'all' || apState(r) === ap)
     .sort((a, b) => (key(a) > key(b) ? dir : key(a) < key(b) ? -dir : 0))
   const pages = Math.max(1, Math.ceil(rows.length / size))
   const cur = Math.min(page, pages)
@@ -158,7 +198,9 @@ export function ReviewList() {
 
       <div className="sumline">
         <span>내가 처리할 건<b className="c-blue">{count('ENGINEER_REVIEW', true)}</b></span>
-        <span>결재 대기<b>{count('APPROVAL')}</b></span>
+        <button type="button" className="sumlink" title="누르면 결재 대기만 보입니다"
+          onClick={() => { const s = { ...draft, stage: 'APPROVAL' }; setDraft(s); apply(s) }}>
+          결재 대기<b>{count('APPROVAL')}</b></button>
         <span>분석 실패<b className="c-red">{count('FAILED')}</b></span>
       </div>
 
@@ -167,9 +209,9 @@ export function ReviewList() {
           <h2>검토 <span style={{ fontWeight: 400, color: '#667085' }}>{rows.length}</span></h2>
           <div className="own">
             <div className="seg" role="group" aria-label="담당 범위">
-              {([['mine', '내 검토'], ['all', '팀 전체']] as const).map(([k, l]) => (
+              {([['mine', '내 검토'], ['all', '팀 전체'], ['submitted', '내가 올린 결재']] as const).map(([k, l]) => (
                 <button key={k} type="button" className={scope === k ? 'on' : ''} aria-pressed={scope === k}
-                  onClick={() => { setScope(k); setPage(1) }}>{l}</button>
+                  onClick={() => { setScope(k); setAp('all'); setPage(1) }}>{l}</button>
               ))}
             </div>
             <label className="ownl"><span>담당자</span>
@@ -187,6 +229,14 @@ export function ReviewList() {
         {other && (
           <div className="ronote"><span className="ms" aria-hidden="true">visibility</span>
             <span><b>{other.user_name}</b>의 검토를 보고 있습니다.</span></div>
+        )}
+        {submitted && (
+          <div className="apchips" role="group" aria-label="결재 결정">
+            {APS.map(([k, l]) => (
+              <button key={k} type="button" className={'apchip' + (ap === k ? ' on' : '')} aria-pressed={ap === k}
+                onClick={() => { setAp(k); setPage(1) }}>{l} <b>{apCount(k)}</b></button>
+            ))}
+          </div>
         )}
         <div className="sp" role="search" aria-label="검토 찾기">
           <div className="sp-r1">
@@ -235,20 +285,22 @@ export function ReviewList() {
               <th className="num">위험</th>
               <SortHead k="dev" label="일탈" sort={sort} onSort={onSort} num />
               <th className="num">제안</th>
+              {submitted && <th style={{ width: 120 }}>결재</th>}
               <th style={{ width: 28 }} />
             </tr></thead>
             <tbody>
               {runs.data === null && !runs.error && (
-                <tr><td colSpan={11} className="dimv">불러오는 중…</td></tr>
+                <tr><td colSpan={submitted ? 12 : 11} className="dimv">불러오는 중…</td></tr>
               )}
-              {shown.map((r, i) => <Row key={r.run_id} r={r} seq={(cur - 1) * size + i + 1} me={me} />)}
+              {shown.map((r, i) => <Row key={r.run_id} r={r} seq={(cur - 1) * size + i + 1} me={me} now={submitted ? now : null} />)}
             </tbody>
           </table>
           <Pager total={rows.length} page={cur} size={size} shown={shown.length} onPage={setPage}
             onSize={(n) => { setSize(n); setPage(1) }} />
         </div>
         {runs.data !== null && rows.length === 0 && (
-          <p style={{ margin: 0, padding: '16px 12px', color: '#667085' }}>조건에 맞는 검토가 없습니다.</p>
+          <p style={{ margin: 0, padding: '16px 12px', color: '#667085' }}>
+            {submitted && owned.length === 0 ? '내가 상신한 검토가 없습니다.' : '조건에 맞는 검토가 없습니다.'}</p>
         )}
       </section>
     </main>
