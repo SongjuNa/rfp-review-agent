@@ -135,13 +135,14 @@ def _refine_with_ai(llm: LLM, candidates: list[Candidate], report: Report,
         if c.source_kind == "SENTENCE" and c.req_kind == "REQUIREMENT":
             by_section.setdefault(c.section.index if c.section else None, []).append(c)
     total = sum(len(g) for g in by_section.values())
-    before = 0                  # 절마다 나눠 묻지만 진행은 문서 전체 문장 수로 이어 센다
     report("label", 0, total)
-    for group in by_section.values():
-        title = group[0].section.title if group[0].section else None
-        labels = tasks.label_sentences(llm, title, [c.text for c in group],
-                                       lambda done, _, b=before: report("label", b + done, total))
-        before += len(group)
+    groups = list(by_section.values())
+    # 절마다 40줄씩 묻되 모든 절의 묶음을 함께 동시에 보낸다. 진행은 문서 전체 문장 수로 센다
+    answers = tasks.label_sections(
+        llm, [(g[0].section.title if g[0].section else None, [c.text for c in g])
+              for g in groups],
+        lambda done, _: report("label", done, total))
+    for group, labels in zip(groups, answers, strict=True):
         for c, label in zip(group, labels, strict=True):
             if label == "WRITING_RULE":
                 c.req_kind, c.rule_id, c.extracted_by = "WRITING_RULE", "E-AI-WRITING-RULE", "AI"

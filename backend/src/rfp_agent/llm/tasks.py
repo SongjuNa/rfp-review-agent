@@ -6,6 +6,7 @@ from dataclasses import dataclass
 
 from rfp_agent.llm.client import LLM, LLMFailure, call_with_retry
 from rfp_agent.llm.evidence import EvidenceSpan, normalize_quote
+from rfp_agent.llm.parallel import run_ordered, workers_of
 
 PROMPT_VERSION = "p2"
 DOC_KINDS = ["BID_FORM", "REQUIREMENT_SPEC", "PURCHASE_SPEC", "TEST_SPEC", "SUPPLIER_SPEC",
@@ -63,28 +64,61 @@ def _pick_each(llm: LLM, items: list[str], field: str, choices: list[str], promp
                 + _pick_each(llm, items[half:], field, choices, prompt_of))
 
 
+def _label_prompt(section_title: str | None, part: list[str]) -> str:
+    numbered = "\n".join(f"{i}. {one_line(s)[:600]}" for i, s in enumerate(part))
+    return (
+        "RFP의 한 절에서 뽑은 문장들이다. "
+        "각 문장이 입찰자가 지켜야 할 요구사항(REQUIREMENT)인지, "
+        "제출 양식을 채우는 방법에 대한 작성 규칙(WRITING_RULE)인지, "
+        "설명(DESCRIPTION)인지 고른다. "
+        "문장 수와 같은 개수의 label을 같은 순서로 낸다.\n"
+        f"절 제목: {section_title or '(없음)'}\n{numbered}"
+    )
+
+
+def _pick_chunks(llm: LLM, chunks: list[tuple[list[str], Callable[[list[str]], str]]],
+                 field: str, choices: list[str], total: int,
+                 on_progress: Progress | None) -> list[list[str]]:
+    """40줄 묶음들을 동시에 묻는다(NFR-10). 결과는 묶음 순서, 진행은 묶음이 끝날 때마다."""
+    done = 0
+
+    def finished(i: int, _labels: list[str]) -> None:
+        nonlocal done
+        done += len(chunks[i][0])
+        if on_progress:
+            on_progress(done, total)
+
+    jobs = [lambda part=part, prompt_of=prompt_of: _pick_each(llm, part, field, choices,
+                                                              prompt_of)
+            for part, prompt_of in chunks]
+    return run_ordered(jobs, workers_of(llm), finished)
+
+
+def label_sections(llm: LLM, sections: list[tuple[str | None, list[str]]],
+                   on_progress: Progress | None = None) -> list[list[str]]:
+    """절마다 문장에 요구사항 / 작성 규칙 / 설명 중 하나를 붙인다.
+
+    묻는 글은 절 하나의 40줄 묶음 단위(차례로 할 때와 같음)이고,
+    모든 절의 묶음을 함께 동시에 보낸다.
+    """
+    chunks, owner = [], []
+    for n, (title, sentences) in enumerate(sections):
+        for start in range(0, len(sentences), CHUNK):
+            chunks.append((sentences[start:start + CHUNK],
+                           lambda part, t=title: _label_prompt(t, part)))
+            owner.append(n)
+    total = sum(len(s) for _, s in sections)
+    answers = _pick_chunks(llm, chunks, "labels", SENTENCE_LABELS, total, on_progress)
+    out: list[list[str]] = [[] for _ in sections]
+    for n, labels in zip(owner, answers, strict=True):
+        out[n].extend(labels)
+    return out
+
+
 def label_sentences(llm: LLM, section_title: str | None, sentences: list[str],
                     on_progress: Progress | None = None) -> list[str]:
-    """절 단위로 문장마다 요구사항 / 작성 규칙 / 설명 중 하나를 붙인다."""
-
-    def prompt_of(part: list[str]) -> str:
-        numbered = "\n".join(f"{i}. {one_line(s)[:600]}" for i, s in enumerate(part))
-        return (
-            "RFP의 한 절에서 뽑은 문장들이다. "
-            "각 문장이 입찰자가 지켜야 할 요구사항(REQUIREMENT)인지, "
-            "제출 양식을 채우는 방법에 대한 작성 규칙(WRITING_RULE)인지, "
-            "설명(DESCRIPTION)인지 고른다. "
-            "문장 수와 같은 개수의 label을 같은 순서로 낸다.\n"
-            f"절 제목: {section_title or '(없음)'}\n{numbered}"
-        )
-
-    labels: list[str] = []
-    for start in range(0, len(sentences), CHUNK):
-        labels.extend(_pick_each(llm, sentences[start:start + CHUNK], "labels", SENTENCE_LABELS,
-                                 prompt_of))
-        if on_progress:
-            on_progress(len(labels), len(sentences))
-    return labels
+    """절 하나의 문장마다 요구사항 / 작성 규칙 / 설명 중 하나를 붙인다."""
+    return label_sections(llm, [(section_title, sentences)], on_progress)[0]
 
 
 def type_unclassified(llm: LLM, texts: list[str],
@@ -98,12 +132,9 @@ def type_unclassified(llm: LLM, texts: list[str],
             "SITE_ENV=설치 환경, NONE=어느 것도 아님. 같은 순서, 같은 개수로 낸다.\n" + numbered
         )
 
-    out: list[str] = []
-    for start in range(0, len(texts), CHUNK):
-        out.extend(_pick_each(llm, texts[start:start + CHUNK], "types", TYPE_CODES, prompt_of))
-        if on_progress:
-            on_progress(len(out), len(texts))
-    return out
+    chunks = [(texts[start:start + CHUNK], prompt_of) for start in range(0, len(texts), CHUNK)]
+    answers = _pick_chunks(llm, chunks, "types", TYPE_CODES, len(texts), on_progress)
+    return [code for part in answers for code in part]
 
 
 NUMBER = re.compile(r"\d+(?:[.,]\d+)?")
@@ -186,9 +217,8 @@ def draft_sentences(llm: LLM, purpose: str, items: list[tuple[str, dict[str, str
     items: (사실 문장, {자리표시자: 뜻}) 목록.
     자리표시자 밖의 숫자나 경쟁 제품 비교가 있으면 실패로 본다.
     """
-    out: list[str] = []
-    for start in range(0, len(items), CHUNK):
-        part = items[start:start + CHUNK]
+
+    def ask(part: list[tuple[str, dict[str, str]]]) -> list[str]:
         numbered = "\n".join(
             f"{i}. {one_line(facts)} (자리표시자: "
             + ", ".join(f"{{{k}}}={v}" for k, v in marks.items()) + ")"
@@ -203,11 +233,15 @@ def draft_sentences(llm: LLM, purpose: str, items: list[tuple[str, dict[str, str
         schema = {"type": "object", "properties": {"texts": {
             "type": "array", "items": {"type": "string"}}}, "required": ["texts"]}
 
-        def check(d, part=part):
+        def check(d):
             assert len(d["texts"]) == len(part)
             for text, (_, marks) in zip(d["texts"], part, strict=True):
                 assert text.strip() and not COMPETITOR.search(text)
                 assert set(_PLACEHOLDER.findall(text)) <= set(marks)
 
-        out.extend(t.strip() for t in call_with_retry(llm, prompt, schema, check)["texts"])
-    return out
+        return [t.strip() for t in call_with_retry(llm, prompt, schema, check)["texts"]]
+
+    # 40줄 묶음을 동시에 묻고 묶음 순서대로 잇는다 (NFR-10)
+    jobs = [lambda part=items[start:start + CHUNK]: ask(part)
+            for start in range(0, len(items), CHUNK)]
+    return [t for part in run_ordered(jobs, workers_of(llm)) for t in part]

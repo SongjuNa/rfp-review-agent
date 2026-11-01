@@ -90,9 +90,7 @@ class FakeLLM:
 
     def generate_json(self, prompt: str, schema: dict) -> dict:
         self.prompts.append(prompt)
-        self.usage.input_tokens += 100
-        self.usage.output_tokens += 10
-        self.usage.thinking_tokens += 5
+        self.usage.add(input_tokens=100, output_tokens=10, thinking_tokens=5)
         if self.fail:
             raise TimeoutError("응답 시간 초과")
         field = next(iter(schema["properties"]))
