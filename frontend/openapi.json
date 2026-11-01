@@ -4823,16 +4823,31 @@
           },
           "key_kind": {
             "type": "string",
-            "const": "TYPE",
+            "enum": [
+              "TYPE",
+              "REQ"
+            ],
             "title": "Key Kind"
           },
           "made_by": {
             "type": "string",
             "enum": [
               "CLAUDE_DRAFT",
-              "HUMAN"
+              "HUMAN",
+              "AUTO"
             ],
             "title": "Made By"
+          },
+          "doc_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Doc Name"
           },
           "created_at": {
             "type": "string",
@@ -4859,13 +4874,14 @@
           "key_name",
           "key_kind",
           "made_by",
+          "doc_name",
           "created_at",
           "rows",
           "human_checked",
           "ambiguous"
         ],
         "title": "AnswerKey",
-        "description": "유형 정답지. made_by가 CLAUDE_DRAFT면 사람 확인 전 초안."
+        "description": "정답지. TYPE = 유형 정답지, REQ = 요구사항 정답지(add-requirement-answer-key).\n\nmade_by가 CLAUDE_DRAFT(Claude 초안)·AUTO(코드 자동)면 사람 확인 전."
       },
       "Approval": {
         "properties": {
@@ -8785,6 +8801,16 @@
               }
             ]
           },
+          "requirements": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/EvalRequirementDetail"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "not_measured": {
             "items": {
               "$ref": "#/components/schemas/EvalNotMeasured"
@@ -8825,6 +8851,61 @@
           "note"
         ],
         "title": "EvalNotMeasured"
+      },
+      "EvalRequirementDetail": {
+        "properties": {
+          "documents": {
+            "type": "integer",
+            "title": "Documents"
+          },
+          "requirement_rows": {
+            "type": "integer",
+            "title": "Requirement Rows"
+          },
+          "found": {
+            "type": "integer",
+            "title": "Found"
+          },
+          "system_requirements": {
+            "type": "integer",
+            "title": "System Requirements"
+          },
+          "correct": {
+            "type": "integer",
+            "title": "Correct"
+          },
+          "value_rows": {
+            "type": "integer",
+            "title": "Value Rows"
+          },
+          "value_hit": {
+            "type": "integer",
+            "title": "Value Hit"
+          },
+          "risk_rows": {
+            "type": "integer",
+            "title": "Risk Rows"
+          },
+          "risk_found": {
+            "type": "integer",
+            "title": "Risk Found"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "documents",
+          "requirement_rows",
+          "found",
+          "system_requirements",
+          "correct",
+          "value_rows",
+          "value_hit",
+          "risk_rows",
+          "risk_found"
+        ],
+        "title": "EvalRequirementDetail",
+        "description": "요구사항 정답지 채점의 자세한 수 (K1·K2·K3·K10)."
       },
       "EvalRun": {
         "properties": {
@@ -8942,7 +9023,8 @@
                 "type": "string",
                 "enum": [
                   "CLAUDE_DRAFT",
-                  "HUMAN"
+                  "HUMAN",
+                  "AUTO"
                 ]
               },
               {
@@ -8950,6 +9032,44 @@
               }
             ],
             "title": "Key Made By"
+          },
+          "req_key_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Req Key Id"
+          },
+          "req_key_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Req Key Name"
+          },
+          "req_key_made_by": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "CLAUDE_DRAFT",
+                  "HUMAN",
+                  "AUTO"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Req Key Made By"
           },
           "metrics": {
             "$ref": "#/components/schemas/EvalMetrics"
@@ -9012,6 +9132,9 @@
           "key_id",
           "key_name",
           "key_made_by",
+          "req_key_id",
+          "req_key_name",
+          "req_key_made_by",
           "metrics",
           "note",
           "code_version",
@@ -14476,6 +14599,17 @@
               }
             ],
             "title": "Key Id"
+          },
+          "req_key_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Req Key Id"
           },
           "note": {
             "anyOf": [

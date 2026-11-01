@@ -1119,11 +1119,14 @@ class RunLogItem(ReviewFields):
 # 정답지·채점 (add-evaluation, 명세 evaluation)
 
 class AnswerKey(Out):
-    """유형 정답지. made_by가 CLAUDE_DRAFT면 사람 확인 전 초안."""
+    """정답지. TYPE = 유형 정답지, REQ = 요구사항 정답지(add-requirement-answer-key).
+
+    made_by가 CLAUDE_DRAFT(Claude 초안)·AUTO(코드 자동)면 사람 확인 전."""
     key_id: int
     key_name: str
-    key_kind: Literal["TYPE"]
-    made_by: Literal["CLAUDE_DRAFT", "HUMAN"]
+    key_kind: Literal["TYPE", "REQ"]
+    made_by: Literal["CLAUDE_DRAFT", "HUMAN", "AUTO"]
+    doc_name: str | None                # 요구사항 정답지의 대상 문서 이름
     created_at: datetime
     rows: int
     human_checked: int
@@ -1136,7 +1139,7 @@ class EvalRun(Out):
     review_no: str
     review_name: str | None
     stage: Stage
-    reviewed: int                       # 사람이 확정·수정한 판정 줄
+    reviewed: int                       # 사람이 확정·수정한 판정 줄 (0이면 요구사항 정답지 채점용)
     reviewer: str | None
     last_reviewed_at: datetime | None
 
@@ -1166,6 +1169,19 @@ class EvalTypeDetail(Out):
     ambiguous_hit: int
 
 
+class EvalRequirementDetail(Out):
+    """요구사항 정답지 채점의 자세한 수 (K1·K2·K3·K10)."""
+    documents: int
+    requirement_rows: int
+    found: int
+    system_requirements: int
+    correct: int
+    value_rows: int
+    value_hit: int
+    risk_rows: int
+    risk_found: int
+
+
 class EvalNotMeasured(Out):
     code: str
     name: str
@@ -1175,6 +1191,7 @@ class EvalNotMeasured(Out):
 class EvalMetrics(Out):
     items: list[EvalMetric]
     types: EvalTypeDetail | None
+    requirements: EvalRequirementDetail | None = None
     not_measured: list[EvalNotMeasured]
 
 
@@ -1184,7 +1201,10 @@ class EvalScore(Out):
     run_ids: list[int]
     key_id: int | None
     key_name: str | None
-    key_made_by: Literal["CLAUDE_DRAFT", "HUMAN"] | None
+    key_made_by: Literal["CLAUDE_DRAFT", "HUMAN", "AUTO"] | None
+    req_key_id: int | None
+    req_key_name: str | None
+    req_key_made_by: Literal["CLAUDE_DRAFT", "HUMAN", "AUTO"] | None
     metrics: EvalMetrics
     note: str | None
     code_version: str | None
