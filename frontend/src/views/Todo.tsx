@@ -119,7 +119,7 @@ export function Todo() {
         <span>24시간 넘게 회신 없음<b className="c-ora">{count('late')}</b></span><span>회신 받음<b className="c-green">{count('done')}</b></span></div>
 
       <section className="sec">
-        <div className="sech"><h2>요청 항목 <span style={{ fontWeight: 400, color: '#667085' }}>{rows.length}</span></h2>
+        <div className="sech"><h2>요청 항목 <span style={{ fontWeight: 400, color: 'var(--c-muted)' }}>{rows.length}</span></h2>
           <button type="button" className="bp" onClick={() => setWriting(true)}>
             <span className="ms" aria-hidden="true" style={{ fontSize: 'var(--ic-s)' }}>add</span>요청하기</button></div>
         {list.error && <p role="alert">{list.error} <button type="button" className="lnk" onClick={list.reload}>다시 불러오기</button></p>}
@@ -138,7 +138,7 @@ export function Todo() {
                       {fail && <div><span className="st c-red" style={{ marginTop: 4 }} title={a.mail_error ?? ''}>{fail}</span></div>}</td>
                     <td>{t && <span className="tag" style={{ margin: '0 6px 0 0' }}>{t}</span>}<span style={{ fontWeight: 600 }}>{title(a)}</span>
                       {a.is_assumed && <span className="tag">팀 가정</span>}
-                      <div style={{ fontSize: 'var(--fs-sm)', color: '#475467', marginTop: 4 }}>{desc(a)}</div>
+                      <div style={{ fontSize: 'var(--fs-sm)', color: 'var(--c-text-3)', marginTop: 4 }}>{desc(a)}</div>
                       <div className="cond meta"><a href={href(`/reviews/${a.run_id}`)} onClick={(e) => e.stopPropagation()}>{a.review_no}</a>
                         <span>{where(a)}</span></div>
                     </td>
@@ -155,7 +155,7 @@ export function Todo() {
           {rows.length > 0 && <Pager total={rows.length} page={cur} size={size} shown={shown.length} onPage={setPage}
             onSize={(n) => { setSize(n); setPage(1) }} />}
         </div>
-        {list.data !== null && rows.length === 0 && <p style={{ margin: 0, padding: '16px 12px', color: '#667085' }}>이 담당에게 요청 항목이 없습니다.</p>}
+        {list.data !== null && rows.length === 0 && <p style={{ margin: 0, padding: '16px 12px', color: 'var(--c-muted)' }}>이 담당에게 요청 항목이 없습니다.</p>}
       </section>
       {picked && <Detail a={picked} now={now} dept={label} user={user} sending={sending !== null} onSend={send} onClose={() => setOpen(null)}
         onChanged={(msg) => { setToast(msg); list.reload() }} />}

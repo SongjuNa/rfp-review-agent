@@ -88,13 +88,13 @@ export function Tbe({ runId }: { runId: number }) {
       </div>
       <ErrorText error={data.error ?? run.error ?? error} />
       <section className="sec" style={{ marginTop: 24 }}>
-        <div className="sech"><h2>미리보기 <span style={{ fontWeight: 400, color: '#667085' }}>{d?.file_name}</span></h2></div>
+        <div className="sech"><h2>미리보기 <span style={{ fontWeight: 400, color: 'var(--c-muted)' }}>{d?.file_name}</span></h2></div>
         <div className="tw" style={{ marginTop: 12 }}><table className="tbl tb-t">
           <thead><tr><th style={{ width: 52 }}>No.</th><th>{lang === 'ko' ? '항목' : 'Item'}</th><th>고객 요구</th><th style={{ width: 110 }}>준수 여부</th>
             <th>우리 제품값</th><th>원문 위치 (파일 · 절 · 표 · 행)</th><th style={{ width: 70 }}>상태</th></tr></thead>
           <tbody>{shown.map((x) => (
             <tr key={x.judgment_id}>
-              <td className="mono" style={{ color: '#667085' }}>{x.no}</td>
+              <td className="mono" style={{ color: 'var(--c-muted)' }}>{x.no}</td>
               <td><b style={{ fontWeight: 600 }}>{x.item}</b>{x.item_ko && <div className="tb-en">{x.item_ko}</div>}</td>
               <td style={{ whiteSpace: 'nowrap' }}>{x.requirement}</td>
               <td><span className={VERDICT_TONES[x.result]}>{x.verdict}</span></td>
@@ -105,7 +105,7 @@ export function Tbe({ runId }: { runId: number }) {
           ))}</tbody>
         </table></div>
         {d && d.rows.length > 0 && <Pager total={d.rows.length} page={page} size={size} shown={shown.length} onPage={setPage} onSize={(n) => { setSize(n); setPage(1) }} />}
-        {d && d.rows.length === 0 && <p style={{ margin: 0, padding: '16px 12px', color: '#667085' }}>넣을 줄이 없습니다.</p>}
+        {d && d.rows.length === 0 && <p style={{ margin: 0, padding: '16px 12px', color: 'var(--c-muted)' }}>넣을 줄이 없습니다.</p>}
         {c && c.no_location > 0 && (
           <details className="tb-x"><summary>원문 위치가 없어 뺀 줄 {c.no_location}개</summary>
             <ul><li>원문 위치가 없는 판정은 근거를 가리킬 수 없어 넣지 않습니다. 질의서·일탈 목록에서 다룹니다.</li></ul></details>

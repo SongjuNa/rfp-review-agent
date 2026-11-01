@@ -100,7 +100,8 @@ openspec/
 | 61 | `archive/2026-11-01-add-ai-mode` | AI 사용 방식 설정(C5): `RFP_AI_MODE` gemini(외부)·local(사내 OpenAI 호환 주소)·off(규칙만, 키가 있어도 안 보냄). `/api/health`에 방식·모델·외부 전송, 검토 등록·실행 기록에 한 줄. 마이그레이션 없음 (완료) |
 | 62 | `archive/2026-11-01-add-handoff-questions` | 협조 요청 메일에 부서 관점 확인 질문(C4): 메일을 보낼 때 요청마다 견적·품질·영업 관점 "확인할 점" 한 문장을 AI가 씀(숫자 금지, 틀리면 부서 기본 문장, AI 없음·실패해도 메일은 나감). 본문·엑셀·협조 요청 상세에 "AI 작성"·"기본 문장". 0029 (완료) |
 | 63 | `archive/2026-11-01-add-type-examples` | 사람 유형 고치기와 확정 예시(C3, RAG): 판정 상세·협조 요청 상세에서 엔지니어·승인자가 주 유형을 고침(근거 사람, 이력, 담당 전달 다시 만듦). AI 유형 질문에 다른 문서의 사람 고친 줄 중 뜻이 가까운 것(0.80, 최대 2개)을 "사람이 고른 예"로, 정답지 문장 제외. 프롬프트 판 p4, 실행 기록 "유형 예시 n줄" (완료) |
-| 64 | `archive/2026-11-01-update-graph-stops` | 흐름 안의 멈춤 지점(C2): 처리 흐름이 담당자 확인·승인 대기·반려됨에서 LangGraph interrupt로 실제로 멈추고 상신·승인·반려·상신 취소·다시 확인·문서 추가가 그 자리에서 이어 감(갈 곳은 코드 표). 흐름 상태를 단계마다 PostgreSQL에 저장(checkpoint)해 실패·취소한 검토를 다시 시도하면 멈춘 단계부터 이어서, 실행 기록 `resumed_from`. 마이그레이션 번호 없음(라이브러리 표) (완료) |
+| 64 | `archive/2026-11-01-add-ui-foundation` | 프런트 공통 기반: 디자인 토큰(`tokens.css`, lint가 색 값 막음), 공통 부품(`src/ui/` 표 순번·배지·단추 잠김 이유·창·알림 쌓기), 부품 견본 `#/dev/ui`, 프런트 원칙 문서. 화면만 (완료) |
+| 65 | `archive/2026-11-01-update-graph-stops` | 흐름 안의 멈춤 지점(C2): 처리 흐름이 담당자 확인·승인 대기·반려됨에서 LangGraph interrupt로 실제로 멈추고 상신·승인·반려·상신 취소·다시 확인·문서 추가가 그 자리에서 이어 감(갈 곳은 코드 표). 흐름 상태를 단계마다 PostgreSQL에 저장(checkpoint)해 실패·취소한 검토를 다시 시도하면 멈춘 단계부터 이어서, 실행 기록 `resumed_from`. 마이그레이션 번호 없음(라이브러리 표) (완료) |
 
 ## 3. 작업 흐름
 
@@ -150,7 +151,7 @@ archive는 마지막 묶음을 끝낸 사람이 한다.
 ## 6. 코드 규칙
 
 - 백엔드: Python 3.12, FastAPI, Pydantic, psycopg 3, LangGraph. 의존성은 `uv add`로 추가하고 `uv.lock`을 커밋한다.
-- 프런트: React 19, Vite, TypeScript. `/api`는 Vite 프록시로 백엔드에 연결된다.
+- 프런트: React 19, Vite, TypeScript. `/api`는 Vite 프록시로 백엔드에 연결된다. 폴더·상태 관리·이름·토큰·공통 부품·오류 처리 규칙은 `docs/screens/_프런트원칙.md`(색은 `src/styles/tokens.css` 변수만).
 - DB: 스키마를 바꾸면 `db/migrations/`에 **다음 번호 파일을 추가**한다. 이미 있는 마이그레이션은 고치지 않는다.
 - 데이터: 사전·제품표는 `data/seed/`. 고객사 RFP 원문은 `data/private/`에만 두고 **커밋하지 않는다**. 테스트 픽스처에 원문 문장을 길게 옮기지 않는다(필요한 줄만, 고객사명·연락처·단가는 가림).
 - API 응답 모양은 `backend/src/rfp_agent/api/schemas.py`의 Pydantic 모델로 정한다(명세 `api-contract`). 응답 칸을 바꾸면 `cd frontend && npm run gen:api`로 `openapi.json`·`src/api.gen.ts`를 다시 만들어 함께 커밋한다.

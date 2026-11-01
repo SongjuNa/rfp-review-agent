@@ -82,7 +82,7 @@ export function RiskTab({ run, tick, onChanged }: { run: RunSummary; tick: numbe
       <div className="sech"><h2>위험 조건<span className="note">{note}</span></h2></div>
       <Found run={run} docs={docs.data ?? []} />
       {risks.error && <p role="alert">{risks.error} <button type="button" className="lnk" onClick={risks.reload}>다시 불러오기</button></p>}
-      {risks.data?.length === 0 && <p style={{ color: '#667085' }}>위험 조건 후보가 없습니다.</p>}
+      {risks.data?.length === 0 && <p style={{ color: 'var(--c-muted)' }}>위험 조건 후보가 없습니다.</p>}
       {rows.length > 0 && (
         <table className="mini"><tbody>
           {rows.map((r) => {

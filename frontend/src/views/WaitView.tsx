@@ -172,10 +172,10 @@ export function WaitView({ run, onChanged, onWithdrawn }: { run: RunSummary; onC
             <div className="wtw"><table className="wt">
               <thead><tr><th style={{ width: 64 }}>구분</th><th>항목</th><th>요구</th><th>우리 제안 · 판단</th><th>원문 위치</th></tr></thead>
               <tbody>
-                {rows.data?.length === 0 && <tr><td colSpan={5} style={{ color: '#667085' }}>일탈·질의·위험 조건이 없습니다.</td></tr>}
+                {rows.data?.length === 0 && <tr><td colSpan={5} style={{ color: 'var(--c-muted)' }}>일탈·질의·위험 조건이 없습니다.</td></tr>}
                 {rows.data?.map((r) => (
                   <tr key={r.key}><td><span className={KIND_CLS[r.kind]}>{r.kind}</span></td><td style={{ fontWeight: 600 }}>{r.item}</td>
-                    <td>{r.req}</td><td>{r.ours}</td><td className="loc" style={{ color: '#667085', fontSize: 'var(--fs-xs)' }}>{r.loc}</td></tr>
+                    <td>{r.req}</td><td>{r.ours}</td><td className="loc" style={{ color: 'var(--c-muted)', fontSize: 'var(--fs-xs)' }}>{r.loc}</td></tr>
                 ))}
               </tbody>
             </table></div>

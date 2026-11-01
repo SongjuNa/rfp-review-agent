@@ -134,13 +134,13 @@ export function Datasheet({ runId }: { runId: number }) {
           ))}</div>
       </div></div>
       <ErrorText error={sheets.error ?? data.error ?? run.error ?? error} />
-      {sheets.data && sheets.data.length === 0 && <p style={{ color: '#667085' }}>이 검토에는 채울 데이터시트(판정이 있는 고객 표)가 없습니다.</p>}
+      {sheets.data && sheets.data.length === 0 && <p style={{ color: 'var(--c-muted)' }}>이 검토에는 채울 데이터시트(판정이 있는 고객 표)가 없습니다.</p>}
       <section className="sec" style={{ marginTop: 20 }}>
         <div className="tw"><table className="tbl ds-t">
           <thead><tr><th style={{ width: 46 }}>칸</th><th>항목</th><th style={{ width: 64 }}>단위</th><th>고객 요구</th><th>채운 값 (보증값 후보)</th><th>근거</th><th style={{ width: 140 }}>상태</th></tr></thead>
           <tbody>{rows.map((x) => (
             <tr key={x.judgment_id} className={x.state === 'empty' ? 'ds-empty' : ''}>
-              <td className="mono" style={{ color: '#667085' }}>{x.no}</td>
+              <td className="mono" style={{ color: 'var(--c-muted)' }}>{x.no}</td>
               <td><b style={{ fontWeight: 600 }}>{x.item}</b>{x.item_en && x.item_en !== x.item && <div className="tb-en">{x.item_en}</div>}</td>
               <td className="mono">{x.unit}</td>
               <td>{x.requirement}</td>
@@ -152,7 +152,7 @@ export function Datasheet({ runId }: { runId: number }) {
           ))}</tbody>
         </table></div>
         {found.length > 0 && <Pager total={found.length} page={page} size={size} shown={rows.length} onPage={setPage} onSize={(n) => { setSize(n); setPage(1) }} />}
-        {d && rows.length === 0 && <p style={{ margin: 0, padding: '16px 12px', color: '#667085' }}>이 보기에 맞는 칸이 없습니다.</p>}
+        {d && rows.length === 0 && <p style={{ margin: 0, padding: '16px 12px', color: 'var(--c-muted)' }}>이 보기에 맞는 칸이 없습니다.</p>}
       </section>
       {toast && <div className="stt" role="status"><span className="ms" aria-hidden="true">check_circle</span>{toast}</div>}
     </main>
