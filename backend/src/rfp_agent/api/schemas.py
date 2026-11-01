@@ -289,6 +289,44 @@ class ProductSwitch(Out):
 
 # ── 보증값·손실·검산·산출물·제안 포인트 ──────────────────────
 
+class CompareTarget(Out):
+    """지난 RFP 비교 대상: 같은 고객사의 처리를 마친 다른 검토 (add-past-compare)."""
+    run_id: int
+    review_no: str
+    stage: Stage
+    started_at: datetime
+    project_name: str | None
+    review_name: str | None
+    customer_name: str | None
+    files: str | None
+    judgments: int
+    products: list[str]
+
+
+class CompareTargets(Out):
+    customer_name: str | None          # 이번 검토의 고객사 (비면 대상 없음)
+    targets: list[CompareTarget]
+
+
+class CompareRow(Out):
+    kind: Literal["chg", "new", "del"]
+    equipment: str
+    item_name: str
+    item_raw: str | None               # 표의 항목 이름 (영문 원문, 표준 항목 이름과 다를 때)
+    before: str
+    after: str
+    before_result: JudgmentResult | None
+    after_result: JudgmentResult | None
+    note: str
+    requirement_id: int | None         # 이번 검토의 요구사항 (사라진 줄은 없음)
+
+
+class PastCompare(Out):
+    target: CompareTarget
+    rows: list[CompareRow]
+    same: int                          # 값과 판정이 같아 숨긴 줄 수
+
+
 class Warranty(Out):
     candidate_id: int
     judgment_id: int

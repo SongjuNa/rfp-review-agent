@@ -256,6 +256,19 @@ export type CommercialImpact = {
   locations: Location[]
 }
 
+export type CompareRow = {
+  kind: 'chg' | 'new' | 'del'
+  equipment: string
+  item_name: string
+  item_raw: string | null
+  before: string
+  after: string
+  before_result: 'COMPLY' | 'DEVIATION_CANDIDATE' | 'QUERY_CANDIDATE' | 'NEEDS_REVIEW' | 'WARRANTY_TO_FILL' | null
+  after_result: 'COMPLY' | 'DEVIATION_CANDIDATE' | 'QUERY_CANDIDATE' | 'NEEDS_REVIEW' | 'WARRANTY_TO_FILL' | null
+  note: string
+  requirement_id: number | null
+}
+
 export type CompareRule = {
   compare_rule_id: number
   table_name: string | null
@@ -268,6 +281,25 @@ export type CompareRule = {
   own_strength_direction: string | null
   process_note: string | null
   used: number
+}
+
+/** 지난 RFP 비교 대상: 같은 고객사의 처리를 마친 다른 검토 (add-past-compare). */
+export type CompareTarget = {
+  run_id: number
+  review_no: string
+  stage: 'PROCESSING' | 'ENGINEER_REVIEW' | 'APPROVAL' | 'APPROVED' | 'REJECTED' | 'FAILED'
+  started_at: string
+  project_name: string | null
+  review_name: string | null
+  customer_name: string | null
+  files: string | null
+  judgments: number
+  products: string[]
+}
+
+export type CompareTargets = {
+  customer_name: string | null
+  targets: CompareTarget[]
 }
 
 /** 비용 조건 한 줄 (FR-16). 같은 조건이 반복되면 한 줄로 묶는다. 모든 줄은 후보다 (CR-08). */
@@ -664,6 +696,12 @@ export type OutputSource = {
   risk_id: number | null
   check_id: number | null
   requirement_id: number | null
+}
+
+export type PastCompare = {
+  target: CompareTarget
+  rows: CompareRow[]
+  same: number
 }
 
 /** 제품표 한 줄 (add-reference-views). 빈 칸은 null 그대로 (CR-04). */

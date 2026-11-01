@@ -18,6 +18,7 @@ from rfp_agent.api.schemas import (
     Assignment,
     AssignmentStatus,
     BulkResult,
+    CompareTargets,
     CostSummary,
     Datasheet,
     DatasheetInfo,
@@ -36,6 +37,7 @@ from rfp_agent.api.schemas import (
     LossResult,
     MyTasks,
     OutputItem,
+    PastCompare,
     ProductSwitch,
     Proposal,
     ReadCheck,
@@ -60,6 +62,7 @@ from rfp_agent.pipeline import (
     business,
     datasheet,
     doc_add,
+    past_compare,
     preview,
     queries,
     read_checks,
@@ -696,6 +699,28 @@ async def add_documents(run_id: int, files: list[UploadFile], background: Backgr
                                                             actor_id))
     background.add_task(run_to_end, run_id, paths, merged)
     return _summary(run_id)
+
+
+@router.get("/runs/{run_id}/compare")
+def compare_targets(run_id: int) -> CompareTargets:
+    """지난 RFP 비교 대상: 고객사 글자가 같은 처리를 마친 다른 검토 (SCR-08-7)."""
+    with connect() as conn:
+        try:
+            return past_compare.targets(conn, run_id)
+        except past_compare.NotFound as exc:
+            raise HTTPException(404, str(exc)) from exc
+
+
+@router.get("/runs/{run_id}/compare/{other_id}")
+def compare_runs(run_id: int, other_id: int) -> PastCompare:
+    """이번 검토와 지난 검토의 달라진 요구(값 바뀜·새로 생김·사라짐)와 판정 변화."""
+    with connect() as conn:
+        try:
+            return past_compare.compare(conn, run_id, other_id)
+        except past_compare.NotFound as exc:
+            raise HTTPException(404, str(exc)) from exc
+        except ValueError as exc:
+            raise HTTPException(400, str(exc)) from exc
 
 
 @router.get("/runs/{run_id}/approval")

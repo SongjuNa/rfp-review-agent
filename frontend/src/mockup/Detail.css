@@ -526,6 +526,7 @@ tr.selr td{background:#F5F9FD}
 .ck.chg{background:#FFFAEB;color:#B54708}.ck.new{background:#EDF3FA;color:#0569A0}.ck.del{background:#F2F4F7;color:#475467}
 tr.cmpr{cursor:pointer}
 tr.cmpd td{color:#98A2B3}
+.cmempty{margin:14px 0;padding:14px 16px;border:1px dashed #DCE3EC;border-radius:8px;color:#475467;font-size:var(--fs-sm);background:#fff}
 .sb{background:linear-gradient(180deg,#0C2468 0%,#0A1E5A 42%,#08184A 100%);box-shadow:inset -1px 0 0 rgba(255,255,255,.06)}
 .sb>.sbfx{position:absolute;inset:0;z-index:0;overflow:hidden;pointer-events:none}
 .sbfx i{position:absolute;display:block}
