@@ -3,9 +3,6 @@ import { expect, test, type Page } from '@playwright/test'
 // 명세 review-workspace "제품 상세 화면"·"요구 조건으로 찾기"·"제품표 화면"(빠른 보기·대신 쓸 수 있는 제품)의 Scenario
 // (change add-product-view). 제품표 API 응답을 테스트가 정한 값으로 바꿔 화면만 본다. 백엔드 칸은 tests/test_reference_views.py.
 
-const COMP = ['lightning_impulse_kv', 'power_freq_withstand_kv', 'switching_impulse_kv', 'peak_current_ka', 'making_current_ka', 'breaking_time_ms',
-  'closing_time_ms', 'gas_leakage_percent', 'partial_discharge_pc', 'cooling_type', 'insulation_medium', 'maintenance_months', 'service_life_years']
-
 function product(code: string, kv: number, a: number, ka: number, extra: Record<string, unknown> = {}) {
   return {
     product_code: code, product_name: `${kv} kV GIS`, family: 'GIS', rated_voltage_kv: kv, rated_current_a: a, short_circuit_ka: ka, rated_frequency: '50/60',

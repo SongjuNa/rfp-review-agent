@@ -1,28 +1,32 @@
-import { useState, type MouseEvent } from 'react'
+import { useState } from 'react'
 import { api, type Assignment, type RunListItem, type User } from '../api'
-import { daysLeft, dday, dueText, reviewTitle, stamp } from '../components/format'
+import { daysLeft, dday, dueText, isoDay, reviewTitle, stamp } from '../components/format'
 import { progress } from '../components/progress'
 import { ROLE_NAMES, STAGE_NAMES, STAGE_TONES, STEP_NAMES } from '../components/labels'
+import { before, byDue, myTurn } from '../components/myWork'
 import { useLoad, useRepeat } from '../components/useLoad'
 import { EVENTS, FILES, NOTICES, SYS_NOTICES } from '../examples/SCR-03'
 import { href } from '../shell/router'
 import { usePageCss } from '../shell/pageCss'
 import { useSession } from '../shell/useSession'
+import { Button, useToast } from '../ui'
 import { ExampleBand } from './detail/ExampleTab'
 import './detail.css'
 
-// SCR-03 홈 (목업 v4.57 Home). docs/screens/SCR-03-홈.md
-// 내 업무 수, 단계별·사업별 카드, 분석 실패 알림, 팀 업무는 실제 데이터. 공지·시스템 공지·자료실·행사는 게시판 API가 없어 예시 (SCR-03_공유.md).
+// SCR-03 홈 (목업 v4.96 Home). docs/screens/SCR-03-홈.md "v4.96 바뀐 점", change update-home-projects
+// 나의 업무 세 칸, 오늘 할 일, 나의 검토 일정(일정·단계별·사업별), 어제 이후 바뀐 것, 분석 실패 알림, 팀 업무는 실제 데이터.
+// 공지·시스템 공지·자료실·행사는 게시판 API가 없어 예시 (SCR-03_공유.md). 요약 상자는 9단계(add-screen-summary).
 
 type Col = 'an' | 'chk' | 'co' | 'ap' | 'sub'
-type Filter = 'mine' | 'wait' | 'soon' | 'over'
+type Filter = 'mine' | 'wait' | 'soon'
+type View = 'tl' | 'stage' | 'pj'
 const COLS: [Col, string, string][] = [['an', '분석 중', 'bd-dot'], ['chk', '판정 확인', 'bd-dot b'], ['co', '협조 대기', 'bd-dot o'], ['ap', '결재 대기', 'bd-dot n'], ['sub', '제출 준비', 'bd-dot g']]
 const COL_CHIPS: Record<Col, string> = { an: 'st c-grey', chk: 'st c-blue', co: 'st c-ora', ap: 'st c-grey', sub: 'st c-green' }
-const METRICS: [Filter, string, string, string, string][] = [
-  ['mine', '내가 처리할 건', 'person', 'm-info', '내가 판정을 확인하거나 실패를 살펴야 하는 검토'],
-  ['wait', '결재 대기', 'hourglass_top', 'm-wait', '결재자 확인을 기다리는 내 검토'],
-  ['soon', '3일 내 마감', 'alarm', 'm-high', '오늘부터 3일 안에 마감되는 내 검토'],
-  ['over', '마감 경과', 'event_busy', 'm-crit', '마감일이 지난 내 검토'],
+/** 나의 업무 세 칸 (v4.96: "마감 경과" 칸은 없앰) */
+const METRICS: [Filter, string, string][] = [
+  ['mine', '내가 처리할 건', '내 차례인 검토(판정 확인·반려·분석 실패, 내가 결재자인 결재 대기)'],
+  ['wait', '결재 대기', '결재자 확인을 기다리는 검토'],
+  ['soon', '3일 내 마감', '오늘부터 3일 안에 마감되는 검토'],
 ]
 const DAY = 86_400_000
 const WEEK = ['일', '월', '화', '수', '목', '금', '토']
@@ -56,11 +60,12 @@ function left(r: RunListItem): number | null {
   return daysLeft(r.due_date)
 }
 
-const FILTERS: Record<Filter, (r: RunListItem) => boolean> = {
-  mine: (r) => r.stage === 'ENGINEER_REVIEW' || r.stage === 'REJECTED' || r.stage === 'FAILED',
-  wait: (r) => r.stage === 'APPROVAL',
-  soon: (r) => { const n = left(r); return n !== null && n >= 0 && n <= 3 },
-  over: (r) => { const n = left(r); return n !== null && n < 0 },
+function filters(turn: (r: RunListItem) => boolean): Record<Filter, (r: RunListItem) => boolean> {
+  return {
+    mine: turn,
+    wait: (r) => r.stage === 'APPROVAL',
+    soon: (r) => { const n = left(r); return n !== null && n >= 0 && n <= 3 },
+  }
 }
 
 /** 목업 마감 칩: 지났거나 오늘이면 진한 빨강, 3일 이하 빨강, 7일 이하 주황 */
@@ -85,27 +90,50 @@ function card(r: RunListItem, col: Col, pending: Map<number, Pending>): { lines:
   return { lines: [`요구사항 ${r.requirements}줄`, found], note: '', tone: '' }
 }
 
-const stop = (e: MouseEvent) => e.preventDefault()
-
 export function Home() {
   usePageCss('Home')
+  usePageCss('HomeV496')
   const { user, users } = useSession()
+  const toast = useToast()
   const [now] = useState(() => Date.now())
   const runs = useLoad(() => api.runs(), [])
   useRepeat(!!runs.data?.some((r) => r.stage === 'PROCESSING'), runs.reload)   // 처리 중이면 5초마다 다시 본다
   const asg = useLoad(() => Promise.all(['COST', 'QUALITY', 'SALES'].map((r) => api.assignments(r))), [])
   const [filter, setFilter] = useState<Filter | null>(null)
-  const [view, setView] = useState<'stage' | 'pj'>('stage')
+  const [view, setView] = useState<View>('tl')
   const [closedFail, setClosedFail] = useState<number | null>(null)
+  const [retrying, setRetrying] = useState<number | null>(null)
+  const [retryError, setRetryError] = useState<{ id: number; text: string } | null>(null)
 
   const pending = pendingByRun(asg.data ?? [], now)
   const engineer = user?.role === 'ENGINEER'
+  const dept = !!user && DEPTS.includes(user.role)
   const all = runs.data ?? []
   const board = engineer ? all.filter((r) => r.engineer_id === user!.user_id) : all
+  const turn = myTurn(user)
+  const FILTERS = filters(turn)
+  const todo = all.filter(turn).sort(byDue)
   const failed = board.find((r) => r.stage === 'FAILED')
   const today = new Date(now)
   const dim = (r: RunListItem) => (filter && !FILTERS[filter](r) ? ' dim' : '')
   const sorted = [...board].sort((a, b) => (left(a) ?? 999) - (left(b) ?? 999))
+  // 엔지니어가 결재자인 결재 대기는 내 보드에 없을 수 있어 강조·일정에도 넣는다
+  const shown = engineer ? [...sorted, ...todo.filter((r) => !sorted.includes(r))] : sorted
+  const deptOpen = dept ? (asg.data?.[DEPTS.indexOf(user!.role)] ?? []).filter((a) => a.status !== 'DONE').length : 0
+
+  const retry = (r: RunListItem) => {
+    if (retrying !== null) return
+    setRetrying(r.run_id)
+    setRetryError(null)
+    api.retryRun(r.run_id, user?.user_id ?? null).then(() => {
+      toast.show('다시 분석을 시작했습니다', 'success', { href: href(`/reviews/${r.run_id}`), label: '검토 열기' })
+      runs.reload()
+    }, (e: Error) => setRetryError({ id: r.run_id, text: e.message })).finally(() => setRetrying(null))
+  }
+  const retryBtn = (r: RunListItem, cls: string) => (
+    <Button kind={cls === 'bp' ? 'primary' : 'secondary'} onClick={() => retry(r)} busy={retrying === r.run_id}
+      disabledReason={engineer ? null : '엔지니어만 다시 시도할 수 있습니다'}>{retrying === r.run_id ? '시작하는 중…' : '재시도'}</Button>
+  )
 
   const cardEl = (r: RunListItem, col: Col, byProject = false) => {
     const c = card(r, col, pending)
@@ -125,6 +153,7 @@ export function Home() {
 
   const groups = [...new Map(sorted.map((r) => [r.project_name ?? '', [] as RunListItem[]])).entries()]
   for (const r of sorted) groups.find(([k]) => k === (r.project_name ?? ''))![1].push(r)
+  const VIEWS: [View, string][] = [['tl', '일정'], ['stage', '단계별'], ['pj', '사업별']]
 
   return (
     <main className="main">
@@ -138,10 +167,11 @@ export function Home() {
               <div><dt>자동 재시도</dt><dd>정해진 횟수 모두 실패</dd></div>
             </dl>
             <div className="facts">
-              <span title="다시 시도 기능은 아직 없습니다"><button type="button" className="bp sm" disabled>재시도</button></span>
+              {retryBtn(failed, 'bp')}
               <a className="bo sm" href={href(`/reviews/${failed.run_id}`)}>오류 내용 보기</a>
-              <span title="다시 시도 기능은 아직 없습니다"><button type="button" className="bo sm" disabled>코드 규칙만으로 계속</button></span>
+              <span title="코드 규칙만으로 계속하는 기능은 아직 없습니다"><button type="button" className="bo sm" disabled>코드 규칙만으로 계속</button></span>
             </div>
+            {retryError?.id === failed.run_id && <p className="c-red" style={{ margin: '6px 0 0' }}>{retryError.text}</p>}
           </div>
           <button type="button" className="bx" aria-label="알림 닫기" title="닫기" onClick={() => setClosedFail(failed.run_id)}><span className="ms" aria-hidden="true">close</span></button>
         </div>
@@ -150,24 +180,21 @@ export function Home() {
       <div className="ttl">
         <h1 className="hero">홈</h1>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <span className="range">오늘 {dueText(`${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`)} ({WEEK[today.getDay()]})</span>
+          <span className="range">오늘 {dueText(isoDay(today))} ({WEEK[today.getDay()]})</span>
           <a className="bp" href={href('/register')}><span className="ms" aria-hidden="true" style={{ fontSize: 'var(--ic-s)' }}>add</span>검토 등록</a>
         </div>
       </div>
 
-      <div className="hm-sh"><h2>내 업무</h2><span>{engineer ? `${user!.user_name}이(가) 맡은 검토와 처리할 일` : '모든 검토와 처리할 일'}</span></div>
-      <div className="metrics">
-        {METRICS.map(([k, label, icon, level, title]) => {
-          const l = sorted.filter(FILTERS[k])
+      <div className="hm-sh"><h2>나의 업무</h2></div>
+      <div className="qsum" role="group" aria-label="나의 업무 요약 · 누르면 아래 검토가 걸러집니다">
+        {METRICS.map(([k, label, title]) => {
+          const n = (k === 'mine' ? todo : shown.filter(FILTERS[k])).length
           const on = filter === k
           return (
-            <a key={k} className={`metric ${l.length ? level : 'm-none'}${on ? ' on' : ''}`} href="#dueTitle" aria-pressed={on}
-              title={`${title}${on ? ' · 다시 누르면 필터 해제' : ' · 누르면 아래 카드를 이 조건으로 강조'}`}
-              onClick={(e) => { stop(e); setFilter(on ? null : k) }}>
-              <span className="ml"><span className="ms" aria-hidden="true">{icon}</span>{label}</span>
-              <b>{runs.data ? l.length : '—'}</b>
-              <span className="msub">{l.length ? reviewTitle(l[0]) + (l.length > 1 ? ` 외 ${l.length - 1}건` : '') : '없음'}</span>
-            </a>
+            <button key={k} type="button" className={on ? 'on' : ''} aria-pressed={on} disabled={!!runs.data && !n && !on}
+              title={`${title}${on ? ' · 다시 누르면 모두 보기' : ' · 누르면 아래 검토를 이 조건으로 거름'}`} onClick={() => setFilter(on ? null : k)}>
+              <span className="ql">{label}</span><b className={n && k === 'soon' ? 'c-red' : ''}>{runs.data ? n : '—'}</b>
+            </button>
           )
         })}
       </div>
@@ -176,20 +203,30 @@ export function Home() {
           <span className="ms" aria-hidden="true">chevron_right</span></a></p>
       )}
 
+      {dept ? (
+        <section className="td" aria-labelledby="tdTitle">
+          <div className="td-h"><h2 id="tdTitle">오늘 할 일</h2><span>내 부서 협조 요청</span></div>
+          <p className="bd-emp">내 부서 협조 요청 {asg.data ? deptOpen : '—'}건 <a className="lnk2" href={href('/todo')}>협조 요청에서 보기</a></p>
+        </section>
+      ) : (
+        <TodayList list={todo} loaded={!!runs.data} engineer={engineer} retryBtn={retryBtn} retryError={retryError}
+          onMore={() => { setFilter('mine'); setView('tl') }} />
+      )}
+
       <section className="sec" aria-labelledby="dueTitle">
         <div className="sech">
-          <h2 id="dueTitle">{engineer ? '내 검토' : '검토'} {view === 'stage' ? '단계별' : '사업별'} <span style={{ fontWeight: 400, color: 'var(--c-muted)' }}>{board.length}건</span>
+          <h2 id="dueTitle">나의 검토 {VIEWS.find(([k]) => k === view)![1]} <span style={{ fontWeight: 400, color: 'var(--c-muted)' }}>{shown.length}건</span>
             {filter && <button type="button" className="fchip" onClick={() => setFilter(null)} aria-label="필터 해제">{METRICS.find(([k]) => k === filter)![1]}<span className="ms" aria-hidden="true">close</span></button>}</h2>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <div className="seg" role="group" aria-label="보기 방식">
-              <button type="button" className={view === 'stage' ? 'on' : ''} aria-pressed={view === 'stage'} onClick={() => setView('stage')}>단계별</button>
-              <button type="button" className={view === 'pj' ? 'on' : ''} aria-pressed={view === 'pj'} onClick={() => setView('pj')}>사업별</button>
+              {VIEWS.map(([k, label]) => <button key={k} type="button" className={view === k ? 'on' : ''} aria-pressed={view === k} onClick={() => setView(k)}>{label}</button>)}
             </div>
             <a className="ib" href={href('/reviews')} aria-label="검토 목록에서 모두 보기" title="검토 목록에서 모두 보기"><span className="ms" aria-hidden="true">more_horiz</span></a>
           </div>
         </div>
         {runs.error && <p role="alert">{runs.error} <button type="button" className="lnk" onClick={runs.reload}>다시 불러오기</button></p>}
-        {view === 'stage' ? (
+        {view === 'tl' && <Week runs={(filter ? shown.filter(FILTERS[filter]) : shown)} turn={turn} now={now} />}
+        {view === 'stage' && (
           <div className="bd">
             {COLS.map(([key, label, dot]) => {
               const cards = sorted.filter((r) => colOf(r, pending) === key)
@@ -203,7 +240,8 @@ export function Home() {
               )
             })}
           </div>
-        ) : (
+        )}
+        {view === 'pj' && (
           <div className="bpl">
             {groups.map(([name, rs]) => {
               const first = rs[0]
@@ -222,9 +260,170 @@ export function Home() {
         )}
       </section>
 
+      <Changes runs={board} now={now} />
       <TeamShare runs={all} users={users} pending={asg.data ?? []} />
       <Events />
     </main>
+  )
+}
+
+const DEPTS = ['COST', 'QUALITY', 'SALES']
+
+/** 오늘 할 일 (design.md 2): 내 차례인 검토 3건, 이유 한 줄, 단추. 확인 필요 줄 수는 보이는 3건만 부른다 */
+function TodayList({ list, loaded, engineer, retryBtn, retryError, onMore }: {
+  list: RunListItem[]; loaded: boolean; engineer: boolean
+  retryBtn: (r: RunListItem, cls: string) => React.ReactNode; retryError: { id: number; text: string } | null; onMore: () => void
+}) {
+  const top = list.slice(0, 3)
+  const ids = top.filter((r) => r.stage === 'ENGINEER_REVIEW' || r.stage === 'REJECTED').map((r) => r.run_id)
+  const counts = useLoad(() => Promise.all(ids.map((id) => api.judgmentCounts(id).then((c) => [id, c.by_result.NEEDS_REVIEW ?? 0] as const))), [ids.join(',')])
+  const review = new Map(counts.data ?? [])
+  const [now] = useState(() => Date.now())
+  const why = (r: RunListItem): { text: string; red: boolean } => {
+    const due = r.due_date ? ` · 마감 ${dday(r.due_date).text}` : ''
+    if (r.stage === 'FAILED') return { text: `${STEP_NAMES[r.failed_step ?? ''] ?? '처리'}에서 멈춤${due}`, red: true }
+    if (r.stage === 'APPROVAL') {
+      const days = r.requested_at ? Math.max(0, Math.floor((now - new Date(r.requested_at).getTime()) / DAY)) : 0
+      return { text: `결재 대기 ${days}일째${due}`, red: false }
+    }
+    const parts: string[] = []
+    if (r.stage === 'REJECTED') parts.push('반려됨')
+    if (r.due_date) { const sb = before(r.due_date, 2); parts.push(`상신 권장 ${dueText(sb)} (${dday(sb).text})`) } else parts.push('마감 없음')
+    const n = review.get(r.run_id)
+    if (n !== undefined) parts.push(`확인 필요 ${n}줄`)
+    parts.push(`일탈 후보 ${r.deviation_candidates}`)
+    return { text: parts.join(' · '), red: false }
+  }
+  return (
+    <section className="td" aria-labelledby="tdTitle">
+      <div className="td-h"><h2 id="tdTitle">오늘 할 일</h2><span>내 차례인 검토 · 상신 권장일이 빠른 순</span>
+        {list.length > 3 && <button type="button" className="lnk2" onClick={onMore}>외 {list.length - 3}건 · 일정에서 보기</button>}</div>
+      {loaded && !list.length && <p className="bd-emp">지금 내 차례인 검토가 없습니다.</p>}
+      <ol className="td-l">
+        {top.map((r, i) => {
+          const w = why(r)
+          const cls = i === 0 ? 'bp' : 'bo'
+          return (
+            <li key={r.run_id}><span className="no">{i + 1}</span>
+              <span className="tx"><b>{r.review_no} {reviewTitle(r)}</b><span className={w.red ? 'red' : ''}>{w.text}</span>
+                {retryError?.id === r.run_id && <span className="red">{retryError.text}</span>}</span>
+              {r.stage === 'FAILED' && engineer ? retryBtn(r, cls)
+                : <a className={cls} href={href(`/reviews/${r.run_id}`)}>{r.stage === 'APPROVAL' ? '결재 보기' : r.stage === 'FAILED' ? '오류 보기' : '판정 확인'}</a>}
+            </li>
+          )
+        })}
+      </ol>
+    </section>
+  )
+}
+
+type Ev = { run: RunListItem; sym: '제출 마감' | '상신 권장'; what: string; k: 'me' | 'ot' | 'sy' | 'fl'; hour: number }
+const H0 = 8
+const NH = 10
+const TURN_NAMES = { me: '내 차례', ot: '다른 사람 차례', sy: '시스템 처리 중', fl: '분석 실패' }
+
+/** 나의 검토 일정 (design.md 3): 7일 칸에 제출 마감과 상신 권장. 시각이 없어 상신 권장 09시 → 제출 마감 17시, 겹치면 한 시간씩 민다 */
+function Week({ runs, turn, now }: { runs: RunListItem[]; turn: (r: RunListItem) => boolean; now: number }) {
+  const [off, setOff] = useState(0)
+  const base = new Date(now)
+  const days = Array.from({ length: 7 }, (_, i) => new Date(base.getFullYear(), base.getMonth(), base.getDate() + off + i))
+  const evs: Record<string, Ev[]> = {}
+  const put = (day: string, e: Ev) => { (evs[day] ??= []).push(e) }
+  for (const r of runs) {
+    if (!r.due_date || r.stage === 'APPROVED') continue
+    const k = r.stage === 'FAILED' ? 'fl' : r.stage === 'PROCESSING' ? 'sy' : turn(r) ? 'me' : 'ot'
+    put(r.due_date, { run: r, sym: '제출 마감', what: STAGE_NAMES[r.stage], k, hour: 17 })
+    if (r.stage === 'ENGINEER_REVIEW' || r.stage === 'REJECTED') put(before(r.due_date, 2), { run: r, sym: '상신 권장', what: `마감 ${dueText(r.due_date)}`, k, hour: 9 })
+  }
+  const place = (list: Ev[]) => {
+    const order = [...list].sort((a, b) => a.hour - b.hour || a.run.review_no.localeCompare(b.run.review_no))
+    const used = new Set<number>()
+    const out: { e: Ev; at: number }[] = []
+    let rest = 0
+    for (const e of order) {
+      let at = e.hour
+      while (used.has(at) && at < H0 + NH - 1) at += 1
+      if (used.has(at)) { rest += 1; continue }
+      used.add(at)
+      out.push({ e, at })
+    }
+    return { out, rest }
+  }
+  const shownN = days.reduce((n, d) => n + (evs[isoDay(d)]?.length ?? 0), 0)
+  const mon = `${days[0].getFullYear()}년 ${days[0].getMonth() + 1}월`
+  return (
+    <div className="tc">
+      <div className="tc-bar">
+        <button type="button" className="bo" onClick={() => setOff(0)}>오늘</button>
+        <button type="button" className="ib" onClick={() => setOff(off - 7)} aria-label="이전 7일"><span className="ms" aria-hidden="true">chevron_left</span></button>
+        <button type="button" className="ib" onClick={() => setOff(off + 7)} aria-label="다음 7일"><span className="ms" aria-hidden="true">chevron_right</span></button>
+        <span className="tc-mon" title={`${isoDay(days[0])} ~ ${isoDay(days[6])}`}>{mon}</span>
+        <span style={{ flex: '1 1 0' }} />
+        <span className="hm-mut">7일 보기 · 상신 권장 = 제출 마감 2일 전</span>
+      </div>
+      <div className="tc-g">
+        <div className="tc-hd"><div className="tc-gut" />
+          {days.map((d, i) => {
+            const we = d.getDay() === 0 || d.getDay() === 6
+            return <div key={i} className={`${we ? 'we' : ''}${off + i === 0 ? ' today' : ''}`}><span className="dn">{d.getDate()}</span><span className="dw">{WEEK[d.getDay()]}</span></div>
+          })}</div>
+        <div className="tc-bd">
+          <div className="tc-gut">{Array.from({ length: NH }, (_, i) => <span key={i}>{String(H0 + i).padStart(2, '0')}:00</span>)}</div>
+          {days.map((d, i) => {
+            const day = isoDay(d)
+            const we = d.getDay() === 0 || d.getDay() === 6
+            const { out, rest } = place(evs[day] ?? [])
+            return (
+              <div key={day} className={`tc-c${we ? ' we' : ''}${off + i === 0 ? ' today' : ''}`} aria-label={`${d.getMonth() + 1}월 ${d.getDate()}일`}>
+                {out.map(({ e, at }) => (
+                  <a key={`${e.run.run_id}-${e.sym}`} className={`tc-e ${e.k}`} href={href(`/reviews/${e.run.run_id}`)} style={{ top: `calc(var(--hh) * ${at - H0} + 1px)` }}
+                    title={`${e.run.review_no} · ${reviewTitle(e.run)} · ${TURN_NAMES[e.k]} · ${e.sym} ${dueText(day)}`}>
+                    <span className="nm">{e.run.review_name ?? reviewTitle(e.run)}</span><span className="what">{e.sym} · {e.what}</span></a>
+                ))}
+                {rest > 0 && <span className="tc-e ot" style={{ top: `calc(var(--hh) * ${NH - 1} + 1px)` }}>+{rest}</span>}
+              </div>
+            )
+          })}
+        </div>
+      </div>
+      {!shownN && <p className="bd-emp">조건에 맞는 검토가 없습니다.</p>}
+    </div>
+  )
+}
+
+/** 어제 이후 바뀐 것 (design.md 4): 어제 0시 뒤 분석이 끝나거나 멈춘 내 검토. 문서 추가는 7단계(add-revision-notice) */
+function Changes({ runs, now }: { runs: RunListItem[]; now: number }) {
+  const [open, setOpen] = useState(false)
+  const t = new Date(now)
+  const since = new Date(t.getFullYear(), t.getMonth(), t.getDate() - 1).getTime()
+  const rows = runs.filter((r) => r.finished_at && new Date(r.finished_at).getTime() >= since && r.stage !== 'PROCESSING')
+    .sort((a, b) => b.finished_at!.localeCompare(a.finished_at!))
+  const fails = rows.filter((r) => r.stage === 'FAILED').length
+  const parts = [fails && `분석 실패 ${fails}`, rows.length - fails && `분석 끝남 ${rows.length - fails}`].filter(Boolean)
+  if (!rows.length) {
+    return <section className="chg2" aria-label="어제 이후 바뀐 것"><div className="chg2-h"><b>어제 이후 바뀐 것 없음</b></div></section>
+  }
+  return (
+    <section className="chg2" aria-label="어제 이후 바뀐 것">
+      <button type="button" className="chg2-h" onClick={() => setOpen(!open)} aria-expanded={open}>
+        <b>어제 이후 바뀐 것</b><span className="n">{rows.length}건</span><span className="sum">{parts.join(' · ')}</span>
+        <span className="ms" aria-hidden="true">{open ? 'expand_less' : 'expand_more'}</span></button>
+      {open && (
+        <ul className="chg2-l">
+          {rows.map((r) => {
+            const fail = r.stage === 'FAILED'
+            return (
+              <li key={r.run_id} className={fail ? 'red' : 'ok'}>
+                <span className="ms" aria-hidden="true">{fail ? 'error' : 'task_alt'}</span>
+                <span className="tx"><b>{r.review_no} {reviewTitle(r)} · {fail ? '분석이 멈췄습니다' : '분석이 끝났습니다'}</b>
+                  <span>{fail ? `${STEP_NAMES[r.failed_step ?? ''] ?? '처리'} 단계` : `요구사항 ${r.requirements}줄 · 일탈 후보 ${r.deviation_candidates}`} · {stamp(r.finished_at!)}</span></span>
+                <span className="ac"><a className="bo sm" href={href(`/reviews/${r.run_id}`)} aria-label={`${r.review_no} 가기`}>{fail ? '오류 내용 보기' : '가기'}</a></span>
+              </li>
+            )
+          })}
+        </ul>
+      )}
+    </section>
   )
 }
 

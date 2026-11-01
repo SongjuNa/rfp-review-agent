@@ -11,11 +11,14 @@ import { usePageCss } from '../shell/pageCss'
 import { href } from '../shell/router'
 import { useSession } from '../shell/useSession'
 import { ExampleBand } from './detail/ExampleTab'
+import { PackageActions } from '../components/PackageActions'
+import { Modal } from '../ui'
 import { BusinessDialog } from './BusinessDialog'
 
 // SCR-05 사업 상세 (목업 v4.57 Project). docs/screens/SCR-05-사업상세.md
 // 개요(범위 카드)·담당자·일정·문서는 연결된 검토에서 모은 실제 데이터 (add-project-status).
 // 지난 이력(입찰 이력)은 범위 밖이라 예시로 남긴다. 고객 측 창구·접속 상태는 만들지 않았다 (SCR-05_공유.md).
+// v4.96: "인계 패키지 보기" 창 — 승인된 검토마다 내려받기·영업에 넘기기 (update-home-projects design.md 6).
 
 type Tab = 'ov' | 'ppl' | 'sch' | 'doc' | 'his'
 const TABS: [Tab, string][] = [['ov', '개요'], ['ppl', '담당자'], ['sch', '일정'], ['doc', '문서'], ['his', '지난 이력']]
@@ -24,9 +27,11 @@ const EXAMPLE_HISTORY = EXAMPLE_PROJECTS[0].hist
 
 export function Project({ businessId }: { businessId: number }) {
   usePageCss('Project')
+  usePageCss('ProjectV496')
   const { user } = useSession()
   const [tab, setTab] = useState<Tab>('ov')
   const [editing, setEditing] = useState(false)
+  const [pkg, setPkg] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [today] = useState(() => isoDay(new Date()))
@@ -38,6 +43,8 @@ export function Project({ businessId }: { businessId: number }) {
 
   const submitted = p.submitted_at !== null
   const allApproved = p.ranges.length > 0 && p.ranges.every((r) => r.stage === 'APPROVED')
+  const approved = p.ranges.filter((r) => r.stage === 'APPROVED')
+  const pkgLock = approved.length ? null : '결재가 승인된 검토가 없습니다'
   const next = p.schedule.find((e) => e.day >= today && (e.kind === 'DUE' || e.kind === 'RUN_DUE'))
   const ddCls = submitted || p.days_left == null ? '' : p.days_left <= 3 ? 'neg' : p.days_left <= 7 ? 'crit' : ''
   const toggleSubmitted = () => {
@@ -53,6 +60,10 @@ export function Project({ businessId }: { businessId: number }) {
         <span className={submitted ? 'st c-green' : 'st c-blue'}>{submitted ? '제출 완료' : '진행 중'}</span></div>
       <div className="ttl" style={{ marginTop: 6 }}><h1>{p.business_name}</h1>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <span className="hpkw" title={pkgLock ?? undefined}>
+            <button type="button" className="bo" disabled={!!pkgLock} onClick={() => setPkg(true)} aria-describedby={pkgLock ? 'pkgLock' : undefined}>
+              <span className="ms" aria-hidden="true" style={{ fontSize: 'var(--ic-s)' }}>inventory_2</span>인계 패키지 보기</button>
+            {pkgLock && <span id="pkgLock" className="sr">{pkgLock}</span>}</span>
           <a className="bo" href={href('/projects')}><span className="ms" aria-hidden="true" style={{ fontSize: 'var(--ic-s)' }}>list</span>사업 목록</a>
           <button type="button" className="bo" onClick={() => setEditing(true)}><span className="ms" aria-hidden="true" style={{ fontSize: 'var(--ic-s)' }}>edit</span>사업 정보 고치기</button>
           <button type="button" className="bo" disabled={busy || (!submitted && !allApproved)} onClick={toggleSubmitted}
@@ -119,6 +130,15 @@ export function Project({ businessId }: { businessId: number }) {
             ))}
           </div>
         </>
+      )}
+      {pkg && (
+        <Modal title="인계 패키지" onClose={() => setPkg(false)} width={640}>
+          <p className="sh-mut" style={{ margin: 0 }}>결재가 승인된 검토의 일탈 목록·질의서 초안, TBE 준수표, 데이터시트를 zip 하나로 묶어 영업에 넘깁니다.</p>
+          {approved.map((r) => (
+            <PackageActions key={r.run_id} runId={r.run_id}
+              label={<><b className="mono">{r.review_no}</b> · <a href={href(`/reviews/${r.run_id}`)}>{r.review_name ?? '설비 범위 없음'}</a></>} />
+          ))}
+        </Modal>
       )}
       {editing && <BusinessDialog business={p} onClose={() => setEditing(false)} onSaved={() => { setEditing(false); load.reload() }} />}
     </main>
