@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { api, type CompareRule, type DocKindRule, type ItemKey, type RiskExpression, type RuleDictionary, type RuleEdit, type RuleSuggestion, type RuleValue } from '../api'
+import { api, type CompareRule, type DocKindRule, type ItemKey, type MeaningCandidate, type RiskExpression, type RuleDictionary, type RuleEdit, type RuleSuggestion, type RuleValue } from '../api'
 import { ErrorText } from '../components/common'
 import { Pager } from '../components/Pager'
 import { useLoad } from '../components/useLoad'
@@ -126,6 +126,7 @@ export function Rules() {
   const lockText = '규칙은 엔지니어·승인자만 고칠 수 있습니다 (머리글에서 사용자 바꾸기)'
   const data = useLoad(() => Promise.all([api.compareRules(), api.ruleItems(), api.riskExpressions(), api.docKindRules(), api.ruleEdits()]), [])
   const suggestions = useLoad(() => api.ruleSuggestions(), [])
+  const links = useLoad(() => api.itemCandidates(), [])     // 항목 연결 후보 (add-meaning-search)
   const edits = data.data?.[4] ?? []
   const last = edits.find((e) => e.dictionary === DICTS[tab] && !e.discarded_at)
   const itemKeys: [string, string][] = (data.data?.[1] ?? []).map((r) => [r.item_key, `${r.name_ko} (${r.item_key})`])
@@ -161,6 +162,8 @@ export function Rules() {
           </button>
         ))}
       </div>
+      {tab === 'name' && <ItemLinks items={links.data ?? []} error={links.error} canEdit={canEdit} lockText={lockText}
+        onDone={() => { links.reload(); data.reload() }} />}
       <section className="sec" style={{ marginTop: 16 }}>
         <ErrorText error={data.error} />
         <div className="rhead"><span>마지막 수정 <b>{last ? `${last.actor_name} · ${when(last.edited_at)} · ${ACTIONS[last.action]}` : '기록 없음'}</b></span>{!canEdit && <span className="c-ora">규칙은 엔지니어·승인자만 고칠 수 있습니다</span>}<span>{tab === 'kind' ? '규칙이 분류한 문서' : '지금 판정에 쓰임'} <b>{T ? `${T.used.toLocaleString('en-US')}${tab === 'kind' ? '개' : '회'}` : '…'}</b></span></div>
@@ -231,6 +234,46 @@ function RowHistory({ edits }: { edits: RuleEdit[] }) {
 }
 
 /** 위험 표현 사전 · 사람이 제안한 표현 (add-rule-suggestion). 확인 대기 먼저. 반영은 규칙 추가 창, 반려는 사유를 받는다 */
+/** 항목 연결 후보 (add-meaning-search, B3): 사전에 없는 표 항목 이름을 항목 표현과 뜻으로 비교한 후보.
+ * [같은 뜻 표현으로 추가]하면 그 항목의 표현에 들어가고(고침 이력) 다음 분석부터 판정에 쓰인다. 후보만으로 판정하지 않는다. */
+function ItemLinks({ items, error, canEdit, lockText, onDone }: {
+  items: MeaningCandidate[]; error: string | null; canEdit: boolean; lockText: string; onDone: () => void
+}) {
+  const { user } = useSession()
+  const [busy, setBusy] = useState(false)
+  const [fail, setFail] = useState<string | null>(null)
+  const [done, setDone] = useState<string | null>(null)
+  const act = (x: MeaningCandidate, accept: boolean) => {
+    if (!user) return
+    setBusy(true)
+    setFail(null)
+    ;(accept ? api.acceptItem(x.candidate_id, user.user_id) : api.hideItem(x.candidate_id, user.user_id))
+      .then(() => { setDone(accept ? `“${x.text_raw}”을(를) ${x.target}의 같은 뜻 표현에 넣었습니다. 다음 분석부터 판정에 쓰입니다.` : `“${x.text_raw}” 후보를 숨겼습니다.`); onDone() },
+        (e: Error) => setFail(e.message))
+      .finally(() => setBusy(false))
+  }
+  return (
+    <section className="rkp" aria-labelledby="ilT" style={{ marginTop: 16 }}>
+      <div className="rkp-h"><h2 id="ilT">항목 이름 · 연결 후보{items.length > 0 && <span className="st c-blue" style={{ marginLeft: 8 }}>{items.length}</span>}</h2>
+        <span>판정 대상 데이터시트에서 사전에 없어 판정하지 못한 항목 이름을, 항목 표현과 뜻으로 비교했습니다. 가장 가까운 항목이 0.85 이상이고 둘째보다 0.03 앞설 때만 보입니다.</span></div>
+      {items.length === 0 && <div className="rkp-r"><span className="c-grey">연결 후보가 없습니다. 언어 모델로 분석한 검토에서 만들어집니다.</span></div>}
+      {items.map((x) => (
+        <div key={x.candidate_id} className="rkp-r sg" data-testid="item-link">
+          <span className="mono">{x.score.toFixed(2)}</span>
+          <b>“{x.text_raw}”</b>
+          <span>→ <b className="mono">{x.target}</b> (가까운 표현 “{x.near_text}”{x.second_target ? ` · 둘째 ${x.second_target} ${x.second_score?.toFixed(2)}` : ''}) · <a href={`#/reviews/${x.run_id}`}>{x.review_no}</a> · {locationText(x.locations[0])}</span>
+          <span style={{ display: 'flex', gap: 6, alignItems: 'center' }} title={canEdit ? undefined : lockText}>
+            <button type="button" className="bo" disabled={!canEdit || busy} onClick={() => act(x, true)}>같은 뜻 표현으로 추가</button>
+            <button type="button" className="bo" disabled={!canEdit || busy} onClick={() => act(x, false)}>숨기기</button>
+          </span>
+        </div>
+      ))}
+      {(fail || error) && <p className="aphint" role="alert">{fail ?? error}</p>}
+      {done && <p className="aphint" role="status">{done}</p>}
+    </section>
+  )
+}
+
 function Suggestions({ items, error, canEdit, lockText, onAccept, onDeclined }: {
   items: RuleSuggestion[]; error: string | null; canEdit: boolean; lockText: string
   onAccept: (s: RuleSuggestion) => void; onDeclined: () => void

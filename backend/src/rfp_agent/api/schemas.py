@@ -251,6 +251,9 @@ class PastDecision(Out):
     decided_at: datetime | None
     reason: str | None
     same: bool                          # 지금 판정 값과 같은지
+    # MEANING: 뜻이 비슷한 지난 확정 (add-meaning-search)
+    match: Literal["TEXT", "MEANING"] = "TEXT"
+    score: float | None = None          # 뜻으로 찾았으면 벡터 코사인
 
 
 class Judgment(Out):
@@ -1231,6 +1234,32 @@ class RuleSuggestion(Out):
     decision_reason: str | None
     edit_id: int | None
     locations: Locations
+
+
+class MeaningCandidate(Out):
+    """뜻으로 찾은 후보 (add-meaning-search). RISK_SENTENCE = 사전 추가 후보(B5),
+    ITEM_LINK = 항목 연결 후보(B3). 후보일 뿐 판정·위험 조건이 아니다."""
+    candidate_id: int
+    run_id: int
+    review_no: str
+    kind: Literal["RISK_SENTENCE", "ITEM_LINK"]
+    requirement_id: int
+    text_raw: str
+    near_text: str                      # 가장 가까운 문장·표현
+    target: str | None                  # 항목키 또는 가까운 위험 조건 종류
+    score: float
+    second_target: str | None
+    second_score: float | None
+    status: Literal["OPEN", "ACCEPTED", "HIDDEN"]
+    locations: Locations
+
+
+class RiskMeaning(Out):
+    """위험 조건 탭 사전 추가 후보.
+
+    status: DONE / NO_AI(언어 모델 없음) / SKIPPED(실패) / null(예전 검토)."""
+    status: Literal["DONE", "NO_AI", "SKIPPED"] | None
+    items: list[MeaningCandidate]
 
 
 class AssistantEvidence(Out):

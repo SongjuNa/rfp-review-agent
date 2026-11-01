@@ -206,7 +206,8 @@ export function JudgeTab({ run, tick, onChanged, head }: {
                         {j.review_status === 'EDITED' && <div className="en" title="사람이 바꾼 판정">바꿈</div>}
                         {(j.review_status === 'CONFIRMED' || j.review_status === 'EDITED') && <div className="cfm"><span className="ms" aria-hidden="true">check</span>확정</div>}
                         {j.past_decision && <div className={'en past' + (j.past_decision.same ? '' : ' c-ora')} title={`${j.past_decision.review_no}에서 사람이 ${RESULT_NAMES[j.past_decision.result]}(으)로 확정`}>
-                          {j.past_decision.same ? `지난 확정 ${RESULT_NAMES[j.past_decision.result]}` : '지난 확정과 다름'}</div>}
+                          {j.past_decision.same ? `지난 확정 ${RESULT_NAMES[j.past_decision.result]}` : '지난 확정과 다름'}
+                          {j.past_decision.match === 'MEANING' && j.past_decision.score != null && ` · 뜻 비슷 ${j.past_decision.score.toFixed(2)}`}</div>}
                       </td>
                       <td style={{ minWidth: 180 }}><span style={{ fontWeight: 600 }}>{itemName(j)}</span>
                         {checkOf.get(j.requirement_id) && checkOf.get(j.requirement_id)!.result !== 'PASS' && (

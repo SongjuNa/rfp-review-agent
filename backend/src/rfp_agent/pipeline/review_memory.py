@@ -36,10 +36,8 @@ def _current(conn: psycopg.Connection, run_id: int, ids: list[int] | None) -> li
             (run_id, ids, ids)).fetchall()
 
 
-def _past(conn: psycopg.Connection, run_id: int, keys: set[Key]) -> dict[Key, dict]:
-    """다른 검토의 사람 판정 중 열쇠마다 가장 최근 것."""
-    if not keys:
-        return {}
+def _past_rows(conn: psycopg.Connection, run_id: int) -> list[dict]:
+    """다른 검토의 사람이 확정·수정한 지금 판정."""
     with conn.cursor(row_factory=dict_row) as cur:
         rows = cur.execute(
             _KEY_SQL.replace("SELECT j.judgment_id,", """SELECT j.judgment_id,
@@ -54,15 +52,24 @@ def _past(conn: psycopg.Connection, run_id: int, keys: set[Key]) -> dict[Key, di
                     ORDER BY log_id DESC LIMIT 1) l ON TRUE
               LEFT JOIN app_user u ON u.user_id = l.actor_id
              WHERE j.run_id <> %s AND j.is_current
-               AND j.review_status IN ('CONFIRMED', 'EDITED')""", (run_id,)).fetchall()
-    best: dict[Key, dict] = {}
-    oldest = datetime.min
+               AND j.review_status IN ('CONFIRMED', 'EDITED')
+             ORDER BY j.judgment_id""", (run_id,)).fetchall()
+    return rows
+
+
+def _rank(row: dict) -> tuple:
+    return (row["acted_at"].replace(tzinfo=None) if row["acted_at"] else datetime.min,
+            row["judgment_id"])
+
+
+def _past(rows: list[dict], keys: set[Key]) -> dict[Key, dict]:
+    """열쇠마다 가장 최근 것."""
+    best: dict[Key, tuple] = {}
     for row in rows:
         key = key_of(row)
         if key not in keys:
             continue
-        rank = (row["acted_at"].replace(tzinfo=None) if row["acted_at"] else oldest,
-                row["judgment_id"])
+        rank = _rank(row)
         if key not in best or rank > best[key][0]:
             best[key] = (rank, row)
     return {k: v[1] for k, v in best.items()}
@@ -72,18 +79,65 @@ def hints(conn: psycopg.Connection, run_id: int,
           ids: list[int] | None = None) -> dict[int, dict]:
     """판정 번호 → 지난 사람 판정. ids가 없으면 지금 검토의 모든 지금 판정."""
     current = _current(conn, run_id, ids)
+    if not current:
+        return {}
     keys = {r["judgment_id"]: key_of(r) for r in current}
-    past = _past(conn, run_id, set(keys.values()))
+    rows = _past_rows(conn, run_id)
+    past = _past(rows, set(keys.values()))
+    similar = _similar(conn, [r for r in current if keys[r["judgment_id"]] not in past], rows)
     out = {}
     for row in current:
         found = past.get(keys[row["judgment_id"]])
+        match, score = "TEXT", None
         if found is None:
-            continue
+            if row["judgment_id"] not in similar:
+                continue
+            score, found = similar[row["judgment_id"]]
+            match = "MEANING"
         out[row["judgment_id"]] = {
             "run_id": found["run_id"], "review_no": found["review_no"],
             "result": found["result"], "review_status": found["review_status"],
             "decided_by": found["user_name"], "decided_at": found["acted_at"],
-            "reason": found["reason"], "same": found["result"] == row["result"]}
+            "reason": found["reason"], "same": found["result"] == row["result"],
+            "match": match, "score": None if score is None else round(score, 3)}
+    return out
+
+
+def _similar(conn: psycopg.Connection, current: list[dict],
+             past: list[dict]) -> dict[int, tuple[float, dict]]:
+    """뜻이 비슷한 지난 확정 (add-meaning-search, B4): 요구값 원문·비교 제품이 같고
+    두 요구 원문의 저장된 벡터 코사인이 MEMORY_MIN 이상인 것 중 점수가 가장 높은 것.
+    언어 모델을 부르지 않는다(저장된 벡터만)."""
+    from rfp_agent.pipeline import meaning
+
+    if not current or not past:
+        return {}
+    group: dict[tuple, list[dict]] = {}
+    for row in past:
+        group.setdefault((normalize(row["value_raw"] or ""), row["product_code"]), []).append(row)
+    pairs = [(row, group.get((normalize(row["value_raw"] or ""), row["product_code"]), []))
+             for row in current]
+    pairs = [(row, cands) for row, cands in pairs if cands]
+    if not pairs:
+        return {}
+    texts = {r["text_raw"] for row, cands in pairs for r in (row, *cands)}
+    vec = meaning.stored(conn, list(texts))
+    out = {}
+    for row, cands in pairs:
+        mine = vec.get(meaning.clean(row["text_raw"]))
+        if mine is None:
+            continue
+        best = None
+        for cand in cands:
+            other = vec.get(meaning.clean(cand["text_raw"]))
+            if other is None:
+                continue
+            score = meaning.cosine(mine, other)
+            if score >= meaning.MEMORY_MIN and (
+                    best is None or (score, _rank(cand)) > (best[0], _rank(best[1]))):
+                best = (score, cand)
+        if best:
+            out[row["judgment_id"]] = best
     return out
 
 

@@ -27,6 +27,10 @@ export type Actor = {
   actor_id?: number | null
 }
 
+export type ActorBody = {
+  actor_id?: number | null
+}
+
 /** 정답지. TYPE = 유형 정답지, REQ = 요구사항 정답지(add-requirement-answer-key). made_by가 CLAUDE_DRAFT(Claude 초안)·AUTO(코드 자동)면 사람 확인 전. */
 export type AnswerKey = {
   key_id: number
@@ -827,6 +831,23 @@ export type LossValues = {
   loss_aux_kw?: number | null
 }
 
+/** 뜻으로 찾은 후보 (add-meaning-search). RISK_SENTENCE = 사전 추가 후보(B5), ITEM_LINK = 항목 연결 후보(B3). 후보일 뿐 판정·위험 조건이 아니다. */
+export type MeaningCandidate = {
+  candidate_id: number
+  run_id: number
+  review_no: string
+  kind: 'RISK_SENTENCE' | 'ITEM_LINK'
+  requirement_id: number
+  text_raw: string
+  near_text: string
+  target: string | null
+  score: number
+  second_target: string | null
+  second_score: number | null
+  status: 'OPEN' | 'ACCEPTED' | 'HIDDEN'
+  locations: Location[]
+}
+
 export type MyTasks = {
   role: 'ENGINEER' | 'COST' | 'QUALITY' | 'SALES' | 'APPROVER'
   reviews: ReviewCard[]
@@ -873,6 +894,8 @@ export type PastDecision = {
   decided_at: string | null
   reason: string | null
   same: boolean
+  match?: 'TEXT' | 'MEANING'
+  score?: number | null
 }
 
 /** 제품표 한 줄 (add-reference-views). 빈 칸은 null 그대로 (CR-04). */
@@ -1153,6 +1176,12 @@ export type RiskExpression = {
   risk_kind: string
   context_rule: string
   used: number
+}
+
+/** 위험 조건 탭 사전 추가 후보. status: DONE / NO_AI(언어 모델 없음) / SKIPPED(실패) / null(예전 검토). */
+export type RiskMeaning = {
+  status: 'DONE' | 'NO_AI' | 'SKIPPED' | null
+  items: MeaningCandidate[]
 }
 
 export type RiskMember = {

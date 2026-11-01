@@ -14,7 +14,7 @@ import { ExampleBand } from './detail/ExampleTab'
 const GROUPS: { label: string; steps: string[]; note: (r: RunSummary) => string }[] = [
   { label: '문서 읽기', steps: ['created', 'documents', 'pairs'], note: (r) => `문서 ${r.documents}개 · 요구사항 ${r.requirements}줄` },
   { label: '위험 조건 찾기', steps: ['risks'], note: (r) => `위험 조건 ${r.risks}건` },
-  { label: '제품과 비교·판정', steps: ['judge', 'check', 'warranty', 'loss'], note: (r) => `판정 ${r.judgments}줄` },
+  { label: '제품과 비교·판정', steps: ['judge', 'meaning', 'check', 'warranty', 'loss'], note: (r) => `판정 ${r.judgments}줄` },
   { label: '일탈·질의 목록', steps: ['outputs'], note: (r) => `목록 ${r.output_items}줄` },
   { label: '입찰 영향 정리', steps: ['proposals', 'assign'], note: (r) => `제안 포인트 ${r.proposals}건` },
 ]
