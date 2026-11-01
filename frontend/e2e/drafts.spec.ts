@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { expect, test } from '@playwright/test'
-import { ENGINEER, as, deviationRun } from './helpers'
+import { as, deviationRun, ENGINEER, exportItem } from './helpers'
 
 // 명세 review-workspace "목록 초안 내려받기와 문장 고치기"의 Scenario (change update-review-screens).
 
@@ -9,7 +9,7 @@ test('일탈 목록 초안 내려받기', async ({ page }) => {
   await as(page, ENGINEER)
   await page.goto(`/#/reviews/${run.run_id}`)
   const download = page.waitForEvent('download')
-  await page.getByRole('button', { name: '일탈 목록 초안' }).click()
+  await exportItem(page, '일탈 목록 초안 (Word)')
   await expect(page.getByRole('progressbar', { name: '일탈 목록 초안' })).toBeVisible()
   const file = await download
   // 헤드리스 Chromium은 blob 내려받기의 한글 파일 이름을 "download"로 줄 때가 있어, 이름은 알림으로 확인한다

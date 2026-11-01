@@ -25,6 +25,14 @@ export function dueText(due: string, today: Date = new Date()): string {
   return due.startsWith(String(today.getFullYear())) ? due.slice(5) : due
 }
 
+/** 상신 권장일: 제출 마감 2일 전(달력 기준, _공통규칙.md 3장·_v4.96_결정.md Q3). 마감이 없으면 null, 지났으면 late */
+export function submitBy(due: string | null, today: Date = new Date()): { text: string; late: boolean } | null {
+  if (!due) return null
+  const [y, m, d] = due.split('-').map(Number)
+  const day = isoDay(new Date(y, m - 1, d - 2))
+  return { text: dueText(day, today), late: daysLeft(day, today) < 0 }
+}
+
 /** 시각: 올해는 MM-DD HH:mm, 다른 해는 YY-MM-DD (목업 검토 목록 "시작") */
 export function stamp(iso: string, today: Date = new Date()): string {
   const d = new Date(iso)

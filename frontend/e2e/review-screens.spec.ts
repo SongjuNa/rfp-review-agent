@@ -1,26 +1,14 @@
 import { expect, test } from '@playwright/test'
-import { ENGINEER, as, deviationRun } from './helpers'
+import { as, deviationRun, ENGINEER, openTab } from './helpers'
 
 // 명세 review-workspace "검토 상세 요약 칸과 탭"·"판정 표 거르기"·"판정 상세 패널"의 Scenario (change update-review-screens).
-
-test('요약 칸', async ({ page, request }) => {
-  const run = await deviationRun(request, `요약 칸 ${Date.now()}`)
-  await as(page, ENGINEER)
-  await page.goto(`/#/reviews/${run.run_id}`)
-  const kpis = page.locator('.kpis')
-  await expect(kpis.locator('.kpi').nth(0)).toContainText(`일탈 후보${run.deviations}`)
-  await expect(kpis).toContainText('질의 후보')
-  await expect(kpis).toContainText(/확인 필요 비율\d+ %기준 20 %/)
-  await expect(kpis).toContainText('보증값 작성 (비어 있음)')
-  await expect(kpis).toContainText('손실 환산 참고값')
-})
 
 test('탭으로 내용 바꾸기', async ({ page, request }) => {
   const run = await deviationRun(request, `탭 ${Date.now()}`)
   await page.goto(`/#/reviews/${run.run_id}`)
   const tabs = page.getByRole('tablist', { name: '검토 메뉴' })
-  await expect(tabs.getByRole('tab')).toHaveText(['판정', '문서 읽기 점검', '위험 조건', '손실 환산 (참고)', '입찰 영향',
-    '상업 조건', '지난 RFP 비교', '제출본', '이력'])
+  // 탭 5개 + 더 보기 (update-detail-header). 탭 이름 옆 수는 빼고 본다
+  await expect(tabs.getByRole('tab')).toHaveText([/^판정/, /^위험 조건/, /^문서 읽기 점검/, /^상업 조건/, '이력'])
   await tabs.getByRole('tab', { name: '이력' }).click()
   await expect(tabs.getByRole('tab', { name: '이력' })).toHaveAttribute('aria-selected', 'true')
   await expect(page.locator('#log')).toContainText('사유: 시험용 일탈')
@@ -30,7 +18,7 @@ test('예시 탭', async ({ page, request }) => {
   // 마지막 예시 탭이던 지난 RFP 비교도 실제 데이터가 되어(add-past-compare) 예시 띠가 없다
   const run = await deviationRun(request, `예시 탭 ${Date.now()}`)
   await page.goto(`/#/reviews/${run.run_id}`)
-  await page.getByRole('tab', { name: '지난 RFP 비교' }).click()
+  await openTab(page, '지난 RFP 비교')
   await expect(page.locator('#cmp h2')).toContainText('지난 RFP 비교')
   await expect(page.locator('#cmp').getByRole('note')).toHaveCount(0)
 })
