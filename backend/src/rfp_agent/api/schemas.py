@@ -233,6 +233,8 @@ class Risk(Out):
     # 근거 대조에서 AI 설명을 버린 이유 (update-ai-answer-checks). 저장했거나 AI 없이 돌면 null
     explanation_drop_reason: Literal["UNKNOWN_EVIDENCE", "QUOTE_NOT_FOUND",
                                      "NUMBER_NOT_ALLOWED", "FORMAT_ERROR"] | None
+    # 검증 에이전트 결과 (add-claim-verifier). 설명이 없거나 검증 전이면 null
+    explanation_check: Literal["VERIFIED", "NEEDS_REVIEW"] | None
     expression: str | None
     members: list[RiskMember]
 
@@ -1108,6 +1110,7 @@ class RunLogItem(ReviewFields):
     requirements: int
     judgments: int
     explanations_dropped: int               # 근거 대조에서 버린 위험 조건 설명 수
+    explanations_unverified: int            # AI 검증에서 확인 필요로 표시된 설명 수
     retries: int
     steps: list[RunStepTime]
 

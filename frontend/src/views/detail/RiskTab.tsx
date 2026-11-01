@@ -94,7 +94,7 @@ export function RiskTab({ run, tick, onChanged }: { run: RunSummary; tick: numbe
                   <td style={{ width: 92 }}><span className={`st ${TONES[r.status] ?? 'c-grey'}`}>{STATUS_NAMES[r.status] ?? r.status}</span></td>
                   <td>
                     <b style={{ fontWeight: 600 }}>{title(r)}</b>
-                    <div className="en">{RISK_NAMES[r.risk_kind]} · {closed && d?.reason ? d.reason : r.explanation_ai ?? (r.explanation_drop_reason ? <span className="c-ora" title="AI가 쓴 설명이 근거와 맞지 않아 저장하지 않았습니다">AI 설명 버림 · {DROP_REASONS[r.explanation_drop_reason]}</span> : KIND_NOTES[r.risk_kind])}</div>
+                    <div className="en">{RISK_NAMES[r.risk_kind]} · {closed && d?.reason ? d.reason : r.explanation_ai ?? (r.explanation_drop_reason ? <span className="c-ora" title="AI가 쓴 설명이 근거와 맞지 않아 저장하지 않았습니다">AI 설명 버림 · {DROP_REASONS[r.explanation_drop_reason]}</span> : KIND_NOTES[r.risk_kind])}{!closed && r.explanation_ai && r.explanation_check === 'NEEDS_REVIEW' && <span className="tag chk warn" style={{ marginLeft: 6 }} title="다른 질문으로 다시 물었을 때 인용이 이 설명을 받쳐 준다고 답하지 않았습니다. 원문을 확인하세요">AI 검증: 확인 필요</span>}</div>
                   </td>
                   <td className="loc">
                     <button type="button" className="lnk" aria-expanded={open === r.risk_id} style={{ fontSize: 'inherit', fontWeight: 400, color: 'inherit', textAlign: 'left' }}
