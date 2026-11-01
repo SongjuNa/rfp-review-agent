@@ -108,3 +108,21 @@ test('요청하기 예시', async ({ page }) => {
   await expect(dlg).toBeHidden()
   await expect(count).toHaveText(before!)
 })
+
+// 명세 requirement-extraction "사람이 유형 고치기" (change add-type-examples, C3)
+test('협조 요청 상세에서 유형 고치기', async ({ page, request }) => {
+  const run = await riskRun(request, `유형 고치기 ${Date.now()}`)
+  await as(page, ENGINEER)
+  await page.goto('/#/todo')
+  await page.getByRole('navigation', { name: '수신 부서' }).getByRole('button', { name: '품질 담당' }).click()
+  await row(page, run.review_no).click()
+  const dlg = page.getByRole('dialog')
+  const fix = dlg.getByTestId('type-fix')
+  await fix.getByRole('button', { name: /유형 고치기/ }).click()
+  await fix.getByLabel('유형').selectOption('MAKER_QUAL')
+  await fix.getByLabel('고친 사유').fill('제조사 자격 서류 요구')
+  await fix.getByRole('button', { name: '유형 저장' }).click()
+  await expect(fix.getByRole('status')).toContainText('유형을 제조사 자격(으)로 고쳤습니다')
+  const log = await (await request.get(`/api/runs/${run.run_id}/history`)).json() as { target_table: string; after_value: { type_code?: string } | null }[]
+  expect(log.some((h) => h.target_table === 'requirement' && h.after_value?.type_code === 'MAKER_QUAL')).toBe(true)
+})

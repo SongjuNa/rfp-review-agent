@@ -167,7 +167,7 @@ def _documents_node(ctx: RunContext):
         conn, run_id = ctx.conn, state["run_id"]
         _set_step(conn, run_id, "documents")
         dicts = dictionaries.load(conn)
-        ids, reused = [], 0
+        ids, reused, examples = [], 0, 0
         paths = state["paths"]
         choices = state.get("choices") or {}
         for i, path in enumerate(paths, 1):
@@ -180,8 +180,10 @@ def _documents_node(ctx: RunContext):
             conn.commit()
             ids.append(result.document_id)
             reused += result.reused
-        conn.execute("UPDATE review_run SET documents_reused = %s WHERE run_id = %s",
-                     (reused, run_id))
+            examples += result.type_examples
+        conn.execute("UPDATE review_run SET documents_reused = %s, graph_state = graph_state || "
+                     "jsonb_build_object('type_examples', %s::int) WHERE run_id = %s",
+                     (reused, examples, run_id))
         projects = {r[0] for r in conn.execute(
             "SELECT DISTINCT project_id FROM document WHERE document_id = ANY(%s)", (ids,))}
         if len(projects) == 1 and None not in projects:

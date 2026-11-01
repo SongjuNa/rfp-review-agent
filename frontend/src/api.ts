@@ -1,6 +1,6 @@
 // 백엔드 API (/api, Vite 프록시). 응답 타입은 백엔드 응답 모델에서 만든다 (api.gen.ts, `npm run gen:api`).
 import type {
-  ActionResult, ApprovalScreen, AssignmentStatus, BulkResult, CompareTargets, CostSummary, PastCompare, BusinessDetail, BusinessList, BusinessLog,
+  ActionResult, TypeEditResult, ApprovalScreen, AssignmentStatus, BulkResult, CompareTargets, CostSummary, PastCompare, BusinessDetail, BusinessList, BusinessLog,
   DecisionResult, DocumentChoice, DocumentPreview, HandoffResult, SalesHandoff,
   LossResult, ProductSwitch, RuleEdit,
   RunLogItem, RunSummary, SendResult, StageResult, SubmitResult,
@@ -186,6 +186,9 @@ export const api = {
     call<BulkResult>(`/runs/${id}/actions/bulk`, json('POST', { target: 'judgment', ids, action: 'CONFIRM', actor_id })),
   act: (id: number, body: ActionBody) =>
     call<ActionResult>(`/runs/${id}/actions`, json('POST', body)),
+  // 사람 유형 고치기 (add-type-examples). NONE은 미분류
+  setType: (id: number, reqId: number, type_code: string, reason: string | null, actor_id: number) =>
+    call<TypeEditResult>(`/runs/${id}/requirements/${reqId}/type`, json('POST', { type_code, reason, actor_id })),
   history: (id: number) => call<LogEntry[]>(`/runs/${id}/history`),
   approval: (id: number) => call<ApprovalScreen>(`/runs/${id}/approval`),
   readChecks: (id: number) => call<ReadCheck[]>(`/runs/${id}/read-checks`),

@@ -8,7 +8,7 @@ from rfp_agent.llm.client import LLM, LLMFormatError, call_with_retry
 from rfp_agent.llm.evidence import EvidenceSpan, normalize_quote
 from rfp_agent.llm.parallel import run_ordered, workers_of
 
-PROMPT_VERSION = "p3"           # p3: 유형 질문에 절·표 제목 문맥 (update-type-context)
+PROMPT_VERSION = "p4"           # p4: 유형 질문에 사람이 고른 예 (add-type-examples). p3: 절·표 문맥
 DOC_KINDS = ["BID_FORM", "REQUIREMENT_SPEC", "PURCHASE_SPEC", "TEST_SPEC", "SUPPLIER_SPEC",
              "UNKNOWN"]
 SENTENCE_LABELS = ["REQUIREMENT", "WRITING_RULE", "DESCRIPTION"]
@@ -147,11 +147,23 @@ def _with_context(text: str, context: str | None) -> str:
     return f"[{one_line(context)[:CONTEXT_CHARS]}] {line}" if context else line
 
 
+def _with_examples(line: str, examples: list[tuple[str, str]]) -> str:
+    """줄 끝에 다른 문서에서 사람이 고른 예 (add-type-examples). 한 줄 안에 둔다."""
+    if not examples:
+        return line
+    shown = "; ".join(f'"{text}" → {code}' for text, code in examples)
+    return f"{line} (사람이 고른 예: {shown})"
+
+
 def type_unclassified(llm: LLM, texts: list[str], on_progress: Progress | None = None,
-                      contexts: list[str | None] | None = None) -> list[str]:
-    """규칙에 안 걸린 요구사항마다 유형 하나. contexts는 줄마다 절·표 제목 문맥(없으면 None)."""
-    lines = [_with_context(t, c) for t, c in zip(texts, contexts or [None] * len(texts),
-                                                  strict=True)]
+                      contexts: list[str | None] | None = None,
+                      examples: list[list[tuple[str, str]]] | None = None) -> list[str]:
+    """규칙에 안 걸린 요구사항마다 유형 하나. contexts는 줄마다 절·표 제목 문맥(없으면 None).
+
+    examples는 줄마다 다른 문서에서 사람이 고친 비슷한 줄과 유형(참고, add-type-examples).
+    """
+    lines = [_with_examples(_with_context(t, c), e) for t, c, e in zip(
+        texts, contexts or [None] * len(texts), examples or [[]] * len(texts), strict=True)]
 
     def prompt_of(part: list[str]) -> str:
         numbered = "\n".join(f"{i}. {line}" for i, line in enumerate(part))
@@ -159,7 +171,8 @@ def type_unclassified(llm: LLM, texts: list[str], on_progress: Progress | None =
             "RFP 요구사항마다 유형 하나를 고른다. 대괄호 안은 그 줄이 속한 절·표 제목(문맥)이다. "
             "TECH_PERF=기술 성능, RISK=위험 조건, "
             "STANDARD_CERT=적용 규격·인증, COST=비용 영향, TEST=시험, MAKER_QUAL=제조사 자격, "
-            "SITE_ENV=설치 환경, NONE=어느 것도 아님. 요구사항마다 앞의 번호(n)와 "
+            "SITE_ENV=설치 환경, NONE=어느 것도 아님. 괄호 안 '사람이 고른 예'는 다른 문서에서 "
+            "엔지니어가 비슷한 줄에 고른 유형으로 참고만 한다. 요구사항마다 앞의 번호(n)와 "
             "고른 유형(v)을 함께 낸다.\n" + numbered
         )
 

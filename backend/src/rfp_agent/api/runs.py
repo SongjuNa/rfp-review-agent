@@ -53,6 +53,7 @@ from rfp_agent.api.schemas import (
     SubmissionCheck,
     SubmitResult,
     Tbe,
+    TypeEditResult,
     User,
     Warranty,
 )
@@ -147,6 +148,12 @@ class Action(BaseModel):
     target_id: int
     action: str                     # CONFIRM, EDIT, REJECT, ADOPT, DISCARD
     value: dict | None = None       # EDIT: {"result"} / {"value", "unit"} / {"text"}
+    reason: str | None = None
+    actor_id: int | None = None
+
+
+class TypeEdit(BaseModel):
+    type_code: str                  # 유형 코드 또는 NONE(미분류)
     reason: str | None = None
     actor_id: int | None = None
 
@@ -631,6 +638,16 @@ def act(run_id: int, body: Action) -> ActionResult:
         return _review(lambda: review.act(make_context(conn), run_id, body.target,
                                           body.target_id, body.action, body.value,
                                           body.reason, body.actor_id))
+
+
+@router.post("/runs/{run_id}/requirements/{requirement_id}/type")
+def edit_type(run_id: int, requirement_id: int, body: TypeEdit) -> TypeEditResult:
+    """사람이 요구사항의 주 유형을 고친다 (add-type-examples). 엔지니어·승인자만."""
+    _summary(run_id)
+    with connect() as conn:
+        actor_id = body.actor_id or review.default_user(conn, "ENGINEER")
+        return _review(lambda: review.set_type(conn, run_id, requirement_id, body.type_code,
+                                               body.reason, actor_id))
 
 
 @router.post("/runs/{run_id}/actions/bulk")
