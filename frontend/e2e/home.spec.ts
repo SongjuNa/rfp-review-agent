@@ -30,15 +30,16 @@ test('내 업무와 단계별 카드', async ({ page, request }) => {
   const scope = `홈 카드 ${Date.now()}`
   const run = await dueToday(request, '예시 변전소 H', scope)
   await page.goto('/#/')
+  await page.getByRole('button', { name: '단계별' }).click()   // v4.96: 처음 보기는 일정
   const col = page.getByLabel('협조 대기', { exact: true })
   const card = col.locator('.bd-card', { hasText: run.review_no })
   await expect(card).toContainText(scope)
   await expect(card).toContainText('D-Day')
   await expect(card).toContainText(/협조 미확인 \d+건/)
-  await expect(page.locator('.metric', { hasText: '3일 내 마감' }).locator('b')).not.toHaveText('0')
+  await expect(page.locator('.qsum button', { hasText: '3일 내 마감' }).locator('b')).not.toHaveText('0')
 
   // 내 업무 칸을 누르면 그 조건이 아닌 카드는 흐려지고 필터 칩이 보인다
-  await page.locator('.metric', { hasText: '결재 대기' }).click()
+  await page.locator('.qsum button', { hasText: '결재 대기' }).click()
   await expect(page.getByRole('button', { name: '필터 해제' })).toContainText('결재 대기')
   await expect(card).toHaveClass(/dim/)
   await page.getByRole('button', { name: '필터 해제' }).click()
@@ -63,7 +64,7 @@ test('분석 실패 알림', async ({ page }) => {
   await expect(alert).toContainText('RV-2026-901 예시 실패 · 배전반 분석이 멈췄습니다')
   await expect(alert).toContainText('위험 조건 찾기')
   await expect(alert.getByRole('link', { name: '오류 내용 보기' })).toHaveAttribute('href', '#/reviews/999001')
-  await expect(alert.getByRole('button', { name: '재시도' })).toBeDisabled()
+  await page.getByRole('button', { name: '단계별' }).click()
   await expect(page.getByLabel('분석 중', { exact: true }).locator('.bd-card.fail')).toContainText('분석 실패')
   await alert.getByRole('button', { name: '알림 닫기' }).click()
   await expect(alert).toBeHidden()

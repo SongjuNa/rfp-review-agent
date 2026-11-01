@@ -5,6 +5,7 @@
 - 구현 방식: 실제 (지난 이력 탭만 예시). 화면은 `frontend/src/views/Project.tsx`, 고치기 창은 `BusinessDialog.tsx`, CSS는 목업 Project CSS 그대로
 - 화면 주소: `#/projects/<사업 번호>` (예: `#/projects/PJ-2026-003`). 번호 끝의 숫자가 사업 id
 - 사용 API: `GET /api/businesses/{id}?user_id=`, `PUT /api/businesses/{id}`, `POST`·`DELETE /api/businesses/{id}/submitted`, `GET /api/users`
+- v4.96 구현됨 (change `update-home-projects`, 2026-11-01): "인계 패키지 보기" 창(제출본 탭과 같은 `PackageActions` 부품). 목업과 다른 곳은 `SCR-05_공유.md` 8
 
 ## 화면 구성
 
