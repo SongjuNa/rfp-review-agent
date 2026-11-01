@@ -16,7 +16,7 @@ from langgraph.graph import END, START, StateGraph
 from psycopg.types.json import Jsonb
 
 from rfp_agent.llm import tasks
-from rfp_agent.llm.client import FAILURE_MESSAGE, LLM, LLMFailure, Usage, usage_of
+from rfp_agent.llm.client import FAILURE_MESSAGE, LLM, LLMConfigError, LLMFailure, Usage, usage_of
 from rfp_agent.llm.evidence import EvidenceSpan, evidence_id, parse_evidence_id
 from rfp_agent.llm.parallel import run_ordered, workers_of
 from rfp_agent.pipeline import code_version, dictionaries, doc_add
@@ -479,7 +479,8 @@ def execute_run(ctx: RunContext, run_id: int, paths: list[Path],
             message = cancel_message(conn, run_id)
             log.info("검토 실행 %s 취소 (%s)", run_id, step)
         else:
-            message = (FAILURE_MESSAGE if isinstance(exc, LLMFailure)
+            message = (str(exc) if isinstance(exc, LLMConfigError)   # 키·모델 설정 오류
+                       else FAILURE_MESSAGE if isinstance(exc, LLMFailure)
                        else f"{FAILURE_MESSAGE}: {exc}")
             log.exception("검토 실행 %s 실패 (%s)", run_id, step)
         conn.execute(

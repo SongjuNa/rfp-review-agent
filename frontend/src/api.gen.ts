@@ -1122,7 +1122,7 @@ export type Risk = {
   item_name: string | null
   facts: string | null
   explanation_ai: string | null
-  explanation_drop_reason: 'UNKNOWN_EVIDENCE' | 'QUOTE_NOT_FOUND' | 'NUMBER_NOT_ALLOWED' | null
+  explanation_drop_reason: 'UNKNOWN_EVIDENCE' | 'QUOTE_NOT_FOUND' | 'NUMBER_NOT_ALLOWED' | 'FORMAT_ERROR' | null
   expression: string | null
   members: RiskMember[]
 }

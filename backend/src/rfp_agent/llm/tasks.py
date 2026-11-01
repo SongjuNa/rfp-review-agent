@@ -4,7 +4,7 @@ import re
 from collections.abc import Callable
 from dataclasses import dataclass
 
-from rfp_agent.llm.client import LLM, LLMFailure, call_with_retry
+from rfp_agent.llm.client import LLM, LLMFormatError, call_with_retry
 from rfp_agent.llm.evidence import EvidenceSpan, normalize_quote
 from rfp_agent.llm.parallel import run_ordered, workers_of
 
@@ -61,7 +61,8 @@ def _pick_each(llm: LLM, items: list[str], field: str, choices: list[str], promp
     """항목마다 보기 하나를 고르게 한다. 답의 개수가 틀리면 묶음을 반으로 나눠 다시 묻는다.
 
     모델이 긴 목록에서 한두 개를 빠뜨리면 같은 질문을 되풀이해도 같은 답이 나온다(temperature 0).
-    그래서 재시도(CR-12) 뒤에도 실패한 묶음만 둘로 나눈다. 한 개짜리도 실패하면 그대로 실패로 둔다.
+    그래서 형식 오류면 다시 묻지 않고 바로 둘로 나눈다. 한 개짜리도 실패하면 그대로 실패로 둔다.
+    연결 오류는 재시도(CR-12) 뒤 나누지 않고 바로 실패한다 (update-llm-retry-kinds).
     """
     prompt = prompt_of(items)
     schema = _numbered_schema(field, "v", {"type": "string", "enum": choices})
@@ -72,7 +73,7 @@ def _pick_each(llm: LLM, items: list[str], field: str, choices: list[str], promp
 
     try:
         return [x["v"] for x in _in_order(call_with_retry(llm, prompt, schema, check)[field])]
-    except LLMFailure:
+    except LLMFormatError:
         if len(items) == 1:
             raise
         half = len(items) // 2
@@ -190,6 +191,7 @@ class RiskExplanation:
 UNKNOWN_EVIDENCE = "UNKNOWN_EVIDENCE"       # 주지 않은 근거 ID
 QUOTE_NOT_FOUND = "QUOTE_NOT_FOUND"         # 인용이 고른 근거 조각에 없음
 NUMBER_NOT_ALLOWED = "NUMBER_NOT_ALLOWED"   # 사실·그 문장의 근거 조각에 없는 숫자·배수 말
+FORMAT_ERROR = "FORMAT_ERROR"               # 형식이 틀린 답 (다시 묻지 않음)
 
 
 @dataclass(frozen=True)
@@ -243,7 +245,10 @@ def explain_risk(llm: LLM, kind: str, facts: str,
             assert c["text"].strip() and c["exact_quote"].strip() and c["evidence_ids"]
             assert c["relation"] in RELATIONS
 
-    data = call_with_retry(llm, prompt, schema, check)
+    try:
+        data = call_with_retry(llm, prompt, schema, check)
+    except LLMFormatError:
+        return DroppedExplanation(FORMAT_ERROR)  # 후보는 남고 처리는 계속된다
     sources = {s.evidence_id: s.text[:800] for s in spans}
     claims = tuple(Claim(c["text"].strip(), c["exact_quote"].strip(), tuple(c["evidence_ids"]),
                          c["relation"]) for c in data["claims"])
@@ -299,7 +304,10 @@ def draft_sentences(llm: LLM, purpose: str,
         def check(d):
             _check_numbers(d["texts"], len(part), "texts")
 
-        answers = _in_order(call_with_retry(llm, prompt, schema, check)["texts"])
+        try:
+            answers = _in_order(call_with_retry(llm, prompt, schema, check)["texts"])
+        except LLMFormatError:
+            return [None] * len(part)       # 그 묶음은 코드 기본 문장 (다시 묻지 않음)
         return [text if _usable_draft(text := a["text"].strip(), marks) else None
                 for a, (_, marks) in zip(answers, part, strict=True)]
 
