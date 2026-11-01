@@ -384,6 +384,9 @@ textarea.fi{height:auto;padding:8px 10px}
 .toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%);z-index:120;display:flex;align-items:center;gap:8px;background:#1F2937;color:#fff;border-radius:8px;padding:10px 16px;font-size:var(--fs-sm);box-shadow:0 8px 24px rgba(16,24,40,.24)}
 .toast .ms{color:#47CD89;font-size:18px}
 .rdi{margin:10px 0 4px;font-size:var(--fs-sm);color:#475467}
+.rdempty{display:flex;gap:10px;align-items:flex-start;margin:12px 0 4px;padding:12px 14px;border:1px solid #ABEFC6;background:#ECFDF3;border-radius:8px;font-size:var(--fs-sm);color:#344054}
+.rdempty > .ms{color:#079455;font-size:22px}
+.rdempty b{display:block;font-weight:600;color:#067647;margin-bottom:2px}
 .rdt td{padding:12px 10px}
 .rdt .done td{background:#FAFBFC}
 .rdt .done .rdp,.rdt .done .rdtodo{color:#98A2B3}
