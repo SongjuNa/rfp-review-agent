@@ -525,6 +525,57 @@
             }
           }
         }
+      },
+      "post": {
+        "tags": [
+          "검토 실행"
+        ],
+        "summary": "Add Documents",
+        "description": "분석을 마친 검토(담당자 확인 단계)에 정정본·추가 문서를 더해 같은 검토를 다시 분석한다.\n\n처리한 문서는 다시 쓰고, 같은 줄의 확정·수정·반려는 이어받는다 (FR-01 ⑤, FR-10 ⑤).\nchoices는 더하는 파일의 분류 JSON ({파일 이름: {bundle, doc_kind}}).",
+        "operationId": "add_documents_api_runs__run_id__documents_post",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Run Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_add_documents_api_runs__run_id__documents_post"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunSummary"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/api/runs/{run_id}/pairs": {
@@ -4827,6 +4878,45 @@
           "status"
         ],
         "title": "AssignmentStatus"
+      },
+      "Body_add_documents_api_runs__run_id__documents_post": {
+        "properties": {
+          "files": {
+            "items": {
+              "type": "string",
+              "contentMediaType": "application/octet-stream"
+            },
+            "type": "array",
+            "title": "Files"
+          },
+          "actor_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Actor Id"
+          },
+          "choices": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Choices"
+          }
+        },
+        "type": "object",
+        "required": [
+          "files"
+        ],
+        "title": "Body_add_documents_api_runs__run_id__documents_post"
       },
       "Body_run_upload_api_runs_post": {
         "properties": {

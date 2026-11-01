@@ -90,6 +90,12 @@ export type AssignmentStatus = {
   status: 'TODO' | 'DOING' | 'DONE'
 }
 
+export type Body_add_documents_api_runs__run_id__documents_post = {
+  files: string[]
+  actor_id?: number | null
+  choices?: string | null
+}
+
 export type Body_run_upload_api_runs_post = {
   files: string[]
   project_name?: string | null

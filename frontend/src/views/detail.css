@@ -30,6 +30,8 @@
 .doct tr.skip td{background:#FEF3F2}
 .doct .docn{word-break:break-all;min-width:200px}
 .docwhy{margin-top:4px;font-size:var(--fs-xs);color:#B42318}
+.docadd{margin-top:16px;padding-top:14px;border-top:1px solid #EAECF0}
+.docadd h3{margin:0 0 4px;font-size:var(--fs-body);font-weight:600}
 .hdoc.lnk{font-size:inherit}
 .hbun.warn{color:#B42318;font-weight:600}
 /* 다시 판정 중 화면 막기 (update-rejudge-busy, SCR-08_공유.md 6): 화면 전체를 덮고 가운데에 크게 */

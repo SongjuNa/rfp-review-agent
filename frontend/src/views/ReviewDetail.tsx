@@ -21,9 +21,9 @@ import { WaitView } from './WaitView'
 // 승인 대기인 검토는 SCR-12 결재 대기 화면(WaitView)으로 보인다.
 
 /** 머리글: 검토 번호·단계·마감, 제목(사업명 · 검토명), 사업·문서(누르면 문서 표)·판정 묶음·고객사·담당 줄, 검토 정보 고치기 */
-function ReviewHeader({ run, approver, onEdit, onSwitched, onBusy }: {
+function ReviewHeader({ run, approver, onEdit, onSwitched, onBusy, onAdded }: {
   run: RunSummary; approver: string | null; onEdit: () => void; onSwitched?: () => void
-  onBusy?: (b: Rejudging | null) => void
+  onBusy?: (b: Rejudging | null) => void; onAdded?: () => void
 }) {
   const due = run.due_date ? dday(run.due_date) : null
   const docs = useLoad(() => api.documents(run.run_id), [run.run_id, run.stage])
@@ -62,7 +62,7 @@ function ReviewHeader({ run, approver, onEdit, onSwitched, onBusy }: {
         </div>
       </div>
       {onSwitched && <ProductSeg run={run} onSwitched={onSwitched} onBusy={onBusy} />}
-      {docsOpen && docs.data && <DocumentsDialog run={run} docs={docs.data} onClose={() => setDocsOpen(false)} />}
+      {docsOpen && docs.data && <DocumentsDialog run={run} docs={docs.data} onClose={() => setDocsOpen(false)} onAdded={onAdded} />}
     </>
   )
 }
@@ -112,7 +112,8 @@ export function ReviewDetail({ runId }: { runId: number }) {
     <main className="main">
       {ready && <DetailTabs run={run} tab={tab} onTab={setTab} />}
       <ReviewHeader run={run} approver={latest && latest.decision !== null ? latest.approver : null} onEdit={() => setEditing(true)}
-        onSwitched={ready ? () => { setVersion((v) => v + 1); reload() } : undefined} onBusy={setRejudging} />
+        onSwitched={ready ? () => { setVersion((v) => v + 1); reload() } : undefined} onBusy={setRejudging}
+        onAdded={() => { setVersion((v) => v + 1); reload() }} />
       {editing && <ReviewInfoDialog run={run} onClose={() => setEditing(false)} onSaved={() => { setEditing(false); reload() }} />}
       {submitting && <SubmitDialog run={run} onClose={() => setSubmitting(false)} onDone={() => { setSubmitting(false); reload() }} />}
       {ready
