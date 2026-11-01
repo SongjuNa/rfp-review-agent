@@ -1438,6 +1438,14 @@ export type ScoreRequest = {
   actor_id?: number | null
 }
 
+/** 요약 상자 문장 (add-screen-summary, 결정 Q1). 코드가 틀에 채운 문장, 같은 데이터면 같은 문장. */
+export type ScreenSummary = {
+  sentences: SummaryPart[][]
+  meta: string | null
+  written_by: 'CODE'
+  made_at: string
+}
+
 export type SendRequests = {
   assignment_ids: number[]
   actor_id?: number | null
@@ -1495,6 +1503,13 @@ export type SuggestBody = {
   expression: string
   note?: string | null
   actor_id?: number | null
+}
+
+/** 요약 문장 조각 (add-screen-summary). link면 href는 화면 주소(#는 화면이 붙임), strong은 강조. */
+export type SummaryPart = {
+  t: string
+  kind: 'text' | 'link' | 'strong'
+  href: string | null
 }
 
 export type TaskStatus = {
