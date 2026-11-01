@@ -12830,7 +12830,8 @@
                 "enum": [
                   "UNKNOWN_EVIDENCE",
                   "QUOTE_NOT_FOUND",
-                  "NUMBER_NOT_ALLOWED"
+                  "NUMBER_NOT_ALLOWED",
+                  "FORMAT_ERROR"
                 ]
               },
               {

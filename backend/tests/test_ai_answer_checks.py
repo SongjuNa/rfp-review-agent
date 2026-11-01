@@ -105,3 +105,49 @@ def test_proposal_with_competitor_uses_code_sentence(db, spec):
     points = [p for p in queries.run_proposals(db, run_id) if p["point_kind"] != "FIELD"]
     assert points
     assert all(p["drafted_by"] == "CODE" and "타사" not in p["text_draft"] for p in points)
+
+
+# ── 오류 종류별 처리 (update-llm-retry-kinds) ─────────────────────
+
+class BadFormatLLM(FakeLLM):
+    """위험 설명은 빈 목록, 문장 초안은 번호를 겹쳐 낸다."""
+
+    def generate_json(self, prompt, schema):
+        answer = super().generate_json(prompt, schema)
+        if "claims" in answer:
+            answer["claims"] = []
+        if "texts" in answer and len(answer["texts"]) > 1:
+            answer["texts"][-1]["n"] = 0
+        return answer
+
+
+def test_format_errors_do_not_stop_run(db, spec, tmp_path):
+    """Scenario: 형식 오류 이유 · Scenario: 형식이 틀린 초안 묶음 — 다시 묻지 않고 처리는 끝까지."""
+    gis = build_gis_spec(tmp_path / "synthetic_154kV_GIS_spec.docx")
+    llm = BadFormatLLM()
+    run_id = run_once(db, [gis, spec], llm)
+    risks = queries.run_risks(db, run_id)
+    assert risks and all(r["explanation_drop_reason"] == tasks.FORMAT_ERROR for r in risks)
+    outputs = queries.run_outputs(db, run_id)
+    assert len(outputs) > 1 and all(r["drafted_by"] == "CODE" for r in outputs)
+    assert llm.usage.retries == 0
+
+
+class KeyErrorLLM(FakeLLM):
+    def generate_json(self, prompt, schema):
+        super().generate_json(prompt, schema)
+        err = RuntimeError("403 permission denied")
+        err.code = 403
+        raise err
+
+
+def test_key_error_fails_run_with_setting_message(db, spec):
+    """Scenario: 키 오류는 바로 멈춤 — 요청 1번, FAILED, 설정 확인 안내."""
+    from rfp_agent.llm.client import CONFIG_FAILURE_MESSAGE
+
+    llm = KeyErrorLLM()
+    run_id = create_run(db, VERSION, llm)
+    assert execute_run(RunContext(db, VERSION, llm, None), run_id, [spec]) == "FAILED"
+    message = db.execute("SELECT error_message FROM review_run WHERE run_id = %s",
+                         (run_id,)).fetchone()[0]
+    assert message == CONFIG_FAILURE_MESSAGE and len(llm.prompts) == 1

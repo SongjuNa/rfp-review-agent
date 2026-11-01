@@ -232,7 +232,7 @@ class Risk(Out):
     explanation_ai: str | None
     # 근거 대조에서 AI 설명을 버린 이유 (update-ai-answer-checks). 저장했거나 AI 없이 돌면 null
     explanation_drop_reason: Literal["UNKNOWN_EVIDENCE", "QUOTE_NOT_FOUND",
-                                     "NUMBER_NOT_ALLOWED"] | None
+                                     "NUMBER_NOT_ALLOWED", "FORMAT_ERROR"] | None
     expression: str | None
     members: list[RiskMember]
 

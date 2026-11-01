@@ -8,6 +8,8 @@ log = logging.getLogger(__name__)
 
 MAX_RETRIES = 2                 # CR-12: 정해진 횟수만 재시도
 FAILURE_MESSAGE = "처리 실패 — 다시 시도"
+CONFIG_FAILURE_MESSAGE = "AI 키 또는 모델 설정 오류 — 설정 확인"
+CONFIG_ERROR_CODES = {400, 401, 403, 404}   # 다시 물어도 안 되는 요청 오류 (429 요청 많음은 재시도)
 
 
 _USAGE_LOCK = threading.Lock()
@@ -15,6 +17,14 @@ _USAGE_LOCK = threading.Lock()
 
 class LLMFailure(RuntimeError):
     """재시도 뒤에도 응답을 받지 못함."""
+
+
+class LLMFormatError(LLMFailure):
+    """답의 형식이 틀림(JSON 아님, 검사 실패). temperature 0이라 다시 묻지 않는다."""
+
+
+class LLMConfigError(LLMFailure):
+    """키·권한·모델 설정 오류. 다시 물어도 안 되므로 바로 멈춘다."""
 
 
 @dataclass
@@ -51,8 +61,19 @@ class LLM(Protocol):
     def generate_json(self, prompt: str, schema: dict) -> dict: ...
 
 
+def _is_config_error(exc: Exception) -> bool:
+    """키·권한·모델 이름 오류 (google.genai ClientError의 code로 본다)."""
+    code = getattr(exc, "code", None)
+    return isinstance(code, int) and code in CONFIG_ERROR_CODES
+
+
 def call_with_retry(llm: LLM, prompt: str, schema: dict, validate) -> dict:
-    """응답을 검증하고, 실패하면 MAX_RETRIES번 더 시도한다."""
+    """응답을 검증한다. 연결·시간 초과·서버 오류만 MAX_RETRIES번 더 시도한다 (CR-12).
+
+    형식 오류(JSON 아님, 검사 실패)는 같은 질문에 같은 답이 나오므로 다시 묻지 않고
+    LLMFormatError, 키·권한·모델 설정 오류는 LLMConfigError로 바로 올린다
+    (update-llm-retry-kinds).
+    """
     last: Exception | None = None
     usage = usage_of(llm)
     for attempt in range(MAX_RETRIES + 1):
@@ -60,11 +81,22 @@ def call_with_retry(llm: LLM, prompt: str, schema: dict, validate) -> dict:
             usage.add(calls=1, retries=int(attempt > 0))
         try:
             data = llm.generate_json(prompt, schema)
-            validate(data)
-            return data
-        except Exception as exc:  # noqa: BLE001 - 어떤 오류든 재시도 대상
+        except json.JSONDecodeError as exc:
+            log.warning("언어 모델 답이 JSON이 아님: %s", exc)
+            raise LLMFormatError(FAILURE_MESSAGE) from exc
+        except Exception as exc:  # noqa: BLE001 - 연결·시간 초과·서버 오류는 재시도
+            if _is_config_error(exc):
+                log.warning("언어 모델 설정 오류: %s", exc)
+                raise LLMConfigError(CONFIG_FAILURE_MESSAGE) from exc
             last = exc
             log.warning("언어 모델 호출 실패 (%d/%d): %s", attempt + 1, MAX_RETRIES + 1, exc)
+            continue
+        try:
+            validate(data)
+        except Exception as exc:  # noqa: BLE001 - 검사 실패는 모두 형식 오류
+            log.warning("언어 모델 답 형식 오류: %s", exc)
+            raise LLMFormatError(FAILURE_MESSAGE) from exc
+        return data
     raise LLMFailure(FAILURE_MESSAGE) from last
 
 

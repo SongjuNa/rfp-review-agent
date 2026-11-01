@@ -18,6 +18,7 @@ const DROP_REASONS: Record<string, string> = {
   UNKNOWN_EVIDENCE: '없는 근거 ID',
   QUOTE_NOT_FOUND: '근거에 없는 인용',
   NUMBER_NOT_ALLOWED: '근거에 없는 숫자',
+  FORMAT_ERROR: '형식 오류',
 }
 
 const KIND_NOTES: Record<string, string> = {

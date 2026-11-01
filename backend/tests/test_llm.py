@@ -3,7 +3,15 @@
 import pytest
 
 from rfp_agent.llm import tasks
-from rfp_agent.llm.client import FAILURE_MESSAGE, MAX_RETRIES, LLMFailure, make_llm
+from rfp_agent.llm.client import (
+    CONFIG_FAILURE_MESSAGE,
+    FAILURE_MESSAGE,
+    MAX_RETRIES,
+    LLMConfigError,
+    LLMFailure,
+    LLMFormatError,
+    make_llm,
+)
 from rfp_agent.llm.evidence import EvidenceSpan
 from tests.conftest import FakeLLM
 
@@ -152,7 +160,8 @@ def test_duplicate_number_is_rejected_and_split():
     llm = NumberedLLM("duplicate")
     out = tasks.type_unclassified(llm, texts)
     assert out == ["COST" if i % 3 == 0 else "TECH_PERF" for i in range(40)]
-    assert len(llm.prompts) > MAX_RETRIES + 1          # 40줄 그대로는 3번 묻고 실패, 그 뒤 나눔
+    whole = [p for p in llm.prompts if p.count("\n") >= 40]
+    assert len(whole) == 1                  # 40줄 묶음은 한 번만 묻고 바로 나눔 (B6)
 
 
 class DraftLLM(FakeLLM):
@@ -175,3 +184,63 @@ def test_draft_lines_must_use_every_placeholder():
     out = tasks.draft_sentences(llm, "시험", [("사실", marks)] * 5)
     assert out == ["{p}는 {v1}을 맞춘다.", None, None, None, None]
     assert len(llm.prompts) == 1                    # 줄 내용 때문에 다시 묻지 않는다
+
+
+# ── 오류 종류별 처리 (update-llm-retry-kinds) ─────────────────────
+
+class EmptyClaimsLLM(FakeLLM):
+    def generate_json(self, prompt, schema):
+        super().generate_json(prompt, schema)
+        return {"claims": []}
+
+
+def test_format_error_is_not_retried():
+    """Scenario: 형식이 틀린 답은 다시 묻지 않음 · Scenario: 형식이 틀린 설명."""
+    llm = EmptyClaimsLLM()
+    out = tasks.explain_risk(llm, "VALUE_MISMATCH", FACTS, SPANS)
+    assert out == tasks.DroppedExplanation(tasks.FORMAT_ERROR)
+    assert len(llm.prompts) == 1 and llm.usage.calls == 1 and llm.usage.retries == 0
+
+
+class NotJsonLLM(FakeLLM):
+    def generate_json(self, prompt, schema):
+        import json
+        super().generate_json(prompt, schema)
+        return json.loads("{잘린 답")
+
+
+def test_not_json_is_format_error():
+    llm = NotJsonLLM()
+    with pytest.raises(LLMFormatError):
+        tasks.classify_document(llm, "a.docx", "first page")
+    assert len(llm.prompts) == 1
+
+
+class KeyErrorLLM(FakeLLM):
+    """google.genai ClientError처럼 code를 가진 오류."""
+
+    def generate_json(self, prompt, schema):
+        super().generate_json(prompt, schema)
+        err = RuntimeError("401 API key not valid")
+        err.code = 401
+        raise err
+
+
+def test_key_error_stops_at_once():
+    """키 오류는 다시 묻지 않고 설정 오류로 바로 멈춘다."""
+    llm = KeyErrorLLM()
+    with pytest.raises(LLMConfigError, match=CONFIG_FAILURE_MESSAGE):
+        tasks.label_sentences(llm, None, ["The breaker shall be provided."] * 40)
+    assert len(llm.prompts) == 1                # 나눠 묻지도 않는다
+
+
+def test_draft_chunk_with_bad_numbers_uses_code():
+    """번호가 겹친 초안 묶음은 다시 묻지 않고 그 묶음 줄 모두 None."""
+    class Dup(FakeLLM):
+        def generate_json(self, prompt, schema):
+            self.prompts.append(prompt)
+            return {"texts": [{"n": 0, "text": "{v1}"}, {"n": 0, "text": "{v1}"}]}
+
+    llm = Dup()
+    assert tasks.draft_sentences(llm, "시험", [("사실", {"v1": "요구값"})] * 2) == [None, None]
+    assert len(llm.prompts) == 1
