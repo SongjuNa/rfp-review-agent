@@ -29,4 +29,8 @@ def migrate(conn: psycopg.Connection, migrations_dir: Path) -> list[str]:
             conn.execute(path.read_text(encoding="utf-8"))
             conn.execute("INSERT INTO schema_migration (version) VALUES (%s)", (path.stem,))
         done.append(path.stem)
+    # 흐름 저장소 표(LangGraph checkpoint)는 라이브러리 자체 마이그레이션으로 만든다
+    from rfp_agent.pipeline.graph_flow import setup_checkpoints
+
+    setup_checkpoints(conn)
     return done

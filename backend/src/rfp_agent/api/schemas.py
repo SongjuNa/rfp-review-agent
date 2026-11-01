@@ -1124,6 +1124,7 @@ class RunLogItem(ReviewFields):
     judgments: int
     explanations_dropped: int               # 근거 대조에서 버린 위험 조건 설명 수
     type_examples: int = 0                  # 사람이 고른 유형 예시를 붙여 물은 줄 수 (C3)
+    resumed_from: str | None = None         # 이어서 다시 시도한 단계 (C2). 처음부터면 비움
     explanations_unverified: int            # AI 검증에서 확인 필요로 표시된 설명 수
     retries: int
     steps: list[RunStepTime]

@@ -1333,6 +1333,7 @@ export type RunLogItem = {
   judgments: number
   explanations_dropped: number
   type_examples?: number
+  resumed_from?: string | null
   explanations_unverified: number
   retries: number
   steps: RunStepTime[]
