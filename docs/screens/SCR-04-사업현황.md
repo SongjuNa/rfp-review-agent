@@ -1,7 +1,7 @@
 # 화면 명세: SCR-04 사업 현황
 
 - 연결 요구사항: `review-workspace` 사업 현황 화면, `business-status` 사업 목록과 내 사업·범위별 진행 상태 계산 (`add-project-status`)
-- 기준 목업: `Spec2Win_목업_v4.57.html#Projects`
+- 기준 목업: `Spec2Win_목업_v4.57.html#Projects`. **v4.96부터 `Spec2Win_목업_v4.96.html`이 기준**(맨 아래 "v4.96 바뀐 점")
 - 구현 방식: 실제. 화면은 `frontend/src/views/Projects.tsx`, 표시 이름은 `frontend/src/components/business.ts`, CSS는 목업 Projects CSS 그대로
 - 사용 API: `GET /api/businesses?user_id=&scope=mine|all`
 - 화면 주소: `#/projects`
@@ -25,3 +25,17 @@
 - **Given** 자기 검토가 연결된 사업, **When** 엔지니어가 사업 현황을 열면, **Then** 예시 띠 없이 그 사업 줄이 범위 상태 칩, 내 역할 "엔지니어"와 함께 보인다. (사업 현황 열기)
 - **Given** 반려된 검토가 연결된 사업, **When** 사업 현황에서 보면, **Then** 범위 칩이 빨간 "반려"이고 마우스를 올리면 범위 · 담당이 보인다. (반려 칩)
 - **Given** 사업 현황, **When** "팀 전체"를 누르면, **Then** 고른 사용자와 관계없는 사업도 보인다. (팀 전체)
+
+## v4.96 바뀐 점 (2026-11-01, `_v4.96_결정.md`)
+
+| 영역 | 보이는 항목 | API 칸 | 비고 |
+|---|---|---|---|
+| 요약 칸 설명 줄 | 진행 중 사업 "설비 범위 n개 · 내 담당 m개", 3일 내 제출 마감 "사업 D-n · 사업 D-n 외 k", 마감 지남 "없음" 또는 사업 이름 | `/businesses`의 `ranges`, `my_role`, `days_left`, `business_name` | 화면 계산 |
+| 요약 칸 누르기 | 그 조건만 표에 보임, 위에 "<조건>만 보는 중 · 모두 보기" | — | 다시 누르거나 모두 보기면 풀림 |
+
+- 요약 상자(AI 요약)는 두지 않는다(Q1).
+
+### 수용 기준 (v4.96)
+
+- **Given** 3일 안에 마감하는 사업 2개, **When** 사업 현황을 열면, **Then** "3일 내 제출 마감 2" 아래에 두 사업 이름과 D-day가 보인다. (요약 칸 설명 줄)
+- **When** 그 칸을 누르면, **Then** 표에 두 사업만 남고 "3일 내 제출 마감만 보는 중 · 모두 보기"가 보인다. (요약 칸으로 거르기)

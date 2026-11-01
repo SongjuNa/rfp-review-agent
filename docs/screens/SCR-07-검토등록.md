@@ -1,7 +1,7 @@
 # 화면 명세: SCR-07 검토 등록
 
 - 연결 요구사항: FR-01, `review-workspace` 검토 정보 입력과 표시 (`add-review-info`), 검토 등록 사업 연결 (`add-project-status`)
-- 기준 목업: `Spec2Win_목업_v4.57.html#Register`
+- 기준 목업: `Spec2Win_목업_v4.57.html#Register`. **v4.96부터 `Spec2Win_목업_v4.96.html`이 기준**(맨 아래 "v4.96 바뀐 점")
 - 구현 방식: 실제 (단계 2·3은 목업의 자동 추출 대신 직접 입력, `SCR-07_공유.md`)
 - 사용 API: `GET /api/library`, `POST /api/runs/preview`(multipart), `POST /api/runs/library/preview`, `POST /api/runs`(multipart, `choices` JSON 칸), `POST /api/runs/library`(`choices`), `GET /api/users`, `GET /api/businesses`(진행 중인 사업 고르기)
 - 화면 주소: `#/register`, 사업 상세의 "이 사업에 RFP 등록"은 `#/register/business/<사업 id>`(그 사업을 고른 채 연다)
@@ -47,3 +47,16 @@
 ## 수용 기준 (Given / When / Then)
 
 - **Given** 등록 화면, **When** 합성 docx를 올리고 마감일 없이 다음을 누르려 하면, **Then** 다음 단추가 꺼져 있다. 마감일을 넣고 등록하면 "RV-… 등록했습니다"가 보인다. (검토 등록 화면으로 시작)
+
+## v4.96 바뀐 점 (2026-11-01, `_v4.96_결정.md`)
+
+| 영역 | 보이는 항목 | 처리 |
+|---|---|---|
+| "Outlook 메일 · Teams 파일에서 가져오기 · Microsoft 365 연결됨" | 메일(받은편지함·폴더·기간·docx 첨부만)·Teams(팀·채널·폴더) 고르기 창, "입찰 문서로 보임", 고른 파일 수·크기, 가져오기 | **예시 창**(Q6). 예시 띠, 예시 메일·파일, [가져오기]를 누르면 "예시 화면이라 가져오지 않았습니다" 알림만. 서버 자료실 고르기(`/library`)는 그대로 |
+| 파일 줄의 출처 아이콘(메일·Teams), "받는 중" | 예시 창에서 고른 것만 | 실제 올린 파일은 출처 표시 없음 |
+
+- 요약 상자(AI 요약)는 두지 않는다(Q1). 등록 전 문서 분류 추천 표(지금)로 충분하다.
+
+### 수용 기준 (v4.96)
+
+- **Given** 검토 등록 화면, **When** "Outlook 메일 · Teams 파일에서 가져오기"를 열고 파일을 골라 가져오기를 누르면, **Then** 예시 알림만 보이고 올릴 파일 목록은 그대로다. (메일·Teams 가져오기는 예시)
