@@ -11,7 +11,7 @@ import { businessIdOf } from './api'
 import { findBid } from './examples/SCR-14'
 import { BidView } from './views/examples/BidView'
 import { Bids } from './views/examples/Bids'
-import { Eval } from './views/examples/Eval'
+import { Eval } from './views/Eval'
 import { Files } from './views/examples/Files'
 import { Login } from './views/examples/Login'
 import { Notice } from './views/examples/Notice'
@@ -49,7 +49,7 @@ function route(path: string): Route {
     const id = Number(review[1])
     return { menu: 'reviews', crumbs: [home, { label: 'RFP 검토', path: '/reviews' }, { label: '검토 상세' }], body: <ReviewDetail runId={id} /> }
   }
-  if (path === '/reviews') {
+  if (path === '/reviews' || path.startsWith('/reviews?')) {
     return { menu: 'reviews', crumbs: [home, { label: 'RFP 검토', path: '/reviews' }, { label: '검토 목록' }], body: <ReviewList /> }
   }
   // 사업 상세의 "이 사업에 RFP 등록"은 그 사업을 고른 채 연다 (add-project-status)

@@ -62,3 +62,16 @@
 .rlsteps ol{list-style:none;margin:6px 0 0;padding:0;display:grid;grid-template-columns:auto auto;gap:2px 24px}
 .rlsteps li{display:contents;font-size:var(--fs-sm)}
 .rlsteps li span:last-child{text-align:right;color:#475467}
+
+/* 검토 목록 "내가 올린 결재" 보기 (update-review-list-approval) */
+.apchips{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 10px}
+.apchip{border:0;background:#fff;font:inherit;font-size:var(--fs-sm);color:#475467;height:26px;padding:0 10px;border-radius:13px;cursor:pointer;box-shadow:0 0 0 1px rgba(16,24,40,.16);display:inline-flex;align-items:center;gap:5px;white-space:nowrap}
+.apchip b{font-weight:600;color:#1F2937;font-variant-numeric:tabular-nums}
+.apchip.on{background:#E8F1FB;color:#0569A0;box-shadow:0 0 0 1px #0569A0}
+.apchip.on b{color:#0569A0}
+.sumlink{border:0;background:none;padding:0;font:inherit;color:inherit;cursor:pointer;display:inline-flex;align-items:baseline}
+.sumlink:hover{text-decoration:underline}
+.mlink{margin:6px 0 0;text-align:right;font-size:var(--fs-sm)}
+.mlink a{color:#0569A0;text-decoration:none;display:inline-flex;align-items:center;gap:2px}
+.mlink a:hover{text-decoration:underline}
+.mlink .ms{font-size:var(--ic-s)}

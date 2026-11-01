@@ -46,8 +46,7 @@ test('페이지가 많은 목록', async ({ page, request }) => {
   await nav.getByRole('button', { name: '이전 페이지' }).click()
   await expect(nav.getByRole('button', { name: '153', exact: true })).toHaveAttribute('aria-current', 'page')
   await expect(page.locator('.pager select')).toBeVisible()
-  // 마지막 페이지 이동 요청이 테스트가 끝난 뒤 돌아와도 route.fetch 오류로 실패하지 않게 한다
-  await page.unrouteAll({ behavior: 'ignoreErrors' })
+  await page.unrouteAll({ behavior: 'ignoreErrors' })                          // 끝난 뒤 늦게 온 요청이 닫힌 화면에서 실패하지 않게
 })
 
 test('후보가 하나뿐인 비교 제품', async ({ page, request }) => {

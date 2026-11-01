@@ -7,7 +7,7 @@ from fastapi.exceptions import ResponseValidationError
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
-from rfp_agent.api import businesses, reference, runs
+from rfp_agent.api import businesses, evaluation, reference, runs
 from rfp_agent.config import get_settings
 from rfp_agent.db.connection import connect
 
@@ -15,6 +15,7 @@ app = FastAPI(title="RFP 기술 검토 지원 API", version="0.2.0")
 app.include_router(runs.router)
 app.include_router(reference.router)
 app.include_router(businesses.router)
+app.include_router(evaluation.router)
 
 log = logging.getLogger(__name__)
 

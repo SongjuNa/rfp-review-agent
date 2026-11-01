@@ -3,6 +3,7 @@ import { expect, test, type APIRequestContext, type Page } from '@playwright/tes
 
 // e2e 공용: 합성 데이터시트(e2e/fixtures/synthetic_judgment.docx, 백엔드 tests/docx_factory.py로 만듦, 고객 원문 아님)로
 // 실행을 만들고, 판정 하나를 일탈 후보로 고쳐 AR-01이 걸리게 한다.
+// 제품표에 따라 처음부터 일탈인 판정이 있을 수 있어, 일탈 후보 수는 고정하지 않고 고친 뒤의 수(deviations)를 돌려준다.
 // 판정하려면 문서 목록에 묶음 A로 있어야 한다. 로컬 DB에 한 번 넣는다:
 //   INSERT INTO document_catalog (file_no, file_key, bundle, language) VALUES (91, 'synthetic_judgment', 'A', 'en');
 const DOCX = new URL('./fixtures/synthetic_judgment.docx', import.meta.url)
@@ -27,7 +28,9 @@ export async function deviationRun(request: APIRequestContext, name: string) {
       reason: '시험용 일탈', actor_id: ENGINEER },
   })
   expect(edit.status()).toBe(200)
-  return run
+  const summary = await (await request.get(`/api/runs/${run.run_id}`)).json() as { deviation_candidates: number }
+  expect(summary.deviation_candidates).toBeGreaterThanOrEqual(1)
+  return { ...run, deviations: summary.deviation_candidates }
 }
 
 export async function as(page: Page, userId: number) {
@@ -62,3 +65,15 @@ export const lossRun = (request: APIRequestContext, name: string) => upload(requ
 
 /** 문서 읽기 점검 줄(표·그림·단위·위치 하나씩)이 나오는 합성 문서 (tests/docx_factory.build_read_spec) */
 export const readRun = (request: APIRequestContext, name: string) => upload(request, 'synthetic_read.docx', name, 'B')
+
+/** 영업 메일 보내기 결과. e2e 백엔드에 영업 주소(RFP_MAIL_SALES)나 메일 서버(Mailpit)가 없으면 보내지 못했다는 안내가 뜬다
+ * (주소는 지어내지 않는다, CR-04). 그 안내가 보이면 true를 돌려 보낸 뒤를 보는 확인은 건너뛴다.
+ * 메일 내용·다시 시도는 백엔드 테스트(가짜 메일)에서 본다. 보냈으면 false. */
+export async function salesMailUnavailable(page: Page, sent: RegExp | string) {
+  const failed = page.getByText(/(보내|넘기)지 못했습니다/)
+  const ok = page.getByRole('status').filter({ hasText: sent })
+  await expect(failed.or(ok).first()).toBeVisible()
+  if (!(await failed.first().isVisible())) return false
+  test.info().annotations.push({ type: 'note', description: `메일 환경 없음: ${await failed.first().textContent()}` })
+  return true
+}

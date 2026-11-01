@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { expect, test } from '@playwright/test'
-import { APPROVER, COMMENT, ENGINEER, as, deviationRun } from './helpers'
+import { APPROVER, COMMENT, ENGINEER, as, deviationRun, salesMailUnavailable } from './helpers'
 
 // 명세 review-workspace "제출본 탭"의 Scenario (change update-review-screens).
 
@@ -18,7 +18,7 @@ test('승인된 실행의 제출본', async ({ page, request }) => {
   await expect(row).toHaveCount(1)
   await expect(row.locator('td').first()).toHaveText('v1')
   await expect(row).toContainText(`${summary.judgments}줄`)
-  await expect(row).toContainText('일탈 1 · 질의')
+  await expect(row).toContainText(`일탈 ${run.deviations} · 질의`)
   await expect(row).toContainText('기본 승인자')
   await expect(row.locator('.st')).toHaveText('현재 제출본')
 })
@@ -48,6 +48,7 @@ test('인계 패키지 영업에 넘기기', async ({ page, request }) => {
   expect(readFileSync(await (await dl).path()).subarray(0, 2).toString()).toBe('PK')
   await expect(page.locator('#subm').getByRole('status')).toContainText(`인계패키지_${run.review_no}.zip 를 내려받았습니다.`)
   await box.getByRole('button', { name: '영업에 넘기기' }).click()
+  if (await salesMailUnavailable(page, '인계 패키지를 보냈습니다')) return
   await expect(page.locator('#subm').getByRole('status')).toContainText('인계 패키지를 보냈습니다')
   await expect(box).toContainText('에게 보냄')
   await expect(box.getByRole('button', { name: '다시 넘기기' })).toBeVisible()

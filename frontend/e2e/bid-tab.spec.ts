@@ -57,12 +57,8 @@ test('사유 없이 버리기', async ({ page }) => {
 
 test('불리한 점 목록', async ({ page }) => {
   const run = await openBid(page, '불리한 점')
-  // 고친 1건 말고도 제품표 값에 따라 일탈 후보가 더 나올 수 있어, 미달 줄 수는 일탈 후보 판정 수와 맞춘다
-  const res = await page.request.get(`/api/runs/${run.run_id}/judgments?result=DEVIATION_CANDIDATE&limit=1`)
-  const deviations = Number(res.headers()['x-total-count'])
-  expect(deviations).toBeGreaterThanOrEqual(1)
   const cons = page.locator('#bid .cols > div').nth(1)
-  await expect(cons.locator('.li', { hasText: '미달' })).toHaveCount(deviations)
+  await expect(cons.locator('.li', { hasText: '미달' })).toHaveCount(run.deviations)
   await expect(cons.locator('.li', { hasText: '미달' }).first()).toContainText('대응: 일탈 목록에 올리고')
   await expect(cons.locator('.li', { hasText: '값 불명확' }).first()).toContainText('대응: 서면 질의로')
 })

@@ -77,8 +77,10 @@ export function DetailBody({ run, tab, onTab, onChanged, onSubmit }: {
         <div className="kpi"><div className="l">일탈 후보</div><b className={c?.deviations ? 'c-red' : ''}>{c?.deviations ?? '—'}</b></div>
         <div className="kpi"><div className="l">질의 후보</div><b className={c?.queries ? 'c-ora' : ''}>{c?.queries ?? '—'}</b></div>
         <div className="kpi"><div className="l">확인 필요 비율</div><b className={ratio && overRatio(ratio) ? 'c-ora' : 'c-green'}>{ratio ? ratioText(ratio) : '—'}</b>
-          <div className="s">기준 {ratio ? Math.round(ratio.threshold * 100) : 20} %</div></div>
-        <div className="kpi"><div className="l">보증값 작성 (비어 있음)</div><b className={empty.data ? 'c-blue' : 'dimv'}>{empty.data ?? '—'}</b></div>
+          <div className="s">기준 {ratio ? Math.round(ratio.threshold * 100) : 20} %
+            {ratio?.hand_fill ? <span title="제품표에 연결되지 않아 입찰자가 원래 써 넣는 보증값 칸은 비율에서 뺍니다 (AR-03)"> · 직접 작성할 칸 {ratio.hand_fill}개 뺌</span> : null}</div></div>
+        <div className="kpi"><div className="l">보증값 작성 (비어 있음)</div><b className={empty.data ? 'c-blue' : 'dimv'}>{empty.data ?? '—'}</b>
+          {ratio?.hand_fill ? <div className="s">직접 작성할 칸 {ratio.hand_fill}</div> : null}</div>
         <div className="kpi"><div className="l">손실 환산 참고값</div><b>{c?.loss ?? '—'}</b>
           <div className="s">{losses.data?.length ? `고객 요구 조항 ${losses.data.length}건` : '고객 요구 조항 없음'}</div></div>
       </div>
