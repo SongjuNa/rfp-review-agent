@@ -49,9 +49,29 @@ def run_summary(conn: psycopg.Connection, run_id: int) -> dict | None:
                    AS judgments,
                (SELECT count(*) FROM output_item WHERE run_id = r.run_id) AS output_items,
                (SELECT count(*) FROM engineering_check WHERE run_id = r.run_id
-                  AND result = 'VIOLATION') AS check_violations
+                  AND result = 'VIOLATION') AS check_violations,
+               r.graph_state->'revision' AS revision
         FROM review_run r WHERE r.run_id = %s""", (run_id,))
-    return rows[0] if rows else None
+    return _with_revision(rows[0]) if rows else None
+
+
+def _with_revision(row: dict) -> dict:
+    """graph_state.revision(줄 id 목록)을 개정 요약(줄 수)으로 바꾼다 (add-revision-notice)."""
+    raw = row.get("revision")
+    row["revision"] = None if not raw else {
+        "no": raw["no"], "at": raw["at"], "files": raw.get("files") or [],
+        "changed": len(raw.get("changed") or []), "added": len(raw.get("added") or []),
+        "removed": raw.get("removed") or 0}
+    return row
+
+
+def revised_ids(conn: psycopg.Connection, run_id: int) -> dict[int, str]:
+    """마지막 개정에서 바뀐(CHANGED)·추가된(ADDED) 판정 줄 id. 개정이 없으면 빈 dict."""
+    row = conn.execute("SELECT graph_state->'revision' FROM review_run WHERE run_id = %s",
+                       (run_id,)).fetchone()
+    raw = (row[0] if row else None) or {}
+    return {**{i: "ADDED" for i in raw.get("added") or []},
+            **{i: "CHANGED" for i in raw.get("changed") or []}}
 
 
 def run_documents(conn: psycopg.Connection, run_id: int) -> list[dict]:
@@ -235,39 +255,47 @@ def _judgment_params(run_id: int, result: str | None, group: str | None, type_co
             "q": f"%{text}%" if text else None, "unconfirmed": unconfirmed, "ids": ids}
 
 
-def _past_ids(conn: psycopg.Connection, run_id: int, past: str | None) -> list[int] | None:
-    """past=differs: 지난 사람 판정과 다른 줄만 (add-review-memory)."""
+def _past_ids(conn: psycopg.Connection, run_id: int, past: str | None,
+              revised: bool = False) -> list[int] | None:
+    """past=differs: 지난 사람 판정과 다른 줄만 (add-review-memory).
+    revised: 마지막 개정에서 바뀌거나 추가된 줄만 (add-revision-notice). 둘 다면 둘 다 맞는 줄."""
     from rfp_agent.pipeline.review_memory import differing_ids
 
-    return differing_ids(conn, run_id) if past == "differs" else None
+    ids = differing_ids(conn, run_id) if past == "differs" else None
+    if revised:
+        rev = list(revised_ids(conn, run_id))
+        ids = rev if ids is None else [i for i in ids if i in set(rev)]
+    return ids
 
 
 def run_judgments(conn: psycopg.Connection, run_id: int, *, result: str | None = None,
                   group: str | None = None, type_code: str | None = None, q: str | None = None,
                   unconfirmed: bool = False, priority: bool = False, limit: int = 100,
-                  offset: int = 0, past: str | None = None) -> list[dict]:
+                  offset: int = 0, past: str | None = None, revised: bool = False) -> list[dict]:
     from rfp_agent.pipeline.review_memory import hints
 
     order = f"{PRIORITY}, j.judgment_id" if priority else "j.judgment_id"
     rows = _rows(conn, JUDGMENTS + JUDGMENTS_WHERE + f"""
         ORDER BY {order} LIMIT %(limit)s OFFSET %(offset)s""",
         _judgment_params(run_id, result, group, type_code, q, unconfirmed,
-                         _past_ids(conn, run_id, past))
+                         _past_ids(conn, run_id, past, revised))
         | {"limit": limit, "offset": offset})
     found = hints(conn, run_id, [r["judgment_id"] for r in rows]) if rows else {}
+    rev = revised_ids(conn, run_id) if rows else {}
     for r in rows:
         r["past_decision"] = found.get(r["judgment_id"])
+        r["revised"] = rev.get(r["judgment_id"])
     return _with_locations(conn, rows, run_id)
 
 
 def count_judgments(conn: psycopg.Connection, run_id: int, *, result: str | None = None,
                     group: str | None = None, type_code: str | None = None,
                     q: str | None = None, unconfirmed: bool = False,
-                    past: str | None = None) -> int:
+                    past: str | None = None, revised: bool = False) -> int:
     sql = JUDGMENTS.split("FROM judgment j", 1)[1]
     return _rows(conn, "SELECT count(*) AS n FROM judgment j" + sql + JUDGMENTS_WHERE,
                  _judgment_params(run_id, result, group, type_code, q, unconfirmed,
-                                  _past_ids(conn, run_id, past)))[0]["n"]
+                                  _past_ids(conn, run_id, past, revised)))[0]["n"]
 
 
 def judgment_counts(conn: psycopg.Connection, run_id: int) -> dict:
@@ -455,7 +483,7 @@ def users(conn: psycopg.Connection) -> list[dict]:
 
 
 def run_list(conn: psycopg.Connection, limit: int = 50) -> list[dict]:
-    return _rows(conn, f"""
+    rows = _rows(conn, f"""
         SELECT r.run_id, r.stage, r.started_at, r.finished_at, r.graph_state->>'step' AS step,
                r.graph_state->'detail' AS step_detail,
                COALESCE((r.graph_state->>'updated_at')::timestamptz, r.started_at)
@@ -466,7 +494,7 @@ def run_list(conn: psycopg.Connection, limit: int = 50) -> list[dict]:
                  WHERE rd.run_id = r.run_id) AS files,
                {COUNTS},
                ap.approver_id, ap.approver, ap.requested_by_id, ap.requested_by,
-               ap.requested_at, ap.decision, ap.decided_at
+               ap.requested_at, ap.decision, ap.decided_at, r.graph_state->'revision' AS revision
         FROM review_run r
         -- 가장 최근 상신 하나. 그것이 취소한 상신이면 결재 칸은 모두 비운다
         LEFT JOIN LATERAL (
@@ -478,6 +506,7 @@ def run_list(conn: psycopg.Connection, limit: int = 50) -> list[dict]:
             LEFT JOIN app_user q ON q.user_id = a.requested_by
             WHERE a.decision IS DISTINCT FROM 'WITHDRAWN') ap ON TRUE
         ORDER BY r.run_id DESC LIMIT %s""", (limit,))
+    return [_with_revision(r) for r in rows]
 
 
 def requirement(conn: psycopg.Connection, requirement_id: int,

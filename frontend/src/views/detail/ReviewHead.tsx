@@ -48,7 +48,8 @@ export function TitleRow({ run, onRefresh, onAddDoc, onAsk, asking, onEdit, onWo
   return (
     <div className="ttl">
       <div style={{ minWidth: 0 }}>
-        <div className="ttl1"><h1>{reviewTitle(run)}</h1><span className={`st ${STAGE_TONES[run.stage]}`}>{STAGE_NAMES[run.stage]}</span></div>
+        <div className="ttl1"><h1>{reviewTitle(run)}</h1><span className={`st ${STAGE_TONES[run.stage]}`}>{STAGE_NAMES[run.stage]}</span>
+          {run.revision && <span className="st c-blue" title={`문서 추가 ${run.revision.files.join(', ')}`}>개정 {run.revision.no} 반영</span>}</div>
         <div className="ttl2">기술 검토 {run.review_no}</div>
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--s-2)', flexWrap: 'wrap' }}>

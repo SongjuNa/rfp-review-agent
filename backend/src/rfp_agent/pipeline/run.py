@@ -519,6 +519,8 @@ def _judge_node(ctx: RunContext):
         count = judge_run(conn, run_id, state["readable_ids"])
         # 같은 줄(요구값·비교 제품·비교 규칙)의 확정·수정·반려를 이어받는다 (FR-10 ⑤)
         doc_add.carry_judgments(conn, run_id, old)
+        # 문서 추가로 다시 판정했으면 바뀜·추가·사라짐을 남긴다 (add-revision-notice)
+        doc_add.record_revision(conn, run_id, old)
         conn.commit()
         return {"judgment_count": count}
     return node

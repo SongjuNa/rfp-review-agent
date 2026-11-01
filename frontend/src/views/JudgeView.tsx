@@ -175,6 +175,7 @@ function Detail({ runId, stage, j, docs, pos, total, onPrev, onNext, editing, se
       <div className="mdw" role="region" aria-labelledby="mdTitle">
         <div className="mdh">
           <span className={`st ${RESULT_TONES[j.result]}`}>{RESULT_NAMES[j.result]}</span>
+          {j.revised && <span className="st c-blue" title="문서 추가로 다시 판정한 결과">{j.revised === 'CHANGED' ? '바뀜(개정)' : '추가(개정)'}</span>}
           <h1 id="mdTitle" className="jv-h">{itemName(j)}{j.item_name_raw && j.item_name && <span className="mden">{j.item_name_raw}</span>}</h1>
           <span className="mdpos">판정 {pos} / {total}</span>
           <button type="button" className="ib" onClick={onPrev ?? undefined} disabled={!onPrev} aria-label="이전 판정" title="이전 판정 (↑)"><span className="ms" aria-hidden="true">keyboard_arrow_up</span></button>

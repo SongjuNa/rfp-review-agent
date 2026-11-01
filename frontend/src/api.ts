@@ -13,7 +13,7 @@ export type {
   DocumentChoice, DocumentLines, DocumentPreview, EngineeringCheck,
   Equipment, Health, ItemKey, Judgment, JudgmentCounts, Location, LogEntry, Loss, MyTasks, OutputItem, Product,
   ProductDetail, ProductFamily, ProductUse, Proposal, ReadCheck, Requirement, ReviewCard, Risk, RiskExpression, RuleEdit, RunDocument,
-  AnswerKey, EvalMetric, EvalRun, EvalScore, AssistantAnswer, AssistantEvidence, RunListItem, RunLogItem, RunSummary, RuleSuggestion, MeaningCandidate, RiskMeaning, SalesHandoff, SubmissionCheck, Tbe, TbeRow, User, Warranty,
+  AnswerKey, EvalMetric, EvalRun, EvalScore, AssistantAnswer, AssistantEvidence, Revision, RunListItem, RunLogItem, RunSummary, RuleSuggestion, MeaningCandidate, RiskMeaning, SalesHandoff, SubmissionCheck, Tbe, TbeRow, User, Warranty,
 } from './api.gen'
 import type {
   CompareRule, DatasheetInfo, Datasheet, DocKindRule, EngineeringCheck, Equipment, Health, ItemKey, Judgment, JudgmentCounts,
@@ -30,6 +30,7 @@ export type ReviewInfo = Pick<RunSummary, 'project_name' | 'review_name' | 'cust
 export type JudgmentQuery = {
   result?: string; group?: string; type_code?: string; q?: string; unconfirmed?: boolean; order?: 'priority'
   past?: 'differs'   // 지난 사람 판정과 다른 줄만 (add-review-memory)
+  revised?: boolean  // 마지막 문서 추가 개정에서 바뀌거나 추가된 줄만 (add-revision-notice)
   offset?: number; limit?: number
 }
 

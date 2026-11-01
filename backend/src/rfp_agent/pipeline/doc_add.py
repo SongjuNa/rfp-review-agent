@@ -11,6 +11,7 @@
 from pathlib import Path
 
 import psycopg
+from psycopg.types.json import Json
 
 JUDGMENT_KEY = ("requirement_id", "value_id", "product_code", "compare_rule_id")
 EDITED_COLUMNS = ("result", "reason_code", "reason_text", "margin_value", "margin_kind",
@@ -64,8 +65,9 @@ def prepare_add(conn: psycopg.Connection, run_id: int, new_paths: list[Path],
                       cancel_requested_at = NULL, cancel_requested_by = NULL,
                       graph_state = graph_state || jsonb_build_object(
                           'step', 'created', 'detail', NULL, 'updated_at', now(),
-                          'added_by', %s::int)
-               WHERE run_id = %s""", (actor_id, run_id))
+                          'added_by', %s::int,
+                          'revision_pending', jsonb_build_object('files', %s::jsonb))
+               WHERE run_id = %s""", (actor_id, Json([p.name for p in new_paths]), run_id))
         log(conn, run_id, "run_document", run_id, "ADD", None,
             {"files": [p.name for p in new_paths]}, None, actor_id)
     return paths + new_paths, choices
@@ -113,6 +115,42 @@ def carry_judgments(conn: psycopg.Connection, run_id: int, old_ids: list[int]) -
                          (status, new_id))
         carried += 1
     return carried
+
+
+def record_revision(conn: psycopg.Connection, run_id: int, old_ids: list[int]) -> dict | None:
+    """문서 추가로 다시 판정했으면 개정 결과를 남긴다 (change add-revision-notice).
+
+    판정 단계에서 이어받기 뒤에 부른다. 문서 추가가 남긴 표시(revision_pending)가 있을 때만
+    쓰고 표시를 지운다. 같은 줄(JUDGMENT_KEY)이 이전·새 판정에 다 있고 판정 값이 다르면 "바뀜",
+    새 판정에만 있으면 "추가",
+    이전 판정에만 있으면 "사라짐". 바뀜·추가 줄 id와 사라짐 수를 graph_state.revision에 둔다.
+    """
+    row = conn.execute("SELECT graph_state->'revision_pending', graph_state->'revision' "
+                       "FROM review_run WHERE run_id = %s", (run_id,)).fetchone()
+    if row is None or row[0] is None:
+        return None
+    pending, last = row
+    keys = ", ".join(JUDGMENT_KEY)
+
+    def by_key(where: str, params) -> dict[tuple, tuple[int, str]]:
+        return {tuple(r[:4]): (r[4], r[5]) for r in conn.execute(
+            f"SELECT {keys}, judgment_id, result FROM judgment WHERE {where} "
+            "ORDER BY judgment_id", params)}
+    old = by_key("judgment_id = ANY(%s)", (old_ids,))
+    new = by_key("run_id = %s AND is_current", (run_id,))
+    changed = sorted(jid for k, (jid, result) in new.items() if k in old and old[k][1] != result)
+    added = sorted(jid for k, (jid, _) in new.items() if k not in old)
+    revision = {
+        "no": (last or {}).get("no", 0) + 1,
+        "files": pending.get("files") or [],
+        "changed": changed, "added": added,
+        "removed": sum(1 for k in old if k not in new),
+    }
+    conn.execute("""UPDATE review_run SET graph_state = (graph_state - 'revision_pending')
+                        || jsonb_build_object(
+                            'revision', %s::jsonb || jsonb_build_object('at', now()))
+                    WHERE run_id = %s""", (Json(revision), run_id))
+    return revision
 
 
 RISK_KEY_SQL = """SELECT f.risk_id, f.risk_kind, f.expr_id, f.item_key,

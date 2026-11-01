@@ -845,7 +845,7 @@
           "검토 실행"
         ],
         "summary": "Run Judgments",
-        "description": "판정 목록. order=priority면 일탈 → 질의 → 확인 필요 → 작성 필요 → 준수 순서.\npast=differs면 지난 사람 판정과 다른 줄만 (add-review-memory).",
+        "description": "판정 목록. order=priority면 일탈 → 질의 → 확인 필요 → 작성 필요 → 준수 순서.\npast=differs면 지난 사람 판정과 다른 줄만 (add-review-memory).\nrevised면 마지막 문서 추가 개정에서 바뀌거나 추가된 줄만 (add-revision-notice).",
         "operationId": "run_judgments_api_runs__run_id__judgments_get",
         "parameters": [
           {
@@ -963,6 +963,16 @@
                 }
               ],
               "title": "Order"
+            }
+          },
+          {
+            "name": "revised",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Revised"
             }
           },
           {
@@ -10230,6 +10240,21 @@
               }
             ]
           },
+          "revised": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "CHANGED",
+                  "ADDED"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Revised"
+          },
           "locations": {
             "items": {
               "$ref": "#/components/schemas/Location"
@@ -13346,6 +13371,16 @@
             ],
             "title": "Decided At"
           },
+          "revision": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Revision"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "summary": {
             "$ref": "#/components/schemas/RunSummary"
           },
@@ -13526,6 +13561,50 @@
           "hand_fill"
         ],
         "title": "ReviewRatio"
+      },
+      "Revision": {
+        "properties": {
+          "no": {
+            "type": "integer",
+            "title": "No"
+          },
+          "at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "At"
+          },
+          "files": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Files"
+          },
+          "changed": {
+            "type": "integer",
+            "title": "Changed"
+          },
+          "added": {
+            "type": "integer",
+            "title": "Added"
+          },
+          "removed": {
+            "type": "integer",
+            "title": "Removed"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "no",
+          "at",
+          "files",
+          "changed",
+          "added",
+          "removed"
+        ],
+        "title": "Revision",
+        "description": "문서 추가로 다시 분석한 결과 (add-revision-notice).\n\n줄 수는 같은 줄(요구값·비교 제품·비교 규칙) 기준."
       },
       "Risk": {
         "properties": {
@@ -14541,6 +14620,16 @@
               }
             ],
             "title": "Decided At"
+          },
+          "revision": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Revision"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "additionalProperties": false,
@@ -15178,6 +15267,16 @@
           "proposals": {
             "type": "integer",
             "title": "Proposals"
+          },
+          "revision": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Revision"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "additionalProperties": false,
