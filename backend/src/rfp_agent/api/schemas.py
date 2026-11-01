@@ -1084,3 +1084,81 @@ class RunLogItem(ReviewFields):
     judgments: int
     retries: int
     steps: list[RunStepTime]
+
+
+# ---------------------------------------------------------------------
+# 정답지·채점 (add-evaluation, 명세 evaluation)
+
+class AnswerKey(Out):
+    """유형 정답지. made_by가 CLAUDE_DRAFT면 사람 확인 전 초안."""
+    key_id: int
+    key_name: str
+    key_kind: Literal["TYPE"]
+    made_by: Literal["CLAUDE_DRAFT", "HUMAN"]
+    created_at: datetime
+    rows: int
+    human_checked: int
+    ambiguous: int
+
+
+class EvalRun(Out):
+    """채점에 넣을 수 있는 검토 (사람이 확정·수정한 판정 줄이 있음)."""
+    run_id: int
+    review_no: str
+    review_name: str | None
+    stage: Stage
+    reviewed: int                       # 사람이 확정·수정한 판정 줄
+    reviewer: str | None
+    last_reviewed_at: datetime | None
+
+
+class EvalMetric(Out):
+    """지표 하나. 값이 없으면(분모 0) null. 목표가 없으면 passed는 null."""
+    code: str
+    name: str
+    measure: str
+    unit: str
+    value: float | None
+    num: int | None
+    den: int | None
+    target: float | None
+    better: Literal["up", "down"]
+    passed: bool | None
+    note: str | None
+
+
+class EvalTypeDetail(Out):
+    rows: int
+    matched: int
+    hit: int
+    miss: int
+    not_found: int
+    ambiguous: int
+    ambiguous_hit: int
+
+
+class EvalNotMeasured(Out):
+    code: str
+    name: str
+    note: str
+
+
+class EvalMetrics(Out):
+    items: list[EvalMetric]
+    types: EvalTypeDetail | None
+    not_measured: list[EvalNotMeasured]
+
+
+class EvalScore(Out):
+    """채점 기록 한 줄."""
+    score_id: int
+    run_ids: list[int]
+    key_id: int | None
+    key_name: str | None
+    key_made_by: Literal["CLAUDE_DRAFT", "HUMAN"] | None
+    metrics: EvalMetrics
+    note: str | None
+    code_version: str | None
+    scored_by: int | None
+    scored_by_name: str | None
+    scored_at: datetime

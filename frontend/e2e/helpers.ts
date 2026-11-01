@@ -65,3 +65,15 @@ export const lossRun = (request: APIRequestContext, name: string) => upload(requ
 
 /** 문서 읽기 점검 줄(표·그림·단위·위치 하나씩)이 나오는 합성 문서 (tests/docx_factory.build_read_spec) */
 export const readRun = (request: APIRequestContext, name: string) => upload(request, 'synthetic_read.docx', name, 'B')
+
+/** 영업 메일 보내기 결과. e2e 백엔드에 영업 주소(RFP_MAIL_SALES)나 메일 서버(Mailpit)가 없으면 보내지 못했다는 안내가 뜬다
+ * (주소는 지어내지 않는다, CR-04). 그 안내가 보이면 true를 돌려 보낸 뒤를 보는 확인은 건너뛴다.
+ * 메일 내용·다시 시도는 백엔드 테스트(가짜 메일)에서 본다. 보냈으면 false. */
+export async function salesMailUnavailable(page: Page, sent: RegExp | string) {
+  const failed = page.getByText(/(보내|넘기)지 못했습니다/)
+  const ok = page.getByRole('status').filter({ hasText: sent })
+  await expect(failed.or(ok).first()).toBeVisible()
+  if (!(await failed.first().isVisible())) return false
+  test.info().annotations.push({ type: 'note', description: `메일 환경 없음: ${await failed.first().textContent()}` })
+  return true
+}
