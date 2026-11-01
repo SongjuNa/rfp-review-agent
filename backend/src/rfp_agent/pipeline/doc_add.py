@@ -136,13 +136,14 @@ def risk_statuses(conn: psycopg.Connection, run_id: int) -> dict[tuple, str]:
 
 
 def risk_explanations(conn: psycopg.Connection,
-                      old: dict[int, tuple]) -> dict[tuple, tuple[int, str | None]]:
-    """열쇠 → (이전 risk_id, AI 설명). 같은 후보는 AI에 다시 묻지 않으려고 쓴다."""
+                      old: dict[int, tuple]) -> dict[tuple, tuple[int, str | None, str | None]]:
+    """열쇠 → (이전 risk_id, AI 설명, 검증 표시). 같은 후보는 AI에 다시 묻지 않으려고 쓴다."""
     if not old:
         return {}
-    text = dict(conn.execute("SELECT risk_id, explanation_ai FROM risk_flag "
-                             "WHERE risk_id = ANY(%s)", (list(old),)).fetchall())
-    return {key: (rid, text.get(rid)) for rid, (key, _) in old.items()}
+    rows = {rid: (text, check) for rid, text, check in conn.execute(
+        "SELECT risk_id, explanation_ai, explanation_check FROM risk_flag "
+        "WHERE risk_id = ANY(%s)", (list(old),))}
+    return {key: (rid, *rows.get(rid, (None, None))) for rid, (key, _) in old.items()}
 
 
 def replace_risks(conn: psycopg.Connection, run_id: int, old: dict[int, tuple]) -> int:

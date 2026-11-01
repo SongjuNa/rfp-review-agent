@@ -1123,6 +1123,7 @@ export type Risk = {
   facts: string | null
   explanation_ai: string | null
   explanation_drop_reason: 'UNKNOWN_EVIDENCE' | 'QUOTE_NOT_FOUND' | 'NUMBER_NOT_ALLOWED' | 'FORMAT_ERROR' | null
+  explanation_check: 'VERIFIED' | 'NEEDS_REVIEW' | null
   expression: string | null
   members: RiskMember[]
 }
@@ -1279,6 +1280,7 @@ export type RunLogItem = {
   requirements: number
   judgments: number
   explanations_dropped: number
+  explanations_unverified: number
   retries: number
   steps: RunStepTime[]
 }

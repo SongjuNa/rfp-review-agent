@@ -110,7 +110,7 @@ class FakeLLM:
             return {"texts": [{"n": n, "text": (self.text or "초안: {all}").replace(
                 "{all}", " ".join(re.findall(r"\{\w+\}", marks)))}
                 for n, marks in enumerate(lines)]}
-        default = {"labels": "REQUIREMENT", "types": "NONE"}[field]
+        default = {"labels": "REQUIREMENT", "types": "NONE", "verdicts": "YES"}[field]
         return {field: [{"n": n, "v": default} for n in range(count)]}
 
 

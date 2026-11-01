@@ -41,7 +41,9 @@ def run_log(conn: psycopg.Connection, limit: int = 200) -> list[dict]:
                    (SELECT count(*) FROM judgment WHERE run_id = r.run_id AND is_current)
                        AS judgments,
                    (SELECT count(*) FROM risk_flag WHERE run_id = r.run_id
-                     AND explanation_drop_reason IS NOT NULL) AS explanations_dropped
+                     AND explanation_drop_reason IS NOT NULL) AS explanations_dropped,
+                   (SELECT count(*) FROM risk_flag WHERE run_id = r.run_id
+                     AND explanation_check = 'NEEDS_REVIEW') AS explanations_unverified
             FROM review_run r ORDER BY r.run_id DESC LIMIT %s""", (limit,)).fetchall()
         steps = cur.execute(
             """SELECT run_id, attempt, step,

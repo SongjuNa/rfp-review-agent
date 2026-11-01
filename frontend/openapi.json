@@ -12840,6 +12840,21 @@
             ],
             "title": "Explanation Drop Reason"
           },
+          "explanation_check": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "VERIFIED",
+                  "NEEDS_REVIEW"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Explanation Check"
+          },
           "expression": {
             "anyOf": [
               {
@@ -12870,6 +12885,7 @@
           "facts",
           "explanation_ai",
           "explanation_drop_reason",
+          "explanation_check",
           "expression",
           "members"
         ],
@@ -13975,6 +13991,10 @@
             "type": "integer",
             "title": "Explanations Dropped"
           },
+          "explanations_unverified": {
+            "type": "integer",
+            "title": "Explanations Unverified"
+          },
           "retries": {
             "type": "integer",
             "title": "Retries"
@@ -14021,6 +14041,7 @@
           "requirements",
           "judgments",
           "explanations_dropped",
+          "explanations_unverified",
           "retries",
           "steps"
         ],

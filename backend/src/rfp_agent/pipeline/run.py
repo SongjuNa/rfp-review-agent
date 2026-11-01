@@ -7,7 +7,7 @@
 
 import logging
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import TypedDict
 
@@ -289,7 +289,7 @@ def value_refs(conn: psycopg.Connection, document_ids: list[int]) -> list[ValueR
 
 
 def _save_risks(ctx: RunContext, run_id: int, candidates: list[RiskCandidate],
-                known: dict[tuple, tuple[int, str | None]] | None = None) -> int:
+                known: dict[tuple, tuple[int, str | None, str | None]] | None = None) -> int:
     """위험 조건 후보를 저장한다. known(열쇠 → 이전 risk_id·설명)에 같은 후보가 있으면
     AI에 다시 묻지 않고 이전 설명과 근거 문장을 이어 쓴다 (문서 추가·다시 시도)."""
     conn = ctx.conn
@@ -316,9 +316,8 @@ def _save_risks(ctx: RunContext, run_id: int, candidates: list[RiskCandidate],
     # (나) AI 설명은 동시에 받는다 (NFR-10). 결과는 후보 순서대로
     llm = ctx.llm
     asks = [i for i, p in enumerate(plans) if p[3]]
-    answers = run_ordered([lambda p=plans[i]: tasks.explain_risk(llm, p[0].risk_kind, p[0].facts,
-                                                                 p[3]) for i in asks],
-                          workers_of(llm)) if asks else []
+    answers = run_ordered([lambda p=plans[i]: _explain_and_verify(llm, p[0], p[3])
+                           for i in asks], workers_of(llm)) if asks else []
     explanations = dict(zip(asks, answers, strict=True))
     # (다) 원래 순서대로 저장한다 (risk_id 순서가 차례로 할 때와 같음)
     for n, (cand, expr_id, reused, _) in enumerate(plans):
@@ -328,11 +327,12 @@ def _save_risks(ctx: RunContext, run_id: int, candidates: list[RiskCandidate],
         dropped = answer.reason if isinstance(answer, tasks.DroppedExplanation) else None
         risk_id = conn.execute(
             """INSERT INTO risk_flag (run_id, risk_kind, expr_id, explanation_ai, status, facts,
-                                      item_key, explanation_drop_reason)
-               VALUES (%s, %s, %s, %s, 'CANDIDATE', %s, %s, %s) RETURNING risk_id""",
+                                      item_key, explanation_drop_reason, explanation_check)
+               VALUES (%s, %s, %s, %s, 'CANDIDATE', %s, %s, %s, %s) RETURNING risk_id""",
             (run_id, cand.risk_kind, expr_id,
              reused[1] if reused else explained.text if explained else None, cand.facts,
-             cand.item_key, dropped),
+             cand.item_key, dropped,
+             reused[2] if reused else explained.check if explained else None),
         ).fetchone()[0]
         if reused:
             conn.execute("UPDATE claim_evidence SET target_id = %s WHERE run_id = %s "
@@ -343,19 +343,35 @@ def _save_risks(ctx: RunContext, run_id: int, candidates: list[RiskCandidate],
             conn.execute("INSERT INTO risk_flag_member VALUES (%s, %s, %s) "
                          "ON CONFLICT DO NOTHING", (risk_id, req_id, value_id))
         if explained:
-            _save_claims(conn, run_id, "risk_flag", risk_id, "RISK_EXPLANATION", explained.claims)
+            _save_claims(conn, run_id, "risk_flag", risk_id, "RISK_EXPLANATION", explained.claims,
+                         explained.verdicts)
     return len(candidates)
 
 
+def _explain_and_verify(llm: LLM, cand: RiskCandidate, spans: list[EvidenceSpan]):
+    """설명을 받고, 코드 대조를 통과하면 검증 에이전트에 한 번 더 묻는다 (add-claim-verifier)."""
+    out = tasks.explain_risk(llm, cand.risk_kind, cand.facts, spans)
+    if isinstance(out, tasks.RiskExplanation):
+        sources = {s.evidence_id: s.text[:800] for s in spans}
+        out = replace(out, verdicts=tuple(tasks.check_support(llm, out.claims,
+                                                                          sources)))
+    return out
+
+
 def _save_claims(conn: psycopg.Connection, run_id: int, table: str, target_id: int,
-                 claim_type: str, claims) -> None:
-    """AI 설명 문장마다 인용과 근거 위치를 남긴다. 코드가 인용을 확인한 문장만 온다."""
-    for claim in claims:
+                 claim_type: str, claims, verdicts: tuple[str, ...] = ()) -> None:
+    """AI 설명 문장마다 인용과 근거 위치를 남긴다. 코드가 인용을 확인한 문장만 온다.
+
+    검증 에이전트가 YES가 아니라고 한 문장은 NEEDS_REVIEW (add-claim-verifier).
+    """
+    for n, claim in enumerate(claims):
+        status = "SUPPORTED" if not verdicts or verdicts[n] == "YES" else "NEEDS_REVIEW"
         claim_id = conn.execute(
             """INSERT INTO claim_evidence (run_id, target_table, target_id, claim_type,
                                            claim_text, exact_quote, relation, status)
-               VALUES (%s, %s, %s, %s, %s, %s, %s, 'SUPPORTED') RETURNING claim_id""",
-            (run_id, table, target_id, claim_type, claim.text, claim.quote, claim.relation),
+               VALUES (%s, %s, %s, %s, %s, %s, %s, %s) RETURNING claim_id""",
+            (run_id, table, target_id, claim_type, claim.text, claim.quote, claim.relation,
+             status),
         ).fetchone()[0]
         locations = dict.fromkeys(parsed[1] for i in claim.evidence_ids
                                   if (parsed := parse_evidence_id(i)))

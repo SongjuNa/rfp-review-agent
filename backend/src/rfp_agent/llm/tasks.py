@@ -185,6 +185,14 @@ class Claim:
 class RiskExplanation:
     text: str
     claims: tuple[Claim, ...]
+    verdicts: tuple[str, ...] = ()      # 문장마다 검증 답 YES/NO/UNSURE (add-claim-verifier)
+
+    @property
+    def check(self) -> str | None:
+        """모든 문장이 YES면 VERIFIED, 아니면 NEEDS_REVIEW. 검증하지 않았으면 None."""
+        if not self.verdicts:
+            return None
+        return "VERIFIED" if all(v == "YES" for v in self.verdicts) else "NEEDS_REVIEW"
 
 
 # 근거 대조에서 설명을 버린 이유 (update-ai-answer-checks). 처음 걸린 것 하나만 남긴다.
@@ -264,6 +272,40 @@ def explain_risk(llm: LLM, kind: str, facts: str,
                 or not _quantity_words(c.text) <= _quantity_words(basis)):
             return DroppedExplanation(NUMBER_NOT_ALLOWED)
     return RiskExplanation("\n".join(c.text for c in claims), claims)
+
+
+VERDICTS = ["YES", "NO", "UNSURE"]
+
+
+def check_support(llm: LLM, claims: tuple[Claim, ...], sources: dict[str, str]) -> list[str]:
+    """검증 에이전트 (add-claim-verifier): 문장마다 인용·근거 조각이 그 문장을 받쳐 주는지.
+
+    설명을 쓴 질문과 다른 질문으로 묻고, 사실 문장은 주지 않아 원문으로만 판단하게 한다.
+    결과는 표시만 한다(CR-01·08). 형식 오류는 다시 묻지 않고 모두 UNSURE.
+    """
+    numbered = "\n".join(
+        f"{i}. 문장({c.relation}): {one_line(c.text)} / 인용: {one_line(c.quote)} / 근거: "
+        + " | ".join(f"[{e}] {one_line(sources.get(e, ''))[:800]}" for e in c.evidence_ids)
+        for i, c in enumerate(claims))
+    prompt = (
+        "너는 검토 엔지니어를 돕는 검증자다. 아래 문장마다, 함께 준 인용과 근거 원문만 보고 "
+        "판단한다. 괄호 안은 문장이 근거와 맺는 관계다. DIRECT·DERIVED 문장은 근거에 그 내용이 "
+        "있거나 근거 값으로 바로 따라 나오면 YES. INFERRED 문장은 입찰자에게 미칠 영향을 "
+        "추론한 것이므로, 근거에서 무리 없이 나오는 추론이고 근거에 없는 사실·숫자·조건을 "
+        "더하지 않았으면 YES. 근거와 어긋나거나 근거에 없는 사실을 더했으면 NO, 근거만으로 "
+        "판단할 수 없으면 UNSURE. "
+        "문장마다 앞의 번호(n)와 판단(v)을 함께 낸다.\n" + numbered
+    )
+    schema = _numbered_schema("verdicts", "v", {"type": "string", "enum": VERDICTS})
+
+    def check(d):
+        _check_numbers(d["verdicts"], len(claims), "verdicts")
+        assert all(x["v"] in VERDICTS for x in d["verdicts"])
+
+    try:
+        return [x["v"] for x in _in_order(call_with_retry(llm, prompt, schema, check)["verdicts"])]
+    except LLMFormatError:
+        return ["UNSURE"] * len(claims)
 
 
 DRAFT_VERSION = "d1"
