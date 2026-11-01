@@ -106,7 +106,7 @@ function LossTable({ runId, l, many, docs, canEdit, lock, onDone }: {
           {KINDS.map(([k, name, price, f]) => (
             <tr key={k}>
               <td>{name}</td>
-              <td style={{ textAlign: 'right', color: '#667085' }}>{num(Number(l[price]))} {l.price_unit ?? ''} ×</td>
+              <td style={{ textAlign: 'right', color: 'var(--c-muted)' }}>{num(Number(l[price]))} {l.price_unit ?? ''} ×</td>
               <td style={{ textAlign: 'right' }}>
                 <label className="sr" htmlFor={`loss-${l.loss_calc_id}-${k}`}>{name} 손실값 (kW)</label>
                 <input className="fi" id={`loss-${l.loss_calc_id}-${k}`} inputMode="decimal" value={vals[f]} disabled={!canEdit} title={lock}

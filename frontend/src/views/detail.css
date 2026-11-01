@@ -1,55 +1,55 @@
 /* 목업 Detail CSS에 없는 것만 (SCR-08_공유.md): 검토 정보 고치기 창의 칸 배치 */
 .infog{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 16px}
-.infog label{display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:500;color:#344054}
+.infog label{display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:500;color:var(--c-text-2)}
 .infog .fi{width:100%;box-sizing:border-box}
 @media (max-width:640px){.infog{grid-template-columns:1fr}}
 /* 예시 띠 (_공통규칙.md 6장): 예시 화면·예시 영역 맨 위. 목업 .smp 색을 따른다 */
-.exband{display:flex;align-items:center;gap:8px;margin:0 0 16px;padding:10px 14px;border:1px dashed #DCE3EC;border-radius:8px;background:#F2F4F7;color:#475467;font-size:var(--fs-sm);font-weight:600}
+.exband{display:flex;align-items:center;gap:8px;margin:0 0 16px;padding:10px 14px;border:1px dashed var(--c-line);border-radius:8px;background:var(--c-bg-grey);color:var(--c-text-3);font-size:var(--fs-sm);font-weight:600}
 .exband .ms{font-size:18px}
-.rk .exband{margin:0;border:0;border-bottom:1px dashed #DCE3EC;border-radius:0}
+.rk .exband{margin:0;border:0;border-bottom:1px dashed var(--c-line);border-radius:0}
 /* 머리글 비교 제품 고르기 (SCR-08_공유.md): 설비 묶음마다 한 줄, 많으면 접어 둔다 */
-.pseg{margin-top:12px;border:1px solid #DCE3EC;border-radius:8px;background:#fff}
-.pseg summary{display:flex;align-items:center;gap:8px;padding:10px 14px;cursor:pointer;font-size:var(--fs-sm);color:#344054;list-style:none}
+.pseg{margin-top:12px;border:1px solid var(--c-line);border-radius:8px;background:var(--c-white)}
+.pseg summary{display:flex;align-items:center;gap:8px;padding:10px 14px;cursor:pointer;font-size:var(--fs-sm);color:var(--c-text-2);list-style:none}
 .pseg summary::-webkit-details-marker{display:none}
-.pseg summary .ms{font-size:18px;color:#667085}
-.pseg-sum{flex:1 1 auto;min-width:0;color:#667085;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.pseg-tg{color:#0569A0;font-weight:600;white-space:nowrap}
+.pseg summary .ms{font-size:18px;color:var(--c-muted)}
+.pseg-sum{flex:1 1 auto;min-width:0;color:var(--c-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pseg-tg{color:var(--c-link);font-weight:600;white-space:nowrap}
 .pseg-tg::after{content:" ▾"}
 .pseg[open] .pseg-tg::after{content:" ▴"}
-.pseg-grid{display:flex;flex-direction:column;border-top:1px solid #EEF1F5}
-.pseg-row{display:grid;grid-template-columns:minmax(160px,320px) minmax(0,1fr) auto;align-items:center;gap:12px;padding:8px 14px;border-bottom:1px solid #F2F4F7}
+.pseg-grid{display:flex;flex-direction:column;border-top:1px solid var(--c-line-pale)}
+.pseg-row{display:grid;grid-template-columns:minmax(160px,320px) minmax(0,1fr) auto;align-items:center;gap:12px;padding:8px 14px;border-bottom:1px solid var(--c-bg-grey)}
 .pseg-row:last-child{border-bottom:0}
-.pseg-name{font-size:var(--fs-sm);color:#475467;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pseg-name{font-size:var(--fs-sm);color:var(--c-text-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .pseg .seg{display:flex;flex-wrap:wrap;gap:2px;justify-self:start}
 .pseg .seg button{white-space:nowrap}
 @media (max-width:760px){.pseg-row{grid-template-columns:1fr}}
 /* 문서 표 창 (DocumentsDialog) */
 .apw.docw{width:min(1040px,100%)}
-.docsum{margin:8px 0 10px;font-size:var(--fs-sm);color:#344054}
+.docsum{margin:8px 0 10px;font-size:var(--fs-sm);color:var(--c-text-2)}
 .doct tbody tr{cursor:default}
-.doct tr.skip td{background:#FEF3F2}
+.doct tr.skip td{background:var(--c-red-bg)}
 .doct .docn{word-break:break-all;min-width:200px}
-.docwhy{margin-top:4px;font-size:var(--fs-xs);color:#B42318}
-.docadd{margin-top:16px;padding-top:14px;border-top:1px solid #EAECF0}
+.docwhy{margin-top:4px;font-size:var(--fs-xs);color:var(--c-red)}
+.docadd{margin-top:16px;padding-top:14px;border-top:1px solid var(--c-line-grey)}
 .docadd h3{margin:0 0 4px;font-size:var(--fs-body);font-weight:600}
 .hdoc.lnk{font-size:inherit}
-.hbun.warn{color:#B42318;font-weight:600}
+.hbun.warn{color:var(--c-red);font-weight:600}
 /* 다시 판정 중 화면 막기 (update-rejudge-busy, SCR-08_공유.md 6): 화면 전체를 덮고 가운데에 크게 */
-.rjcover{position:fixed;inset:0;z-index:200;display:flex;align-items:center;justify-content:center;padding:16px;background:rgba(16,24,40,.45);cursor:wait}
-.rjbox{display:flex;flex-direction:column;align-items:center;gap:10px;width:min(440px,100%);padding:32px 28px;border-radius:12px;background:#fff;box-shadow:0 24px 48px rgba(16,24,40,.24);text-align:center;color:#344054;font-size:var(--fs-sm)}
-.rjbox b{font-size:24px;color:#0A1E5A}
-.rjsub{color:#667085;font-size:var(--fs-xs);line-height:1.5}
-.rjspin{width:40px;height:40px;border:4px solid #DCE3EC;border-top-color:#0A1E5A;border-radius:50%;animation:rjspin 1s linear infinite}
+.rjcover{position:fixed;inset:0;z-index:200;display:flex;align-items:center;justify-content:center;padding:16px;background:var(--c-overlay);cursor:wait}
+.rjbox{display:flex;flex-direction:column;align-items:center;gap:10px;width:min(440px,100%);padding:32px 28px;border-radius:12px;background:var(--c-white);box-shadow:0 24px 48px var(--c-shade-strong);text-align:center;color:var(--c-text-2);font-size:var(--fs-sm)}
+.rjbox b{font-size:24px;color:var(--c-navy)}
+.rjsub{color:var(--c-muted);font-size:var(--fs-xs);line-height:1.5}
+.rjspin{width:40px;height:40px;border:4px solid var(--c-line);border-top-color:var(--c-navy);border-radius:50%;animation:rjspin 1s linear infinite}
 @keyframes rjspin{to{transform:rotate(360deg)}}
 @media (prefers-reduced-motion:reduce){.rjspin{animation:none}}
 /* 입찰 영향 탭 채택·버림 (update-proposal-actions, SCR-08-5_공유.md 9) */
 .pt-acts{display:flex;gap:8px;margin-top:8px}
 .pt-acts .bp,.pt-acts .bo{height:30px;padding:0 12px;font-size:var(--fs-sm);display:inline-flex;align-items:center;gap:4px}
 .pt-acts .ms{font-size:16px}
-.li.pt-adopted{background:#ECFDF3;border-radius:8px;padding-left:8px;padding-right:8px}
+.li.pt-adopted{background:var(--c-green-bg);border-radius:8px;padding-left:8px;padding-right:8px}
 .li.pt-dropped{opacity:.55}
-.pt-note{display:flex;align-items:center;gap:6px;margin:8px 0 0;padding:8px 10px;border-radius:6px;background:#F2F4F7;color:#475467;font-size:var(--fs-sm)}
-.pt-note.ok{background:#D1FADF;color:#05603A}
+.pt-note{display:flex;align-items:center;gap:6px;margin:8px 0 0;padding:8px 10px;border-radius:6px;background:var(--c-bg-grey);color:var(--c-text-3);font-size:var(--fs-sm)}
+.pt-note.ok{background:var(--c-green-pale);color:var(--c-green-deep)}
 .pt-note .ms{font-size:16px}
 
 /* 처리 상태 화면 분석 취소 (add-run-control) */
@@ -61,17 +61,17 @@
 .rlsteps b{font-size:var(--fs-sm)}
 .rlsteps ol{list-style:none;margin:6px 0 0;padding:0;display:grid;grid-template-columns:auto auto;gap:2px 24px}
 .rlsteps li{display:contents;font-size:var(--fs-sm)}
-.rlsteps li span:last-child{text-align:right;color:#475467}
+.rlsteps li span:last-child{text-align:right;color:var(--c-text-3)}
 
 /* 검토 목록 "내가 올린 결재" 보기 (update-review-list-approval) */
 .apchips{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 10px}
-.apchip{border:0;background:#fff;font:inherit;font-size:var(--fs-sm);color:#475467;height:26px;padding:0 10px;border-radius:13px;cursor:pointer;box-shadow:0 0 0 1px rgba(16,24,40,.16);display:inline-flex;align-items:center;gap:5px;white-space:nowrap}
-.apchip b{font-weight:600;color:#1F2937;font-variant-numeric:tabular-nums}
-.apchip.on{background:#E8F1FB;color:#0569A0;box-shadow:0 0 0 1px #0569A0}
-.apchip.on b{color:#0569A0}
+.apchip{border:0;background:var(--c-white);font:inherit;font-size:var(--fs-sm);color:var(--c-text-3);height:26px;padding:0 10px;border-radius:13px;cursor:pointer;box-shadow:0 0 0 1px var(--c-shade-pop);display:inline-flex;align-items:center;gap:5px;white-space:nowrap}
+.apchip b{font-weight:600;color:var(--c-text);font-variant-numeric:tabular-nums}
+.apchip.on{background:var(--c-bg-blue);color:var(--c-link);box-shadow:0 0 0 1px var(--c-link)}
+.apchip.on b{color:var(--c-link)}
 .sumlink{border:0;background:none;padding:0;font:inherit;color:inherit;cursor:pointer;display:inline-flex;align-items:baseline}
 .sumlink:hover{text-decoration:underline}
 .mlink{margin:6px 0 0;text-align:right;font-size:var(--fs-sm)}
-.mlink a{color:#0569A0;text-decoration:none;display:inline-flex;align-items:center;gap:2px}
+.mlink a{color:var(--c-link);text-decoration:none;display:inline-flex;align-items:center;gap:2px}
 .mlink a:hover{text-decoration:underline}
 .mlink .ms{font-size:var(--ic-s)}

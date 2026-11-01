@@ -102,7 +102,7 @@ export function Project({ businessId }: { businessId: number }) {
           {p.documents.length === 0 && <div className="sh-empty">연결된 검토의 문서가 없습니다.</div>}
           {p.documents.map((d) => (
             <a key={`${d.run_id}-${d.file_name}`} className="dc-tr pp-row pl-link" href={href(`/reviews/${d.run_id}`)}>
-              <span className="pd-own"><span className="ms" aria-hidden="true" style={{ color: '#667085' }}>description</span><span className="ell">{d.file_name}</span></span>
+              <span className="pd-own"><span className="ms" aria-hidden="true" style={{ color: 'var(--c-muted)' }}>description</span><span className="ell">{d.file_name}</span></span>
               <span><span className={d.bundle === 'A' || d.bundle === 'B' ? 'st c-blue' : 'st c-grey'}>{DOC_KIND_NAMES[d.doc_kind] ?? d.doc_kind}</span></span>
               <span className="mono sh-mut">{d.review_no}</span><span className="sh-mut">{d.review_name ?? '—'}</span></a>
           ))}
@@ -115,7 +115,7 @@ export function Project({ businessId }: { businessId: number }) {
           <div className="sh-box">
             {EXAMPLE_HISTORY.map(([bid, name, md, y, res, cls]) => (
               <a key={bid} className="hs-tr pp-row pl-link" href={href(`/bids/${bid}`)}><span className="mono sh-mut">{bid}</span><b>{name}</b><span className="mono sh-mut">{y}-{md}</span>
-                <span><span className={cls}>{res}</span></span><span className="ms" aria-hidden="true" style={{ color: '#98A2B3' }}>chevron_right</span></a>
+                <span><span className={cls}>{res}</span></span><span className="ms" aria-hidden="true" style={{ color: 'var(--c-disabled)' }}>chevron_right</span></a>
             ))}
           </div>
         </>
@@ -155,7 +155,7 @@ function People({ p, me }: { p: BusinessDetail; me: number | null }) {
         {p.people.length === 0 && <div className="sh-empty">아직 담당자가 없습니다.</div>}
         {p.people.map((u) => (
           <div key={`${u.user_id}-${u.part}`} className="pp-tr pp-row">
-            <span className="sh-mut" style={{ color: '#475467', fontWeight: 600 }}>{PART_NAMES[u.part]}</span>
+            <span className="sh-mut" style={{ color: 'var(--c-text-3)', fontWeight: 600 }}>{PART_NAMES[u.part]}</span>
             <span className="pd-own"><span className="hm-av" aria-hidden="true" style={{ width: 28, height: 28, fontSize: 12 }}>{u.user_name[0]}</span>{u.user_name}{u.user_id === me && <span className="pp-me">나</span>}</span>
             <span className="sh-mut">{u.scope ?? '사업 전체'}</span>
             <span className="sh-mut">{ROLE_NAMES[u.role] ?? u.role}</span>

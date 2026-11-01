@@ -30,7 +30,7 @@ export function ProcessingView({ run, onChanged }: { run: RunSummary; onChanged:
     : 'AI 없이 규칙으로만 분석해 보통 1분 안에 끝나요.'
   return (
     <div style={{ position: 'relative', minHeight: '60vh', marginTop: 20 }}>
-      <div className="ldo" style={{ position: 'absolute', background: '#fff' }}>
+      <div className="ldo" style={{ position: 'absolute', background: 'var(--c-white)' }}>
         <div className="ldc">
           <img src="/img/spec2win-color.png" alt="Spec2Win" width={200} height={40} />
           <div className="ldrow">
@@ -43,7 +43,7 @@ export function ProcessingView({ run, onChanged }: { run: RunSummary; onChanged:
           <div className="ldtx ldtime" style={{ marginTop: 4 }}>지난 시간 {duration(now - Date.parse(run.started_at))}</div>
           <div className="ldtx" style={{ marginTop: 4, fontSize: 12 }}>{hint}</div>
           {stalled && (
-            <p role="alert" className="ldtx" style={{ marginTop: 12, color: '#B42318' }}>
+            <p role="alert" className="ldtx" style={{ marginTop: 12, color: 'var(--c-red)' }}>
               10분 넘게 진행이 없습니다. 분석 중에 백엔드가 꺼졌다면 이 검토는 끝나지 않으니 분석을 취소한 뒤 다시 시도해 주세요.
             </p>
           )}
@@ -55,7 +55,7 @@ export function ProcessingView({ run, onChanged }: { run: RunSummary; onChanged:
                 <button type="button" className="bp sm" onClick={cancel}>취소하기</button>
                 <button type="button" className="bo sm" onClick={() => setAsking(false)}>계속 분석</button>
               </> : <button type="button" className="bo sm" onClick={() => setAsking(true)}>분석 취소</button>}
-            {error && <span className="ldtx" role="alert" style={{ color: '#B42318' }}>{error}</span>}
+            {error && <span className="ldtx" role="alert" style={{ color: 'var(--c-red)' }}>{error}</span>}
           </div>
         </div>
       </div>

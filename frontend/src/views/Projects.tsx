@@ -56,7 +56,7 @@ export function Projects() {
         <span>마감 지남<b className="c-red">{sum?.overdue ?? '—'}</b></span>
       </div>
       <section className="sec">
-        <div className="sech"><h2>사업 <span style={{ fontWeight: 400, color: '#667085' }}>{rows.length}</span></h2>
+        <div className="sech"><h2>사업 <span style={{ fontWeight: 400, color: 'var(--c-muted)' }}>{rows.length}</span></h2>
           <div className="seg" role="group" aria-label="범위">
             {SCOPES.map(([k, label]) => <button key={k} type="button" className={scope === k ? 'on' : ''} aria-pressed={scope === k} onClick={() => setScope(k)}>{label}</button>)}
           </div>
@@ -95,7 +95,7 @@ export function Projects() {
             <a key={b.business_id} className="pl-tr pl-row" href={href(`/projects/${b.business_no}`)}>
               <span className="mono sh-mut" style={{ textAlign: 'right' }}>{i + 1}</span>
               <span className="pl-nm"><b>{b.business_name}</b><span className="ell mono">{b.business_no}</span></span>
-              <span className="pl-nm"><span style={{ color: '#1F2937' }}>{b.customer_name ?? '—'}</span><span>{b.country ?? ''}</span></span>
+              <span className="pl-nm"><span style={{ color: 'var(--c-text)' }}>{b.customer_name ?? '—'}</span><span>{b.country ?? ''}</span></span>
               <span className="mono sh-mut">{b.tender_no ?? '—'}</span>
               <span><span className={'dd ' + ddCls(b)}>{ddText(b)}</span><span className="mono sh-mut" style={{ display: 'block' }}>{b.due_date ? dueText(b.due_date) : ''}</span></span>
               <span className="pl-rg">
@@ -105,9 +105,9 @@ export function Projects() {
                     title={`${r.review_name ?? r.review_no} · ${r.engineer_name ?? '담당 없음'}${r.open_requests ? ` · 협조 미확인 ${r.open_requests}건` : ''}`}>
                     {RANGE_NAMES[r.state]}</span>
                 ))}</span>
-              <span className="sh-mut" style={{ color: '#1F2937' }}>{b.my_role ? BUSINESS_ROLE_NAMES[b.my_role] : '—'}</span>
+              <span className="sh-mut" style={{ color: 'var(--c-text)' }}>{b.my_role ? BUSINESS_ROLE_NAMES[b.my_role] : '—'}</span>
               <span className="sh-mut">{b.sales_name ?? '—'}</span>
-              <span className="ms" aria-hidden="true" style={{ color: '#98A2B3' }}>chevron_right</span>
+              <span className="ms" aria-hidden="true" style={{ color: 'var(--c-disabled)' }}>chevron_right</span>
             </a>
           ))}
         </div>

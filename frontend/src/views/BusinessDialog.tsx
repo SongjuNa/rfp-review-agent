@@ -60,11 +60,11 @@ export function BusinessDialog({ business: b, onClose, onSaved }: { business: Bu
                 </select>
               </label>
             </div>
-            <p className="aphint" style={{ color: '#667085' }}>고친 칸은 사업 이력에 남습니다. 사업명을 고치면 연결된 검토의 사업명도 바뀝니다. 사업 정보는 판정에 쓰지 않습니다.</p>
+            <p className="aphint" style={{ color: 'var(--c-muted)' }}>고친 칸은 사업 이력에 남습니다. 사업명을 고치면 연결된 검토의 사업명도 바뀝니다. 사업 정보는 판정에 쓰지 않습니다.</p>
           </section>
         </div>
         <div className="mdf">
-          <span className="mdf-n" style={{ marginRight: 'auto', color: error ? '#B42318' : undefined }} role={error ? 'alert' : undefined}>
+          <span className="mdf-n" style={{ marginRight: 'auto', color: error ? 'var(--c-red)' : undefined }} role={error ? 'alert' : undefined}>
             {error ?? (changed.length ? `${changed.length}칸 바뀜` : '바뀐 칸 없음')}</span>
           <button type="button" className="bo" onClick={onClose}>취소</button>
           <button type="button" className="bp" disabled={busy || changed.length === 0 || !form.business_name.trim()} onClick={save}>저장</button>

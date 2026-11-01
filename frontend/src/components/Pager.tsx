@@ -16,7 +16,7 @@ export function Pager({ total, page, size, shown, onPage, onSize }: {
           <span className="ms" aria-hidden="true" style={{ fontSize: 'var(--ic-s)' }}>chevron_left</span>
         </button>
         {pageItems(page, pages).map((n, i) => n === null
-          ? <span key={`gap${i}`} aria-hidden="true" style={{ minWidth: 20, textAlign: 'center', color: '#98A2B3' }}>…</span>
+          ? <span key={`gap${i}`} aria-hidden="true" style={{ minWidth: 20, textAlign: 'center', color: 'var(--c-disabled)' }}>…</span>
           : <button key={n} type="button" className={n === page ? 'on' : ''} aria-current={n === page ? 'page' : undefined}
             onClick={() => onPage(n)}>{n}</button>)}
         <button type="button" onClick={() => onPage(Math.min(pages, page + 1))} disabled={page >= pages} aria-label="다음 페이지">

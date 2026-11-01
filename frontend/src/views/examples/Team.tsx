@@ -50,7 +50,7 @@ export function Team() {
                 <span className="tm-oth"><span>{other || (n ? '' : '진행 중인 검토 없음')}</span>
                   {away !== '—' && <span className="tm-away"><span className="ms" aria-hidden="true">event_busy</span>{away}</span>}
                   {help > 0 && <span className="hm-help"><span className="ms" aria-hidden="true">front_hand</span>도움 요청 {help}건</span>}</span>
-                <span className="ms" aria-hidden="true" style={{ color: '#98A2B3' }}>chevron_right</span>
+                <span className="ms" aria-hidden="true" style={{ color: 'var(--c-disabled)' }}>chevron_right</span>
               </a>
             )
           })}
@@ -62,7 +62,7 @@ export function Team() {
         <div className="sh-box" style={{ marginTop: 12 }}>
           {EXAMPLE_HELP.map(([who, ref, ask, t], i) => (
             <div key={ref} className="tm-help">
-              <span className="ms" aria-hidden="true" style={{ color: '#B54708' }}>front_hand</span>
+              <span className="ms" aria-hidden="true" style={{ color: 'var(--c-orange)' }}>front_hand</span>
               <div className="tm-hb"><b>{ref}</b><span>{ask}</span><span className="sh-mut">{who} · {t}</span></div>
               {replied[i] && <span className="st c-green">의견 남김</span>}
               <a className="bo" href={href('/reviews')}>검토 열람</a>

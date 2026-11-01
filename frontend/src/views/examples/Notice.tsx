@@ -38,7 +38,7 @@ export function Notice() {
                 <span><span className={kind === 'must' ? 'st c-red' : 'st c-grey'}>{kind === 'must' ? '필독' : '일반'}</span></span>
                 <span className="bp-t"><b className="ell">{title}</b>{isNew && !read[i] && <i className="sh-new" title="읽지 않음" />}</span>
                 <span className="sh-mut">{by}</span><span className="mono sh-mut">{date}</span><span className="mono sh-mut">{views + (read[i] ? 1 : 0)}</span>
-                <span className="ms" aria-hidden="true" style={{ color: '#98A2B3' }}>{o ? 'expand_less' : 'expand_more'}</span>
+                <span className="ms" aria-hidden="true" style={{ color: 'var(--c-disabled)' }}>{o ? 'expand_less' : 'expand_more'}</span>
               </button>
               {o && <div className="bp-body">{body}</div>}
             </div>

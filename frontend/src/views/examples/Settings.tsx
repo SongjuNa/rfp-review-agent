@@ -36,7 +36,7 @@ export function Settings() {
       <div className="stc">
         <section className="sts"><div><h2>내 정보</h2><p className="d">사내 인사 정보에서 가져옵니다.</p></div>
           <div className="stf"><div className="stv">{user ? `${user.user_name} · ${ROLE_NAMES[user.role] ?? user.role}` : '사용자 없음'}</div>
-            <div className="stv" style={{ color: '#667085' }}>소속 · 사번 (인사 정보 연결 전)</div></div></section>
+            <div className="stv" style={{ color: 'var(--c-muted)' }}>소속 · 사번 (인사 정보 연결 전)</div></div></section>
         <section className="sts"><div><h2>검토 기본값</h2><p className="d">검토 등록할 때 처음 채워지는 값입니다. 건마다 바꿀 수 있습니다.</p></div>
           <div className="stf">
             <label>기본 결재자<br /><select className="fi" value={appr} onChange={(e) => setAppr(e.target.value)} style={{ marginTop: 6 }}>{APPROVERS.map((x) => <option key={x}>{x}</option>)}</select></label>
@@ -56,7 +56,7 @@ export function Settings() {
               <button type="button" className={big ? '' : 'on'} aria-pressed={!big} onClick={() => setBig(false)}>기본</button>
               <button type="button" className={big ? 'on' : ''} aria-pressed={big} onClick={() => setBig(true)}>크게</button>
             </div>
-            <p style={{ margin: '6px 0 0', fontSize: 'var(--fs-xs)', color: '#667085' }}>고르는 즉시 모든 화면에 적용되고, 다음에 접속해도 유지됩니다.</p>
+            <p style={{ margin: '6px 0 0', fontSize: 'var(--fs-xs)', color: 'var(--c-muted)' }}>고르는 즉시 모든 화면에 적용되고, 다음에 접속해도 유지됩니다.</p>
             <label className="stck" style={{ marginTop: 6 }}><input type="checkbox" checked={keepSb} onChange={() => setKeepSb(!keepSb)} />메뉴 접힘 상태 기억하기</label>
           </div></section>
         <div className="stact"><a className="bo" href={href('/')}>취소</a><button type="button" className="bp" onClick={save}>저장</button></div>

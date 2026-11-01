@@ -211,7 +211,7 @@ export function Rules() {
           </table>
         </div>
         {rows.length > 0 && <Pager total={found.length} page={page} size={size} shown={rows.length} onPage={setPage} onSize={(n) => { setSize(n); setPage(1) }} />}
-        {T && rows.length === 0 && <p style={{ margin: 0, padding: '16px 12px', color: '#667085' }}>조건에 맞는 규칙이 없습니다.</p>}
+        {T && rows.length === 0 && <p style={{ margin: 0, padding: '16px 12px', color: 'var(--c-muted)' }}>조건에 맞는 규칙이 없습니다.</p>}
       </section>
       {target && <RuleDialog target={target} itemKeys={itemKeys} onClose={() => setTarget(null)}
         onDone={() => { setTarget(null); if (target.mode === 'delete') setOpen({}); data.reload(); suggestions.reload() }} />}
