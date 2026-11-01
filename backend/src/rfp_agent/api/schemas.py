@@ -140,6 +140,9 @@ class RunDocument(Out):
     needs_review: bool
     line_basis: str | None
     requirements: int
+    processor: str | None = None            # 쓴 처리기 (C1). GENERAL = 일반, 예전 문서는 비움
+    process_check: str | None = None        # 처리 뒤 점검에 걸린 이유 (통과면 비움)
+    reprocessed: bool = False               # 점검 뒤 일반 처리기로 다시 처리함
 
 
 DocKind = Literal["BID_FORM", "REQUIREMENT_SPEC", "PURCHASE_SPEC", "TEST_SPEC", "SUPPLIER_SPEC",
@@ -1124,6 +1127,8 @@ class RunLogItem(ReviewFields):
     judgments: int
     explanations_dropped: int               # 근거 대조에서 버린 위험 조건 설명 수
     type_examples: int = 0                  # 사람이 고른 유형 예시를 붙여 물은 줄 수 (C3)
+    resumed_from: str | None = None         # 이어서 다시 시도한 단계 (C2). 처음부터면 비움
+    documents_reprocessed: int = 0          # 점검 뒤 다시 처리한 문서 수 (C1)
     explanations_unverified: int            # AI 검증에서 확인 필요로 표시된 설명 수
     retries: int
     steps: list[RunStepTime]

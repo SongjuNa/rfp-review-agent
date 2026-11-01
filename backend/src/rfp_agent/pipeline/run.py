@@ -6,22 +6,28 @@
 """
 
 import logging
+import threading
 from collections.abc import Callable
+from concurrent.futures import ThreadPoolExecutor
+from contextlib import contextmanager
 from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import TypedDict
 
 import psycopg
+from langgraph.checkpoint.base import BaseCheckpointSaver
 from langgraph.graph import END, START, StateGraph
+from langgraph.types import interrupt
 from psycopg.types.json import Jsonb
 
+from rfp_agent.config import get_settings
 from rfp_agent.llm import tasks
 from rfp_agent.llm.client import FAILURE_MESSAGE, LLM, LLMConfigError, LLMFailure, Usage, usage_of
 from rfp_agent.llm.evidence import EvidenceSpan, evidence_id, parse_evidence_id
 from rfp_agent.llm.parallel import run_ordered, workers_of
-from rfp_agent.pipeline import code_version, dictionaries, doc_add, meaning
+from rfp_agent.pipeline import code_version, dictionaries, doc_add, graph_flow, meaning
 from rfp_agent.pipeline.assignments import build_assignments
-from rfp_agent.pipeline.document import Choice, Report, process_document
+from rfp_agent.pipeline.document import Choice, DocumentResult, Report, process_document
 from rfp_agent.pipeline.engineering import build_checks
 from rfp_agent.pipeline.judge import judge_run
 from rfp_agent.pipeline.loss import build_losses
@@ -57,6 +63,7 @@ class RunState(TypedDict, total=False):
     proposal_count: int
     assignment_count: int
     meaning_count: int
+    action: str                   # 사람 단계에서 받은 동작 (update-graph-stops)
 
 
 # 세부 진행 기록: (run_id, {"part", "done", "total", "file_index", "file_count"})
@@ -87,6 +94,7 @@ class RunContext:
     llm: LLM | None
     txt_dir: Path | None
     progress: ProgressWriter | None = None     # 없으면 세부 진행을 적지 않는다 (테스트·CLI)
+    checkpointer: BaseCheckpointSaver | None = None   # 없으면 같은 DB로 연결을 열어 만든다
 
     @property
     def processing_key(self) -> str:
@@ -152,10 +160,11 @@ def _set_step(conn: psycopg.Connection, run_id: int, step: str) -> None:
     conn.commit()
 
 
-def _reporter(ctx: RunContext, run_id: int, file_index: int, file_count: int) -> Report:
+def _reporter(ctx: RunContext, run_id: int, file_index: int, file_count: int,
+              conn: psycopg.Connection | None = None) -> Report:
     def report(part: str, done: int | None = None, total: int | None = None) -> None:
         # 문서 하나는 한 트랜잭션이라 여기서 멈추면 그 문서의 반쯤 만든 결과는 되돌려진다
-        check_cancel(ctx.conn, run_id)
+        check_cancel(conn or ctx.conn, run_id)
         if ctx.progress:
             ctx.progress(run_id, {"part": part, "done": done, "total": total,
                                   "file_index": file_index, "file_count": file_count})
@@ -167,23 +176,16 @@ def _documents_node(ctx: RunContext):
         conn, run_id = ctx.conn, state["run_id"]
         _set_step(conn, run_id, "documents")
         dicts = dictionaries.load(conn)
-        ids, reused, examples = [], 0, 0
         paths = state["paths"]
-        choices = state.get("choices") or {}
-        for i, path in enumerate(paths, 1):
-            chosen = choices.get(Path(path).name)
-            result = process_document(conn, Path(path), dicts, ctx.processing_key, ctx.llm,
-                                      ctx.txt_dir, _reporter(ctx, run_id, i, len(paths)),
-                                      Choice(**chosen) if chosen else None)
-            conn.execute("INSERT INTO run_document VALUES (%s, %s) ON CONFLICT DO NOTHING",
-                         (run_id, result.document_id))
-            conn.commit()
-            ids.append(result.document_id)
-            reused += result.reused
-            examples += result.type_examples
+        results = _process_all(ctx, run_id, paths, state.get("choices") or {}, dicts)
+        ids = [r.document_id for r in results]
+        reused = sum(r.reused for r in results)
+        examples = sum(r.type_examples for r in results)
+        reprocessed = sum(r.reprocessed for r in results)
         conn.execute("UPDATE review_run SET documents_reused = %s, graph_state = graph_state || "
-                     "jsonb_build_object('type_examples', %s::int) WHERE run_id = %s",
-                     (reused, examples, run_id))
+                     "jsonb_build_object('type_examples', %s::int, "
+                     "'documents_reprocessed', %s::int) WHERE run_id = %s",
+                     (reused, examples, reprocessed, run_id))
         projects = {r[0] for r in conn.execute(
             "SELECT DISTINCT project_id FROM document WHERE document_id = ANY(%s)", (ids,))}
         if len(projects) == 1 and None not in projects:
@@ -192,6 +194,92 @@ def _documents_node(ctx: RunContext):
             conn.commit()
         return {"document_ids": ids}
     return node
+
+
+def _save_run_document(conn: psycopg.Connection, run_id: int, document_id: int) -> None:
+    conn.execute("INSERT INTO run_document VALUES (%s, %s) ON CONFLICT DO NOTHING",
+                 (run_id, document_id))
+    conn.commit()
+
+
+class _Turns:
+    """문서 저장 차례: 올린 순서대로 한 문서씩 저장한다 (문서 병렬 처리, C1).
+
+    무거운 일(구조·추출·AI)은 동시에 하고 저장만 차례로 해서, 문서·요구사항 번호와
+    같은 요구 묶기·파일 번호가 차례로 처리할 때와 같다(CR-11).
+    """
+
+    def __init__(self) -> None:
+        self._next = 0
+        self._cond = threading.Condition()
+
+    @contextmanager
+    def wait(self, i: int):
+        with self._cond:
+            self._cond.wait_for(lambda: self._next == i)
+        yield
+
+    def finish(self, i: int) -> None:
+        """i번 문서가 끝났다(저장했거나, 다시 썼거나, 실패). 앞 문서가 끝난 뒤 차례를 넘긴다."""
+        with self._cond:
+            self._cond.wait_for(lambda: self._next >= i)
+            if self._next == i:
+                self._next = i + 1
+            self._cond.notify_all()
+
+
+def _process_all(ctx: RunContext, run_id: int, paths: list[str], choices: dict[str, dict],
+                 dicts) -> list[DocumentResult]:
+    """문서들을 처리한다. RFP_DOC_WORKERS가 2 이상이고 문서가 여럿이면 동시에 (C1).
+
+    한 문서가 실패해도 나머지 문서는 저장한 뒤 올린 순서로 첫 오류를 낸다
+    (다시 시도하면 저장한 문서는 다시 쓴다, NFR-05).
+    """
+    conn = ctx.conn
+    workers = max(1, get_settings().rfp_doc_workers)
+
+    def choice_of(path: str) -> Choice | None:
+        chosen = choices.get(Path(path).name)
+        return Choice(**chosen) if chosen else None
+
+    if workers <= 1 or len(paths) <= 1:
+        results = []
+        for i, path in enumerate(paths, 1):
+            result = process_document(conn, Path(path), dicts, ctx.processing_key, ctx.llm,
+                                      ctx.txt_dir, _reporter(ctx, run_id, i, len(paths)),
+                                      choice_of(path))
+            _save_run_document(conn, run_id, result.document_id)
+            results.append(result)
+        return results
+
+    conn.commit()
+    turns = _Turns()
+
+    def job(i: int, path: str) -> DocumentResult:
+        try:
+            with graph_flow.open_like(conn) as own:
+                result = process_document(own, Path(path), dicts, ctx.processing_key, ctx.llm,
+                                          ctx.txt_dir,
+                                          _reporter(ctx, run_id, i + 1, len(paths), own),
+                                          choice_of(path), lambda: turns.wait(i))
+                _save_run_document(own, run_id, result.document_id)
+                return result
+        finally:
+            turns.finish(i)
+
+    outcomes: list[DocumentResult | BaseException] = []
+    with ThreadPoolExecutor(max_workers=min(workers, len(paths)),
+                            thread_name_prefix="rfp-doc") as pool:
+        futures = [pool.submit(job, i, p) for i, p in enumerate(paths)]
+        for fut in futures:
+            try:
+                outcomes.append(fut.result())
+            except BaseException as exc:  # noqa: BLE001 - 나머지를 저장한 뒤 다시 올린다
+                outcomes.append(exc)
+    for o in outcomes:
+        if isinstance(o, BaseException):
+            raise o
+    return outcomes  # type: ignore[return-value]
 
 
 PAIR_MIN_SHARED = 50          # 데이터시트 항목이 이만큼 겹치면 같은 문서의 다른 판 후보
@@ -470,22 +558,58 @@ STEPS = [
 COUNTS = ["risk_count", "judgment_count"] + [key for _, key, _ in STEPS]
 
 
-def build_graph(ctx: RunContext):
+# 사람 단계 노드(멈춤 자리) → 단계 칸 (update-graph-stops, C2)
+STOPS = {"engineer_review": "ENGINEER_REVIEW", "approval": "APPROVAL", "rejected": "REJECTED"}
+# 멈춤 자리마다 사람 동작 → 다음 노드. 갈 곳은 이 표로 코드가 고른다 (CR-01)
+NEXT = {
+    "engineer_review": {"submit": "approval", "add_documents": "documents"},
+    "approval": {"approve": END, "reject": "rejected", "withdraw": "engineer_review"},
+    "rejected": {"reopen": "engineer_review"},
+}
+PIPELINE = ["documents", "pairs", "risks", "judge", "meaning"] + [s for s, _, _ in STEPS]
+
+
+def _stop_node(name: str):
+    """흐름을 멈추고 사람 동작을 기다린다. 이어 갈 때 받은 동작을 상태에 남긴다."""
+    def node(state: RunState) -> RunState:
+        got = interrupt({"stop": STOPS[name]})
+        action = got["action"]
+        if action not in NEXT[name]:
+            raise ValueError(f"{name}에서 받을 수 없는 동작: {action}")
+        out: RunState = {"action": action}
+        if action == "add_documents":       # 처음 파일 + 더한 파일로 문서 처리부터 다시
+            out |= {"paths": got["paths"], "choices": got["choices"]}
+        return out
+    return node
+
+
+def _router(name: str):
+    def route(state: RunState) -> str:
+        return NEXT[name][state["action"]]
+    return route
+
+
+def build_graph(ctx: RunContext, checkpointer: BaseCheckpointSaver | None = None):
+    """처리 단계를 일직선으로 잇고, 저장소가 있으면 끝에 사람 단계 세 곳을 더한다."""
     graph = StateGraph(RunState)
     graph.add_node("documents", _documents_node(ctx))
     graph.add_node("pairs", _pairs_node(ctx))
     graph.add_node("risks", _risks_node(ctx))
     graph.add_node("judge", _judge_node(ctx))
     graph.add_node("meaning", _meaning_node(ctx))
-    order = ["documents", "pairs", "risks", "judge", "meaning"]
     for step, key, build in STEPS:
         graph.add_node(step, _step_node(ctx, step, key, build))
-        order.append(step)
-    graph.add_edge(START, order[0])
-    for a, b in zip(order, order[1:], strict=False):
+    graph.add_edge(START, PIPELINE[0])
+    for a, b in zip(PIPELINE, PIPELINE[1:], strict=False):
         graph.add_edge(a, b)
-    graph.add_edge(order[-1], END)
-    return graph.compile()
+    if checkpointer is None:
+        graph.add_edge(PIPELINE[-1], END)
+        return graph.compile()
+    for name in STOPS:
+        graph.add_node(name, _stop_node(name))
+        graph.add_conditional_edges(name, _router(name), list(set(NEXT[name].values())))
+    graph.add_edge(PIPELINE[-1], "engineer_review")
+    return graph.compile(checkpointer=checkpointer)
 
 
 def execute_run(ctx: RunContext, run_id: int, paths: list[Path],
@@ -499,9 +623,18 @@ def execute_run(ctx: RunContext, run_id: int, paths: list[Path],
     conn.commit()
     usage = usage_of(ctx.llm)
     before = usage.copy() if usage else None
+    inputs = {"run_id": run_id, "paths": [str(p) for p in paths], "choices": choices or {}}
     try:
-        state = build_graph(ctx).invoke({"run_id": run_id, "paths": [str(p) for p in paths],
-                                         "choices": choices or {}})
+        with graph_flow.saver_for(ctx) as saver:
+            graph = build_graph(ctx, saver)
+            config = graph_flow.config(run_id)
+            start, resumed = graph_flow.start_input(graph, run_id, inputs)
+            conn.execute(
+                "UPDATE review_run SET graph_state = graph_state || %s WHERE run_id = %s",
+                (Jsonb({"resumed_from": resumed,
+                        "skipped_steps": PIPELINE.index(resumed) if resumed else 0}), run_id))
+            conn.commit()
+            state = graph.invoke(start, config)
     except Exception as exc:
         conn.rollback()
         step = conn.execute("SELECT graph_state->>'step' FROM review_run WHERE run_id = %s",

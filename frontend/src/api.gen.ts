@@ -1263,6 +1263,9 @@ export type RunDocument = {
   needs_review: boolean
   line_basis: string | null
   requirements: number
+  processor?: string | null
+  process_check?: string | null
+  reprocessed?: boolean
 }
 
 export type RunListItem = {
@@ -1333,6 +1336,8 @@ export type RunLogItem = {
   judgments: number
   explanations_dropped: number
   type_examples?: number
+  resumed_from?: string | null
+  documents_reprocessed?: number
   explanations_unverified: number
   retries: number
   steps: RunStepTime[]

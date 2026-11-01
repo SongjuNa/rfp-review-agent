@@ -36,6 +36,9 @@ def run_log(conn: psycopg.Connection, limit: int = 200) -> list[dict]:
                    r.llm_output_tokens, r.llm_thinking_tokens, r.documents_reused,
                    r.retry_count AS retries,
                    COALESCE((r.graph_state->>'type_examples')::int, 0) AS type_examples,
+                   r.graph_state->>'resumed_from' AS resumed_from,
+                   COALESCE((r.graph_state->>'documents_reprocessed')::int, 0)
+                       AS documents_reprocessed,
                    r.cancel_requested_at IS NOT NULL AS cancelled,
                    (SELECT count(*) FROM run_document WHERE run_id = r.run_id) AS documents,
                    (SELECT count(*) FROM requirement q JOIN run_document rd USING (document_id)

@@ -8,7 +8,9 @@ from rfp_agent.llm.client import LLM, LLMFormatError, call_with_retry
 from rfp_agent.llm.evidence import EvidenceSpan, normalize_quote
 from rfp_agent.llm.parallel import run_ordered, workers_of
 
-PROMPT_VERSION = "p4"           # p4: 유형 질문에 사람이 고른 예 (add-type-examples). p3: 절·표 문맥
+# p5: 문서 종류 설명 (add-document-processors). p4: 유형 질문에 사람이 고른 예
+# (add-type-examples). p3: 절·표 문맥
+PROMPT_VERSION = "p5"
 DOC_KINDS = ["BID_FORM", "REQUIREMENT_SPEC", "PURCHASE_SPEC", "TEST_SPEC", "SUPPLIER_SPEC",
              "UNKNOWN"]
 SENTENCE_LABELS = ["REQUIREMENT", "WRITING_RULE", "DESCRIPTION"]
@@ -81,9 +83,15 @@ def _pick_each(llm: LLM, items: list[str], field: str, choices: list[str], promp
                 + _pick_each(llm, items[half:], field, choices, prompt_of))
 
 
-def _label_prompt(section_title: str | None, part: list[str]) -> str:
+def _hint_line(doc_hint: str | None) -> str:
+    """질문 첫 줄: 문서 처리기의 문서 종류 설명 (없으면 빈 글자)."""
+    return f"문서 종류: {doc_hint}\n" if doc_hint else ""
+
+
+def _label_prompt(section_title: str | None, part: list[str],
+                  doc_hint: str | None = None) -> str:
     numbered = "\n".join(f"{i}. {one_line(s)[:600]}" for i, s in enumerate(part))
-    return (
+    return _hint_line(doc_hint) + (
         "RFP의 한 절에서 뽑은 문장들이다. "
         "각 문장이 입찰자가 지켜야 할 요구사항(REQUIREMENT)인지, "
         "제출 양식을 채우는 방법에 대한 작성 규칙(WRITING_RULE)인지, "
@@ -112,7 +120,8 @@ def _pick_chunks(llm: LLM, chunks: list[tuple[list[str], Callable[[list[str]], s
 
 
 def label_sections(llm: LLM, sections: list[tuple[str | None, list[str]]],
-                   on_progress: Progress | None = None) -> list[list[str]]:
+                   on_progress: Progress | None = None,
+                   doc_hint: str | None = None) -> list[list[str]]:
     """절마다 문장에 요구사항 / 작성 규칙 / 설명 중 하나를 붙인다.
 
     묻는 글은 절 하나의 40줄 묶음 단위(차례로 할 때와 같음)이고,
@@ -122,7 +131,7 @@ def label_sections(llm: LLM, sections: list[tuple[str | None, list[str]]],
     for n, (title, sentences) in enumerate(sections):
         for start in range(0, len(sentences), CHUNK):
             chunks.append((sentences[start:start + CHUNK],
-                           lambda part, t=title: _label_prompt(t, part)))
+                           lambda part, t=title: _label_prompt(t, part, doc_hint)))
             owner.append(n)
     total = sum(len(s) for _, s in sections)
     answers = _pick_chunks(llm, chunks, "labels", SENTENCE_LABELS, total, on_progress)
@@ -157,7 +166,8 @@ def _with_examples(line: str, examples: list[tuple[str, str]]) -> str:
 
 def type_unclassified(llm: LLM, texts: list[str], on_progress: Progress | None = None,
                       contexts: list[str | None] | None = None,
-                      examples: list[list[tuple[str, str]]] | None = None) -> list[str]:
+                      examples: list[list[tuple[str, str]]] | None = None,
+                      doc_hint: str | None = None) -> list[str]:
     """규칙에 안 걸린 요구사항마다 유형 하나. contexts는 줄마다 절·표 제목 문맥(없으면 None).
 
     examples는 줄마다 다른 문서에서 사람이 고친 비슷한 줄과 유형(참고, add-type-examples).
@@ -167,7 +177,7 @@ def type_unclassified(llm: LLM, texts: list[str], on_progress: Progress | None =
 
     def prompt_of(part: list[str]) -> str:
         numbered = "\n".join(f"{i}. {line}" for i, line in enumerate(part))
-        return (
+        return _hint_line(doc_hint) + (
             "RFP 요구사항마다 유형 하나를 고른다. 대괄호 안은 그 줄이 속한 절·표 제목(문맥)이다. "
             "TECH_PERF=기술 성능, RISK=위험 조건, "
             "STANDARD_CERT=적용 규격·인증, COST=비용 영향, TEST=시험, MAKER_QUAL=제조사 자격, "

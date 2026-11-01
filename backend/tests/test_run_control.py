@@ -98,7 +98,8 @@ def test_retry_reuses_processed_document(db, spec, tmp_path, monkeypatch):
 
     def fail_second(conn, path, *args, **kwargs):
         calls.append(path.name)
-        if path.name == second.name and len(calls) == 2:
+        # 문서를 동시에 처리하면 부르는 순서가 바뀌므로 두 번째 문서의 첫 처리에서 멈춘다
+        if path.name == second.name and calls.count(second.name) == 1:
             raise RuntimeError("두 번째 문서에서 멈춤")
         return real(conn, path, *args, **kwargs)
 
