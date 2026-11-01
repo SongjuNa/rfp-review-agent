@@ -3012,16 +3012,23 @@
           "검토 실행"
         ],
         "summary": "Role Assignments",
-        "description": "협조 요청 현황 (SCR-13): 한 수신 부서에 보낸 요청을 모든 검토에서 모은다.",
+        "description": "협조 요청 현황 (SCR-13): 한 수신 부서(없으면 세 부서)에 보낸 요청을 모든 검토에서 모은다.",
         "operationId": "role_assignments_api_assignments_get",
         "parameters": [
           {
             "name": "role",
             "in": "query",
-            "required": true,
+            "required": false,
             "schema": {
-              "type": "string",
-              "pattern": "^(COST|QUALITY|SALES)$",
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^(COST|QUALITY|SALES)$"
+                },
+                {
+                  "type": "null"
+                }
+              ],
               "title": "Role"
             }
           }
@@ -3037,6 +3044,49 @@
                     "$ref": "#/components/schemas/Assignment"
                   },
                   "title": "Response Role Assignments Api Assignments Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/assignments/export": {
+      "post": {
+        "tags": [
+          "검토 실행"
+        ],
+        "summary": "Export Assignments",
+        "description": "화면이 거른 협조 요청을 엑셀로 (SCR-13 내보내기). X-Row-Count = 줄 수.",
+        "operationId": "export_assignments_api_assignments_export_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExportAssignments"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "파일",
+            "content": {
+              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
                 }
               }
             }
@@ -9571,6 +9621,34 @@
         ],
         "title": "EvalTypeDetail"
       },
+      "ExportAssignments": {
+        "properties": {
+          "role": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^(COST|QUALITY|SALES)$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Role"
+          },
+          "assignment_ids": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Assignment Ids"
+          }
+        },
+        "type": "object",
+        "required": [
+          "assignment_ids"
+        ],
+        "title": "ExportAssignments"
+      },
       "FieldHistory": {
         "properties": {
           "fault_link_id": {
@@ -15281,6 +15359,11 @@
               }
             ],
             "title": "Actor Id"
+          },
+          "resend": {
+            "type": "boolean",
+            "title": "Resend",
+            "default": false
           }
         },
         "type": "object",

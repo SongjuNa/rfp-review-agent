@@ -670,7 +670,13 @@ def _review_cards(conn: psycopg.Connection, stage: str,
     return cards
 
 
-def assignments_for(conn: psycopg.Connection, role: str, run_id: int | None = None) -> list[dict]:
+DEPT_ROLES = ("COST", "QUALITY", "SALES")
+
+
+def assignments_for(conn: psycopg.Connection, role: str | None,
+                    run_id: int | None = None) -> list[dict]:
+    """한 부서(role)의 협조 요청. role이 None이면 세 부서 모두 (협조 요청 화면 탭 건수)."""
+    roles = list(DEPT_ROLES) if role is None else [role]
     with conn.cursor(row_factory=dict_row) as cur:
         rows = cur.execute(
             f"""SELECT a.assignment_id, a.run_id, a.assignee_role, a.status, a.repeat_count,
@@ -689,11 +695,11 @@ def assignments_for(conn: psycopg.Connection, role: str, run_id: int | None = No
                LEFT JOIN app_user ru ON ru.user_id = a.replied_by
                LEFT JOIN requirement q ON q.requirement_id = a.requirement_id
                LEFT JOIN proposal_point p ON p.point_id = a.point_id
-               WHERE a.assignee_role = %s AND r.stage = ANY(%s)
+               WHERE a.assignee_role = ANY(%s) AND r.stage = ANY(%s)
                  AND (a.requirement_id IS NOT NULL OR a.point_id IS NOT NULL)
                  AND (%s::int IS NULL OR a.run_id = %s)
                ORDER BY a.run_id DESC, a.point_id IS NULL, a.assignment_id""",
-            (role, list(VISIBLE_STAGES), run_id, run_id)).fetchall()
+            (roles, list(VISIBLE_STAGES), run_id, run_id)).fetchall()
         files = {(f["run_id"], f["file_no"]): f["file_name"] for f in cur.execute(
             """SELECT rd.run_id, d.file_no, d.file_name FROM run_document rd
                JOIN document d USING (document_id) WHERE rd.run_id = ANY(%s)""",

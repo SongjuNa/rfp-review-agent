@@ -670,6 +670,11 @@ export type EvalTypeDetail = {
   ambiguous_hit: number
 }
 
+export type ExportAssignments = {
+  role?: string | null
+  assignment_ids: number[]
+}
+
 export type FieldHistory = {
   fault_link_id: number
   item_key: string
@@ -1418,6 +1423,7 @@ export type ScoreRequest = {
 export type SendRequests = {
   assignment_ids: number[]
   actor_id?: number | null
+  resend?: boolean
 }
 
 export type SendResult = {
