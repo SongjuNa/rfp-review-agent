@@ -1,7 +1,7 @@
 # 화면 명세: SCR-05 사업 상세
 
 - 연결 요구사항: `review-workspace` 사업 상세 화면, `business-status` 사업 상세·제출 완료 표시·사업 정보 고침 이력 (`add-project-status`)
-- 기준 목업: `Spec2Win_목업_v4.57.html#Project`
+- 기준 목업: `Spec2Win_목업_v4.57.html#Project`. **v4.96부터 `Spec2Win_목업_v4.96.html`이 기준**(맨 아래 "v4.96 바뀐 점")
 - 구현 방식: 실제 (지난 이력 탭만 예시). 화면은 `frontend/src/views/Project.tsx`, 고치기 창은 `BusinessDialog.tsx`, CSS는 목업 Project CSS 그대로
 - 화면 주소: `#/projects/<사업 번호>` (예: `#/projects/PJ-2026-003`). 번호 끝의 숫자가 사업 id
 - 사용 API: `GET /api/businesses/{id}?user_id=`, `PUT /api/businesses/{id}`, `POST`·`DELETE /api/businesses/{id}/submitted`, `GET /api/users`
@@ -24,3 +24,17 @@
 - **Given** 사업 상세, **When** "이 사업에 RFP 등록"을 누르면, **Then** 검토 등록이 "진행 중인 사업에 추가"와 그 사업을 고른 채 열린다. (이 사업에 RFP 등록)
 - **Given** 결재 대기 검토가 있는 사업, **When** 사업 상세를 열면, **Then** "제출 완료로 표시"가 잠겨 있고 안내가 보인다. (제출 완료 단추)
 - **Given** 사업 상세, **When** 지난 이력 탭을 열면, **Then** 탭 안에 예시 띠가 보인다. (지난 이력은 예시)
+
+## v4.96 바뀐 점 (2026-11-01, `_v4.96_결정.md`)
+
+| 영역 | 보이는 항목 | API 칸 | 비고 |
+|---|---|---|---|
+| 머리 단추 | **인계 패키지 보기** (사업 목록, 이 사업에 RFP 등록 앞) | 사업의 검토(`ranges`) 중 `stage = APPROVED`, `GET /runs/{id}/handoffs` | 승인된 검토가 없으면 잠김("결재가 승인된 검토가 없습니다") |
+| 인계 패키지 창 | 승인된 검토마다: 검토 번호·이름, 마지막으로 넘긴 시각·주소, [인계 패키지 내려받기], (엔지니어) [영업에 넘기기]/[다시 넘기기] | `GET /runs/{id}/package`, `POST /runs/{id}/package/handoff` | 검토 상세 제출본 탭(SCR-08-8)과 같은 부품 |
+
+- 요약 상자(AI 요약)는 두지 않는다(Q1).
+
+### 수용 기준 (v4.96)
+
+- **Given** 결재가 승인된 검토 하나가 연결된 사업, **When** 사업 상세에서 "인계 패키지 보기"를 누르면, **Then** 그 검토 줄과 [인계 패키지 내려받기]가 보인다. (사업 상세에서 인계 패키지)
+- **Given** 승인된 검토가 없는 사업, **Then** "인계 패키지 보기"가 잠겨 있고 이유가 보인다. (승인 전 잠김)
