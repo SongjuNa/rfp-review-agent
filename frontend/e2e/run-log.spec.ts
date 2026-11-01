@@ -20,3 +20,13 @@ test('실행 기록 보기', async ({ page, request }) => {
   await row.click()
   await expect(steps).toHaveCount(0)
 })
+
+// 명세 service-health "AI 방식 표시" (change add-ai-mode): 실행 기록 머리 줄에 지금 AI 방식과 외부 전송 여부
+test('실행 기록에 AI 방식 한 줄', async ({ page, request }) => {
+  const health = await (await request.get('/api/health')).json()
+  await as(page, ENGINEER)
+  await page.goto('/#/runlog')
+  const line = page.getByTestId('ai-mode')
+  await expect(line).toBeVisible()
+  await expect(line).toContainText(health.external_send ? '외부 AI로 보냅니다' : '보내지 않')
+})

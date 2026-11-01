@@ -214,8 +214,8 @@ def test_request_timeout_is_set(monkeypatch):
             made.update(kwargs)
 
     monkeypatch.setattr(google.genai, "Client", Client)
-    s = get_settings()
-    llm = make_llm("key", "gemini-3.8-flash", s.rfp_llm_workers, s.rfp_llm_timeout_s)
+    s = get_settings().model_copy(update={"gemini_api_key": "key", "rfp_ai_mode": "gemini"})
+    llm = make_llm(s)
     assert made["http_options"] == {"timeout": 120_000}
     assert (llm.workers, llm.timeout_s) == (4, 120)
 

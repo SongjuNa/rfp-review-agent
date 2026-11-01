@@ -9581,6 +9581,30 @@
           "llm_configured": {
             "type": "boolean",
             "title": "Llm Configured"
+          },
+          "ai_mode": {
+            "type": "string",
+            "enum": [
+              "GEMINI",
+              "LOCAL",
+              "OFF"
+            ],
+            "title": "Ai Mode"
+          },
+          "ai_model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ai Model"
+          },
+          "external_send": {
+            "type": "boolean",
+            "title": "External Send"
           }
         },
         "type": "object",
@@ -9588,7 +9612,10 @@
           "status",
           "database",
           "schema_version",
-          "llm_configured"
+          "llm_configured",
+          "ai_mode",
+          "ai_model",
+          "external_send"
         ],
         "title": "Health"
       },

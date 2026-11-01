@@ -121,7 +121,7 @@ def _similar(conn: psycopg.Connection, current: list[dict],
     if not pairs:
         return {}
     texts = {r["text_raw"] for row, cands in pairs for r in (row, *cands)}
-    vec = meaning.stored(conn, list(texts))
+    vec = meaning.stored(conn, list(texts), meaning.current_model())
     out = {}
     for row, cands in pairs:
         mine = vec.get(meaning.clean(row["text_raw"]))

@@ -163,7 +163,99 @@ class GeminiLLM:
         return [list(e.values) for e in response.embeddings]
 
 
-def make_llm(api_key: str | None, model: str, workers: int = 4,
-             timeout_s: float = 120) -> LLM | None:
-    """키가 없으면 None. 그때는 AI 보조 단계를 건너뛰고 코드 규칙만으로 처리한다."""
-    return GeminiLLM(api_key, model, workers, timeout_s) if api_key else None
+class HTTPStatusFailure(RuntimeError):
+    """사내 모델 HTTP 오류. code로 설정 오류(400·401·403·404)와 재시도할 오류를 가른다."""
+
+    def __init__(self, code: int, message: str):
+        super().__init__(f"HTTP {code}: {message}")
+        self.code = code
+
+
+class LocalLLM:
+    """사내 서버의 OpenAI 호환 모델 (add-ai-mode). 정한 주소로만 보낸다.
+
+    vLLM·Ollama·사내 게이트웨이가 주는 /chat/completions·/embeddings를 부른다.
+    """
+
+    def __init__(self, base_url: str, model: str, api_key: str | None = None,
+                 embed_model: str | None = None, workers: int = 4, timeout_s: float = 120,
+                 transport=None):
+        import httpx
+
+        self.model = model
+        self.embed_model = embed_model
+        self.usage = Usage()
+        self.workers = workers
+        self.timeout_s = timeout_s
+        headers = {"Authorization": f"Bearer {api_key}"} if api_key else {}
+        self._http = httpx.Client(base_url=base_url.rstrip("/") + "/", headers=headers,
+                                  timeout=timeout_s, transport=transport)
+
+    def _post(self, path: str, body: dict) -> dict:
+        response = self._http.post(path, json=body)
+        if response.status_code >= 400:
+            raise HTTPStatusFailure(response.status_code, response.text[:200])
+        return response.json()
+
+    def generate_json(self, prompt: str, schema: dict) -> dict:
+        data = self._post("chat/completions", {
+            "model": self.model,
+            "messages": [{"role": "user", "content": prompt}],
+            "temperature": 0,
+            "response_format": {"type": "json_schema",
+                                "json_schema": {"name": "answer", "schema": schema}},
+        })
+        usage = data.get("usage") or {}
+        self.usage.add(input_tokens=usage.get("prompt_tokens") or 0,
+                       output_tokens=usage.get("completion_tokens") or 0)
+        return json.loads(data["choices"][0]["message"]["content"])
+
+    def embed(self, texts: list[str]) -> list[list[float]]:
+        if not self.embed_model:
+            raise HTTPStatusFailure(404, "사내 벡터 모델이 정해지지 않음 (RFP_LOCAL_EMBED_MODEL)")
+        data = self._post("embeddings", {"model": self.embed_model, "input": texts})
+        rows = sorted(data["data"], key=lambda r: r.get("index", 0))
+        return [list(r["embedding"]) for r in rows]
+
+
+AI_MODES = ("gemini", "local", "off")
+
+
+def ai_mode(settings) -> str:
+    """지금 쓰는 방식: GEMINI · LOCAL · OFF. 설정이 모자라면 OFF(규칙만)."""
+    mode = (settings.rfp_ai_mode or "gemini").strip().lower()
+    if mode not in AI_MODES:
+        log.warning("알 수 없는 RFP_AI_MODE=%s — AI 끄기로 처리", mode)
+        return "OFF"
+    if mode == "gemini":
+        return "GEMINI" if settings.gemini_api_key else "OFF"
+    if mode == "local":
+        return "LOCAL" if settings.rfp_local_llm_url and settings.rfp_local_llm_model else "OFF"
+    return "OFF"
+
+
+def ai_model(settings) -> str | None:
+    return {"GEMINI": settings.gemini_model, "LOCAL": settings.rfp_local_llm_model,
+            "OFF": None}[ai_mode(settings)]
+
+
+def embed_model(settings) -> str | None:
+    """지금 방식의 문장 벡터 모델 이름 (벡터 저장 열쇠)."""
+    return {"GEMINI": EMBED_MODEL, "LOCAL": settings.rfp_local_embed_model,
+            "OFF": None}[ai_mode(settings)]
+
+
+def make_llm(settings) -> LLM | None:
+    """방식에 따라 Gemini·사내 모델·None.
+
+    None이면 AI 보조 단계를 건너뛰고 코드 규칙만으로 처리한다.
+    """
+    mode = ai_mode(settings)
+    workers, timeout_s = settings.rfp_llm_workers, settings.rfp_llm_timeout_s
+    if mode == "GEMINI":
+        return GeminiLLM(settings.gemini_api_key, settings.gemini_model, workers, timeout_s)
+    if mode == "LOCAL":
+        return LocalLLM(settings.rfp_local_llm_url, settings.rfp_local_llm_model,
+                        settings.rfp_local_llm_key, settings.rfp_local_embed_model,
+                        workers, timeout_s)
+    return None
