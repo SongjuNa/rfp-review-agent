@@ -10,6 +10,7 @@ import { useSession } from '../shell/useSession'
 // SCR-19 정답지·채점 (목업 v4.57 Eval, add-evaluation). docs/screens/SCR-19-정답지채점.md
 // 사람이 확정·수정한 판정과 유형 정답지로 지표를 코드로 잰다(CR-01). 사전·규칙을 고친 뒤 다시 채점해 개선 전후를 남긴다.
 // 정답지는 명령 `rfp-db load-answer-key`로 넣는다. Claude 초안 정답지는 항상 "사람 확인 전"을 붙인다.
+// 요구사항 정답지(add-requirement-answer-key)를 고르면 K1·K2·K3·K10도 잰다. 코드가 만든 정답지는 "코드 자동 · 사람 확인 전".
 
 type Tab = 'k' | 'g' | 'l'
 const TABS: [Tab, string][] = [['k', '채점 결과'], ['g', '정답지'], ['l', '개선 기록']]
@@ -28,8 +29,12 @@ function change(now: EvalMetric, before: EvalMetric | undefined) {
   return { d, cls }
 }
 
+const REQ_CODES = ['K1', 'K2', 'K3', 'K10']
+
 function DraftTag({ k }: { k: Pick<AnswerKey, 'made_by'> | { made_by: string | null } }) {
-  return k.made_by === 'CLAUDE_DRAFT' ? <span className="st c-ora" style={{ marginLeft: 6 }}>Claude 초안 · 사람 확인 전</span> : null
+  if (k.made_by === 'CLAUDE_DRAFT') return <span className="st c-ora" style={{ marginLeft: 6 }}>Claude 초안 · 사람 확인 전</span>
+  if (k.made_by === 'AUTO') return <span className="st c-ora" style={{ marginLeft: 6 }}>코드 자동 · 사람 확인 전</span>
+  return null
 }
 
 export function Eval() {
@@ -39,8 +44,9 @@ export function Eval() {
   const runs = useLoad(() => api.evalRuns(), [])
   const keys = useLoad(() => api.evalKeys(), [])
   const scores = useLoad(() => api.evalScores(), [])
-  const [off, setOff] = useState<Record<number, boolean>>({})       // 넣기에서 뺀 검토
+  const [pick, setPick] = useState<Record<number, boolean>>({})     // 넣기를 바꾼 검토 (처음: 판정 줄이 있는 검토만)
   const [keyId, setKeyId] = useState<number | null | undefined>(undefined)   // undefined = 아직 고르지 않음(첫 정답지)
+  const [reqKeyId, setReqKeyId] = useState<number | null>(null)      // 요구사항 정답지 (처음엔 고르지 않음)
   const [note, setNote] = useState('')
   const [running, setRunning] = useState(false)
   const [error, setError] = useState('')
@@ -54,11 +60,13 @@ export function Eval() {
   }, [toast])
 
   const runList = runs.data ?? []
-  const keyList = keys.data ?? []
+  const keyList = (keys.data ?? []).filter((k) => k.key_kind === 'TYPE')
+  const reqKeys = (keys.data ?? []).filter((k) => k.key_kind === 'REQ')
   const history = scores.data ?? []
   const chosenKey = keyId === undefined ? (keyList[0]?.key_id ?? null) : keyId
   const key = keyList.find((k) => k.key_id === chosenKey)
-  const picked = runList.filter((r) => !off[r.run_id])
+  const isOn = (r: { run_id: number; reviewed: number }) => pick[r.run_id] ?? r.reviewed > 0
+  const picked = runList.filter(isOn)
   const [latest, previous] = history
 
   const rows = latest ? latest.metrics.items.map((m) => ({ m, before: metricOf(previous, m.code) })) : []
@@ -68,13 +76,13 @@ export function Eval() {
   const run = () => {
     setRunning(true)
     setError('')
-    api.score(picked.map((r) => r.run_id), chosenKey, note, user?.user_id ?? null)
+    api.score(picked.map((r) => r.run_id), chosenKey, note, user?.user_id ?? null, reqKeyId)
       .then((s) => {
         setNote('')
         setTab('k')
         setPage(1)
         scores.reload()
-        setToast(`채점을 마쳤습니다. 검토 ${s.run_ids.length}건${s.key_name ? `, 정답지 "${s.key_name}"` : ''} 기준으로 지표 ${s.metrics.items.length}개를 쟀습니다.`)
+        setToast(`채점을 마쳤습니다. 검토 ${s.run_ids.length}건${s.key_name ? `, 정답지 "${s.key_name}"` : ''}${s.req_key_name ? `, 요구사항 정답지 "${s.req_key_name}"` : ''} 기준으로 지표 ${s.metrics.items.length}개를 쟀습니다.`)
       }, (e: Error) => setError(e.message))
       .finally(() => setRunning(false))
   }
@@ -85,7 +93,7 @@ export function Eval() {
         <button type="button" className="bp" onClick={run} disabled={running || picked.length === 0}
           title={picked.length === 0 ? '정답지 탭에서 채점할 검토를 고르세요' : undefined}>
           <span className="ms" aria-hidden="true" style={{ fontSize: 'var(--ic-s)' }}>play_arrow</span>{running ? '채점 중…' : '지금 채점하기'}</button></div>
-      <div className="sh-note"><span className="ms" aria-hidden="true">info</span><span>점수는 코드로만 잽니다. 판정 정확도(K5·K6)는 엔지니어가 <b>확정·수정한 줄</b>을 정답으로 보고, 유형 분류 정확도(K13)는 고른 유형 정답지로 잽니다. 지난 검토의 사람 판정은 새 검토의 판정을 자동으로 바꾸지 않으며, 사람 검토를 건너뛰는 자동 확정은 하지 않습니다.</span></div>
+      <div className="sh-note"><span className="ms" aria-hidden="true">info</span><span>점수는 코드로만 잽니다. 판정 정확도(K5·K6)는 엔지니어가 <b>확정·수정한 줄</b>을 정답으로 보고, 유형 분류 정확도(K13)는 고른 유형 정답지로, 추출 재현율·정확도(K1·K2)·값(K3)·위험 조건 재현율(K10)은 고른 요구사항 정답지로 잽니다. 지난 검토의 사람 판정은 새 검토의 판정을 자동으로 바꾸지 않으며, 사람 검토를 건너뛰는 자동 확정은 하지 않습니다.</span></div>
       {error && <div className="sh-note c-red" role="alert"><span className="ms" aria-hidden="true">error</span><span>{error}</span></div>}
       <div className="sh-sum">
         <span>정답지<b>{key ? `${key.rows.toLocaleString('en-US')}줄` : '없음'}</b></span><span>검토<b>{picked.length}건</b></span>
@@ -105,7 +113,7 @@ export function Eval() {
             const c = change(m, before)
             return (
               <div key={m.code} className="ev-tr ev-row" data-code={m.code}>
-                <span>{m.code !== 'TIME' && <b className="mono">{m.code} </b>}{m.name}{m.code === 'K13' && <DraftTag k={{ made_by: latest?.key_made_by ?? null }} />}</span>
+                <span>{m.code !== 'TIME' && <b className="mono">{m.code} </b>}{m.name}{m.code === 'K13' && <DraftTag k={{ made_by: latest?.key_made_by ?? null }} />}{REQ_CODES.includes(m.code) && <DraftTag k={{ made_by: latest?.req_key_made_by ?? null }} />}</span>
                 <span className="sh-mut">{m.measure}{m.note && <span style={{ display: 'block' }}>{m.note}</span>}</span>
                 <span className="mono sh-mut">{shown(before)}</span>
                 <span className="mono" style={{ fontWeight: 600 }}>{shown(m)}{m.num !== null && m.den !== null && <span className="sh-mut" style={{ display: 'block', fontWeight: 400 }}>{m.num} / {m.den}</span>}</span>
@@ -125,12 +133,12 @@ export function Eval() {
           <div className="sh-box">
             <div className="gt-tr sh-th"><span>넣기</span><span>검토</span><span>확정한 사람</span><span>마지막 확정</span><span>판정 줄</span></div>
             {runs.error && <div className="ev-row c-red" style={{ padding: '11px 16px' }}>{runs.error}</div>}
-            {runs.data && runList.length === 0 && <div className="ev-row sh-mut" style={{ padding: '11px 16px' }}>사람이 확정·수정한 판정이 있는 검토가 없습니다. 검토 상세 판정 탭에서 판정을 확정하면 여기에 보입니다.</div>}
+            {runs.data && runList.length === 0 && <div className="ev-row sh-mut" style={{ padding: '11px 16px' }}>분석을 마친 검토가 없습니다. 검토 상세 판정 탭에서 판정을 확정하면 판정 정확도(K5)를 잴 수 있습니다.</div>}
             {runList.map((r) => (
-              <label key={r.run_id} className="gt-tr ev-row"><input type="checkbox" checked={!off[r.run_id]} onChange={() => setOff({ ...off, [r.run_id]: !off[r.run_id] })} />
+              <label key={r.run_id} className="gt-tr ev-row"><input type="checkbox" checked={isOn(r)} onChange={() => setPick({ ...pick, [r.run_id]: !isOn(r) })} />
                 <span><b>{r.review_name ?? r.review_no}</b><a className="mono sh-mut" style={{ display: 'block' }} href={href(`/reviews/${r.run_id}`)} onClick={(e) => e.stopPropagation()}>{r.review_no}</a></span>
                 <span className="sh-mut">{r.reviewer ?? '—'}</span>
-                <span className="mono sh-mut">{r.last_reviewed_at ? stamp(r.last_reviewed_at) : '—'}</span><span className="mono">{r.reviewed}줄</span></label>
+                <span className="mono sh-mut">{r.last_reviewed_at ? stamp(r.last_reviewed_at) : '—'}</span><span className="mono">{r.reviewed}줄{r.reviewed === 0 && <span className="sh-mut" style={{ display: 'block', fontFamily: 'inherit' }}>요구사항 정답지용</span>}</span></label>
             ))}
           </div>
           <h3 style={{ margin: '24px 0 8px' }}>유형 정답지</h3>
@@ -145,10 +153,22 @@ export function Eval() {
                 <span className="mono sh-mut">{stamp(k.created_at)}</span><span className="mono">{k.rows}줄</span></label>
             ))}
           </div>
+          <h3 style={{ margin: '24px 0 8px' }}>요구사항 정답지</h3>
+          <div className="sh-box">
+            <div className="gt-tr sh-th"><span>고름</span><span>정답지</span><span>대상 문서</span><span>넣은 날</span><span>줄</span></div>
+            <label className="gt-tr ev-row"><input type="radio" name="req-key" checked={reqKeyId === null} onChange={() => setReqKeyId(null)} />
+              <span><b>요구사항 정답지 없이</b><span className="sh-mut" style={{ display: 'block' }}>K1·K2·K3·K10을 재지 않습니다</span></span><span /><span /><span /></label>
+            {reqKeys.map((k) => (
+              <label key={k.key_id} className="gt-tr ev-row" data-key={k.key_name}><input type="radio" name="req-key" checked={reqKeyId === k.key_id} onChange={() => setReqKeyId(k.key_id)} />
+                <span><b>{k.key_name}</b><DraftTag k={k} /></span>
+                <span className="sh-mut">{k.doc_name ?? '검토의 모든 문서'}</span>
+                <span className="mono sh-mut">{stamp(k.created_at)}</span><span className="mono">{k.rows}줄</span></label>
+            ))}
+          </div>
           <label className="sh-note" style={{ display: 'flex', gap: 8, alignItems: 'center' }}><span className="ms" aria-hidden="true">edit_note</span>
             <span style={{ whiteSpace: 'nowrap' }}>무엇을 고쳤나</span>
             <input type="text" value={note} maxLength={500} onChange={(e) => setNote(e.target.value)} placeholder="예: 비교 방향 사전 3줄 고침 (채점 기록에 남습니다)" style={{ flex: 1 }} aria-label="무엇을 고쳤나" /></label>
-          <div className="sh-note"><span className="ms" aria-hidden="true">upload_file</span><span>유형 정답지는 명령으로 넣습니다: <code>rfp-db load-answer-key 정답지.csv --name 이름</code> (사람이 만든 정답지는 <code>--human</code>). Claude 초안은 사람이 &quot;사람 확인&quot; 칸을 채운 줄만 사람 확인으로 셉니다.</span></div>
+          <div className="sh-note"><span className="ms" aria-hidden="true">upload_file</span><span>유형 정답지는 명령으로 넣습니다: <code>rfp-db load-answer-key 정답지.csv --name 이름</code> (사람이 만든 정답지는 <code>--human</code>). Claude 초안은 사람이 &quot;사람 확인&quot; 칸을 채운 줄만 사람 확인으로 셉니다. 요구사항 정답지는 <code>--kind REQ --doc 문서이름</code>을 붙여 넣고, 공급사 답안 문서는 <code>rfp-db make-answer-key 답안.docx --name 이름</code>으로 코드가 만듭니다.</span></div>
         </>
       )}
       {tab === 'l' && (
@@ -157,7 +177,7 @@ export function Eval() {
           {scores.data && history.length === 0 && <div className="ev-row sh-mut" style={{ padding: '11px 16px' }}>채점 기록이 없습니다.</div>}
           {history.map((s) => (
             <div key={s.score_id} className="lg-tr ev-row"><span className="mono sh-mut">{stamp(s.scored_at)}</span>
-              <span>{s.key_name ? <span className="st c-grey">{s.key_name}</span> : <span className="sh-mut">판정만</span>}</span>
+              <span>{s.key_name && <span className="st c-grey">{s.key_name}</span>}{s.req_key_name && <span className="st c-grey">{s.req_key_name}</span>}{!s.key_name && !s.req_key_name && <span className="sh-mut">판정만</span>}</span>
               <span>{s.note ?? <span className="sh-mut">메모 없음</span>}<span className="sh-mut" style={{ display: 'block' }}>검토 {s.run_ids.length}건 · 코드 {s.code_version ?? '—'}</span></span>
               <span className="mono c-blue" style={{ fontWeight: 600 }}>{shown(metricOf(s, 'K5'))} · {shown(metricOf(s, 'K13'))}</span>
               <span className="sh-mut">{s.scored_by_name ?? '—'}</span></div>

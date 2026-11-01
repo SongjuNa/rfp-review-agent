@@ -95,6 +95,7 @@ openspec/
 | 56 | `archive/2026-11-01-update-type-context` | AI 유형 질문에 줄마다 절 번호·제목, 표 이름, 표 안 구분 행 제목 문맥(A6). 프롬프트 판 p3(같은 파일도 새로 분석). 전후 K13은 로컬 채점 (완료) |
 | 57 | `archive/2026-11-01-update-llm-retry-kinds` | AI 오류 종류별 처리(B6): 연결·시간 초과·서버 오류만 재시도, 형식 오류는 다시 묻지 않고 묶음은 바로 나눔·설명은 FORMAT_ERROR로 버림·초안은 코드 문장, 키·모델 설정 오류는 바로 멈춤. 0025 (완료) |
 | 58 | `archive/2026-11-01-add-claim-verifier` | 위험 설명 검증 에이전트(B2): AI가 쓴 위험 설명 문장마다 두 번째 AI(검증자)가 근거 조각이 문장을 뒷받침하는지 YES·NO·UNSURE로 답하고, 하나라도 아니면 "AI 검증: 확인 필요" 꼬리표·실행 기록 "검증 확인 필요 n". 판정·후보는 그대로. 0026 (완료) |
+| 59 | `archive/2026-11-01-add-requirement-answer-key` | 요구사항 정답지(B1): 공급사 답안 문서의 C/D/E 표시 표 조항 줄을 코드가 정답으로(`rfp-db make-answer-key`, 코드 자동·사람 확인 전, DB에만), 합성 154 kV GIS 정답지 CSV(`data/seed/answer_keys/`, `load-answer-key --kind REQ --doc`). 채점에서 고르면 K1·K2·K3·K10, 판정 없는 검토도 채점. 0027 (완료) |
 
 ## 3. 작업 흐름
 

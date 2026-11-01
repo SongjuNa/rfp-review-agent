@@ -1,6 +1,7 @@
 """DB 명령: rfp-db migrate | seed-rules [--reset-edits] | seed-products [--replace] | setup
 | demo-businesses --business 사업명 a.docx [b.docx ...] (시연용 사업, add-project-status)
-| load-answer-key 정답지.csv --name 이름 [--human] (유형 정답지, add-evaluation)"""
+| load-answer-key 정답지.csv --name 이름 [--human] [--kind REQ --doc 문서] (정답지)
+| make-answer-key 공급사답안.docx --name 이름 (요구사항 정답지, add-requirement-answer-key)"""
 
 import argparse
 import sys
@@ -63,27 +64,52 @@ def demo_businesses(groups: list[list[str]], customer: str | None, due_in: int) 
                 print(f"[시연 사업] {name}: 검토 {run_id} {path.name} → {stage}")
 
 
-def load_answer_key(path: Path, name: str, human: bool) -> None:
+def load_answer_key(path: Path, name: str, human: bool, kind: str = "TYPE",
+                    doc: str | None = None) -> None:
     from rfp_agent.pipeline.evaluation import load_key
+    from rfp_agent.pipeline.req_eval import load_req_key
 
     if not path.exists():
         sys.exit(f"정답지 파일이 없습니다: {path}")
     with connect() as conn:
-        report = load_key(conn, path, name, human)
+        if kind == "REQ":
+            report = load_req_key(conn, path, name, doc, human)
+        else:
+            report = load_key(conn, path, name, human)
     who = "사람" if human else "Claude 초안"
     print(f"[정답지] {name} ({who}): {report.rows}줄, 사람 확인 {report.human_checked}줄")
     for line in report.skipped:
         print(f"  건너뜀: {line}")
 
 
+def make_answer_key(path: Path, name: str) -> None:
+    """공급사 답안 docx로 요구사항 정답지를 만든다. 고객 원문이라 DB에만 넣는다."""
+    from rfp_agent.pipeline.req_eval import make_supplier_key
+    from rfp_agent.pipeline.review import ReviewError
+
+    if not path.exists():
+        sys.exit(f"문서가 없습니다: {path}")
+    with connect() as conn:
+        try:
+            report = make_supplier_key(conn, path, name)
+        except ReviewError as exc:
+            sys.exit(str(exc))
+    print(f"[요구사항 정답지] {name} (코드 자동, 사람 확인 전): 조항 {report.rows}줄")
+
+
 def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(prog="rfp-db")
     parser.add_argument("command", choices=["migrate", "seed-rules", "seed-products", "setup",
-                                            "demo-businesses", "load-answer-key"])
-    parser.add_argument("path", nargs="?", help="load-answer-key: 정답지 CSV 파일")
+                                            "demo-businesses", "load-answer-key",
+                                            "make-answer-key"])
+    parser.add_argument("path", nargs="?",
+                        help="load-answer-key: 정답지 CSV / make-answer-key: 공급사 답안 docx")
     parser.add_argument("--name", help="load-answer-key: 정답지 이름 (같은 이름이면 줄을 바꿈)")
     parser.add_argument("--human", action="store_true",
                         help="load-answer-key: 사람이 만든 정답지 (주지 않으면 Claude 초안)")
+    parser.add_argument("--kind", choices=["TYPE", "REQ"], default="TYPE",
+                        help="load-answer-key: TYPE 유형 정답지(기본) / REQ 요구사항 정답지")
+    parser.add_argument("--doc", help="--kind REQ: 대상 문서 이름(파일 이름에 든 글자)")
     parser.add_argument("--business", action="append", nargs="+", metavar=("사업명", "DOCX"),
                         help="demo-businesses: 사업명과 docx 파일들 (여러 번 줄 수 있음)")
     parser.add_argument("--customer", help="demo-businesses: 고객사 (주지 않으면 비움)")
@@ -103,7 +129,12 @@ def main(argv: list[str] | None = None) -> None:
     if args.command == "load-answer-key":
         if not args.path or not args.name:
             parser.error("load-answer-key 정답지.csv --name 이름 이 필요합니다")
-        load_answer_key(Path(args.path), args.name, args.human)
+        load_answer_key(Path(args.path), args.name, args.human, args.kind, args.doc)
+        return
+    if args.command == "make-answer-key":
+        if not args.path or not args.name:
+            parser.error("make-answer-key 공급사답안.docx --name 이름 이 필요합니다")
+        make_answer_key(Path(args.path), args.name)
         return
     with connect() as conn:
         if args.command in ("migrate", "setup"):

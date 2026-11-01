@@ -13,7 +13,7 @@ import psycopg
 from psycopg.rows import dict_row
 
 from rfp_agent.llm.tasks import TYPE_CODES
-from rfp_agent.pipeline import code_version
+from rfp_agent.pipeline import code_version, req_eval
 from rfp_agent.pipeline.review import ReviewError, _user_role, default_user
 
 # 정답지 CSV 열: Claude 초안 열 이름과 영어 열 이름을 모두 받는다
@@ -27,12 +27,12 @@ COLUMNS = {
     "human": ("사람 확인(맞으면 비움, 다르면 코드)", "human"),
 }
 # 기획서 2-2 목표(가안). better: 높을수록(up) / 낮을수록(down) 좋음
-TARGETS = {"K4": 100.0, "K5": 80.0, "K6": 80.0, "K11": 0, "K12": 0, "K13": 70.0, "TIME": 15.0}
-NOT_MEASURED = [
-    ("K1", "요구사항 추출 재현율"), ("K2", "요구사항 추출 정확도"), ("K3", "값·단위 정확도"),
-    ("K8", "손실 환산 계산 일치"), ("K9", "숫자 불일치 경고 누락"),
-    ("K10", "위험 조건 탐지 재현율"),
-]
+TARGETS = {"K1": 85.0, "K2": 80.0, "K3": 90.0, "K10": 80.0, "K4": 100.0, "K5": 80.0,
+           "K6": 80.0, "K11": 0, "K12": 0, "K13": 70.0, "TIME": 15.0}
+# 요구사항 정답지(add-requirement-answer-key)를 고르면 재는 지표. 고르지 않으면 "재지 않음"
+REQ_METRICS = [("K1", "요구사항 추출 재현율"), ("K2", "요구사항 추출 정확도"),
+               ("K3", "값·단위 정확도"), ("K10", "위험 조건 탐지 재현율")]
+NOT_MEASURED = [("K8", "손실 환산 계산 일치"), ("K9", "숫자 불일치 경고 누락")]
 VISIBLE = ("ENGINEER_REVIEW", "APPROVAL", "APPROVED", "REJECTED")
 
 
@@ -93,7 +93,7 @@ def load_key(conn: psycopg.Connection, path: Path, name: str, human: bool = Fals
 def keys(conn: psycopg.Connection) -> list[dict]:
     with conn.cursor(row_factory=dict_row) as cur:
         return cur.execute(
-            """SELECT k.key_id, k.key_name, k.key_kind, k.made_by, k.created_at,
+            """SELECT k.key_id, k.key_name, k.key_kind, k.made_by, k.doc_name, k.created_at,
                       count(r.row_no)::int AS rows,
                       count(*) FILTER (WHERE r.human_checked)::int AS human_checked,
                       count(*) FILTER (WHERE r.ambiguous)::int AS ambiguous
@@ -102,13 +102,16 @@ def keys(conn: psycopg.Connection) -> list[dict]:
 
 
 def candidate_runs(conn: psycopg.Connection) -> list[dict]:
-    """채점에 넣을 수 있는 검토: 사람이 확정·수정한 판정 줄이 있는 검토."""
+    """채점에 넣을 수 있는 검토: 분석을 마친 검토. reviewed = 사람이 확정·수정한 판정 줄 수.
+
+    판정 줄이 없는 검토(묶음 C 문서만)도 요구사항 정답지 채점에 쓴다(add-requirement-answer-key).
+    """
     with conn.cursor(row_factory=dict_row) as cur:
         return cur.execute(
             """SELECT r.run_id, r.review_name, r.stage,
                       'RV-' || extract(year FROM r.started_at)::int || '-'
                           || lpad(r.run_id::text, 3, '0') AS review_no,
-                      count(*)::int AS reviewed,
+                      count(j.judgment_id)::int AS reviewed,
                       (SELECT u.user_name FROM review_log l
                          JOIN app_user u ON u.user_id = l.actor_id
                         WHERE l.run_id = r.run_id AND l.target_table = 'judgment'
@@ -117,9 +120,9 @@ def candidate_runs(conn: psycopg.Connection) -> list[dict]:
                       (SELECT max(l.acted_at) FROM review_log l
                         WHERE l.run_id = r.run_id AND l.target_table = 'judgment'
                           AND l.action IN ('CONFIRM', 'EDIT')) AS last_reviewed_at
-                 FROM review_run r JOIN judgment j ON j.run_id = r.run_id
-                WHERE r.stage = ANY(%s) AND j.is_current
-                  AND j.review_status IN ('CONFIRMED', 'EDITED')
+                 FROM review_run r LEFT JOIN judgment j ON j.run_id = r.run_id AND j.is_current
+                      AND j.review_status IN ('CONFIRMED', 'EDITED')
+                WHERE r.stage = ANY(%s)
                 GROUP BY r.run_id ORDER BY r.run_id DESC""", (list(VISIBLE),)).fetchall()
 
 
@@ -208,7 +211,8 @@ def _type_score(conn: psycopg.Connection, run_ids: list[int], key_id: int) -> tu
     return k13, detail
 
 
-def metrics(conn: psycopg.Connection, run_ids: list[int], key_id: int | None) -> dict:
+def metrics(conn: psycopg.Connection, run_ids: list[int], key_id: int | None,
+            req_key_id: int | None = None) -> dict:
     """지표를 잰다. 결과는 같은 입력이면 같다."""
     k4_num, k4_den = conn.execute(
         """SELECT count(*) FILTER (WHERE EXISTS (SELECT 1 FROM requirement_location rl
@@ -248,15 +252,32 @@ def metrics(conn: psycopg.Connection, run_ids: list[int], key_id: int | None) ->
     if key_id is not None:
         k13, types = _type_score(conn, run_ids, key_id)
         items.append(k13)
+    requirements = None
+    if req_key_id is not None:
+        req_items, requirements = req_eval.scores(conn, run_ids, req_key_id, _metric)
+        items = req_items + items
     items.append(_metric("TIME", "처리 시간", "검토 한 건 분석에 걸린 평균 시간", "분",
                          None if minutes is None else round(float(minutes), 1), better="down"))
-    return {"items": items, "types": types,
-            "not_measured": [{"code": c, "name": n, "note": "요구사항 정답지가 있어야 잽니다"}
-                             for c, n in NOT_MEASURED]}
+    missing = (REQ_METRICS if req_key_id is None else []) + NOT_MEASURED
+    return {"items": items, "types": types, "requirements": requirements,
+            "not_measured": [{"code": c, "name": n, "note": "요구사항 정답지가 있어야 잽니다"
+                              if (c, n) in REQ_METRICS else "아직 재는 방법이 없습니다"}
+                             for c, n in missing]}
+
+
+def _check_key(conn: psycopg.Connection, key_id: int | None, kind: str, label: str) -> None:
+    if key_id is None:
+        return
+    row = conn.execute("SELECT key_kind FROM answer_key WHERE key_id = %s", (key_id,)).fetchone()
+    if row is None:
+        raise ReviewError(404, f"정답지 {key_id}이(가) 없습니다.")
+    if row[0] != kind:
+        raise ReviewError(400, f"정답지 {key_id}은(는) {label}가 아닙니다.")
 
 
 def score(conn: psycopg.Connection, run_ids: list[int], key_id: int | None = None,
-          note: str | None = None, actor_id: int | None = None) -> dict:
+          note: str | None = None, actor_id: int | None = None,
+          req_key_id: int | None = None) -> dict:
     """채점하고 기록한다."""
     ids = sorted(set(run_ids))
     if not ids:
@@ -266,17 +287,17 @@ def score(conn: psycopg.Connection, run_ids: list[int], key_id: int | None = Non
         (ids, list(VISIBLE)))}
     if missing := [i for i in ids if i not in found]:
         raise ReviewError(404, f"채점할 수 없는 검토입니다 ({', '.join(map(str, missing))}).")
-    if key_id is not None and conn.execute(
-            "SELECT 1 FROM answer_key WHERE key_id = %s", (key_id,)).fetchone() is None:
-        raise ReviewError(404, f"정답지 {key_id}이(가) 없습니다.")
+    _check_key(conn, key_id, "TYPE", "유형 정답지")
+    _check_key(conn, req_key_id, "REQ", "요구사항 정답지")
     actor_id = actor_id or default_user(conn, "ENGINEER")
     _user_role(conn, actor_id)
-    result = metrics(conn, ids, key_id)
+    result = metrics(conn, ids, key_id, req_key_id)
     score_id = conn.execute(
-        """INSERT INTO eval_score (run_ids, key_id, metrics, note, code_version, scored_by)
-           VALUES (%s, %s, %s, %s, %s, %s) RETURNING score_id""",
-        (ids, key_id, json.dumps(result, ensure_ascii=False), (note or "").strip() or None,
-         code_version(), actor_id)).fetchone()[0]
+        """INSERT INTO eval_score (run_ids, key_id, req_key_id, metrics, note, code_version,
+                                   scored_by)
+           VALUES (%s, %s, %s, %s, %s, %s, %s) RETURNING score_id""",
+        (ids, key_id, req_key_id, json.dumps(result, ensure_ascii=False),
+         (note or "").strip() or None, code_version(), actor_id)).fetchone()[0]
     conn.commit()
     return history(conn, score_id)[0]
 
@@ -286,9 +307,11 @@ def history(conn: psycopg.Connection, score_id: int | None = None) -> list[dict]
     with conn.cursor(row_factory=dict_row) as cur:
         return cur.execute(
             """SELECT s.score_id, s.run_ids, s.key_id, k.key_name, k.made_by AS key_made_by,
+                      s.req_key_id, rk.key_name AS req_key_name, rk.made_by AS req_key_made_by,
                       s.metrics, s.note, s.code_version, s.scored_by, u.user_name AS scored_by_name,
                       s.scored_at
                  FROM eval_score s LEFT JOIN answer_key k USING (key_id)
+                 LEFT JOIN answer_key rk ON rk.key_id = s.req_key_id
                  LEFT JOIN app_user u ON u.user_id = s.scored_by
                 WHERE %(id)s::int IS NULL OR s.score_id = %(id)s
                 ORDER BY s.scored_at DESC, s.score_id DESC""", {"id": score_id}).fetchall()

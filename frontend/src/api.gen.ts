@@ -27,12 +27,13 @@ export type Actor = {
   actor_id?: number | null
 }
 
-/** 유형 정답지. made_by가 CLAUDE_DRAFT면 사람 확인 전 초안. */
+/** 정답지. TYPE = 유형 정답지, REQ = 요구사항 정답지(add-requirement-answer-key). made_by가 CLAUDE_DRAFT(Claude 초안)·AUTO(코드 자동)면 사람 확인 전. */
 export type AnswerKey = {
   key_id: number
   key_name: string
-  key_kind: 'TYPE'
-  made_by: 'CLAUDE_DRAFT' | 'HUMAN'
+  key_kind: 'TYPE' | 'REQ'
+  made_by: 'CLAUDE_DRAFT' | 'HUMAN' | 'AUTO'
+  doc_name: string | null
   created_at: string
   rows: number
   human_checked: number
@@ -591,6 +592,7 @@ export type EvalMetric = {
 export type EvalMetrics = {
   items: EvalMetric[]
   types: EvalTypeDetail | null
+  requirements?: EvalRequirementDetail | null
   not_measured: EvalNotMeasured[]
 }
 
@@ -598,6 +600,19 @@ export type EvalNotMeasured = {
   code: string
   name: string
   note: string
+}
+
+/** 요구사항 정답지 채점의 자세한 수 (K1·K2·K3·K10). */
+export type EvalRequirementDetail = {
+  documents: number
+  requirement_rows: number
+  found: number
+  system_requirements: number
+  correct: number
+  value_rows: number
+  value_hit: number
+  risk_rows: number
+  risk_found: number
 }
 
 /** 채점에 넣을 수 있는 검토 (사람이 확정·수정한 판정 줄이 있음). */
@@ -617,7 +632,10 @@ export type EvalScore = {
   run_ids: number[]
   key_id: number | null
   key_name: string | null
-  key_made_by: 'CLAUDE_DRAFT' | 'HUMAN' | null
+  key_made_by: 'CLAUDE_DRAFT' | 'HUMAN' | 'AUTO' | null
+  req_key_id: number | null
+  req_key_name: string | null
+  req_key_made_by: 'CLAUDE_DRAFT' | 'HUMAN' | 'AUTO' | null
   metrics: EvalMetrics
   note: string | null
   code_version: string | null
@@ -1342,6 +1360,7 @@ export type SalesHandoff = {
 export type ScoreRequest = {
   run_ids: number[]
   key_id?: number | null
+  req_key_id?: number | null
   note?: string | null
   actor_id?: number | null
 }

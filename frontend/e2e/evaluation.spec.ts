@@ -36,3 +36,41 @@ test('Claude 초안 표시', async ({ page }) => {
   await expect(row).toContainText('Claude 초안 · 사람 확인 전')
   await expect(row).toContainText('12 / 100')
 })
+
+test('요구사항 정답지로 채점', async ({ page }) => {
+  // 명세 review-workspace "요구사항 정답지 고르기 화면" (add-requirement-answer-key). 지표 계산은 백엔드 테스트에서 본다.
+  const now = '2026-11-01T03:00:00Z'
+  await page.route('**/api/eval/keys', (route) => route.fulfill({ json: [{
+    key_id: 7, key_name: '공급사 답안 262000', key_kind: 'REQ', made_by: 'AUTO', doc_name: '262000 Electric Distribution',
+    created_at: now, rows: 200, human_checked: 0, ambiguous: 0,
+  }] }))
+  await page.route('**/api/eval/runs', (route) => route.fulfill({ json: [{
+    run_id: 41, review_no: 'RV-2026-041', review_name: '배전 공급사 답안', stage: 'ENGINEER_REVIEW', reviewed: 0, reviewer: null, last_reviewed_at: null,
+  }] }))
+  let sent: Record<string, unknown> = {}
+  const k1 = { code: 'K1', name: '요구사항 추출 재현율', measure: '정답 요구사항 줄 중 시스템이 찾은 비율', unit: '%', value: 66.5, num: 133, den: 200, target: 85, better: 'up', passed: false, note: '대상 문서 1개' }
+  const score = { score_id: 1, run_ids: [41], key_id: null, key_name: null, key_made_by: null, req_key_id: 7, req_key_name: '공급사 답안 262000', req_key_made_by: 'AUTO',
+    metrics: { items: [k1], types: null, requirements: null, not_measured: [] }, note: null, code_version: null, scored_by: 1, scored_by_name: '엔지니어', scored_at: now }
+  await page.route('**/api/eval/scores', (route) => {
+    if (route.request().method() === 'POST') {
+      sent = route.request().postDataJSON()
+      return route.fulfill({ json: score })
+    }
+    return route.fulfill({ json: Object.keys(sent).length ? [score] : [] })
+  })
+  await as(page, ENGINEER)
+  await page.goto('/#/eval')
+  await page.getByRole('tab', { name: '정답지' }).click()
+  const run = page.locator('label.gt-tr', { hasText: 'RV-2026-041' })
+  await expect(run).toContainText('요구사항 정답지용')
+  await expect(run.locator('input')).not.toBeChecked()
+  await run.locator('input').check()
+  const key = page.locator('label[data-key="공급사 답안 262000"]')
+  await expect(key).toContainText('코드 자동 · 사람 확인 전')
+  await expect(key).toContainText('262000 Electric Distribution')
+  await key.locator('input').check()
+  await page.getByRole('button', { name: '지금 채점하기' }).click()
+  await expect(page.getByRole('status')).toContainText('요구사항 정답지 "공급사 답안 262000"')
+  expect(sent).toMatchObject({ run_ids: [41], req_key_id: 7 })
+  await expect(page.locator('[data-code="K1"]')).toContainText('66.5 %')
+})
