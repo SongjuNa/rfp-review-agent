@@ -1177,3 +1177,23 @@ class EvalScore(Out):
     scored_by: int | None
     scored_by_name: str | None
     scored_at: datetime
+
+
+class RuleSuggestion(Out):
+    """위험 표현 사전에 추가 제안 (add-rule-suggestion). 위치는 표현이 나온 첫 문장."""
+    suggestion_id: int
+    expression: str
+    note: str | None
+    run_id: int
+    review_no: str
+    requirement_id: int
+    status: Literal["PENDING", "ACCEPTED", "DECLINED"]
+    suggested_by: int
+    suggested_by_name: str
+    suggested_at: datetime
+    decided_by: int | None
+    decided_by_name: str | None
+    decided_at: datetime | None
+    decision_reason: str | None
+    edit_id: int | None
+    locations: Locations

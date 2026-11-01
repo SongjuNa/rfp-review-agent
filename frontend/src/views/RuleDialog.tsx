@@ -78,7 +78,8 @@ function toValue(fs: Field[], form: Form): RuleValue {
   return out
 }
 
-export type RuleTarget = { mode: 'add' | 'edit' | 'delete'; dictionary: RuleDictionary; id?: string; value?: RuleValue; title?: string }
+// suggestionId: 사람이 제안한 표현을 반영할 때(add-rule-suggestion). 저장하면 제안 반영 API를 부른다
+export type RuleTarget = { mode: 'add' | 'edit' | 'delete'; dictionary: RuleDictionary; id?: string; value?: RuleValue; title?: string; suggestionId?: number }
 
 export function RuleDialog({ target, itemKeys, onClose, onDone }: {
   target: RuleTarget; itemKeys: [string, string][]; onClose: () => void; onDone: () => void
@@ -103,7 +104,8 @@ export function RuleDialog({ target, itemKeys, onClose, onDone }: {
     setBusy(true)
     setError(null)
     const value = toValue(fs, form)
-    const call = target.mode === 'add' ? api.addRule(target.dictionary, value, reason.trim(), user.user_id)
+    const call = target.suggestionId ? api.acceptSuggestion(target.suggestionId, value, reason.trim(), user.user_id)
+      : target.mode === 'add' ? api.addRule(target.dictionary, value, reason.trim(), user.user_id)
       : target.mode === 'edit' ? api.updateRule(target.dictionary, target.id!, value, reason.trim(), user.user_id)
         : api.deleteRule(target.dictionary, target.id!, reason.trim(), user.user_id)
     call.then(onDone, (e: Error) => setError(e.message)).finally(() => setBusy(false))
@@ -115,7 +117,7 @@ export function RuleDialog({ target, itemKeys, onClose, onDone }: {
         <div className="mdh">
           <div style={{ flex: '1 1 auto', minWidth: 0 }}>
             <div className="apid">{DICTIONARY_NAMES[target.dictionary]} 사전{target.title ? ` · ${target.title}` : ''}</div>
-            <h2 id="ruleTitle" style={{ margin: '2px 0 0', fontSize: 'var(--fs-h3)' }}>규칙 {verb}</h2>
+            <h2 id="ruleTitle" style={{ margin: '2px 0 0', fontSize: 'var(--fs-h3)' }}>{target.suggestionId ? '제안 반영' : `규칙 ${verb}`}</h2>
           </div>
           <button type="button" className="ib" onClick={onClose} aria-label="닫기" title="닫기 (Esc)"><span className="ms" aria-hidden="true">close</span></button>
         </div>
@@ -133,7 +135,8 @@ export function RuleDialog({ target, itemKeys, onClose, onDone }: {
               <div className="infog">
                 {fs.map((f) => {
                   const id = `rf-${f.key}`
-                  const disabled = f.fixedOnEdit && target.mode === 'edit'
+                  // 제안 반영은 표현을 제안 그대로 쓴다
+                  const disabled = (f.fixedOnEdit && target.mode === 'edit') || (!!target.suggestionId && f.key === 'expression')
                   const style = f.wide ? { gridColumn: '1 / -1' } : undefined
                   if (f.kind === 'check') return (
                     <label key={f.key} className="rchk" style={style}>
@@ -151,7 +154,7 @@ export function RuleDialog({ target, itemKeys, onClose, onDone }: {
                         <input id={id} className="fi" type={f.kind === 'number' ? 'number' : 'text'} value={String(form[f.key])} disabled={disabled}
                           placeholder={f.hint} onChange={(e) => setForm({ ...form, [f.key]: e.target.value })} />
                       )}
-                      {disabled && <span className="rnote">표준 항목 키는 바꿀 수 없습니다. 새 항목으로 추가해 주세요.</span>}
+                      {disabled && <span className="rnote">{target.suggestionId ? '제안한 표현 그대로 넣습니다.' : '표준 항목 키는 바꿀 수 없습니다. 새 항목으로 추가해 주세요.'}</span>}
                     </label>
                   )
                 })}

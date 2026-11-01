@@ -1,13 +1,12 @@
 import { useState } from 'react'
-import { api, type CompareRule, type DocKindRule, type ItemKey, type RiskExpression, type RuleDictionary, type RuleEdit, type RuleValue } from '../api'
+import { api, type CompareRule, type DocKindRule, type ItemKey, type RiskExpression, type RuleDictionary, type RuleEdit, type RuleSuggestion, type RuleValue } from '../api'
 import { ErrorText } from '../components/common'
 import { Pager } from '../components/Pager'
-import { DIRECTION_NAMES, DOC_KIND_NAMES, EDITOR_ROLES, RISK_NAMES, RULE_FIELD_NAMES } from '../components/labels'
 import { useLoad } from '../components/useLoad'
 import { usePageCss } from '../shell/pageCss'
 import { useSession } from '../shell/useSession'
 import { RuleDialog, type RuleTarget } from './RuleDialog'
-import { ExampleBand } from './detail/ExampleTab'
+import { DIRECTION_NAMES, DOC_KIND_NAMES, EDITOR_ROLES, locationText, RISK_NAMES, RULE_FIELD_NAMES } from '../components/labels'
 
 // SCR-17 판정 규칙 (목업 v4.57 Rules). docs/screens/SCR-17-판정규칙.md
 // 비교 방향·항목 이름·위험 표현·문서 종류 사전 네 가지와 쓴 횟수 (단위 탭은 단위 환산 금지 CR-10으로 뺐다).
@@ -34,12 +33,8 @@ const changed = (e: RuleEdit) => {
   return keys.map((k) => `${RULE_FIELD_NAMES[k] ?? k}: ${fmt(e.before_value![k])} → ${fmt(e.after_value![k])}`).join(', ')
 }
 const fmt = (v: unknown) => (v === null || v === undefined || v === '' ? '—' : Array.isArray(v) ? v.join('; ') : String(v))
-// 사람이 제안한 위험 표현 (예시). 제안·반영 흐름은 만들지 않는다 (SCR-17_공유.md)
-const PROPOSED: [string, string, string, string, string][] = [
-  ['10-29', '"online partial discharge monitoring sensors (UHF)"', '기술 검토 엔지니어 · 예시 검토', 'st c-blue', '확인 대기'],
-  ['10-27', '"shall be capable of operating without derating"', '기술 검토 엔지니어 · 예시 검토', 'st c-green', '반영 · 10-28'],
-  ['10-24', '"to the satisfaction of the Engineer"', '기술 검토 엔지니어 · 예시 검토', 'st c-green', '반영 · 10-28'],
-]
+const SUGGEST_STATUS: Record<string, [string, string]> = { PENDING: ['st c-blue', '확인 대기'], ACCEPTED: ['st c-green', '반영'], DECLINED: ['st c-grey', '반려'] }
+const day = (t: string) => new Date(t).toLocaleDateString('ko-KR', { month: '2-digit', day: '2-digit' }).replace(/\. ?/g, '-').replace(/-$/, '')
 
 const strength = (s: string | null) => (s === 'HIGHER' ? '클수록 강점' : s === 'LOWER' ? '작을수록 강점' : '강점 아님')
 const dir = (d: string | null) => (d ? DIRECTION_NAMES[d] ?? d : '—')
@@ -130,6 +125,7 @@ export function Rules() {
   const canEdit = !!user && EDITOR_ROLES.includes(user.role)
   const lockText = '규칙은 엔지니어·승인자만 고칠 수 있습니다 (머리글에서 사용자 바꾸기)'
   const data = useLoad(() => Promise.all([api.compareRules(), api.ruleItems(), api.riskExpressions(), api.docKindRules(), api.ruleEdits()]), [])
+  const suggestions = useLoad(() => api.ruleSuggestions(), [])
   const edits = data.data?.[4] ?? []
   const last = edits.find((e) => e.dictionary === DICTS[tab] && !e.discarded_at)
   const itemKeys: [string, string][] = (data.data?.[1] ?? []).map((r) => [r.item_key, `${r.name_ko} (${r.item_key})`])
@@ -153,14 +149,10 @@ export function Rules() {
             <span className="ms" aria-hidden="true" style={{ fontSize: 'var(--ic-s)' }}>{canEdit ? 'add' : 'lock'}</span>규칙 추가</button></span>
         </div>
       </div>
-      <section className="rkp" aria-labelledby="rkpT">
-        <ExampleBand />
-        <div className="rkp-h"><h2 id="rkpT">위험 표현 사전 · 사람이 제안한 표현</h2><span>검토 중 엔지니어가 찾은 특이 요구입니다. 규칙 담당이 확인하면 사전에 들어가 다음 검토부터 위험 조건으로 잡힙니다.</span></div>
-        {PROPOSED.map(([d, ex, by, cls, st]) => (
-          <div key={ex} className="rkp-r"><span className="mono">{d}</span><b>{ex}</b><span>{by}</span><span className={cls}>{st}</span></div>
-        ))}
-        <div className="rkp-f"><a href="#/eval">반영 후 점수 변화는 정답지·채점에서 봅니다<span className="ms" aria-hidden="true">chevron_right</span></a></div>
-      </section>
+      <Suggestions items={suggestions.data ?? []} error={suggestions.error} canEdit={canEdit} lockText={lockText}
+        onAccept={(x) => setTarget({ mode: 'add', dictionary: 'risk-expressions', suggestionId: x.suggestion_id, title: `${x.review_no} 제안`,
+          value: { expression: x.expression, language: /[가-힣]/.test(x.expression) ? 'ko' : 'en', risk_kind: 'BLANKET', context_rule: null } })}
+        onDeclined={suggestions.reload} />
       <div className="rtabs" role="tablist" aria-label="규칙 종류">
         {(['dir', 'risk', 'name', 'kind'] as TabKey[]).map((k) => (
           <button key={k} type="button" role="tab" aria-selected={tab === k} className={tab === k ? 'on' : ''}
@@ -219,7 +211,7 @@ export function Rules() {
         {T && rows.length === 0 && <p style={{ margin: 0, padding: '16px 12px', color: '#667085' }}>조건에 맞는 규칙이 없습니다.</p>}
       </section>
       {target && <RuleDialog target={target} itemKeys={itemKeys} onClose={() => setTarget(null)}
-        onDone={() => { setTarget(null); if (target.mode === 'delete') setOpen({}); data.reload() }} />}
+        onDone={() => { setTarget(null); if (target.mode === 'delete') setOpen({}); data.reload(); suggestions.reload() }} />}
     </main>
   )
 }
@@ -235,5 +227,63 @@ function RowHistory({ edits }: { edits: RuleEdit[] }) {
         </li>
       ))}
     </ul>
+  )
+}
+
+/** 위험 표현 사전 · 사람이 제안한 표현 (add-rule-suggestion). 확인 대기 먼저. 반영은 규칙 추가 창, 반려는 사유를 받는다 */
+function Suggestions({ items, error, canEdit, lockText, onAccept, onDeclined }: {
+  items: RuleSuggestion[]; error: string | null; canEdit: boolean; lockText: string
+  onAccept: (s: RuleSuggestion) => void; onDeclined: () => void
+}) {
+  const { user } = useSession()
+  const [declining, setDeclining] = useState<number | null>(null)
+  const [why, setWhy] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [fail, setFail] = useState<string | null>(null)
+  const decline = (id: number) => {
+    if (!user) return
+    setBusy(true)
+    setFail(null)
+    api.declineSuggestion(id, why.trim(), user.user_id)
+      .then(() => { setDeclining(null); setWhy(''); onDeclined() }, (e: Error) => setFail(e.message))
+      .finally(() => setBusy(false))
+  }
+  const waiting = items.filter((s) => s.status === 'PENDING').length
+  return (
+    <section className="rkp" aria-labelledby="rkpT">
+      <div className="rkp-h"><h2 id="rkpT">위험 표현 사전 · 사람이 제안한 표현{waiting > 0 && <span className="st c-blue" style={{ marginLeft: 8 }}>확인 대기 {waiting}</span>}</h2>
+        <span>검토 중 엔지니어가 찾은 특이 요구입니다. 규칙 담당이 반영하면 사전에 들어가 다음 검토부터 위험 조건으로 잡힙니다.</span></div>
+      {items.length === 0 && <div className="rkp-r"><span className="c-grey">제안한 표현이 없습니다. 검토 상세 위험 조건 탭에서 제안합니다.</span></div>}
+      {items.map((x) => {
+        const [cls, st] = SUGGEST_STATUS[x.status]
+        const where = x.locations[0] ? locationText(x.locations[0]) : '—'
+        return (
+          <div key={x.suggestion_id} className="rkp-r sg" data-testid="rule-suggestion">
+            <span className="mono">{day(x.suggested_at)}</span>
+            <b title={x.note ?? undefined}>“{x.expression}”</b>
+            <span><a href={`#/reviews/${x.run_id}`} title="위험 조건 탭에서 제안했습니다">{x.review_no}</a> · {where} · {x.suggested_by_name}{x.note ? ` · ${x.note}` : ''}</span>
+            {x.status === 'PENDING' ? (
+              declining === x.suggestion_id ? (
+                <span style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                  <input className="fi" value={why} onChange={(e) => setWhy(e.target.value)} aria-label="반려 사유" placeholder="반려 사유" />
+                  <button type="button" className="bo" disabled={busy || !why.trim()} onClick={() => decline(x.suggestion_id)}>반려</button>
+                  <button type="button" className="lnk" onClick={() => setDeclining(null)}>취소</button>
+                </span>
+              ) : (
+                <span style={{ display: 'flex', gap: 6, alignItems: 'center' }} title={canEdit ? undefined : lockText}>
+                  <span className={cls}>{st}</span>
+                  <button type="button" className="bo" disabled={!canEdit} onClick={() => onAccept(x)}>반영</button>
+                  <button type="button" className="bo" disabled={!canEdit} onClick={() => { setDeclining(x.suggestion_id); setWhy('') }}>반려</button>
+                </span>
+              )
+            ) : (
+              <span className={cls} title={x.decision_reason ?? undefined}>{st}{x.decided_at ? ` · ${day(x.decided_at)}` : ''}{x.decided_by_name ? ` · ${x.decided_by_name}` : ''}</span>
+            )}
+          </div>
+        )
+      })}
+      {(fail || error) && <p className="aphint" role="alert">{fail ?? error}</p>}
+      <div className="rkp-f"><a href="#/eval">반영 후 점수 변화는 정답지·채점에서 봅니다<span className="ms" aria-hidden="true">chevron_right</span></a></div>
+    </section>
   )
 }

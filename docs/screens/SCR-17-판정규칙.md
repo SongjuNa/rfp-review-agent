@@ -2,9 +2,10 @@
 
 - 연결 요구사항: `reference-data` 규칙 사전 조회·문서 종류 규칙 조회·규칙 사전 고치기·규칙 고침 이력, FR-01 문서 종류, FR-05 항목 이름, FR-06 위험 표현, FR-07 비교 방향
 - 기준 목업: `Spec2Win_목업_v4.57.html#Rules`
-- 구현 방식: 실제 (`add-reference-views`, 고치기는 `add-rule-editing`). 위 "사람이 제안한 표현"은 예시. 화면 CSS는 목업 Rules CSS 그대로(`frontend/src/mockup/Rules.css`)
+- 구현 방식: 실제 (`add-reference-views`, 고치기는 `add-rule-editing`). 위 "사람이 제안한 표현"은 `add-rule-suggestion`으로 실제. 화면 CSS는 목업 Rules CSS 그대로(`frontend/src/mockup/Rules.css`)
 - 사용 API: `GET /rules/compare`, `GET /rules/items`, `GET /rules/risk-expressions`, `GET /rules/doc-kinds` (`update-doc-kind-rules`),
-  `POST /rules/{dictionary}`, `PUT·DELETE /rules/{dictionary}/{id}`, `GET /rules/edits` (`add-rule-editing`)
+  `POST /rules/{dictionary}`, `PUT·DELETE /rules/{dictionary}/{id}`, `GET /rules/edits` (`add-rule-editing`),
+  `GET /rule-suggestions`, `POST /rule-suggestions/{id}/accept·decline` (`add-rule-suggestion`)
 - 예정 API: 수정 요청
 
 ## 화면 구성
@@ -12,7 +13,7 @@
 | 영역 | 보이는 항목 | API 칸 | 비고 |
 |---|---|---|---|
 | 제목(`.ttl`) | 판정 규칙, 수정 요청, 규칙 추가 | — | 수정 요청은 잠김. 규칙 추가는 지금 탭의 사전에 추가하는 창을 연다(엔지니어·승인자만) |
-| 사람이 제안한 표현(`.rkp`) | 예시 띠, 날짜 · 표현 · 제안한 사람 · 상태, 정답지·채점 연결 | — | 예시. 제안 흐름은 만들지 않는다 |
+| 사람이 제안한 표현(`.rkp`) | "확인 대기 n", 날짜 · “표현” · 검토 번호 · 찾은 곳 · 제안한 사람 · 메모 · 상태, 확인 대기 줄에 [반영]·[반려], 정답지·채점 연결 | `RuleSuggestion` | 확인 대기 먼저. [반영]은 표현을 채운(바꿀 수 없음) 규칙 추가 창 "제안 반영"을 열고 저장하면 사전에 들어간다(고침 이력). [반려]는 사유 칸. 엔지니어·승인자만 |
 | 규칙 종류 탭(`.rtabs`) | 비교 방향 · 위험 표현 · 항목 이름 · 문서 종류 (줄 수) | 각 목록 길이 | 탭을 바꾸면 검색·펼침·쪽을 처음으로 |
 | 머리 줄(`.rhead`) | 마지막 수정(사람 · 시각 · 동작, 없으면 "기록 없음"), 다른 역할이면 "규칙은 엔지니어·승인자만 고칠 수 있습니다", 지금 판정에 쓰임 n회 (문서 종류 탭은 "규칙이 분류한 문서 n개") | `used` 합, `GET /rules/edits` 맨 위 | 버린 고침은 빼고 본다 |
 | 검색(`.filters`) | 규칙 검색, 검색 지우기 | — | 화면 안에서 거름(이름·키·표·방향·원문 표기) |
@@ -33,3 +34,4 @@
 - **Given** 엔지니어, **When** 문서 종류 줄의 수정으로 표현을 고치고 사유를 넣어 저장하면, **Then** 펼친 줄의 수정 이력에 전·후 표현, 사유, 고친 사람. (화면에서 규칙 수정과 이력)
 - **Given** 엔지니어, **When** 위험 표현 줄의 삭제에 사유를 넣어 확인하면, **Then** 그 줄이 표에서 사라진다. (화면에서 규칙 삭제)
 - **Given** 견적 담당, **When** 화면을 열면, **Then** 추가·수정·삭제가 잠기고 "엔지니어·승인자만 고칠 수 있습니다". (고칠 수 없는 역할)
+- **Given** 위험 조건 탭에서 제안한 표현, **When** 판정 규칙 화면에서 [반영] → 위험 종류·사유 → 저장하면, **Then** 그 줄이 "반영"이 되고 위험 표현 탭에 그 표현이 보인다. (제안하고 반영하기)
