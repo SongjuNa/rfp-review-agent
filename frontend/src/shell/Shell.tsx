@@ -3,6 +3,7 @@ import { api, type RunListItem } from '../api'
 import { ROLE_NAMES, STAGE_NAMES } from '../components/labels'
 import { EXAMPLE_NOTICES, EXAMPLE_UNREAD } from '../examples/header'
 import { GROUPS, HOME, SETTINGS, groupOf, type GroupKey, type MenuItem, type MenuKey } from './menu'
+import { AnalysisProgress } from './AnalysisProgress'
 import { CrumbContext } from './crumb'
 import { currentPath, href, useHashPath } from './router'
 import { useSession } from './useSession'
@@ -204,11 +205,11 @@ function UserChip({ open, onToggle, onClose }: { open: boolean; onToggle: () => 
   )
 }
 
-type Pop = 'search' | 'notice' | 'user' | null
+type Pop = 'search' | 'progress' | 'notice' | 'user' | null
 
 function Header({ crumbs, mini, onToggleMini }: { crumbs: Crumb[]; mini: boolean; onToggleMini: () => void }) {
   const [pop, setPop] = useState<Pop>(null)
-  const close = () => setPop(null)
+  const close = useCallback(() => setPop(null), [])
   const label = mini ? '메뉴 펼치기' : '메뉴 접기'
   return (
     <>
@@ -225,6 +226,7 @@ function Header({ crumbs, mini, onToggleMini }: { crumbs: Crumb[]; mini: boolean
           ))}
         </nav>
         <GlobalSearch open={pop === 'search'} onOpen={() => setPop('search')} onClose={close} />
+        <AnalysisProgress open={pop === 'progress'} onToggle={() => setPop(pop === 'progress' ? null : 'progress')} onClose={close} />
         <button type="button" className="tl" aria-label="도움말" title="도움말"><Icon name="help" /></button>
         <Notices open={pop === 'notice'} onToggle={() => setPop(pop === 'notice' ? null : 'notice')} onClose={close} />
         <UserChip open={pop === 'user'} onToggle={() => setPop(pop === 'user' ? null : 'user')} onClose={close} />

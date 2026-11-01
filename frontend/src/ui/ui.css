@@ -42,3 +42,4 @@
 .uidev .sw div{width:132px;font-size:var(--t-2xs);color:var(--c-text-3)}
 .uidev .sw i{display:block;height:36px;border-radius:var(--r-md);border:1px solid var(--c-line);margin-bottom:var(--s-1)}
 .uidev .row{display:flex;flex-wrap:wrap;gap:var(--s-2);align-items:center}
+.uit p a{font-weight:600;margin-left:var(--s-1)}

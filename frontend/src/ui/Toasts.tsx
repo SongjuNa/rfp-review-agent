@@ -1,9 +1,9 @@
 import { useCallback, useMemo, useRef, useState } from 'react'
-import { ToastCtx, TOAST_MS, type ToastKind } from './toastContext'
+import { ToastCtx, TOAST_MS, type ToastKind, type ToastLink } from './toastContext'
 
 // 알림 쌓기 (SCR-00 7장, 목업 v4.96). 오른쪽 위에 위에서 아래로 쌓는다.
 // 성공·안내는 4초 뒤 사라지고, 오류는 닫기 전까지 남는다. 같은 문장이 떠 있으면 하나만.
-type Toast = { id: number; kind: ToastKind; text: string }
+type Toast = { id: number; kind: ToastKind; text: string; link?: ToastLink }
 
 const ICON: Record<ToastKind, string> = { success: 'check_circle', info: 'info', error: 'error' }
 
@@ -11,10 +11,10 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   const [list, setList] = useState<Toast[]>([])
   const seq = useRef(0)
   const remove = useCallback((id: number) => setList((l) => l.filter((t) => t.id !== id)), [])
-  const show = useCallback((text: string, kind: ToastKind = 'success') => {
+  const show = useCallback((text: string, kind: ToastKind = 'success', link?: ToastLink) => {
     // 갱신 함수 안에서는 타이머를 걸지 않는다 (StrictMode에서 두 번 불릴 수 있음)
     const id = ++seq.current
-    setList((l) => l.some((t) => t.text === text && t.kind === kind) ? l : [...l, { id, kind, text }])
+    setList((l) => l.some((t) => t.text === text && t.kind === kind) ? l : [...l, { id, kind, text, link }])
     if (kind !== 'error') setTimeout(() => remove(id), TOAST_MS)
   }, [remove])
   const api = useMemo(() => ({ show }), [show])
@@ -26,7 +26,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
           {list.map((t) => (
             <div key={t.id} className={`uit ${t.kind === 'success' ? '' : t.kind}`} role={t.kind === 'error' ? 'alert' : 'status'}>
               <span className="ms" aria-hidden="true">{ICON[t.kind]}</span>
-              <p>{t.text}</p>
+              <p>{t.text}{t.link && <> <a href={t.link.href} onClick={() => remove(t.id)}>{t.link.label}</a></>}</p>
               <button type="button" onClick={() => remove(t.id)}>닫기</button>
             </div>
           ))}
