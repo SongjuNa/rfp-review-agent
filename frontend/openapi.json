@@ -11348,6 +11348,10 @@
           "threshold": {
             "type": "number",
             "title": "Threshold"
+          },
+          "hand_fill": {
+            "type": "integer",
+            "title": "Hand Fill"
           }
         },
         "additionalProperties": false,
@@ -11355,7 +11359,8 @@
         "required": [
           "review",
           "total",
-          "threshold"
+          "threshold",
+          "hand_fill"
         ],
         "title": "ReviewRatio"
       },

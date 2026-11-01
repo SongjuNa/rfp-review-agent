@@ -265,20 +265,32 @@ def _latest_check(conn: psycopg.Connection, run_id: int) -> dict | None:
     return row
 
 
+# 제품표에 연결되지 않은 항목의 보증값 빈칸: 입찰자가 원래 써 넣는 칸이라 의심할 줄이 아니다
+# (AR-03 안 1, update-review-ratio-hand-fill)
+HAND_FILL = "(w.status = 'EMPTY_REVIEW' AND w.reason_code = 'NOT_MAPPED')"
+
+
 def review_ratio(conn: psycopg.Connection, run_id: int) -> dict:
-    """"확인 필요" 비율 (AR-03): 보증값 후보를 채운 칸은 빼고, 엔지니어가 확정·수정한 것도 뺀다."""
-    review, total = conn.execute(
-        """SELECT count(*) FILTER (WHERE j.review_status = 'CANDIDATE' AND (
-                      j.result = 'NEEDS_REVIEW' OR w.status = 'EMPTY_REVIEW')),
+    """"확인 필요" 비율 (AR-03): 보증값 후보를 채운 칸, 직접 작성할 칸,
+    엔지니어가 확정·수정한 것은 뺀다.
+
+    직접 작성할 칸 수(hand_fill)는 따로 돌려준다.
+    """
+    review, total, hand_fill = conn.execute(
+        f"""SELECT count(*) FILTER (WHERE j.review_status = 'CANDIDATE' AND (
+                      j.result = 'NEEDS_REVIEW' OR w.status = 'EMPTY_REVIEW')
+                      AND NOT COALESCE({HAND_FILL}, FALSE)),
                   count(*) FILTER (WHERE w.status IS DISTINCT FROM 'CANDIDATE'
-                                     AND w.status IS DISTINCT FROM 'CONFIRMED')
+                                     AND w.status IS DISTINCT FROM 'CONFIRMED'
+                                     AND NOT COALESCE({HAND_FILL}, FALSE)),
+                  count(*) FILTER (WHERE COALESCE({HAND_FILL}, FALSE))
            FROM judgment j
            LEFT JOIN warranty_candidate w ON w.judgment_id = j.judgment_id
            WHERE j.run_id = %s AND j.is_current AND j.review_status <> 'REJECTED'""",
         (run_id,)).fetchone()
     threshold = float(conn.execute(
         "SELECT threshold FROM approval_rule WHERE ar_code = 'AR-03'").fetchone()[0])
-    return {"review": review, "total": total, "threshold": threshold}
+    return {"review": review, "total": total, "threshold": threshold, "hand_fill": hand_fill}
 
 
 def criteria(conn: psycopg.Connection, run_id: int) -> list[Criterion]:

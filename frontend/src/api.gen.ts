@@ -958,6 +958,7 @@ export type ReviewRatio = {
   review: number
   total: number
   threshold: number
+  hand_fill: number
 }
 
 export type Risk = {
