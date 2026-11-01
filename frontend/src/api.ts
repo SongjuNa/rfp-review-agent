@@ -4,7 +4,7 @@ import type {
   DecisionResult, DocumentChoice, DocumentPreview, HandoffResult, SalesHandoff,
   LossResult, ProductSwitch, RuleEdit,
   RunLogItem, RunSummary, SendResult, StageResult, SubmitResult,
-  AnswerKey, EvalRun, EvalScore,
+  AnswerKey, EvalRun, EvalScore, RuleSuggestion,
 } from './api.gen'
 
 export type {
@@ -13,7 +13,7 @@ export type {
   DocumentChoice, DocumentPreview, EngineeringCheck,
   Equipment, Health, ItemKey, Judgment, JudgmentCounts, Location, LogEntry, Loss, MyTasks, OutputItem, Product,
   ProductDetail, ProductFamily, Proposal, ReadCheck, Requirement, ReviewCard, Risk, RiskExpression, RuleEdit, RunDocument,
-  AnswerKey, EvalMetric, EvalRun, EvalScore, RunListItem, RunLogItem, RunSummary, SalesHandoff, SubmissionCheck, Tbe, TbeRow, User, Warranty,
+  AnswerKey, EvalMetric, EvalRun, EvalScore, RunListItem, RunLogItem, RunSummary, RuleSuggestion, SalesHandoff, SubmissionCheck, Tbe, TbeRow, User, Warranty,
 } from './api.gen'
 import type {
   CompareRule, DatasheetInfo, Datasheet, DocKindRule, EngineeringCheck, Equipment, Health, ItemKey, Judgment, JudgmentCounts,
@@ -226,6 +226,15 @@ export const api = {
     call<RuleEdit>(`/rules/${dictionary}/${encodeURIComponent(id)}`, json('PUT', { value, reason, actor_id })),
   deleteRule: (dictionary: RuleDictionary, id: string, reason: string, actor_id: number) =>
     call<RuleEdit>(`/rules/${dictionary}/${encodeURIComponent(id)}`, json('DELETE', { reason, actor_id })),
+  /** 위험 표현 사전에 추가 제안 (add-rule-suggestion) */
+  runSuggestions: (runId: number) => call<RuleSuggestion[]>(`/runs/${runId}/rule-suggestions`),
+  suggestRule: (runId: number, expression: string, note: string, actor_id: number) =>
+    call<RuleSuggestion>(`/runs/${runId}/rule-suggestions`, json('POST', { expression, note, actor_id })),
+  ruleSuggestions: () => call<RuleSuggestion[]>('/rule-suggestions'),
+  acceptSuggestion: (id: number, value: RuleValue, reason: string, actor_id: number) =>
+    call<RuleSuggestion>(`/rule-suggestions/${id}/accept`, json('POST', { value, reason, actor_id })),
+  declineSuggestion: (id: number, reason: string, actor_id: number) =>
+    call<RuleSuggestion>(`/rule-suggestions/${id}/decline`, json('POST', { reason, actor_id })),
   assignments: (role: string) => call<Assignment[]>(`/assignments?role=${role}`),
   /** 엔지니어가 회신 받음을 기록하거나 되돌린다 (메일 보냄 ↔ 회신 받음) */
   setTaskStatus: (assignmentId: number, status: 'DOING' | 'DONE', actor_id: number, reply_note?: string) =>

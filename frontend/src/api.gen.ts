@@ -1,6 +1,12 @@
 // 만든 파일: 고치지 마세요. `npm run gen:api`로 다시 만듭니다 (scripts/gen-api-types.mjs).
 // 출처: 백엔드 응답 모델 → frontend/openapi.json (RFP 기술 검토 지원 API 0.2.0)
 
+export type AcceptBody = {
+  value: Record<string, unknown>
+  reason?: string | null
+  actor_id?: number | null
+}
+
 export type Action = {
   target: string
   target_id: number
@@ -402,6 +408,11 @@ export type DecisionResult = {
   submission_check: SubmissionCheck | null
   read_unchecked: number
   approval_id: number
+}
+
+export type DeclineBody = {
+  reason?: string | null
+  actor_id?: number | null
 }
 
 export type DeliverableOutput = {
@@ -1107,6 +1118,26 @@ export type RuleRemoval = {
   actor_id?: number | null
 }
 
+/** 위험 표현 사전에 추가 제안 (add-rule-suggestion). 위치는 표현이 나온 첫 문장. */
+export type RuleSuggestion = {
+  suggestion_id: number
+  expression: string
+  note: string | null
+  run_id: number
+  review_no: string
+  requirement_id: number
+  status: 'PENDING' | 'ACCEPTED' | 'DECLINED'
+  suggested_by: number
+  suggested_by_name: string
+  suggested_at: string
+  decided_by: number | null
+  decided_by_name: string | null
+  decided_at: string | null
+  decision_reason: string | null
+  edit_id: number | null
+  locations: Location[]
+}
+
 export type RunBusiness = {
   business_id?: number | null
   actor_id?: number | null
@@ -1304,6 +1335,12 @@ export type SubmitResult = {
   stage: 'PROCESSING' | 'ENGINEER_REVIEW' | 'APPROVAL' | 'APPROVED' | 'REJECTED' | 'FAILED'
   approval_id: number
   criteria: Criterion[]
+}
+
+export type SuggestBody = {
+  expression: string
+  note?: string | null
+  actor_id?: number | null
 }
 
 export type TaskStatus = {

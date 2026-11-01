@@ -31,3 +31,6 @@
 .rhist li{margin-bottom:4px}
 .rhist .rwho{color:#667085}
 .rhist .rdis{color:#98A2B3;text-decoration:line-through}
+/* 사람이 제안한 표현 (add-rule-suggestion): 목업은 상태 칸만 있어 [반영]·[반려] 단추가 들어가게 마지막 칸을 넓힌다 */
+.rkp-r.sg{grid-template-columns:54px minmax(0,1fr) minmax(160px,260px) auto}
+.rkp-r.sg .fi{height:30px;width:180px}

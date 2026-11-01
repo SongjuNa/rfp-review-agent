@@ -1,7 +1,8 @@
 import { expect, test, type Page } from '@playwright/test'
 import { ENGINEER, as, riskRun } from './helpers'
 
-// 명세 review-workspace "위험 조건 탭"·"사람이 찾은 특이 요구 예시"의 Scenario (change update-review-screens).
+// 명세 review-workspace "위험 조건 탭"의 Scenario (change update-review-screens).
+// "사람이 찾은 특이 요구"는 실제 제안이 되어 e2e/rule-suggestion.spec.ts에서 본다 (add-rule-suggestion).
 
 async function openRisk(page: Page, name: string) {
   const run = await riskRun(page.request, `${name} ${Date.now()}`)
@@ -49,16 +50,4 @@ test('위험으로 확정', async ({ page }) => {
   await expect(row.locator('.st')).toHaveText('확정')
   await expect(row.locator('td').last()).not.toContainText('위험으로 확정')
   await expect(row.locator('td').last()).toContainText('·')
-})
-
-test('특이 요구 제안은 예시', async ({ page }) => {
-  await openRisk(page, '특이 요구')
-  const box = page.locator('#risk .rk')
-  await expect(box.getByRole('note')).toContainText('예시 화면 · 실제 데이터와 연결되지 않음')
-  const posts: string[] = []
-  page.on('request', (r) => { if (r.method() !== 'GET') posts.push(r.url()) })
-  await box.getByLabel('놓친 위험 표현').fill('shall be capable of continuous operation')
-  await box.getByRole('button', { name: '제안 추가' }).click()
-  await expect(box.locator('.rk-r', { hasText: 'shall be capable of continuous operation' })).toContainText('제안함')
-  expect(posts).toEqual([])
 })

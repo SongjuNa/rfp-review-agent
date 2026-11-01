@@ -5,11 +5,10 @@ import { locName, locShort, markSplit } from '../../components/judgment'
 import { RISK_NAMES, STATUS_NAMES } from '../../components/labels'
 import { useLoad } from '../../components/useLoad'
 import { useSession } from '../../shell/useSession'
-import { ExampleBand } from './ExampleTab'
 import { OutputEditor } from './OutputEditor'
 
 // SCR-08-3 위험 조건 탭 (목업 v4.57 Detail #risk). docs/screens/SCR-08-3-위험조건.md
-// 위험 조건 표는 실제 데이터, "사람이 찾은 특이 요구"는 제안 API가 없어 예시 영역 (SCR-08-3_공유.md).
+// 위험 조건 표와 "사람이 찾은 특이 요구"(사전 추가 제안, add-rule-suggestion) 모두 실제 데이터.
 
 const KINDS = ['BLANKET', 'VALUE_MISMATCH', 'OPEN_SCOPE'] as const
 const TONES: Record<string, string> = { CANDIDATE: 'c-ora', CONFIRMED: 'c-red', CLOSED_OK: 'c-grey' }
@@ -73,7 +72,7 @@ export function RiskTab({ run, tick, onChanged }: { run: RunSummary; tick: numbe
   return (
     <section className="sec" id="risk">
       <div className="sech"><h2>위험 조건<span className="note">{note}</span></h2></div>
-      <Found />
+      <Found run={run} docs={docs.data ?? []} />
       {risks.error && <p role="alert">{risks.error} <button type="button" className="lnk" onClick={risks.reload}>다시 불러오기</button></p>}
       {risks.data?.length === 0 && <p style={{ color: '#667085' }}>위험 조건 후보가 없습니다.</p>}
       {rows.length > 0 && (
@@ -138,23 +137,51 @@ export function RiskTab({ run, tick, onChanged }: { run: RunSummary; tick: numbe
   )
 }
 
-// 사람이 찾은 특이 요구: 위험 표현 사전 제안 API가 없어 예시 데이터. 눌러도 저장하지 않는다 (_공통규칙.md 6장)
-function Found() {
-  const [sent, setSent] = useState(false)
+const SUGGEST_TONES: Record<string, [string, string]> = {
+  PENDING: ['c-blue', '제안함 · 규칙 담당 확인 대기'], ACCEPTED: ['c-green', '반영'], DECLINED: ['c-grey', '반려'],
+}
+
+/** 사람이 찾은 특이 요구: 놓친 표현을 위험 표현 사전에 추가 제안 (add-rule-suggestion, FR-06 ④).
+ * 표현은 이 검토 문서에 있어야 하고, 처음 나온 문장의 위치를 근거로 붙인다(CR-02). 반영은 판정 규칙 화면에서 한다. */
+function Found({ run, docs }: { run: RunSummary; docs: RunDocument[] }) {
+  const { user } = useSession()
+  const list = useLoad(() => api.runSuggestions(run.run_id), [run.run_id])
   const [text, setText] = useState('')
-  const [more, setMore] = useState<string[]>([])
-  const pending = <span className="st c-blue">제안함 · 규칙 담당 확인 대기</span>
+  const [note, setNote] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const canSuggest = user?.role === 'ENGINEER'
+  const send = () => {
+    if (!user || !text.trim()) return
+    setBusy(true)
+    setError(null)
+    api.suggestRule(run.run_id, text.trim(), note.trim(), user.user_id)
+      .then(() => { setText(''); setNote(''); list.reload() }, (e: Error) => setError(e.message))
+      .finally(() => setBusy(false))
+  }
   return (
     <div className="rk">
-      <ExampleBand />
-      <div className="rk-h"><b>사람이 찾은 특이 요구</b><span>시스템이 위험 조건으로 잡지 못한 문장을 찾았다면 위험 표현 사전에 추가를 제안합니다. 규칙 담당이 확인한 뒤 다음 검토부터 잡힙니다.</span></div>
-      <div className="rk-r"><div><b>"each bay shall be provided with continuous monitoring sensors"</b><span>예시 문서.docx · 4.3 Monitoring · 표 6 · 71행 · 베이마다 상시 감시 센서 요구 (표준 사양에 없음)</span></div>
-        {sent ? pending : <button type="button" className="bo" onClick={() => setSent(true)}>위험 표현 사전에 추가 제안</button>}</div>
-      {more.map((t, i) => <div key={i} className="rk-r"><div><b>"{t}"</b><span>직접 추가 · 예시</span></div>{pending}</div>)}
+      <div className="rk-h"><b>사람이 찾은 특이 요구</b><span>시스템이 위험 조건으로 잡지 못한 표현을 찾았다면 위험 표현 사전에 추가를 제안합니다. 규칙 담당이 판정 규칙 화면에서 반영하면 다음 검토부터 잡힙니다.</span></div>
+      {(list.data ?? []).map((s) => {
+        const [tone, label] = SUGGEST_TONES[s.status]
+        return (
+          <div key={s.suggestion_id} className="rk-r" data-testid="suggestion">
+            <div><b>“{s.expression}”</b>
+              <span>{locShort(s, docs)}{s.note ? ` · ${s.note}` : ''} · {s.suggested_by_name}{s.status === 'DECLINED' && s.decision_reason ? ` · 반려 사유: ${s.decision_reason}` : ''}</span></div>
+            <span className={`st ${tone}`}>{label}</span>
+          </div>
+        )
+      })}
+      {list.data?.length === 0 && <div className="rk-r"><div><span>아직 제안한 표현이 없습니다.</span></div></div>}
       <div className="rk-f">
-        <input className="fi" value={text} onChange={(e) => setText(e.target.value)} placeholder="놓친 표현을 원문 그대로 붙여 넣기 (예: shall be capable of ...)" aria-label="놓친 위험 표현" />
-        <button type="button" className="bo" disabled={!text.trim()} onClick={() => { setMore([...more, text.trim()]); setText('') }}>제안 추가</button>
+        <input className="fi" value={text} onChange={(e) => setText(e.target.value)} disabled={!canSuggest || busy}
+          placeholder="놓친 표현을 원문 그대로 붙여 넣기 (예: shall be capable of ...)" aria-label="놓친 위험 표현" />
+        <input className="fi" value={note} onChange={(e) => setNote(e.target.value)} disabled={!canSuggest || busy}
+          placeholder="메모 (선택: 왜 위험한지)" aria-label="제안 메모" />
+        <span title={canSuggest ? undefined : '엔지니어만 제안할 수 있습니다'}>
+          <button type="button" className="bo" disabled={!canSuggest || busy || !text.trim()} onClick={send}>위험 표현 사전에 추가 제안</button></span>
       </div>
+      {(error || list.error) && <p className="aphint" role="alert">{error ?? list.error}</p>}
     </div>
   )
 }
