@@ -690,6 +690,9 @@ export type Health = {
   database: string
   schema_version: string | null
   llm_configured: boolean
+  ai_mode: 'GEMINI' | 'LOCAL' | 'OFF'
+  ai_model: string | null
+  external_send: boolean
 }
 
 export type HTTPValidationError = {

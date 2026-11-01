@@ -15,8 +15,7 @@ def make_context(conn: psycopg.Connection) -> RunContext:
     settings = get_settings()
     txt_dir = settings.txt_dir if settings.txt_dir.exists() else None
     return RunContext(conn, dict_version(settings.seed_dir, conn),
-                      make_llm(settings.gemini_api_key, settings.gemini_model,
-                               settings.rfp_llm_workers, settings.rfp_llm_timeout_s), txt_dir)
+                      make_llm(settings), txt_dir)
 
 
 def start_run(conn: psycopg.Connection, started_by: int | None = None) -> int:

@@ -1,6 +1,7 @@
 import json
 import logging
 import sys
+from typing import Literal
 
 from fastapi import FastAPI, Request
 from fastapi.exceptions import ResponseValidationError
@@ -10,6 +11,7 @@ from pydantic import BaseModel
 from rfp_agent.api import assistant, businesses, evaluation, reference, runs, suggestions
 from rfp_agent.config import get_settings
 from rfp_agent.db.connection import connect
+from rfp_agent.llm.client import ai_mode, ai_model
 
 app = FastAPI(title="RFP 기술 검토 지원 API", version="0.2.0")
 app.include_router(runs.router)
@@ -38,11 +40,16 @@ class Health(BaseModel):
     database: str
     schema_version: str | None
     llm_configured: bool
+    # AI 사용 방식 (add-ai-mode): GEMINI · LOCAL · OFF. 키·사내 주소는 주지 않는다
+    ai_mode: Literal["GEMINI", "LOCAL", "OFF"]
+    ai_model: str | None
+    external_send: bool
 
 
 @app.get("/api/health", response_model=Health)
 def health() -> Health:
     settings = get_settings()
+    mode = ai_mode(settings)
     try:
         with connect() as conn:
             row = conn.execute(
@@ -55,7 +62,10 @@ def health() -> Health:
         status="ok" if database == "ok" else "degraded",
         database=database,
         schema_version=version,
-        llm_configured=bool(settings.gemini_api_key),
+        llm_configured=mode != "OFF",
+        ai_mode=mode,
+        ai_model=ai_model(settings),
+        external_send=mode == "GEMINI",
     )
 
 

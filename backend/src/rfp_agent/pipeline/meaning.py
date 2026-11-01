@@ -57,6 +57,18 @@ def model_of(llm: object | None) -> str:
     return getattr(llm, "embed_model", EMBED_MODEL)
 
 
+def current_model() -> str:
+    """화면에서 벡터를 찾을 때 쓰는 모델: 지금 설정의 벡터 모델 (add-ai-mode).
+
+    정해지지 않았으면(AI 끄기 등) Gemini 벡터 이름으로 찾는다.
+    DB 안에서만 찾으므로 밖으로 보내지 않는다.
+    """
+    from rfp_agent.config import get_settings
+    from rfp_agent.llm.client import embed_model
+
+    return embed_model(get_settings()) or EMBED_MODEL
+
+
 def stored(conn: psycopg.Connection, texts: list[str], model: str = EMBED_MODEL
            ) -> dict[str, list[float]]:
     """저장된 벡터만 (글 → 벡터). 화면에서 물을 때는 언어 모델을 부르지 않는다."""

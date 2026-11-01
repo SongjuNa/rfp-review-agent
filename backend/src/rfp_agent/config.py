@@ -15,6 +15,12 @@ class Settings(BaseSettings):
     # AI 묶음 동시 호출 개수와 요청 하나의 시간 제한(초) (update-llm-concurrency, NFR-10)
     rfp_llm_workers: int = 4
     rfp_llm_timeout_s: float = 120
+    # AI 사용 방식 (add-ai-mode, NFR-07): gemini(외부) | local(사내 OpenAI 호환 주소) | off(규칙만)
+    rfp_ai_mode: str = "gemini"
+    rfp_local_llm_url: str | None = None        # 예: http://llm.사내/v1
+    rfp_local_llm_model: str | None = None
+    rfp_local_llm_key: str | None = None
+    rfp_local_embed_model: str | None = None    # 없으면 사내 방식에서 뜻 찾기 건너뜀
     migrations_dir: Path = REPO_ROOT / "db" / "migrations"
     seed_dir: Path = REPO_ROOT / "data" / "seed"
     # RFP 원문처럼 저장소에 올리지 않는 자료 (data/private/README.md)

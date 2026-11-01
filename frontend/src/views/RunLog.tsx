@@ -1,5 +1,6 @@
 import { Fragment, useState } from 'react'
 import { api, type RunLogItem } from '../api'
+import { AiModeLine } from '../components/AiMode'
 import './detail.css'
 import { stamp } from '../components/format'
 import { STAGE_NAMES, STAGE_TONES, STEP_NAMES } from '../components/labels'
@@ -50,7 +51,7 @@ export function RunLog() {
 
   return (
     <main className="main">
-      <div className="idl"><span>review_run · run_step_time</span><span>최근 실행 {rows.length}건</span><span>처리 중 AI 사용량만 셉니다 (확정·수정 뒤 문장 다시 쓰기는 빼고)</span></div>
+      <div className="idl"><span>review_run · run_step_time</span><span>최근 실행 {rows.length}건</span><span>처리 중 AI 사용량만 셉니다 (확정·수정 뒤 문장 다시 쓰기는 빼고)</span><AiModeLine as="span" /></div>
       <div className="ttl"><h1>실행 기록</h1></div>
       <div className="kpis">
         <div className="kpi"><div className="l">실행</div><b>{log.data ? rows.length : '—'}</b><div className="s">기록 있는 실행 {rows.filter((r) => !noLog(r)).length}건</div></div>
