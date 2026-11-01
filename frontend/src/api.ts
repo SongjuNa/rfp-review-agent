@@ -3,7 +3,7 @@ import type {
   ActionResult, TypeEditResult, ApprovalScreen, AssignmentStatus, BulkResult, CompareTargets, CostSummary, PastCompare, BusinessDetail, BusinessList, BusinessLog,
   DecisionResult, DocumentChoice, DocumentPreview, HandoffResult, SalesHandoff,
   LossResult, ProductSwitch, RuleEdit,
-  RunLogItem, RunSummary, SendResult, StageResult, SubmitResult,
+  RunLogItem, RunSummary, ScreenSummary, SendResult, StageResult, SubmitResult,
   AnswerKey, EvalRun, EvalScore, RuleSuggestion, AssistantAnswer, MeaningCandidate, RiskMeaning,
 } from './api.gen'
 
@@ -13,7 +13,7 @@ export type {
   DocumentChoice, DocumentLines, DocumentPreview, EngineeringCheck,
   Equipment, Health, ItemKey, Judgment, JudgmentCounts, Location, LogEntry, Loss, MyTasks, OutputItem, Product,
   ProductDetail, ProductFamily, ProductUse, Proposal, ReadCheck, Requirement, ReviewCard, Risk, RiskExpression, RuleEdit, RunDocument,
-  AnswerKey, EvalMetric, EvalRun, EvalScore, AssistantAnswer, AssistantEvidence, Revision, RunListItem, RunLogItem, RunSummary, RuleSuggestion, MeaningCandidate, RiskMeaning, SalesHandoff, SubmissionCheck, Tbe, TbeRow, User, Warranty,
+  AnswerKey, EvalMetric, EvalRun, EvalScore, AssistantAnswer, AssistantEvidence, Revision, RunListItem, RunLogItem, RunSummary, RuleSuggestion, ScreenSummary, MeaningCandidate, RiskMeaning, SalesHandoff, SubmissionCheck, Tbe, TbeRow, User, Warranty,
 } from './api.gen'
 import type {
   CompareRule, DatasheetInfo, Datasheet, DocKindRule, EngineeringCheck, Equipment, Health, ItemKey, Judgment, JudgmentCounts,
@@ -152,6 +152,9 @@ export const api = {
     call<RunSummary>(`/runs/${id}/info`, json('PUT', { ...info, actor_id })),
   judgmentPage: (id: number, params: JudgmentQuery) => page<Judgment>(`/runs/${id}/judgments?${query(params)}`),
   judgmentCounts: (id: number) => call<JudgmentCounts>(`/runs/${id}/judgment-counts`),
+  /** 요약 상자 문장 (add-screen-summary): 검토 상세, 홈 */
+  runSummaryText: (id: number) => call<ScreenSummary>(`/runs/${id}/summary`),
+  homeSummary: (userId: number | null) => call<ScreenSummary>(`/home/summary${userId === null ? '' : `?user_id=${userId}`}`),
   run: (id: number) => call<RunSummary>(`/runs/${id}`),
   documents: (id: number) => call<RunDocument[]>(`/runs/${id}/documents`),
   /** 원문 줄 범위 (최대 40줄, add-judgment-view). partial이면 파일이 없어 저장된 줄만 */

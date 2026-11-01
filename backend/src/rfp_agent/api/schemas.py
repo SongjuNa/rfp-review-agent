@@ -112,6 +112,25 @@ class RunSummary(ReviewFields):
     revision: Revision | None = None    # 문서 추가로 다시 분석했으면 마지막 개정
 
 
+class SummaryPart(Out):
+    """요약 문장 조각 (add-screen-summary).
+
+    link면 href는 화면 주소(#는 화면이 붙임), strong은 강조."""
+    t: str
+    kind: Literal["text", "link", "strong"]
+    href: str | None
+
+
+class ScreenSummary(Out):
+    """요약 상자 문장 (add-screen-summary, 결정 Q1).
+
+    코드가 틀에 채운 문장, 같은 데이터면 같은 문장."""
+    sentences: list[list[SummaryPart]]
+    meta: str | None                    # 머리 한 줄 (검토 요약만: 문서·요구사항·판정 수, 분석 시간)
+    written_by: Literal["CODE"]
+    made_at: datetime
+
+
 class RunListItem(ReviewFields):
     run_id: int
     review_no: str

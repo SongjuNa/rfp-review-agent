@@ -1,15 +1,17 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { api } from '../api'
 import { ErrorText } from '../components/common'
+import { SummaryBox } from '../components/SummaryBox'
 import { useLoad } from '../components/useLoad'
 import { useCrumbTail } from '../shell/crumb'
 import { usePageCss } from '../shell/pageCss'
+import { pathQuery, useHashPath } from '../shell/router'
 import { useSession } from '../shell/useSession'
 import { useToast } from '../ui'
 import { DocumentsDialog } from './DocumentsDialog'
 import { AssistantPanel } from './detail/AssistantPanel'
 import { DetailBody, DetailTabs } from './detail/DetailBody'
-import type { DetailTab } from './detail/tabs'
+import { MAIN_TABS, MORE_TABS, type DetailTab } from './detail/tabs'
 import { useExport } from './detail/ExportOverlay'
 import { ProductSeg, type Rejudging } from './detail/ProductSeg'
 import { useComplyAll, useHeadCounts, tabCounts } from './detail/headCounts'
@@ -59,6 +61,15 @@ export function ReviewDetail({ runId }: { runId: number }) {
   usePageCss(run?.stage === 'APPROVAL' ? 'Wait' : run?.stage === 'FAILED' ? 'Fail' : 'Detail')
   usePageCss(run?.stage === 'APPROVAL' || run?.stage === 'FAILED' ? 'Main' : 'DetailV496')
   useCrumbTail(run?.review_no)
+  // 요약 문장 링크 "?tab=log" 등으로 탭을 고른다 (add-screen-summary)
+  const qtab = pathQuery(useHashPath()).get('tab')
+  const [seenTab, setSeenTab] = useState<string | null>(null)
+  if (qtab !== seenTab) {                            // 주소의 탭이 바뀐 그 렌더에서만 고른다
+    setSeenTab(qtab)
+    if ([...MAIN_TABS, ...MORE_TABS].some(([k]) => k === qtab)) setTab(qtab as DetailTab)
+  }
+  // 요약 상자: 판정을 고치거나(tick) 제품·문서를 바꾸면(version) 다시 쓴다
+  const summary = useCallback(() => api.runSummaryText(runId), [runId, tick, version, run?.stage]) // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (run?.stage !== 'PROCESSING') return
     const timer = setTimeout(reload, 2000)           // 처리 중이면 단계를 다시 본다
@@ -82,6 +93,7 @@ export function ReviewDetail({ runId }: { runId: number }) {
     <main className="main">
       <TitleRow run={run} onRefresh={changed} onAddDoc={canAdd ? () => setDocsOpen(true) : null}
         onAsk={ready ? () => setAsking(true) : null} asking={asking} onEdit={() => setEditing(true)} onWord={exporter.start} />
+      {ready && <SummaryBox load={summary} label="검토 요약" />}
       <InfoBox run={run} docs={docs.data} approver={approver ?? latest?.approver ?? null} head={head.data ?? null}
         onDocs={() => setDocsOpen(true)} onTab={setTab} onComply={comply.run} complying={comply.busy} />
       {ready && <ProductSeg run={run} onSwitched={bumped} onBusy={setRejudging} />}

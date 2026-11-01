@@ -49,6 +49,7 @@ from rfp_agent.api.schemas import (
     RunLogItem,
     RunSummary,
     SalesHandoff,
+    ScreenSummary,
     SendResult,
     StageResult,
     SubmissionCheck,
@@ -86,6 +87,7 @@ from rfp_agent.pipeline.loss import recalculate
 from rfp_agent.pipeline.outputs import check_submission
 from rfp_agent.pipeline.proposals import build_proposals
 from rfp_agent.pipeline.run import switch_product
+from rfp_agent.pipeline.screen_summary import home_summary, review_summary
 from rfp_agent.pipeline.service import make_context, run_to_end, start_run
 
 router = APIRouter(prefix="/api", tags=["검토 실행"])
@@ -452,6 +454,23 @@ def run_judgments(run_id: int, response: Response, result: str | None = None,
         response.headers["X-Total-Count"] = str(queries.count_judgments(conn, run_id, **filters))
         return queries.run_judgments(conn, run_id, **filters, priority=order == "priority",
                                      limit=limit, offset=offset)
+
+
+@router.get("/runs/{run_id}/summary")
+def run_summary_text(run_id: int) -> ScreenSummary:
+    """검토 상세 요약 상자 문장 (add-screen-summary). 코드가 틀에 채운다, AI 없음."""
+    with connect() as conn:
+        out = review_summary(conn, run_id)
+    if out is None:
+        raise HTTPException(404, f"검토 실행 {run_id}이(가) 없습니다.")
+    return out
+
+
+@router.get("/home/summary")
+def home_summary_text(user_id: int | None = None) -> ScreenSummary:
+    """홈 요약 상자 문장 (add-screen-summary). 내 차례 수는 홈 "내가 처리할 건"과 같다."""
+    with connect() as conn:
+        return home_summary(conn, user_id)
 
 
 @router.get("/runs/{run_id}/judgment-counts")

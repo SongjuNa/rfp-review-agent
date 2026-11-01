@@ -1025,6 +1025,99 @@
         }
       }
     },
+    "/api/runs/{run_id}/summary": {
+      "get": {
+        "tags": [
+          "검토 실행"
+        ],
+        "summary": "Run Summary Text",
+        "description": "검토 상세 요약 상자 문장 (add-screen-summary). 코드가 틀에 채운다, AI 없음.",
+        "operationId": "run_summary_text_api_runs__run_id__summary_get",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Run Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScreenSummary"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/home/summary": {
+      "get": {
+        "tags": [
+          "검토 실행"
+        ],
+        "summary": "Home Summary Text",
+        "description": "홈 요약 상자 문장 (add-screen-summary). 내 차례 수는 홈 \"내가 처리할 건\"과 같다.",
+        "operationId": "home_summary_text_api_home_summary_get",
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "User Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScreenSummary"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/runs/{run_id}/judgment-counts": {
       "get": {
         "tags": [
@@ -15485,6 +15578,51 @@
         ],
         "title": "ScoreRequest"
       },
+      "ScreenSummary": {
+        "properties": {
+          "sentences": {
+            "items": {
+              "items": {
+                "$ref": "#/components/schemas/SummaryPart"
+              },
+              "type": "array"
+            },
+            "type": "array",
+            "title": "Sentences"
+          },
+          "meta": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Meta"
+          },
+          "written_by": {
+            "type": "string",
+            "const": "CODE",
+            "title": "Written By"
+          },
+          "made_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Made At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "sentences",
+          "meta",
+          "written_by",
+          "made_at"
+        ],
+        "title": "ScreenSummary",
+        "description": "요약 상자 문장 (add-screen-summary, 결정 Q1).\n\n코드가 틀에 채운 문장, 같은 데이터면 같은 문장."
+      },
       "SendRequests": {
         "properties": {
           "assignment_ids": {
@@ -15817,6 +15955,43 @@
           "expression"
         ],
         "title": "SuggestBody"
+      },
+      "SummaryPart": {
+        "properties": {
+          "t": {
+            "type": "string",
+            "title": "T"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "text",
+              "link",
+              "strong"
+            ],
+            "title": "Kind"
+          },
+          "href": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Href"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "t",
+          "kind",
+          "href"
+        ],
+        "title": "SummaryPart",
+        "description": "요약 문장 조각 (add-screen-summary).\n\nlink면 href는 화면 주소(#는 화면이 붙임), strong은 강조."
       },
       "TaskStatus": {
         "properties": {

@@ -1,9 +1,10 @@
-import { useState } from 'react'
+import { useCallback, useState } from 'react'
 import { api, type Assignment, type RunListItem, type User } from '../api'
 import { daysLeft, dday, dueText, isoDay, reviewTitle, stamp } from '../components/format'
 import { progress } from '../components/progress'
 import { ROLE_NAMES, STAGE_NAMES, STAGE_TONES, STEP_NAMES } from '../components/labels'
 import { before, byDue, myTurn } from '../components/myWork'
+import { SummaryBox } from '../components/SummaryBox'
 import { useLoad, useRepeat } from '../components/useLoad'
 import { EVENTS, FILES, NOTICES, SYS_NOTICES } from '../examples/SCR-03'
 import { href } from '../shell/router'
@@ -114,6 +115,9 @@ export function Home() {
   const turn = myTurn(user)
   const FILTERS = filters(turn)
   const todo = all.filter(turn).sort(byDue)
+  // 요약 상자 (add-screen-summary): 첫 문장의 수 = "내가 처리할 건" (같은 규칙·같은 최근 200건). 내 차례 수가 바뀌면 다시 쓴다
+  const uid = user?.user_id ?? null
+  const summary = useCallback(() => api.homeSummary(uid), [uid, todo.length]) // eslint-disable-line react-hooks/exhaustive-deps
   const failed = board.find((r) => r.stage === 'FAILED')
   const today = new Date(now)
   const dim = (r: RunListItem) => (filter && !FILTERS[filter](r) ? ' dim' : '')
@@ -203,6 +207,7 @@ export function Home() {
         <p className="mlink"><a href={href('/reviews?scope=submitted')}>내가 올린 결재 목록에서 보기
           <span className="ms" aria-hidden="true">chevron_right</span></a></p>
       )}
+      <SummaryBox load={summary} label="홈 요약" />
 
       {dept ? (
         <section className="td" aria-labelledby="tdTitle">

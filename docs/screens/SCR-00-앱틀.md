@@ -131,7 +131,7 @@
 - 문장은 백엔드가 정해진 틀에 숫자·이름·날짜를 채워 만든다(CR-01·07). 같은 데이터면 같은 문장(CR-11).
 - [다시 요약]은 요약 API를 다시 부른다. 데이터가 바뀌지 않았으면 문장도 그대로.
 - 요약 API가 실패하면 상자를 숨기지 않고 "요약을 만들지 못했습니다 · 다시 요약"을 보인다.
-- 예정 API: `GET /runs/{id}/summary`, `GET /home/summary` (`add-screen-summary`).
+- 구현됨 (`add-screen-summary`): `GET /runs/{id}/summary`, `GET /home/summary?user_id=`, 공통 부품 `components/SummaryBox.tsx`, 모양 `mockup/SummaryV496.css`.
 
 ### 6. 표 순번 (목업 v4.77)
 
