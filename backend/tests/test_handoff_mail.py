@@ -190,3 +190,105 @@ def test_team_assumption_mark(tasks_run, fake_mailer):
     [attachment] = list(mail.iter_attachments())
     sheet = load_workbook(BytesIO(attachment.get_content())).active
     assert sheet.cell(3, 5).value == "팀 가정"
+
+
+# ── 협조 요청 확인 질문 (add-handoff-questions, C4) ─────────────────────────────
+
+def ai_ctx(conn, llm):
+    from rfp_agent.pipeline.run import RunContext
+    from tests.test_role_assignment import VERSION
+
+    return RunContext(conn, VERSION, llm, None)
+
+
+def send_quality(conn, run_id, llm, count=2):
+    """품질 담당 요청 2건(판정 없는 형식시험 + 형식시험으로 바꾼 판정 줄)을 보낸다."""
+    judged_quality_request(conn, run_id)
+    ids = [t["assignment_id"] for t in sent(conn, run_id, "QUALITY")
+           if t["status"] == "TODO"][:count]
+    assert len(ids) == count
+    send_requests(conn, run_id, ids, review.default_user(conn, "ENGINEER"), llm)
+    return ids
+
+
+def asks_of(conn, ids):
+    return [conn.execute("SELECT ask_text, ask_by FROM assignment WHERE assignment_id = %s",
+                         (i,)).fetchone() for i in ids]
+
+
+def test_department_questions(tasks_run, fake_mailer):
+    """Scenario: 부서 관점 질문 — 본문·엑셀에 "AI 작성", 요청에 질문과 쓴 이 AI 저장.
+
+    합성 문서에는 견적 담당 요청이 하나뿐이라 품질 담당 요청 2건으로 본다.
+    """
+    from tests.conftest import FakeLLM
+
+    conn, run_id = tasks_run
+    llm = FakeLLM()
+    llm.asks = {0: "형식시험 성적서를 낼 수 있는지 확인 부탁드립니다.",
+                1: "시험 입회 조건을 맞출 수 있는지 확인 부탁드립니다."}
+    ids = send_quality(conn, run_id, llm)
+    assert "품질 담당" in llm.prompts[-1] and "숫자는 하나도 쓰지 않는다" in llm.prompts[-1]
+    [mail] = fake_mailer.sent
+    body = mail.get_body(("plain",)).get_content()
+    assert "확인할 점: 형식시험 성적서를 낼 수 있는지 확인 부탁드립니다. (AI 작성)" in body
+    [attachment] = list(mail.iter_attachments())
+    sheet = load_workbook(BytesIO(attachment.get_content())).active
+    assert sheet.cell(2, 6).value == "확인할 점" and "(AI 작성)" in sheet.cell(4, 6).value
+    assert asks_of(conn, ids) == [(llm.asks[0], "AI"), (llm.asks[1], "AI")]
+
+
+def test_question_with_number_falls_back(tasks_run, fake_mailer):
+    """Scenario: 숫자가 든 질문 — 그 요청만 기본 문장, 다른 요청은 그대로."""
+    from rfp_agent.pipeline.handoff_mail import ASK_DEFAULTS
+    from tests.conftest import FakeLLM
+
+    conn, run_id = tasks_run
+    llm = FakeLLM()
+    llm.asks = {0: "IEC 62271 시험 성적서를 낼 수 있는지 확인 부탁드립니다.",
+                1: "시험 입회 조건을 맞출 수 있는지 확인 부탁드립니다."}
+    ids = send_quality(conn, run_id, llm)
+    assert asks_of(conn, ids) == [(ASK_DEFAULTS["QUALITY"], "CODE"), (llm.asks[1], "AI")]
+    body = fake_mailer.sent[0].get_body(("plain",)).get_content()
+    assert f"확인할 점: {ASK_DEFAULTS['QUALITY']} (기본 문장)" in body
+    assert "IEC 62271 시험" not in body
+
+
+def test_no_llm_uses_default_questions(tasks_run, fake_mailer):
+    """Scenario: 언어 모델 없음 — 메일은 나가고 모든 요청이 기본 문장, 쓴 이 CODE."""
+    from rfp_agent.pipeline.handoff_mail import ASK_DEFAULTS
+
+    conn, run_id = tasks_run
+    ids = send_quality(conn, run_id, None)
+    assert len(fake_mailer.sent) == 1
+    assert asks_of(conn, ids) == [(ASK_DEFAULTS["QUALITY"], "CODE")] * 2
+
+
+def test_question_format_error_no_retry(tasks_run, fake_mailer):
+    """Scenario: 질문 형식 오류 — 다시 묻지 않고 그 메일의 모든 요청을 기본 문장으로."""
+    from rfp_agent.pipeline.handoff_mail import ASK_DEFAULTS
+    from tests.conftest import FakeLLM
+
+    conn, run_id = tasks_run
+    llm = FakeLLM()
+    llm.asks_short = 1
+    ids = send_quality(conn, run_id, llm)
+    assert len(llm.prompts) == 1 and len(fake_mailer.sent) == 1
+    assert asks_of(conn, ids) == [(ASK_DEFAULTS["QUALITY"], "CODE")] * 2
+
+
+def test_questions_survive_rebuild(tasks_run, fake_mailer):
+    """Scenario: 다시 만들어진 요청 — 보낸 요청의 확인할 점과 쓴 이가 남는다."""
+    from tests.conftest import FakeLLM
+
+    conn, run_id = tasks_run
+    llm = FakeLLM()
+    req = judged_quality_request(conn, run_id)
+    review.bulk_confirm(ai_ctx(conn, llm), run_id, judgments_of(conn, run_id, req))
+    task = quality_task(conn, run_id, req)
+    assert task["ask_by"] == "AI" and task["ask_text"]
+    other = conn.execute("SELECT judgment_id FROM judgment WHERE run_id = %s AND is_current "
+                         "AND requirement_id <> %s LIMIT 1", (run_id, req)).fetchone()[0]
+    review.act(ai_ctx(conn, llm), run_id, "judgment", other, "CONFIRM")   # 목록 다시 만듦
+    again = quality_task(conn, run_id, req)
+    assert (again["ask_text"], again["ask_by"]) == (task["ask_text"], "AI")

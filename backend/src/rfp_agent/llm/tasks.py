@@ -359,6 +359,54 @@ def draft_sentences(llm: LLM, purpose: str,
     return [t for part in run_ordered(jobs, workers_of(llm)) for t in part]
 
 
+DEPT_VIEWS = {
+    "COST": ("견적 담당", "비용·일정·보증·지체상금처럼 견적 금액이나 조건에 반영할 것이 있는지"),
+    "QUALITY": ("품질 담당", "시험·성적서·인증·시험 입회처럼 품질 쪽에서 맞출 수 있는지"),
+    "SALES": ("영업 담당", "고객과 협의하거나 계약·납기 조건으로 확인할 것이 있는지"),
+}
+ASK_MAX = 160
+_DIGIT = re.compile(r"\d")
+_HANGUL = re.compile(r"[가-힣]")
+
+
+def usable_question(text: str) -> bool:
+    """비지 않고, 160자 이하, 숫자 없음(CR-07), 경쟁 비교 없음, 한글 있음."""
+    return (bool(text) and len(text) <= ASK_MAX and not _DIGIT.search(text)
+            and not COMPETITOR.search(text) and bool(_HANGUL.search(text)))
+
+
+def department_questions(llm: LLM, role: str, items: list[str]) -> list[str | None]:
+    """협조 요청마다 받는 부서 관점의 확인할 점 한 문장 (add-handoff-questions, C4).
+
+    숫자는 쓰지 못한다(요구사항 칸에 원문 그대로 있음). 검사에 걸린 줄은 None →
+    부르는 곳이 부서 기본 문장으로 바꾼다. 줄 번호가 틀리면 형식 오류(다시 묻지 않음).
+    """
+    dept, view = DEPT_VIEWS[role]
+
+    def ask(part: list[str]) -> list[str | None]:
+        numbered = "\n".join(f"{i}. {one_line(text)[:600]}" for i, text in enumerate(part))
+        prompt = (
+            f"입찰 기술 검토 엔지니어가 {dept}에게 협조를 요청하는 메일을 쓴다. "
+            f"요청마다 {dept}가 {view} 확인할 점을 한국어 한 문장으로 쓴다. "
+            "숫자는 하나도 쓰지 않는다(숫자는 메일의 요구사항 칸에 원문 그대로 있다). "
+            "요구사항에 없는 사실을 더하지 않고, 경쟁 제품이나 다른 회사와 비교하지 않는다. "
+            "판정이나 결론을 내리지 말고 확인을 부탁하는 문장으로 쓴다. "
+            "요청마다 앞의 번호(n)와 문장(text)을 함께 낸다.\n" + numbered
+        )
+        schema = _numbered_schema("asks", "text", {"type": "string"})
+
+        def check(d):
+            _check_numbers(d["asks"], len(part), "asks")
+
+        answers = _in_order(call_with_retry(llm, prompt, schema, check)["asks"])
+        return [text if usable_question(text := " ".join(a["text"].split())) else None
+                for a in answers]
+
+    jobs = [lambda part=items[start:start + CHUNK]: ask(part)
+            for start in range(0, len(items), CHUNK)]
+    return [t for part in run_ordered(jobs, workers_of(llm)) for t in part]
+
+
 ASSISTANT_VERSION = "a1"
 ASSISTANT_ACTIONS = ["search_requirements", "find_judgments", "get_requirement", "answer"]
 JUDGMENT_RESULTS = ["COMPLY", "DEVIATION_CANDIDATE", "QUERY_CANDIDATE", "NEEDS_REVIEW",

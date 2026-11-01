@@ -98,6 +98,7 @@ openspec/
 | 59 | `archive/2026-11-01-add-requirement-answer-key` | 요구사항 정답지(B1): 공급사 답안 문서의 C/D/E 표시 표 조항 줄을 코드가 정답으로(`rfp-db make-answer-key`, 코드 자동·사람 확인 전, DB에만), 합성 154 kV GIS 정답지 CSV(`data/seed/answer_keys/`, `load-answer-key --kind REQ --doc`). 채점에서 고르면 K1·K2·K3·K10, 판정 없는 검토도 채점. 0027 (완료) |
 | 60 | `archive/2026-11-01-add-meaning-search` | 뜻으로 찾기(B3·B4·B5): 분석 끝에 문장 벡터(gemini-embedding-001, 768차원)를 DB에 글자 해시로 저장(새 서버 없음), 항목 연결 후보(판정 규칙 화면, 사람이 같은 뜻 표현으로 추가), 뜻이 비슷한 지난 확정(0.92), 사전 추가 후보(위험 조건 탭, 0.72). 후보·힌트만, 실패해도 분석 계속. 0028 (완료) |
 | 61 | `archive/2026-11-01-add-ai-mode` | AI 사용 방식 설정(C5): `RFP_AI_MODE` gemini(외부)·local(사내 OpenAI 호환 주소)·off(규칙만, 키가 있어도 안 보냄). `/api/health`에 방식·모델·외부 전송, 검토 등록·실행 기록에 한 줄. 마이그레이션 없음 (완료) |
+| 62 | `archive/2026-11-01-add-handoff-questions` | 협조 요청 메일에 부서 관점 확인 질문(C4): 메일을 보낼 때 요청마다 견적·품질·영업 관점 "확인할 점" 한 문장을 AI가 씀(숫자 금지, 틀리면 부서 기본 문장, AI 없음·실패해도 메일은 나감). 본문·엑셀·협조 요청 상세에 "AI 작성"·"기본 문장". 0029 (완료) |
 
 ## 3. 작업 흐름
 

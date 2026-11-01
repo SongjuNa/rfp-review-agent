@@ -56,6 +56,8 @@ test('보내기와 받는 담당자의 확인', async ({ page, request }) => {
   await r.click()
   const dlg = page.getByRole('dialog')
   await expect(dlg.locator('.tl2')).toContainText('메일 보냄')
+  // add-handoff-questions: 메일에 넣은 부서 관점 확인할 점 (AI가 있으면 AI 작성, 없으면 기본 문장)
+  await expect(dlg.getByTestId('ask-text')).toContainText(/AI 작성|기본 문장/)
   await dlg.getByLabel('회신 요지 (한 줄)').fill('성적서 3종 11-05까지 보냄')
   await dlg.getByRole('button', { name: '회신 받음 표시' }).click()
   await expect(page.getByRole('status')).toContainText('회신 받음으로 표시했습니다')
