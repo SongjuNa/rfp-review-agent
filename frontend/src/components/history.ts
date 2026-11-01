@@ -52,6 +52,9 @@ export function historyText(l: LogEntry): string {
       if (a.error) return `${what} 영업에 넘기지 못함: ${String(a.error)}`
       return `${what} 영업에 넘김: ${v(a.mail_to)}`
     }
+    case 'run_document':
+      // 문서 추가 (add-document-addendum): 정정본·추가 문서를 더해 다시 분석
+      return `문서 추가: ${Array.isArray(a.files) ? a.files.join(', ') : ''}`
     case 'run_product_choice':
       return `비교 제품 바꿈: ${v(b.product_code === null ? '자동' : b.product_code)} → ${v(a.product_code === null ? '자동' : a.product_code)}`
     case 'review_run': {

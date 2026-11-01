@@ -59,6 +59,7 @@ from rfp_agent.db.connection import connect
 from rfp_agent.pipeline import (
     business,
     datasheet,
+    doc_add,
     preview,
     queries,
     read_checks,
@@ -672,6 +673,28 @@ def retry_run(run_id: int, body: Actor, background: BackgroundTasks) -> RunSumma
     with connect() as conn:
         paths, choices = _review(lambda: run_control.prepare_retry(conn, run_id, body.actor_id))
     background.add_task(run_to_end, run_id, paths, choices)
+    return _summary(run_id)
+
+
+@router.post("/runs/{run_id}/documents", status_code=202)
+async def add_documents(run_id: int, files: list[UploadFile], background: BackgroundTasks,
+                        actor_id: int | None = Form(None),
+                        choices: str | None = Form(None)) -> RunSummary:
+    """분석을 마친 검토(담당자 확인 단계)에 정정본·추가 문서를 더해 같은 검토를 다시 분석한다.
+
+    처리한 문서는 다시 쓰고, 같은 줄의 확정·수정·반려는 이어받는다 (FR-01 ⑤, FR-10 ⑤).
+    choices는 더하는 파일의 분류 JSON ({파일 이름: {bundle, doc_kind}}).
+    """
+    try:
+        chosen = TypeAdapter(Choices).validate_json(choices) if choices else {}
+    except ValidationError as exc:
+        raise HTTPException(400, f"문서 분류 값이 틀렸습니다: {exc.errors()[0]['msg']}") from exc
+    new_paths = await _save_uploads(files)
+    added = {name: c.model_dump(exclude_none=True) for name, c in chosen.items()}
+    with connect() as conn:
+        paths, merged = _review(lambda: doc_add.prepare_add(conn, run_id, new_paths, added,
+                                                            actor_id))
+    background.add_task(run_to_end, run_id, paths, merged)
     return _summary(run_id)
 
 

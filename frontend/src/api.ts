@@ -133,6 +133,14 @@ export const api = {
     files.forEach((f) => form.append('files', f))
     return call<DocumentPreview[]>('/runs/preview', { method: 'POST', body: form })
   },
+  /** 담당자 확인 단계 검토에 문서를 더해 다시 분석 (add-document-addendum, 엔지니어만) */
+  addDocuments: (id: number, files: File[], choices: Record<string, DocumentChoice>, actor_id: number | null) => {
+    const form = new FormData()
+    files.forEach((f) => form.append('files', f))
+    if (Object.keys(choices).length) form.append('choices', JSON.stringify(choices))
+    if (actor_id !== null) form.append('actor_id', String(actor_id))
+    return call<RunSummary>(`/runs/${id}/documents`, { method: 'POST', body: form })
+  },
   /** 보낸 칸만 바꾼다. 빈 문자열은 비우기 */
   updateInfo: (id: number, info: Partial<Record<keyof ReviewInfo, string | number | null>>, actor_id: number | null) =>
     call<RunSummary>(`/runs/${id}/info`, json('PUT', { ...info, actor_id })),

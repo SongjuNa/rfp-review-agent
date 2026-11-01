@@ -18,7 +18,7 @@ from psycopg.types.json import Jsonb
 from rfp_agent.llm import tasks
 from rfp_agent.llm.client import FAILURE_MESSAGE, LLM, LLMFailure, Usage, usage_of
 from rfp_agent.llm.evidence import EvidenceSpan, evidence_id, parse_evidence_id
-from rfp_agent.pipeline import code_version, dictionaries
+from rfp_agent.pipeline import code_version, dictionaries, doc_add
 from rfp_agent.pipeline.assignments import build_assignments
 from rfp_agent.pipeline.document import Choice, Report, process_document
 from rfp_agent.pipeline.engineering import build_checks
@@ -287,11 +287,20 @@ def value_refs(conn: psycopg.Connection, document_ids: list[int]) -> list[ValueR
             for r in rows]
 
 
-def _save_risks(ctx: RunContext, run_id: int, candidates: list[RiskCandidate]) -> int:
+def _save_risks(ctx: RunContext, run_id: int, candidates: list[RiskCandidate],
+                known: dict[tuple, tuple[int, str | None]] | None = None) -> int:
+    """위험 조건 후보를 저장한다. known(열쇠 → 이전 risk_id·설명)에 같은 후보가 있으면
+    AI에 다시 묻지 않고 이전 설명과 근거 문장을 이어 쓴다 (문서 추가·다시 시도)."""
     conn = ctx.conn
+    known = dict(known or {})
     for cand in candidates:
-        explained = None
-        if ctx.llm is not None:
+        explained = reused = None
+        expr_id = cand.expression.expr_id if cand.expression else None
+        hit = known.pop((cand.risk_kind, expr_id, cand.item_key, tuple(sorted(set(cand.members)))),
+                        None)
+        if hit and (hit[1] is not None or ctx.llm is None):
+            reused = hit
+        elif ctx.llm is not None:
             # 근거 조각: 후보 요구사항의 원문 위치마다 ID(E-문서-위치)를 붙여 AI에 준다
             spans = [EvidenceSpan(evidence_id(doc_id, loc_id), text)
                      for doc_id, loc_id, text in conn.execute(
@@ -306,9 +315,14 @@ def _save_risks(ctx: RunContext, run_id: int, candidates: list[RiskCandidate]) -
             """INSERT INTO risk_flag (run_id, risk_kind, expr_id, explanation_ai, status, facts,
                                       item_key)
                VALUES (%s, %s, %s, %s, 'CANDIDATE', %s, %s) RETURNING risk_id""",
-            (run_id, cand.risk_kind, cand.expression.expr_id if cand.expression else None,
-             explained.text if explained else None, cand.facts, cand.item_key),
+            (run_id, cand.risk_kind, expr_id,
+             reused[1] if reused else explained.text if explained else None, cand.facts,
+             cand.item_key),
         ).fetchone()[0]
+        if reused:
+            conn.execute("UPDATE claim_evidence SET target_id = %s WHERE run_id = %s "
+                         "AND target_table = 'risk_flag' AND target_id = %s",
+                         (risk_id, run_id, reused[0]))
         values = cand.value_members or [None] * len(cand.members)
         for req_id, value_id in zip(cand.members, values, strict=True):
             conn.execute("INSERT INTO risk_flag_member VALUES (%s, %s, %s) "
@@ -344,12 +358,14 @@ def _risks_node(ctx: RunContext):
         candidates = clause_candidates(conn, readable, dicts)
         candidates += find_value_mismatches(value_refs(conn, readable), dicts.values.parents)
         with conn.transaction():
-            conn.execute("DELETE FROM claim_evidence WHERE run_id = %s "
-                         "AND target_table = 'risk_flag'", (run_id,))
-            conn.execute("DELETE FROM risk_flag_member WHERE risk_id IN "
-                         "(SELECT risk_id FROM risk_flag WHERE run_id = %s)", (run_id,))
-            conn.execute("DELETE FROM risk_flag WHERE run_id = %s", (run_id,))
-            count = _save_risks(ctx, run_id, candidates)
+            # 다시 돌리면(문서 추가·다시 시도) 새로 만든 뒤 이전 위험 조건과 바꾼다. 같은 열쇠의
+            # 사람 확인 상태와 목록 항목 연결을 이어받는다 (FR-10 ⑤)
+            old = doc_add.risk_snapshot(conn, run_id)
+            count = _save_risks(ctx, run_id, candidates, doc_add.risk_explanations(conn, old))
+            if old:
+                conn.execute("DELETE FROM claim_evidence WHERE run_id = %s AND target_table = "
+                             "'risk_flag' AND target_id = ANY(%s)", (run_id, list(old)))
+            doc_add.replace_risks(conn, run_id, old)
         return {"risk_count": count, "readable_ids": readable}
     return node
 
@@ -375,9 +391,13 @@ def rebuild_outputs(ctx: RunContext, run_id: int, document_ids: list[int]) -> di
 
 def _judge_node(ctx: RunContext):
     def node(state: RunState) -> RunState:
-        _set_step(ctx.conn, state["run_id"], "judge")
-        count = judge_run(ctx.conn, state["run_id"], state["readable_ids"])
-        ctx.conn.commit()
+        conn, run_id = ctx.conn, state["run_id"]
+        _set_step(conn, run_id, "judge")
+        old = doc_add.current_judgments(conn, run_id)
+        count = judge_run(conn, run_id, state["readable_ids"])
+        # 같은 줄(요구값·비교 제품·비교 규칙)의 확정·수정·반려를 이어받는다 (FR-10 ⑤)
+        doc_add.carry_judgments(conn, run_id, old)
+        conn.commit()
         return {"judgment_count": count}
     return node
 
