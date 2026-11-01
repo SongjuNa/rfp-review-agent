@@ -6,17 +6,21 @@ import { as, ENGINEER } from './helpers'
 type Product = { product_code: string; family: string; used: number }
 
 test('제품 상세', async ({ page, request }) => {
+  // v4.96: 줄을 누르면 빠른 보기, [상세 화면]으로 제품 상세 화면 (change add-product-view)
   const list = (await (await request.get('/api/products?family=GIS&limit=100')).json()) as Product[]
   const p = list[0]
-  const detail = await (await request.get(`/api/products/${p.product_code}`)).json() as { used: number }
+  const detail = await (await request.get(`/api/products/${p.product_code}`)).json() as { used_runs: number }
   await page.goto('/#/products')
   await page.getByRole('button', { name: /^GIS/ }).click()
-  await page.locator('tbody tr', { hasText: p.product_code }).first().click()
-  const panel = page.getByRole('complementary', { name: '제품 상세' })
+  await page.locator('tbody tr', { hasText: p.product_code }).first().locator('td').nth(3).click()
+  const panel = page.getByRole('complementary', { name: '제품 빠른 보기' })
   await expect(panel.getByRole('heading', { name: p.product_code })).toBeVisible()
-  await expect(panel.getByLabel('판정에 쓰임')).toContainText(String(detail.used))
-  await panel.getByRole('tab', { name: '값' }).click()
-  await expect(panel).toContainText('정격 전압')
+  await expect(panel.locator('.qv-t')).toContainText('정격 전압')
+  await expect(panel.locator('h4', { hasText: '지금 쓰이는 검토' })).toContainText(String(detail.used_runs))
+  await panel.getByRole('link', { name: '상세 화면' }).click()
+  await expect(page).toHaveURL(new RegExp(`#/products/${p.product_code}$`))
+  await expect(page.getByRole('tab', { name: '정격' })).toHaveAttribute('aria-selected', 'true')
+  await expect(page.locator('.pinfo')).toContainText('정격 전압')
 })
 
 test('제품표 엑셀 내보내기', async ({ page }) => {
@@ -34,10 +38,8 @@ test('제품표 엑셀 내보내기', async ({ page }) => {
 test('제품 상세에 계열 사진', async ({ page }) => {
   // 명세 review-workspace "제품표 상세의 제품 사진" (change add-product-photos)
   const list = (await (await page.request.get('/api/products?family=GIS&limit=100')).json()) as Product[]
-  await page.goto('/#/products')
-  await page.getByRole('button', { name: /^GIS/ }).click()
-  await page.locator('tbody tr', { hasText: list[0].product_code }).first().click()
-  const photo = page.getByRole('complementary', { name: '제품 상세' }).getByRole('figure', { name: '제품 사진' })
+  await page.goto(`/#/products/${list[0].product_code}`)
+  const photo = page.getByRole('figure', { name: '제품 사진' })
   await expect(photo.getByRole('img', { name: 'GIS 대표 사진' })).toBeVisible()
   await expect(photo).toContainText('이 모델만의 사진은 아님')
   await expect(photo.getByRole('link', { name: 'LS ELECTRIC 공식 사이트' })).toHaveAttribute('href', /ls-electric\.com/)
@@ -46,11 +48,8 @@ test('제품 상세에 계열 사진', async ({ page }) => {
 
 test('제품 상세 문서 탭', async ({ page }) => {
   // 명세 review-workspace "제품표 상세의 관련 문서" (change add-product-docs)
-  await page.goto('/#/products')
-  await page.locator('#pq').fill('GIS-145-40')
-  await page.locator('tbody tr', { hasText: 'GIS-145-40' }).first().click()
-  const panel = page.getByRole('complementary', { name: '제품 상세' })
-  await panel.getByRole('tab', { name: '문서' }).click()
+  await page.goto('/#/products/GIS-145-40')
+  const panel = page.locator('.pml')
   const catalog = panel.getByLabel('카탈로그', { exact: true })
   await expect(catalog).toContainText('[GIS] Total Solution')
   await expect(catalog).toContainText('제품표 값의 출처')
@@ -63,11 +62,8 @@ test('제품 상세 문서 탭', async ({ page }) => {
 
 test('공식 자료실에 없는 문서 종류', async ({ page }) => {
   // 명세 review-workspace "제품표 상세의 관련 문서": GSH-20V는 시험 성적서가 공식 자료실에 없다
-  await page.goto('/#/products')
-  await page.locator('#pq').fill('SWGR-GSH20V-24')
-  await page.locator('tbody tr', { hasText: 'SWGR-GSH20V-24' }).first().click()
-  const panel = page.getByRole('complementary', { name: '제품 상세' })
-  await panel.getByRole('tab', { name: '문서' }).click()
+  await page.goto('/#/products/SWGR-GSH20V-24')
+  const panel = page.locator('.pml')
   await expect(panel.getByLabel('카탈로그', { exact: true })).toContainText('[GSH-20V]_국문')
   await expect(panel.getByLabel('시험 성적서', { exact: true })).toContainText('공식 자료실에 없음')
 })
@@ -79,10 +75,8 @@ test('사진이 없는 카탈로그', async ({ page }) => {
     const body = await res.json()
     await route.fulfill({ response: res, json: { ...body, source_doc: 'CAT-C99999-01 p.1' } })
   })
-  await page.goto('/#/products')
-  await page.locator('tbody tr').first().click()
-  const panel = page.getByRole('complementary', { name: '제품 상세' })
-  await expect(panel.getByLabel('제품 사진')).toHaveText('공식 사진 없음')
+  await page.goto('/#/products/GIS-145-40')
+  await expect(page.getByLabel('제품 사진')).toHaveText('공식 사진 없음')
 })
 
 test('두 제품 비교', async ({ page, request }) => {

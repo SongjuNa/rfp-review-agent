@@ -4,7 +4,8 @@
 - 기준 목업: `Spec2Win_목업_v4.57.html#Products`. **v4.96부터 `Spec2Win_목업_v4.96.html`이 기준**(맨 아래 "v4.96 바뀐 점")
 - 구현 방식: 실제, 읽기 전용 (`add-reference-views`). 화면 CSS는 목업 Products CSS 그대로(`frontend/src/mockup/Products.css`)
 - 사용 API: `GET /products?family=&q=&cards=&offset=&limit=`(X-Total-Count), `GET /products/families`, `GET /products/{code}`, `GET /rules/items`(강점 방향), `GET /products/export?family=&q=&cards=`(엑셀, X-Row-Count, `add-product-export`)
-- 예정 API: 엑셀 가져오기, 요구 조건으로 찾기, 제품 고치기
+- 예정 API: 엑셀 가져오기, 제품 고치기
+- v4.96 구현됨 (change `add-product-view`, 2026-11-01): 빠른 보기, 제품 코드 → 제품 상세(SCR-16-1), 요구 조건으로 찾기·RFP 검토 찾기(화면에서 거름). 목업과 다른 곳은 `SCR-16_공유.md`
 
 ## 화면 구성
 

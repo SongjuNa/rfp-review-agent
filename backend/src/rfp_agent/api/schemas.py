@@ -907,6 +907,8 @@ class ProductUse(Out):
     item_name: str | None
     result: JudgmentResult
     product_selected_by: str | None
+    item_key: str | None = None        # 표준 항목 (막힌 판정 계산, add-product-view)
+    due_date: date | None = None       # 그 검토의 마감 (D-day)
 
 
 class ProductProposal(Out):

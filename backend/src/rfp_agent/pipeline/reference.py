@@ -123,7 +123,7 @@ def product(conn: psycopg.Connection, code: str) -> dict:
                       || lpad(r.run_id::text, 3, '0') AS review_no,
                       r.project_name, r.review_name, j.judgment_id, j.equipment_group,
                       COALESCE(k.name_ko, tr.item_name_raw, v.item_key) AS item_name, j.result,
-                      j.product_selected_by
+                      j.product_selected_by, v.item_key, r.due_date
                FROM judgment j JOIN review_run r ON r.run_id = j.run_id
                JOIN req_value v ON v.value_id = j.value_id
                LEFT JOIN item_key k ON k.item_key = v.item_key

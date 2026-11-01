@@ -1049,6 +1049,8 @@ export type ProductUse = {
   item_name: string | null
   result: 'COMPLY' | 'DEVIATION_CANDIDATE' | 'QUERY_CANDIDATE' | 'NEEDS_REVIEW' | 'WARRANTY_TO_FILL'
   product_selected_by: string | null
+  item_key?: string | null
+  due_date?: string | null
 }
 
 export type Proposal = {

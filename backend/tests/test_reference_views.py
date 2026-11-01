@@ -63,6 +63,20 @@ def test_product_used_in_judgments(db, tmp_path):
     assert listed["used"] == n
 
 
+def test_product_use_item_and_due(db, tmp_path):
+    """Scenario: 쓰인 판정의 표준 항목과 마감 — 정격 전류 판정 줄에 rated_current와 검토 마감."""
+    from datetime import date
+
+    run_id = run_once(db, build_judgment_spec(tmp_path / "synthetic_judgment.docx"))
+    db.execute("UPDATE review_run SET due_date = '2026-11-20' WHERE run_id = %s", (run_id,))
+    code = db.execute(
+        "SELECT j.product_code FROM judgment j JOIN req_value v USING (value_id) "
+        "WHERE j.run_id = %s AND j.is_current AND v.item_key = 'rated_current' "
+        "AND j.product_code IS NOT NULL LIMIT 1", (run_id,)).fetchone()[0]
+    rows = [u for u in reference.product(db, code)["used_in"] if u["item_key"] == "rated_current"]
+    assert rows and all(u["due_date"] == date(2026, 11, 20) for u in rows)
+
+
 def test_product_not_used(db):
     """Scenario: 쓰이지 않은 제품 — 판정에 쓰인 수 0, 목록 비어 있음. 없는 제품은 찾을 수 없음."""
     code = reference.products(db, limit=1)[0]["product_code"]

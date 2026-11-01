@@ -23,6 +23,7 @@ import { SysNotice } from './views/examples/SysNotice'
 import { Team } from './views/examples/Team'
 import { Projects } from './views/Projects'
 import { Products } from './views/Products'
+import { ProductView } from './views/ProductView'
 import { RunLog } from './views/RunLog'
 import { Rules } from './views/Rules'
 import { Tbe } from './views/Tbe'
@@ -70,8 +71,14 @@ function route(path: string): Route {
   if (path === '/' || path === '') {
     return { menu: 'home', crumbs: [{ label: '홈' }], body: <Home /> }
   }
-  if (path === '/products') {
-    return { menu: 'products', crumbs: [home, { label: '기준 데이터' }, { label: '제품표' }], body: <Products /> }
+  const product = path.match(/^\/products\/([^/?]+)$/)
+  if (product) {
+    const code = decodeURIComponent(product[1])
+    return { menu: 'products', crumbs: [home, { label: '기준 데이터' }, { label: '제품표', path: '/products' }, { label: code, tail: true }],
+      body: <ProductView key={code} code={code} /> }
+  }
+  if (path === '/products' || path.startsWith('/products?')) {
+    return { menu: 'products', crumbs: [home, { label: '기준 데이터' }, { label: '제품표' }], body: <Products key={path} /> }
   }
   if (path === '/rules' || path.startsWith('/rules?')) {
     return { menu: 'rules', crumbs: [home, { label: '기준 데이터' }, { label: '판정 규칙' }], body: <Rules /> }
