@@ -1332,6 +1332,7 @@ export type RunLogItem = {
   requirements: number
   judgments: number
   explanations_dropped: number
+  type_examples?: number
   explanations_unverified: number
   retries: number
   steps: RunStepTime[]
@@ -1492,6 +1493,19 @@ export type TbeRow = {
   file_name: string
   where: string
   source: string
+}
+
+export type TypeEdit = {
+  type_code: string
+  reason?: string | null
+  actor_id?: number | null
+}
+
+/** 사람 유형 고치기 결과 (add-type-examples). NONE은 미분류. */
+export type TypeEditResult = {
+  requirement_id: number
+  before: string
+  after: string
 }
 
 export type TypeTag = {
