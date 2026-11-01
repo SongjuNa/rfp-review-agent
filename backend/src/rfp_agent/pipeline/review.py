@@ -197,6 +197,13 @@ def bulk_confirm(ctx: RunContext, run_id: int, judgment_ids: list[int],
     befores = [row(conn, "judgment", i, run_id) for i in ids]
     if stale := [b["judgment_id"] for b in befores if not b["is_current"]]:
         raise ReviewError(409, f"현재 판정이 아닌 줄이 있습니다 ({', '.join(map(str, stale))}).")
+    # 사람이 한 줄씩 봐야 하는 줄은 빼고 확정한다 (update-bulk-confirm-guard)
+    risky = _bulk_risks(conn, run_id, ids)
+    skipped = [{"judgment_id": i, "reason": risky[i]} for i in ids if i in risky]
+    befores = [b for b in befores if b["judgment_id"] not in risky]
+    if not befores:
+        raise ReviewError(400, "한꺼번에 확정할 수 있는 줄이 없습니다. 검산 위반·숫자 불일치·"
+                               "값이 빈 줄은 한 줄씩 확인해 확정하세요.")
     for before in befores:
         _apply(conn, "judgment", before, "CONFIRM", {})
         after = row(conn, "judgment", before["judgment_id"], run_id)
@@ -211,7 +218,31 @@ def bulk_confirm(ctx: RunContext, run_id: int, judgment_ids: list[int],
     build_assignments(conn, run_id)
     conn.commit()
     send_after_confirm(conn, run_id, actor_id)      # 확인을 마친 요청은 부서로 메일 (FR-11)
-    return {"confirmed": len(ids), "submission_check": _latest_check(conn, run_id)}
+    return {"confirmed": len(befores), "skipped": skipped,
+            "submission_check": _latest_check(conn, run_id)}
+
+
+def _bulk_risks(conn: psycopg.Connection, run_id: int, ids: list[int]) -> dict[int, str]:
+    """판정 번호 → 한꺼번에 확정에서 뺄 이유. 이유가 여럿이면 CHECK → MISMATCH → NO_VALUE 순."""
+    found: dict[int, str] = {}
+    for reason, sql in (
+        ("CHECK", """SELECT j.judgment_id FROM judgment j
+                     JOIN engineering_check c ON c.run_id = j.run_id AND c.result <> 'PASS'
+                     JOIN req_value v ON v.value_id IN (c.peak_value_id, c.ik_value_id)
+                     WHERE j.run_id = %s AND j.judgment_id = ANY(%s)
+                       AND v.requirement_id = j.requirement_id"""),
+        ("MISMATCH", """SELECT s.judgment_id FROM output_item_source s
+                        JOIN output_item o USING (item_id)
+                        WHERE o.run_id = %s AND s.judgment_id = ANY(%s)
+                          AND o.status <> 'REMOVED' AND o.number_check = 'MISMATCH'"""),
+        ("NO_VALUE", """SELECT judgment_id FROM judgment
+                        WHERE run_id = %s AND judgment_id = ANY(%s)
+                          AND result IN ('NEEDS_REVIEW', 'WARRANTY_TO_FILL')
+                          AND coalesce(trim(product_value_raw), '') = ''"""),
+    ):
+        for (judgment_id,) in conn.execute(sql, (run_id, ids)):
+            found.setdefault(judgment_id, reason)
+    return found
 
 
 def act(ctx: RunContext, run_id: int, target: str, target_id: int, action: str,

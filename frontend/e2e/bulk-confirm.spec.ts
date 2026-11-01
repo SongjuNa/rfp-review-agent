@@ -33,3 +33,23 @@ test('준수 모두 확정', async ({ page, request }) => {
   const left = await (await request.get(`/api/runs/${run.run_id}/judgments?result=COMPLY&unconfirmed=true&limit=1`)).json()
   expect(left).toEqual([])
 })
+
+// 명세 review-workspace "한꺼번에 확정에서 뺀 줄 알림" (change update-bulk-confirm-guard).
+// 합성 문서에는 검산 위반 줄이 없어, 응답에 뺀 줄을 넣어 화면 알림만 본다.
+test('뺀 줄 알림', async ({ page, request }) => {
+  const run = await deviationRun(request, `뺀 줄 알림 ${Date.now()}`)
+  await page.route(`**/api/runs/${run.run_id}/actions/bulk`, async (route) => {
+    const res = await route.fetch()
+    const body = await res.json() as { confirmed: number; skipped: { judgment_id: number; reason: string }[] }
+    body.confirmed -= 1
+    body.skipped = [{ judgment_id: 0, reason: 'CHECK' }]
+    await route.fulfill({ response: res, json: body })
+  })
+  await as(page, ENGINEER)
+  await page.goto(`/#/reviews/${run.run_id}`)
+  const unconfirmed = page.locator('#judge tbody tr').filter({ hasNot: page.locator('.cfm') })
+  await unconfirmed.nth(0).getByRole('checkbox').check()
+  await unconfirmed.nth(1).getByRole('checkbox').check()
+  await page.locator('#judge .bulk').getByRole('button', { name: '제안대로 확정' }).click()
+  await expect(page.getByRole('status').filter({ hasText: '판정 1줄을 제안대로 확정했습니다. 1줄은 뺐습니다(검산 1). 한 줄씩 확인해 확정하세요.' })).toBeVisible()
+})

@@ -186,7 +186,14 @@ export type BulkAction = {
 
 export type BulkResult = {
   confirmed: number
+  skipped: BulkSkipped[]
   submission_check: SubmissionCheck | null
+}
+
+/** 한꺼번에 확정에서 뺀 줄 (update-bulk-confirm-guard). 한 줄씩 확인해 확정한다. */
+export type BulkSkipped = {
+  judgment_id: number
+  reason: 'CHECK' | 'MISMATCH' | 'NO_VALUE'
 }
 
 export type BusinessDetail = {

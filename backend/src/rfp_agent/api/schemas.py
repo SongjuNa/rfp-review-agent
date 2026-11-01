@@ -570,8 +570,15 @@ class ActionResult(Out):
     submission_check: SubmissionCheck | None
 
 
+class BulkSkipped(Out):
+    """한꺼번에 확정에서 뺀 줄 (update-bulk-confirm-guard). 한 줄씩 확인해 확정한다."""
+    judgment_id: int
+    reason: Literal["CHECK", "MISMATCH", "NO_VALUE"]   # 검산 위반·확인 필요 / 숫자 불일치 / 값 없음
+
+
 class BulkResult(Out):
     confirmed: int
+    skipped: list[BulkSkipped]
     submission_check: SubmissionCheck | None
 
 
