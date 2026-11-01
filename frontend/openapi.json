@@ -1978,6 +1978,68 @@
         }
       }
     },
+    "/api/runs/{run_id}/requirements/{requirement_id}/type": {
+      "post": {
+        "tags": [
+          "검토 실행"
+        ],
+        "summary": "Edit Type",
+        "description": "사람이 요구사항의 주 유형을 고친다 (add-type-examples). 엔지니어·승인자만.",
+        "operationId": "edit_type_api_runs__run_id__requirements__requirement_id__type_post",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Run Id"
+            }
+          },
+          {
+            "name": "requirement_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Requirement Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TypeEdit"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TypeEditResult"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/runs/{run_id}/actions/bulk": {
       "post": {
         "tags": [
@@ -5648,6 +5710,32 @@
               }
             ],
             "title": "Reply Note"
+          },
+          "ask_text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ask Text"
+          },
+          "ask_by": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "AI",
+                  "CODE"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ask By"
           }
         },
         "additionalProperties": false,
@@ -14486,6 +14574,11 @@
             "type": "integer",
             "title": "Explanations Dropped"
           },
+          "type_examples": {
+            "type": "integer",
+            "title": "Type Examples",
+            "default": 0
+          },
           "explanations_unverified": {
             "type": "integer",
             "title": "Explanations Unverified"
@@ -15543,6 +15636,66 @@
           "source"
         ],
         "title": "TbeRow"
+      },
+      "TypeEdit": {
+        "properties": {
+          "type_code": {
+            "type": "string",
+            "title": "Type Code"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "actor_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Actor Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "type_code"
+        ],
+        "title": "TypeEdit"
+      },
+      "TypeEditResult": {
+        "properties": {
+          "requirement_id": {
+            "type": "integer",
+            "title": "Requirement Id"
+          },
+          "before": {
+            "type": "string",
+            "title": "Before"
+          },
+          "after": {
+            "type": "string",
+            "title": "After"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "requirement_id",
+          "before",
+          "after"
+        ],
+        "title": "TypeEditResult",
+        "description": "사람 유형 고치기 결과 (add-type-examples). NONE은 미분류."
       },
       "TypeTag": {
         "properties": {

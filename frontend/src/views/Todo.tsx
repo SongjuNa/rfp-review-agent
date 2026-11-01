@@ -1,3 +1,4 @@
+import { TypeFix } from '../components/TypeFix'
 import { useEffect, useState } from 'react'
 import { api, type Assignment, type User } from '../api'
 import { Pager } from '../components/Pager'
@@ -219,6 +220,12 @@ function Detail({ a, now, dept, user, sending, onSend, onClose, onChanged }: {
             {a.is_assumed && <p className="cwn"><span className="tag" style={{ margin: '0 6px 0 0' }}>팀 가정</span>팀 가정 값으로 계산했습니다. 확정 값으로 바꿔 회신해 주세요.</p>}
             <div className="lbl">{a.point_kind ? '제안 포인트 문장' : 'RFP 원문'}</div>
             <div className="orig"><div className="ol">{where(a)}</div><span>{a.text}</span></div>
+            {a.requirement_id && <TypeFix runId={a.run_id} requirementId={a.requirement_id} current={a.type_code ?? null} />}
+            {a.ask_text && <>
+              <div className="lbl">메일에 넣은 확인할 점</div>
+              <p className="cwn" data-testid="ask-text"><span className="tag" style={{ margin: '0 6px 0 0' }}>{a.ask_by === 'AI' ? 'AI 작성' : '기본 문장'}</span>{a.ask_text}
+                <span className="dimv"> · 참고 문장이고 판단은 원문 기준</span></p>
+            </>}
             <div className="lbl">회신</div>
             {done && <p className="cwn">{a.reply_note ? `회신 요지: ${a.reply_note}` : '회신 요지를 적지 않았습니다.'}{a.replied_at ? ` (${stamp(a.replied_at)} · ${a.replied_by_name ?? ''})` : ''}</p>}
             {!done && !a.mail_sent_at && <p className="cwn">아직 메일을 보내지 않았습니다.{fail ? ` ${fail}: ${a.mail_error}` : ''}</p>}

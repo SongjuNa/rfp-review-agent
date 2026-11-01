@@ -217,7 +217,7 @@ def bulk_confirm(ctx: RunContext, run_id: int, judgment_ids: list[int],
     build_proposals(conn, run_id, ctx.llm)
     build_assignments(conn, run_id)
     conn.commit()
-    send_after_confirm(conn, run_id, actor_id)      # 확인을 마친 요청은 부서로 메일 (FR-11)
+    send_after_confirm(conn, run_id, actor_id, ctx.llm)  # 확인을 마친 요청은 부서로 메일
     return {"confirmed": len(befores), "skipped": skipped,
             "submission_check": _latest_check(conn, run_id)}
 
@@ -282,7 +282,7 @@ def act(ctx: RunContext, run_id: int, target: str, target_id: int, action: str,
         check_submission(conn, run_id)
     build_assignments(conn, run_id)                 # 채택한 제안 포인트는 영업·견적에 전달 (FR-11)
     conn.commit()
-    send_after_confirm(conn, run_id, actor_id)      # 확인을 마친 요청은 부서로 메일
+    send_after_confirm(conn, run_id, actor_id, ctx.llm)      # 확인을 마친 요청은 부서로 메일
     return {"before": _json(before).obj, "after": _json(after).obj,
             "submission_check": _latest_check(conn, run_id)}
 
@@ -489,6 +489,44 @@ def approval(conn: psycopg.Connection, run_id: int) -> dict:
             "review_ratio": ratio, "submission_check": _latest_check(conn, run_id)}
 
 
+TYPE_EDITORS = ("ENGINEER", "APPROVER")
+NO_TYPE = "NONE"
+
+
+def set_type(conn: psycopg.Connection, run_id: int, requirement_id: int, type_code: str,
+             reason: str | None, actor_id: int) -> dict:
+    """사람이 주 유형을 고친다 (add-type-examples, C3). 근거 HUMAN, 이력, 담당 전달 다시 만듦.
+
+    NONE은 미분류(주 유형 태그 없음). 보조 유형은 그대로 둔다(고친 유형과 같으면 지움).
+    """
+    if _user_role(conn, actor_id) not in TYPE_EDITORS:
+        raise ReviewError(403, "유형은 기술 검토 엔지니어와 승인자만 고칠 수 있습니다.")
+    found = conn.execute(
+        "SELECT 1 FROM requirement q JOIN run_document rd USING (document_id) "
+        "WHERE rd.run_id = %s AND q.requirement_id = %s", (run_id, requirement_id)).fetchone()
+    if found is None:
+        raise ReviewError(404, f"이 검토에 요구사항 {requirement_id}이(가) 없습니다.")
+    if type_code != NO_TYPE and conn.execute(
+            "SELECT 1 FROM requirement_type WHERE type_code = %s", (type_code,)).fetchone() is None:
+        raise ReviewError(400, f"알 수 없는 유형입니다: {type_code}")
+    old = conn.execute("SELECT type_code, decided_by FROM requirement_type_tag "
+                       "WHERE requirement_id = %s AND is_primary", (requirement_id,)).fetchone()
+    before = {"type_code": old[0] if old else NO_TYPE, "decided_by": old[1] if old else None}
+    after = {"type_code": type_code, "decided_by": "HUMAN"}
+    conn.execute("DELETE FROM requirement_type_tag WHERE requirement_id = %s "
+                 "AND (is_primary OR type_code = %s)", (requirement_id, type_code))
+    if type_code != NO_TYPE:
+        conn.execute("INSERT INTO requirement_type_tag (requirement_id, type_code, is_primary, "
+                     "decided_by) VALUES (%s, %s, TRUE, 'HUMAN')", (requirement_id, type_code))
+    log(conn, run_id, "requirement", requirement_id, "EDIT", before, after, reason,
+        actor_id)
+    conn.commit()
+    build_assignments(conn, run_id)       # 유형이 바뀌면 담당 부서가 바뀐다 (FR-11)
+    conn.commit()
+    return {"requirement_id": requirement_id, "before": before["type_code"],
+            "after": type_code}
+
+
 def history(conn: psycopg.Connection, run_id: int, target: str | None = None,
             target_id: int | None = None) -> list[dict]:
     with conn.cursor(row_factory=dict_row) as cur:
@@ -529,6 +567,8 @@ LABEL_SQL = {
         WHERE f.risk_id = ANY(%s)""",
     "output_item": "SELECT item_id, left(text_draft, 40) FROM output_item WHERE item_id = ANY(%s)",
     "proposal_point": "SELECT point_id, basis FROM proposal_point WHERE point_id = ANY(%s)",
+    "requirement": """SELECT requirement_id, left(text_raw, 40) FROM requirement
+                      WHERE requirement_id = ANY(%s)""",
     "loss_calc": "SELECT loss_calc_id, product_code FROM loss_calc WHERE loss_calc_id = ANY(%s)",
     "read_check": "SELECT read_check_id, label FROM read_check WHERE read_check_id = ANY(%s)",
 }
@@ -634,6 +674,7 @@ def assignments_for(conn: psycopg.Connection, role: str, run_id: int | None = No
                       a.type_code, t.type_name, u.user_name AS assignee,
                       a.mail_sent_at, a.mail_to, a.mail_error, su.user_name AS sent_by_name,
                       a.replied_at, ru.user_name AS replied_by_name, a.reply_note,
+                      a.ask_text, a.ask_by,
                       COALESCE(q.text_raw, p.text_draft) AS text, p.point_kind,
                       p.requirement_id AS point_requirement_id, p.is_assumed, r.stage,
                       {queries.REVIEW_INFO}

@@ -20,7 +20,7 @@ ADOPTED = ("ADOPTED", "EDITED")
 POINT_ROLES = {"MARGIN": ("SALES",), "FIELD": ("SALES",), "LOSS": ("SALES", "COST")}
 # 다시 만들 때 이어 쓰는 칸: 상태, 만든 시각, 메일 보낸 기록, 회신 기록 (update-role-handoff-mail)
 KEPT = ("status", "assignee_id", "sent_at", "updated_at", "mail_sent_at", "mail_to", "sent_by",
-        "mail_error", "replied_at", "replied_by", "reply_note")
+        "mail_error", "replied_at", "replied_by", "reply_note", "ask_text", "ask_by")
 DEFAULTS = {"status": "TODO"}
 PLACES = ", ".join("COALESCE(%s, now())" if c == "sent_at" else "%s" for c in KEPT)
 LIST_MARK = re.compile(r"^\s*(?:\(?[0-9a-zA-Z가-힣]{1,3}[.)]\s*|-\s*)")

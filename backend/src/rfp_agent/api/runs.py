@@ -53,11 +53,13 @@ from rfp_agent.api.schemas import (
     SubmissionCheck,
     SubmitResult,
     Tbe,
+    TypeEditResult,
     User,
     Warranty,
 )
 from rfp_agent.config import get_settings
 from rfp_agent.db.connection import connect
+from rfp_agent.llm.client import make_llm
 from rfp_agent.pipeline import (
     business,
     datasheet,
@@ -146,6 +148,12 @@ class Action(BaseModel):
     target_id: int
     action: str                     # CONFIRM, EDIT, REJECT, ADOPT, DISCARD
     value: dict | None = None       # EDIT: {"result"} / {"value", "unit"} / {"text"}
+    reason: str | None = None
+    actor_id: int | None = None
+
+
+class TypeEdit(BaseModel):
+    type_code: str                  # 유형 코드 또는 NONE(미분류)
     reason: str | None = None
     actor_id: int | None = None
 
@@ -632,6 +640,16 @@ def act(run_id: int, body: Action) -> ActionResult:
                                           body.reason, body.actor_id))
 
 
+@router.post("/runs/{run_id}/requirements/{requirement_id}/type")
+def edit_type(run_id: int, requirement_id: int, body: TypeEdit) -> TypeEditResult:
+    """사람이 요구사항의 주 유형을 고친다 (add-type-examples). 엔지니어·승인자만."""
+    _summary(run_id)
+    with connect() as conn:
+        actor_id = body.actor_id or review.default_user(conn, "ENGINEER")
+        return _review(lambda: review.set_type(conn, run_id, requirement_id, body.type_code,
+                                               body.reason, actor_id))
+
+
 @router.post("/runs/{run_id}/actions/bulk")
 def act_bulk(run_id: int, body: BulkAction) -> BulkResult:
     """여러 판정을 한 번에 제안대로 확정한다 (수정·반려는 한 줄씩)."""
@@ -815,7 +833,8 @@ def send_assignments(run_id: int, body: SendRequests) -> SendResult:
         conn.execute("UPDATE assignment SET mail_error = NULL WHERE run_id = %s "
                      "AND assignment_id = ANY(%s) AND mail_sent_at IS NULL",
                      (run_id, body.assignment_ids))
-        return send_requests(conn, run_id, body.assignment_ids, actor_id)
+        return send_requests(conn, run_id, body.assignment_ids, actor_id,
+                             make_llm(get_settings()))
 
 
 # ── 영업 인계 (add-submission-package, FR-11 확장) ──────────────

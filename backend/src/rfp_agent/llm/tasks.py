@@ -8,7 +8,7 @@ from rfp_agent.llm.client import LLM, LLMFormatError, call_with_retry
 from rfp_agent.llm.evidence import EvidenceSpan, normalize_quote
 from rfp_agent.llm.parallel import run_ordered, workers_of
 
-PROMPT_VERSION = "p3"           # p3: 유형 질문에 절·표 제목 문맥 (update-type-context)
+PROMPT_VERSION = "p4"           # p4: 유형 질문에 사람이 고른 예 (add-type-examples). p3: 절·표 문맥
 DOC_KINDS = ["BID_FORM", "REQUIREMENT_SPEC", "PURCHASE_SPEC", "TEST_SPEC", "SUPPLIER_SPEC",
              "UNKNOWN"]
 SENTENCE_LABELS = ["REQUIREMENT", "WRITING_RULE", "DESCRIPTION"]
@@ -147,11 +147,23 @@ def _with_context(text: str, context: str | None) -> str:
     return f"[{one_line(context)[:CONTEXT_CHARS]}] {line}" if context else line
 
 
+def _with_examples(line: str, examples: list[tuple[str, str]]) -> str:
+    """줄 끝에 다른 문서에서 사람이 고른 예 (add-type-examples). 한 줄 안에 둔다."""
+    if not examples:
+        return line
+    shown = "; ".join(f'"{text}" → {code}' for text, code in examples)
+    return f"{line} (사람이 고른 예: {shown})"
+
+
 def type_unclassified(llm: LLM, texts: list[str], on_progress: Progress | None = None,
-                      contexts: list[str | None] | None = None) -> list[str]:
-    """규칙에 안 걸린 요구사항마다 유형 하나. contexts는 줄마다 절·표 제목 문맥(없으면 None)."""
-    lines = [_with_context(t, c) for t, c in zip(texts, contexts or [None] * len(texts),
-                                                  strict=True)]
+                      contexts: list[str | None] | None = None,
+                      examples: list[list[tuple[str, str]]] | None = None) -> list[str]:
+    """규칙에 안 걸린 요구사항마다 유형 하나. contexts는 줄마다 절·표 제목 문맥(없으면 None).
+
+    examples는 줄마다 다른 문서에서 사람이 고친 비슷한 줄과 유형(참고, add-type-examples).
+    """
+    lines = [_with_examples(_with_context(t, c), e) for t, c, e in zip(
+        texts, contexts or [None] * len(texts), examples or [[]] * len(texts), strict=True)]
 
     def prompt_of(part: list[str]) -> str:
         numbered = "\n".join(f"{i}. {line}" for i, line in enumerate(part))
@@ -159,7 +171,8 @@ def type_unclassified(llm: LLM, texts: list[str], on_progress: Progress | None =
             "RFP 요구사항마다 유형 하나를 고른다. 대괄호 안은 그 줄이 속한 절·표 제목(문맥)이다. "
             "TECH_PERF=기술 성능, RISK=위험 조건, "
             "STANDARD_CERT=적용 규격·인증, COST=비용 영향, TEST=시험, MAKER_QUAL=제조사 자격, "
-            "SITE_ENV=설치 환경, NONE=어느 것도 아님. 요구사항마다 앞의 번호(n)와 "
+            "SITE_ENV=설치 환경, NONE=어느 것도 아님. 괄호 안 '사람이 고른 예'는 다른 문서에서 "
+            "엔지니어가 비슷한 줄에 고른 유형으로 참고만 한다. 요구사항마다 앞의 번호(n)와 "
             "고른 유형(v)을 함께 낸다.\n" + numbered
         )
 
@@ -354,6 +367,54 @@ def draft_sentences(llm: LLM, purpose: str,
                 for a, (_, marks) in zip(answers, part, strict=True)]
 
     # 40줄 묶음을 동시에 묻고 묶음 순서대로 잇는다 (NFR-10)
+    jobs = [lambda part=items[start:start + CHUNK]: ask(part)
+            for start in range(0, len(items), CHUNK)]
+    return [t for part in run_ordered(jobs, workers_of(llm)) for t in part]
+
+
+DEPT_VIEWS = {
+    "COST": ("견적 담당", "비용·일정·보증·지체상금처럼 견적 금액이나 조건에 반영할 것이 있는지"),
+    "QUALITY": ("품질 담당", "시험·성적서·인증·시험 입회처럼 품질 쪽에서 맞출 수 있는지"),
+    "SALES": ("영업 담당", "고객과 협의하거나 계약·납기 조건으로 확인할 것이 있는지"),
+}
+ASK_MAX = 160
+_DIGIT = re.compile(r"\d")
+_HANGUL = re.compile(r"[가-힣]")
+
+
+def usable_question(text: str) -> bool:
+    """비지 않고, 160자 이하, 숫자 없음(CR-07), 경쟁 비교 없음, 한글 있음."""
+    return (bool(text) and len(text) <= ASK_MAX and not _DIGIT.search(text)
+            and not COMPETITOR.search(text) and bool(_HANGUL.search(text)))
+
+
+def department_questions(llm: LLM, role: str, items: list[str]) -> list[str | None]:
+    """협조 요청마다 받는 부서 관점의 확인할 점 한 문장 (add-handoff-questions, C4).
+
+    숫자는 쓰지 못한다(요구사항 칸에 원문 그대로 있음). 검사에 걸린 줄은 None →
+    부르는 곳이 부서 기본 문장으로 바꾼다. 줄 번호가 틀리면 형식 오류(다시 묻지 않음).
+    """
+    dept, view = DEPT_VIEWS[role]
+
+    def ask(part: list[str]) -> list[str | None]:
+        numbered = "\n".join(f"{i}. {one_line(text)[:600]}" for i, text in enumerate(part))
+        prompt = (
+            f"입찰 기술 검토 엔지니어가 {dept}에게 협조를 요청하는 메일을 쓴다. "
+            f"요청마다 {dept}가 {view} 확인할 점을 한국어 한 문장으로 쓴다. "
+            "숫자는 하나도 쓰지 않는다(숫자는 메일의 요구사항 칸에 원문 그대로 있다). "
+            "요구사항에 없는 사실을 더하지 않고, 경쟁 제품이나 다른 회사와 비교하지 않는다. "
+            "판정이나 결론을 내리지 말고 확인을 부탁하는 문장으로 쓴다. "
+            "요청마다 앞의 번호(n)와 문장(text)을 함께 낸다.\n" + numbered
+        )
+        schema = _numbered_schema("asks", "text", {"type": "string"})
+
+        def check(d):
+            _check_numbers(d["asks"], len(part), "asks")
+
+        answers = _in_order(call_with_retry(llm, prompt, schema, check)["asks"])
+        return [text if usable_question(text := " ".join(a["text"].split())) else None
+                for a in answers]
+
     jobs = [lambda part=items[start:start + CHUNK]: ask(part)
             for start in range(0, len(items), CHUNK)]
     return [t for part in run_ordered(jobs, workers_of(llm)) for t in part]

@@ -1,3 +1,4 @@
+import { TypeFix } from '../../components/TypeFix'
 import { useEffect, useState } from 'react'
 import { api, type EngineeringCheck, type Judgment, type LogEntry, type OutputItem, type RunDocument, type Warranty } from '../../api'
 import { CHECK_NAMES, checkLine } from '../../components/checks'
@@ -98,6 +99,7 @@ export function JudgmentDialog({ runId, j, w, check, items, log, docs, pos, tota
             <dl className="basis">
               {basis.map(([k, v]) => <div key={k}><dt>{k}</dt><dd>{v}</dd></div>)}
             </dl>
+            <TypeFix runId={runId} requirementId={j.requirement_id} current={j.type_code ?? null} />
 
             <div className="lbl">판정 출처</div>
             <table className="pv"><tbody>

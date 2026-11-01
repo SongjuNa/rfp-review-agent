@@ -587,6 +587,13 @@ class BulkResult(Out):
     submission_check: SubmissionCheck | None
 
 
+class TypeEditResult(Out):
+    """사람 유형 고치기 결과 (add-type-examples). NONE은 미분류."""
+    requirement_id: int
+    before: str
+    after: str
+
+
 class LogEntry(Out):
     log_id: int
     target_table: str
@@ -739,6 +746,9 @@ class Assignment(Out):
     replied_at: datetime | None
     replied_by_name: str | None
     reply_note: str | None
+    # 메일에 넣은 부서 관점 확인할 점과 쓴 이 (add-handoff-questions, C4)
+    ask_text: str | None = None
+    ask_by: Literal["AI", "CODE"] | None = None
 
 
 class ReviewCard(RunListItem):
@@ -1113,6 +1123,7 @@ class RunLogItem(ReviewFields):
     requirements: int
     judgments: int
     explanations_dropped: int               # 근거 대조에서 버린 위험 조건 설명 수
+    type_examples: int = 0                  # 사람이 고른 유형 예시를 붙여 물은 줄 수 (C3)
     explanations_unverified: int            # AI 검증에서 확인 필요로 표시된 설명 수
     retries: int
     steps: list[RunStepTime]

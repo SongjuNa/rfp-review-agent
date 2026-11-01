@@ -34,7 +34,9 @@ def run_log(conn: psycopg.Connection, limit: int = 200) -> list[dict]:
                    EXTRACT(EPOCH FROM r.finished_at - r.started_at)::float AS seconds,
                    r.llm_model, r.dict_version, r.llm_calls, r.llm_retries, r.llm_input_tokens,
                    r.llm_output_tokens, r.llm_thinking_tokens, r.documents_reused,
-                   r.retry_count AS retries, r.cancel_requested_at IS NOT NULL AS cancelled,
+                   r.retry_count AS retries,
+                   COALESCE((r.graph_state->>'type_examples')::int, 0) AS type_examples,
+                   r.cancel_requested_at IS NOT NULL AS cancelled,
                    (SELECT count(*) FROM run_document WHERE run_id = r.run_id) AS documents,
                    (SELECT count(*) FROM requirement q JOIN run_document rd USING (document_id)
                      WHERE rd.run_id = r.run_id AND q.req_kind = 'REQUIREMENT') AS requirements,

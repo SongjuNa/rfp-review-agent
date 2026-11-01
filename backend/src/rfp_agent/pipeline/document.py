@@ -15,6 +15,7 @@ from psycopg.types.json import Jsonb
 from rfp_agent.llm import tasks
 from rfp_agent.llm.client import LLM
 from rfp_agent.pipeline import classify as cls
+from rfp_agent.pipeline import type_examples
 from rfp_agent.pipeline.dictionaries import PipelineDicts
 from rfp_agent.pipeline.docx_reader import find_figures, read_blocks
 from rfp_agent.pipeline.extract import Candidate, extract
@@ -45,6 +46,7 @@ class DocumentResult:
     reused: bool
     readable: bool
     requirement_count: int = 0
+    type_examples: int = 0          # 사람 예시를 붙여 물은 줄 수 (add-type-examples)
 
 
 def _next_file_no(conn: psycopg.Connection) -> int:
@@ -254,6 +256,7 @@ def _process_new(conn, path: Path, dicts: PipelineDicts, key: str, llm: LLM | No
         doc_target = target_of(doc_title, dicts.values)
         risk_terms = [e.pattern for e in dicts.risk_expressions]
         unclassified: list[tuple[int, Candidate]] = []
+        with_examples = 0
         saved = 0
         recent_text: list[str] = []
         current_top: int | None = None
@@ -327,16 +330,20 @@ def _process_new(conn, path: Path, dicts: PipelineDicts, key: str, llm: LLM | No
 
         if llm is not None and unclassified:
             report("type", 0, len(unclassified))
-            ai_types = tasks.type_unclassified(llm, [cand.text for _, cand in unclassified],
+            texts = [cand.text for _, cand in unclassified]
+            examples = type_examples.pick(conn, llm, doc_id, texts)
+            with_examples = sum(1 for e in examples if e)
+            ai_types = tasks.type_unclassified(llm, texts,
                                                lambda done, total: report("type", done, total),
-                                               [type_context(cand) for _, cand in unclassified])
+                                               [type_context(cand) for _, cand in unclassified],
+                                               examples)
             for (req_id, _), code in zip(unclassified, ai_types, strict=True):
                 if code != "NONE":
                     conn.execute(
                         "INSERT INTO requirement_type_tag (requirement_id, type_code, is_primary, "
                         "decided_by) VALUES (%s, %s, TRUE, 'AI')", (req_id, code))
 
-    return DocumentResult(doc_id, file_no, False, True, saved)
+    return DocumentResult(doc_id, file_no, False, True, saved, with_examples)
 
 
 FIRST_TITLE_BLOCKS = 15
