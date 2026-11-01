@@ -40,6 +40,23 @@ def classify_document(llm: LLM, file_name: str, first_page: str) -> str:
     return call_with_retry(llm, prompt, schema, check)["doc_kind"]
 
 
+def _numbered_schema(field: str, key: str, value: dict) -> dict:
+    """답마다 묻는 글의 줄 번호(n)를 함께 받는 스키마 (update-ai-answer-checks)."""
+    return {"type": "object", "properties": {field: {"type": "array", "items": {
+        "type": "object", "properties": {"n": {"type": "integer"}, key: value},
+        "required": ["n", key]}}}, "required": [field]}
+
+
+def _check_numbers(answers: list[dict], count: int, field: str) -> None:
+    """줄 번호가 0..count-1을 하나씩 빠짐없이 덮어야 한다. 개수만 맞고 번호가 겹치면 실패."""
+    numbers = sorted(x["n"] for x in answers)
+    assert numbers == list(range(count)), f"{field} 번호 {numbers[:5]}…, 필요 0~{count - 1}"
+
+
+def _in_order(answers: list[dict]) -> list[dict]:
+    return sorted(answers, key=lambda x: x["n"])
+
+
 def _pick_each(llm: LLM, items: list[str], field: str, choices: list[str], prompt_of) -> list[str]:
     """항목마다 보기 하나를 고르게 한다. 답의 개수가 틀리면 묶음을 반으로 나눠 다시 묻는다.
 
@@ -47,15 +64,14 @@ def _pick_each(llm: LLM, items: list[str], field: str, choices: list[str], promp
     그래서 재시도(CR-12) 뒤에도 실패한 묶음만 둘로 나눈다. 한 개짜리도 실패하면 그대로 실패로 둔다.
     """
     prompt = prompt_of(items)
-    schema = {"type": "object", "properties": {field: {
-        "type": "array", "items": {"type": "string", "enum": choices}}}, "required": [field]}
+    schema = _numbered_schema(field, "v", {"type": "string", "enum": choices})
 
     def check(d):
-        assert len(d[field]) == len(items), f"{field} {len(d[field])}개, 필요 {len(items)}개"
-        assert all(x in choices for x in d[field])
+        _check_numbers(d[field], len(items), field)
+        assert all(x["v"] in choices for x in d[field])
 
     try:
-        return call_with_retry(llm, prompt, schema, check)[field]
+        return [x["v"] for x in _in_order(call_with_retry(llm, prompt, schema, check)[field])]
     except LLMFailure:
         if len(items) == 1:
             raise
@@ -71,7 +87,7 @@ def _label_prompt(section_title: str | None, part: list[str]) -> str:
         "각 문장이 입찰자가 지켜야 할 요구사항(REQUIREMENT)인지, "
         "제출 양식을 채우는 방법에 대한 작성 규칙(WRITING_RULE)인지, "
         "설명(DESCRIPTION)인지 고른다. "
-        "문장 수와 같은 개수의 label을 같은 순서로 낸다.\n"
+        "문장마다 앞의 번호(n)와 고른 label(v)을 함께 낸다.\n"
         f"절 제목: {section_title or '(없음)'}\n{numbered}"
     )
 
@@ -129,7 +145,8 @@ def type_unclassified(llm: LLM, texts: list[str],
         return (
             "RFP 요구사항마다 유형 하나를 고른다. TECH_PERF=기술 성능, RISK=위험 조건, "
             "STANDARD_CERT=적용 규격·인증, COST=비용 영향, TEST=시험, MAKER_QUAL=제조사 자격, "
-            "SITE_ENV=설치 환경, NONE=어느 것도 아님. 같은 순서, 같은 개수로 낸다.\n" + numbered
+            "SITE_ENV=설치 환경, NONE=어느 것도 아님. 요구사항마다 앞의 번호(n)와 "
+            "고른 유형(v)을 함께 낸다.\n" + numbered
         )
 
     chunks = [(texts[start:start + CHUNK], prompt_of) for start in range(0, len(texts), CHUNK)]
@@ -156,12 +173,36 @@ class RiskExplanation:
     claims: tuple[Claim, ...]
 
 
+# 근거 대조에서 설명을 버린 이유 (update-ai-answer-checks). 처음 걸린 것 하나만 남긴다.
+UNKNOWN_EVIDENCE = "UNKNOWN_EVIDENCE"       # 주지 않은 근거 ID
+QUOTE_NOT_FOUND = "QUOTE_NOT_FOUND"         # 인용이 고른 근거 조각에 없음
+NUMBER_NOT_ALLOWED = "NUMBER_NOT_ALLOWED"   # 사실·그 문장의 근거 조각에 없는 숫자·배수 말
+
+
+@dataclass(frozen=True)
+class DroppedExplanation:
+    reason: str
+
+
+# 숫자 없이 크기를 말하는 배수·분수 말. 근거·사실에 같은 말이 없으면 지어낸 크기로 본다.
+QUANTITY_WORDS = re.compile(r"(?:두|세|네|다섯|열)\s?배|절반|\b(?:twice|double|triple|half)\b",
+                            re.IGNORECASE)
+
+
+def _quantity_words(text: str) -> set[str]:
+    return {re.sub(r"\s", "", w).lower() for w in QUANTITY_WORDS.findall(text)}
+
+
+def _numbers(text: str) -> set[str]:
+    return {n.replace(",", "") for n in NUMBER.findall(text)}
+
+
 def explain_risk(llm: LLM, kind: str, facts: str,
-                 spans: list[EvidenceSpan]) -> RiskExplanation | None:
+                 spans: list[EvidenceSpan]) -> RiskExplanation | DroppedExplanation:
     """위험 조건 설명을 문장(claim)마다 근거 조각 ID·원문 인용과 함께 받는다.
 
-    코드가 검증해서 하나라도 어긋나면 설명 전체를 버린다 (CR-07):
-    없는 근거 ID, 고른 조각에 없는 인용, 사실·근거에 없는 숫자.
+    코드가 검증해서 하나라도 어긋나면 설명 전체를 버리고 이유를 돌려준다 (CR-07):
+    없는 근거 ID, 고른 조각에 없는 인용, 사실과 그 문장이 댄 근거 조각에 없는 숫자·배수 말.
     """
     prompt = (
         "입찰 기술 검토 엔지니어에게 이 조항이 왜 위험한지, 또는 두 값이 왜 다를 수 있는지 "
@@ -195,15 +236,16 @@ def explain_risk(llm: LLM, kind: str, facts: str,
                          c["relation"]) for c in data["claims"])
     for c in claims:
         if any(i not in sources for i in c.evidence_ids):
-            return None                     # 주지 않은 근거를 댔다
+            return DroppedExplanation(UNKNOWN_EVIDENCE)
         quote = normalize_quote(c.quote)
         if not any(quote in normalize_quote(sources[i]) for i in c.evidence_ids):
-            return None                     # 인용이 고른 근거 조각에 없다
-    text = "\n".join(c.text for c in claims)
-    allowed = {n.replace(",", "") for n in NUMBER.findall(facts + " " + " ".join(sources.values()))}
-    if any(n.replace(",", "") not in allowed for n in NUMBER.findall(text)):
-        return None
-    return RiskExplanation(text, claims)
+            return DroppedExplanation(QUOTE_NOT_FOUND)
+        # 숫자·배수 말은 사실과 이 문장이 댄 근거 조각에 있어야 한다 (다른 조각의 숫자는 안 됨)
+        basis = facts + " " + " ".join(sources[i] for i in c.evidence_ids)
+        if (not _numbers(c.text) <= _numbers(basis)
+                or not _quantity_words(c.text) <= _quantity_words(basis)):
+            return DroppedExplanation(NUMBER_NOT_ALLOWED)
+    return RiskExplanation("\n".join(c.text for c in claims), claims)
 
 
 DRAFT_VERSION = "d1"
@@ -211,14 +253,23 @@ COMPETITOR = re.compile(r"경쟁|타사|다른 회사|competitor|other manufactu
 _PLACEHOLDER = re.compile(r"\{(\w+)\}")
 
 
-def draft_sentences(llm: LLM, purpose: str, items: list[tuple[str, dict[str, str]]]) -> list[str]:
+def _usable_draft(text: str, marks: dict[str, str]) -> bool:
+    """비지 않고, 경쟁 비교가 없고, 준 자리표시자를 모두(그리고 그것만) 썼다."""
+    return (bool(text) and not COMPETITOR.search(text)
+            and set(_PLACEHOLDER.findall(text)) == set(marks))
+
+
+def draft_sentences(llm: LLM, purpose: str,
+                    items: list[tuple[str, dict[str, str]]]) -> list[str | None]:
     """항목마다 한국어 문장 하나. 숫자는 자리표시자로만 쓰게 하고(CR-07) 채우기·대조는 코드가 한다.
 
     items: (사실 문장, {자리표시자: 뜻}) 목록.
-    자리표시자 밖의 숫자나 경쟁 제품 비교가 있으면 실패로 본다.
+    준 자리표시자를 다 쓰지 않았거나 없는 자리표시자를 썼거나, 비었거나, 경쟁 제품 비교가 있는
+    줄은 None이다. 부르는 곳이 그 줄만 코드 기본 문장으로 바꾼다 (update-ai-answer-checks).
+    줄 번호가 빠지거나 겹치면 형식 오류로 다시 묻는다 (CR-12).
     """
 
-    def ask(part: list[tuple[str, dict[str, str]]]) -> list[str]:
+    def ask(part: list[tuple[str, dict[str, str]]]) -> list[str | None]:
         numbered = "\n".join(
             f"{i}. {one_line(facts)} (자리표시자: "
             + ", ".join(f"{{{k}}}={v}" for k, v in marks.items()) + ")"
@@ -226,20 +277,18 @@ def draft_sentences(llm: LLM, purpose: str, items: list[tuple[str, dict[str, str
         prompt = (
             f"입찰 기술 검토 엔지니어가 쓸 {purpose} 문장 초안을 "
             "항목마다 한국어 한두 문장으로 쓴다. "
-            "숫자와 제품 이름은 직접 쓰지 말고 주어진 자리표시자만 그대로 쓴다. "
+            "숫자와 제품 이름은 직접 쓰지 말고 주어진 자리표시자를 모두 그대로 쓴다. "
             "사실에 없는 내용을 더하지 않고, 경쟁 제품이나 다른 회사와 비교하는 말은 쓰지 않는다. "
-            "항목 수와 같은 개수의 문장을 같은 순서로 낸다.\n" + numbered
+            "항목마다 앞의 번호(n)와 문장(text)을 함께 낸다.\n" + numbered
         )
-        schema = {"type": "object", "properties": {"texts": {
-            "type": "array", "items": {"type": "string"}}}, "required": ["texts"]}
+        schema = _numbered_schema("texts", "text", {"type": "string"})
 
         def check(d):
-            assert len(d["texts"]) == len(part)
-            for text, (_, marks) in zip(d["texts"], part, strict=True):
-                assert text.strip() and not COMPETITOR.search(text)
-                assert set(_PLACEHOLDER.findall(text)) <= set(marks)
+            _check_numbers(d["texts"], len(part), "texts")
 
-        return [t.strip() for t in call_with_retry(llm, prompt, schema, check)["texts"]]
+        answers = _in_order(call_with_retry(llm, prompt, schema, check)["texts"])
+        return [text if _usable_draft(text := a["text"].strip(), marks) else None
+                for a, (_, marks) in zip(answers, part, strict=True)]
 
     # 40줄 묶음을 동시에 묻고 묶음 순서대로 잇는다 (NFR-10)
     jobs = [lambda part=items[start:start + CHUNK]: ask(part)

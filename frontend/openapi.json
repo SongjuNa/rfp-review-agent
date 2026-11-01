@@ -12790,6 +12790,22 @@
             ],
             "title": "Explanation Ai"
           },
+          "explanation_drop_reason": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "UNKNOWN_EVIDENCE",
+                  "QUOTE_NOT_FOUND",
+                  "NUMBER_NOT_ALLOWED"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Explanation Drop Reason"
+          },
           "expression": {
             "anyOf": [
               {
@@ -12819,6 +12835,7 @@
           "item_name",
           "facts",
           "explanation_ai",
+          "explanation_drop_reason",
           "expression",
           "members"
         ],
@@ -13920,6 +13937,10 @@
             "type": "integer",
             "title": "Judgments"
           },
+          "explanations_dropped": {
+            "type": "integer",
+            "title": "Explanations Dropped"
+          },
           "retries": {
             "type": "integer",
             "title": "Retries"
@@ -13965,6 +13986,7 @@
           "documents_reused",
           "requirements",
           "judgments",
+          "explanations_dropped",
           "retries",
           "steps"
         ],

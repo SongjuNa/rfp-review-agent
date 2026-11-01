@@ -230,6 +230,9 @@ class Risk(Out):
     item_name: str | None
     facts: str | None
     explanation_ai: str | None
+    # 근거 대조에서 AI 설명을 버린 이유 (update-ai-answer-checks). 저장했거나 AI 없이 돌면 null
+    explanation_drop_reason: Literal["UNKNOWN_EVIDENCE", "QUOTE_NOT_FOUND",
+                                     "NUMBER_NOT_ALLOWED"] | None
     expression: str | None
     members: list[RiskMember]
 
@@ -1097,6 +1100,7 @@ class RunLogItem(ReviewFields):
     documents_reused: int
     requirements: int
     judgments: int
+    explanations_dropped: int               # 근거 대조에서 버린 위험 조건 설명 수
     retries: int
     steps: list[RunStepTime]
 

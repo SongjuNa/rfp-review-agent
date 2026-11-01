@@ -13,6 +13,13 @@ import { OutputEditor } from './OutputEditor'
 const KINDS = ['BLANKET', 'VALUE_MISMATCH', 'OPEN_SCOPE'] as const
 const TONES: Record<string, string> = { CANDIDATE: 'c-ora', CONFIRMED: 'c-red', CLOSED_OK: 'c-grey' }
 // 언어 모델 설명이 없을 때 쓰는 종류별 한 줄
+// 근거 대조에서 AI 설명을 버린 이유 (update-ai-answer-checks)
+const DROP_REASONS: Record<string, string> = {
+  UNKNOWN_EVIDENCE: '없는 근거 ID',
+  QUOTE_NOT_FOUND: '근거에 없는 인용',
+  NUMBER_NOT_ALLOWED: '근거에 없는 숫자',
+}
+
 const KIND_NOTES: Record<string, string> = {
   BLANKET: '책임 범위를 정하지 않고 넓히는 표현',
   VALUE_MISMATCH: '같은 항목의 값이 문서 안에서 다름',
@@ -86,7 +93,7 @@ export function RiskTab({ run, tick, onChanged }: { run: RunSummary; tick: numbe
                   <td style={{ width: 92 }}><span className={`st ${TONES[r.status] ?? 'c-grey'}`}>{STATUS_NAMES[r.status] ?? r.status}</span></td>
                   <td>
                     <b style={{ fontWeight: 600 }}>{title(r)}</b>
-                    <div className="en">{RISK_NAMES[r.risk_kind]} · {closed && d?.reason ? d.reason : r.explanation_ai ?? KIND_NOTES[r.risk_kind]}</div>
+                    <div className="en">{RISK_NAMES[r.risk_kind]} · {closed && d?.reason ? d.reason : r.explanation_ai ?? (r.explanation_drop_reason ? <span className="c-ora" title="AI가 쓴 설명이 근거와 맞지 않아 저장하지 않았습니다">AI 설명 버림 · {DROP_REASONS[r.explanation_drop_reason]}</span> : KIND_NOTES[r.risk_kind])}</div>
                   </td>
                   <td className="loc">
                     <button type="button" className="lnk" aria-expanded={open === r.risk_id} style={{ fontSize: 'inherit', fontWeight: 400, color: 'inherit', textAlign: 'left' }}

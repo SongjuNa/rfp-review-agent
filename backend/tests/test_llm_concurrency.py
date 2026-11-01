@@ -46,12 +46,15 @@ class EchoLLM(FakeLLM):
                 self.active -= 1
         lines = re.findall(r"^\d+\. (.*)$", prompt, re.MULTILINE)
         if "labels" in answer:
-            answer["labels"] = [("REQUIREMENT", "DESCRIPTION")[crc(t) % 2] for t in lines]
+            answer["labels"] = [{"n": n, "v": ("REQUIREMENT", "DESCRIPTION")[crc(t) % 2]}
+                                for n, t in enumerate(lines)]
         elif "types" in answer:
-            answer["types"] = [tasks.TYPE_CODES[crc(t) % len(tasks.TYPE_CODES)] for t in lines]
+            answer["types"] = [{"n": n, "v": tasks.TYPE_CODES[crc(t) % len(tasks.TYPE_CODES)]}
+                               for n, t in enumerate(lines)]
         elif "texts" in answer:
-            answer["texts"] = ["초안 " + "abcdefghij"[crc(line) % 10] + " " + text
-                               for line, text in zip(lines, answer["texts"], strict=True)]
+            answer["texts"] = [{"n": a["n"], "text": "초안 " + "abcdefghij"[crc(line) % 10] + " "
+                                + a["text"]}
+                               for line, a in zip(lines, answer["texts"], strict=True)]
         return answer
 
 

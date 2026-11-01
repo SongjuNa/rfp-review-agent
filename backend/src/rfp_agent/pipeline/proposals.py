@@ -127,7 +127,9 @@ def build_proposals(conn: psycopg.Connection, run_id: int, llm: LLM | None) -> i
     if llm is not None and fresh:
         texts = tasks.draft_sentences(llm, "기술 제안 포인트",
                                       [(p["facts"], p["marks"]) for p in fresh])
-        fresh_texts = {id(p): (t, "AI") for p, t in zip(fresh, texts, strict=True)}
+        # 자리표시자를 다 쓰지 않은 포인트 등은 그 포인트만 코드 기본 문장 (update-ai-answer-checks)
+        fresh_texts = {id(p): (t, "AI") if t is not None else (p["template"], "CODE")
+                       for p, t in zip(fresh, texts, strict=True)}
     else:
         fresh_texts = {id(p): (p["template"], "CODE") for p in fresh}
     field = _field_points(conn, run_id)

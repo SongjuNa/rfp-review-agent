@@ -77,7 +77,7 @@ class WritingRuleLLM(FakeLLM):
     def generate_json(self, prompt: str, schema: dict) -> dict:
         answer = super().generate_json(prompt, schema)
         if "labels" in answer:
-            answer["labels"] = ["WRITING_RULE"] * len(answer["labels"])
+            answer["labels"] = [{"n": a["n"], "v": "WRITING_RULE"} for a in answer["labels"]]
         return answer
 
 

@@ -102,13 +102,16 @@ class FakeLLM:
             return {"claims": [{"text": "두 값의 적용 대상이 달라 확인이 필요하다.",
                                 "exact_quote": text[:20], "evidence_ids": [eid],
                                 "relation": "INFERRED"}]}
+        # 묶음 답은 줄 번호(n)와 함께 낸다 (update-ai-answer-checks)
         count = len(re.findall(r"^\d+\. ", prompt, re.MULTILINE))
         if field == "texts":
             lines = re.findall(r"^\d+\. .*\(자리표시자: (.*)\)$", prompt, re.MULTILINE)
-            return {"texts": [self.text or "초안: " + " ".join(
-                re.findall(r"\{\w+\}", marks)) for marks in lines]}
+            # text의 "{all}"은 그 줄의 자리표시자 전부로 바꾼다 (자리표시자를 모두 써야 AI 문장)
+            return {"texts": [{"n": n, "text": (self.text or "초안: {all}").replace(
+                "{all}", " ".join(re.findall(r"\{\w+\}", marks)))}
+                for n, marks in enumerate(lines)]}
         default = {"labels": "REQUIREMENT", "types": "NONE"}[field]
-        return {field: [default] * count}
+        return {field: [{"n": n, "v": default} for n in range(count)]}
 
 
 @pytest.fixture
