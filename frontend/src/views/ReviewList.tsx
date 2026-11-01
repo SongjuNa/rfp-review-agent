@@ -89,13 +89,13 @@ function Row({ r, seq, me, now }: { r: RunListItem; seq: number; me: number | nu
   const due = r.due_date ? dday(r.due_date) : null
   return (
     <tr className={r.stage === 'APPROVED' || r.stage === 'REJECTED' ? 'dis' : ''}>
-      <td className="num mono" style={{ color: '#667085' }}>{seq}</td>
+      <td className="num mono" style={{ color: 'var(--c-muted)' }}>{seq}</td>
       <td><span className={`st ${STAGE_TONES[r.stage]}`}>{STAGE_NAMES[r.stage]}</span></td>
       <td>{r.project_name && <span className="pjn">{r.project_name}</span>}</td>
       <td>
         {failed || r.stage === 'APPROVAL'
           ? <a className="failnm" href={detail}>{scope}</a>
-          : <a href={detail} style={{ color: '#1F2937', fontWeight: 600 }}>{scope}</a>}
+          : <a href={detail} style={{ color: 'var(--c-text)', fontWeight: 600 }}>{scope}</a>}
         {failed && step && <a className="tag failtag" href={detail}>{step}에서 멈춤<span className="ms" aria-hidden="true">chevron_right</span></a>}
         {processing && step && <span className="tag">{step} 중 {progress(r)}%</span>}
         <div className="cond meta">
@@ -206,7 +206,7 @@ export function ReviewList() {
 
       <section className="sec">
         <div className="sech">
-          <h2>검토 <span style={{ fontWeight: 400, color: '#667085' }}>{rows.length}</span></h2>
+          <h2>검토 <span style={{ fontWeight: 400, color: 'var(--c-muted)' }}>{rows.length}</span></h2>
           <div className="own">
             <div className="seg" role="group" aria-label="담당 범위">
               {([['mine', '내 검토'], ['all', '팀 전체'], ['submitted', '내가 올린 결재']] as const).map(([k, l]) => (
@@ -299,7 +299,7 @@ export function ReviewList() {
             onSize={(n) => { setSize(n); setPage(1) }} />
         </div>
         {runs.data !== null && rows.length === 0 && (
-          <p style={{ margin: 0, padding: '16px 12px', color: '#667085' }}>
+          <p style={{ margin: 0, padding: '16px 12px', color: 'var(--c-muted)' }}>
             {submitted && owned.length === 0 ? '내가 상신한 검토가 없습니다.' : '조건에 맞는 검토가 없습니다.'}</p>
         )}
       </section>

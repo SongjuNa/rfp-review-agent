@@ -61,12 +61,12 @@ export function ReviewInfoDialog({ run, onClose, onSaved }: { run: RunSummary; o
                 </select>
               </label>
             </div>
-            <p className="aphint" style={{ color: '#667085' }}>고친 칸은 이력 탭에 남습니다. 검토 정보는 판정에 쓰지 않습니다.
+            <p className="aphint" style={{ color: 'var(--c-muted)' }}>고친 칸은 이력 탭에 남습니다. 검토 정보는 판정에 쓰지 않습니다.
               {run.business_no && <> 사업명은 <a className="lnk" href={`#/projects/${run.business_no}`}>사업 상세</a>에서 고칩니다.</>}</p>
           </section>
         </div>
         <div className="mdf">
-          <span className="mdf-n" style={{ marginRight: 'auto', color: error ? '#B42318' : undefined }} role={error ? 'alert' : undefined}>
+          <span className="mdf-n" style={{ marginRight: 'auto', color: error ? 'var(--c-red)' : undefined }} role={error ? 'alert' : undefined}>
             {error ?? (changed.length ? `${changed.length}칸 바뀜` : '바뀐 칸 없음')}</span>
           <button type="button" className="bo" onClick={onClose}>취소</button>
           <button type="button" className="bp" disabled={busy || changed.length === 0} onClick={save}>저장</button>

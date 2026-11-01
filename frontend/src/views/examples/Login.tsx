@@ -16,9 +16,9 @@ const SLIDES: Slide[] = [
   { h: '여러 언어 문서를 읽는다', art: 'globe',
     cards: [{ tag: 'EN', label: 'Rated normal current 4,000 A', dir: 'ltr', lang: 'en' }, { tag: 'VI', label: 'Dòng cắt định mức 40 kA', dir: 'ltr', lang: 'vi' },
       { tag: 'AR', label: 'درجة الحرارة المحيطة ⁦40 °C⁩', dir: 'rtl', lang: 'ar' }] },
-  { h: '판정한다', art: 'check', cards: [{ icon: 'find_in_page', label: '원문 7161행 "4000 A"' }, { icon: 'inventory_2', label: '제품값 3,150 A (LSG-145-40)' }, { icon: 'report', label: '일탈 후보', dot: '#F97066' }] },
-  { h: '돈으로 본다', art: 'calc', cards: [{ icon: 'gavel', label: '지체상금 조항', dot: '#F97066' }, { icon: 'warning', label: '포괄 조항 1건', dot: '#FDB022' }, { icon: 'payments', label: '평가 가격 영업 권한 필요' }] },
-  { h: '이기는 제안을 만든다', art: 'target', cards: [{ icon: 'description', label: '일탈 목록 초안' }, { icon: 'help', label: '질의서 초안' }, { icon: 'trending_up', label: '제안 포인트 2건', dot: '#47CD89' }] },
+  { h: '판정한다', art: 'check', cards: [{ icon: 'find_in_page', label: '원문 7161행 "4000 A"' }, { icon: 'inventory_2', label: '제품값 3,150 A (LSG-145-40)' }, { icon: 'report', label: '일탈 후보', dot: 'var(--c-red-dot)' }] },
+  { h: '돈으로 본다', art: 'calc', cards: [{ icon: 'gavel', label: '지체상금 조항', dot: 'var(--c-red-dot)' }, { icon: 'warning', label: '포괄 조항 1건', dot: 'var(--c-orange-dot)' }, { icon: 'payments', label: '평가 가격 영업 권한 필요' }] },
+  { h: '이기는 제안을 만든다', art: 'target', cards: [{ icon: 'description', label: '일탈 목록 초안' }, { icon: 'help', label: '질의서 초안' }, { icon: 'trending_up', label: '제안 포인트 2건', dot: 'var(--c-green-dot)' }] },
 ]
 const LOGIN_STAGES: [number, string][] = [[0, '사내 계정 확인 중'], [30, '사용 권한 확인 중'], [55, '내 할 일 불러오는 중'], [80, '홈 화면 준비 중']]
 const MAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -258,7 +258,7 @@ export function Login() {
                           <option value="eng">기술 검토 엔지니어</option><option value="appr">결재자</option><option value="recv">견적·품질·영업 담당 (협조 요청 받음)</option></select></div>
                       </div>
                       <div className="field">
-                        <label htmlFor="rwhy">요청 사유 <span style={{ color: '#98A2B3', fontWeight: 400 }}>(선택)</span></label>
+                        <label htmlFor="rwhy">요청 사유 <span style={{ color: 'var(--c-disabled)', fontWeight: 400 }}>(선택)</span></label>
                         <div className="inp"><textarea id="rwhy" value={req.why} onChange={(e) => setReq({ ...req, why: e.target.value })} placeholder="예: 115 kV GIS 입찰 기술 검토 담당" /></div>
                       </div>
                       <button type="button" className="go" onClick={doReq}>요청 보내기</button>

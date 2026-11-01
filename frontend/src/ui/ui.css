@@ -1,0 +1,44 @@
+/* 공통 부품 중 목업 CSS에 없는 모양만 (add-ui-foundation). 색·간격은 styles/tokens.css 토큰만 쓴다. */
+
+/* 창 (목업 Detail .mdo > .apw 모양을 모든 화면에서 쓰려고 옮김) */
+.uim{position:fixed;inset:0;z-index:var(--z-modal);background:var(--c-overlay-strong);display:flex;align-items:center;justify-content:center;padding:var(--s-8);box-sizing:border-box}
+.uid{width:min(var(--uid-w,640px),100%);max-height:100%;background:var(--c-white);border-radius:var(--r-lg);box-shadow:0 24px 48px var(--c-shade-strong);display:flex;flex-direction:column;overflow:hidden;outline:none}
+.uid-h{display:flex;align-items:center;gap:var(--s-2);padding:var(--s-4) var(--s-5) var(--s-3)}
+.uid-h h2{margin:0;font-size:var(--t-h3);font-weight:600;color:var(--c-text);flex:1}
+.uid-b{padding:var(--s-1) var(--s-5) var(--s-4);overflow:auto;color:var(--c-text);font-size:var(--t-sm)}
+.uid-f{display:flex;align-items:center;justify-content:flex-end;gap:var(--s-2);padding:var(--s-3) var(--s-5);border-top:1px solid var(--c-line-soft)}
+
+/* 목록 표 순번 칸 (목업 v4.77 .sqt와 같은 모양) */
+.tbl th.sq,.tbl td.sq{width:44px;min-width:44px;box-sizing:border-box;text-align:center;color:var(--c-muted);font-size:var(--t-xs);font-variant-numeric:tabular-nums;white-space:nowrap}
+.tbl th.sq{color:var(--c-text-3);font-weight:600}
+.tbl td.uis{padding:var(--s-6) var(--s-4);text-align:center;color:var(--c-muted)}
+.tbl td.uis.err{color:var(--c-red)}
+
+/* 화면 상태 */
+.uiload{display:grid;gap:var(--s-2);padding:var(--s-3) 0}
+.uiload i{display:block;height:14px;border-radius:var(--r-sm);background:var(--c-bar);animation:uiPulse 1.2s ease-in-out infinite}
+.uiload i:nth-child(2){width:80%}.uiload i:nth-child(3){width:60%}
+@keyframes uiPulse{50%{opacity:.45}}
+@media (prefers-reduced-motion:reduce){.uiload i{animation:none}}
+.uiempty{padding:var(--s-6) var(--s-4);text-align:center;color:var(--c-muted);font-size:var(--t-sm)}
+.uierr{display:flex;align-items:center;gap:var(--s-2);padding:var(--s-3) var(--s-4);border:1px solid var(--c-red-line);background:var(--c-red-bg);color:var(--c-red);border-radius:var(--r-lg);font-size:var(--t-sm)}
+.uierr span{flex:1}
+
+/* 알림 쌓기 (목업 v4.96 .antstw 모양) */
+.uitw{position:fixed;z-index:var(--z-toast);right:var(--s-6);top:76px;width:360px;display:flex;flex-direction:column;gap:var(--s-2);max-height:calc(100vh - 96px);overflow:auto;pointer-events:none}
+.uitw>*{pointer-events:auto}
+@keyframes uiIn{from{opacity:0;transform:translateX(16px)}to{opacity:1;transform:none}}
+.uit{position:relative;box-sizing:border-box;animation:uiIn .25s ease-out;background:var(--c-white);border:1px solid var(--c-green-line);border-left:4px solid var(--c-green);border-radius:var(--r-lg);box-shadow:var(--sh-pop);padding:var(--s-3) 14px;font-size:var(--t-sm);color:var(--c-text);display:flex;gap:10px;align-items:flex-start}
+.uit .ms{color:var(--c-green);font-size:20px}
+.uit.info{border-color:var(--c-line);border-left-color:var(--c-link)}.uit.info .ms{color:var(--c-link)}
+.uit.error{border-color:var(--c-red-line);border-left-color:var(--c-red)}.uit.error .ms{color:var(--c-red)}
+.uit p{margin:0;flex:1;line-height:1.5}
+.uit button{border:0;background:none;color:var(--c-muted);cursor:pointer;padding:0;font:inherit;font-size:var(--t-xs);font-weight:600}
+@media (prefers-reduced-motion:reduce){.uit{animation:none}}
+
+/* 부품 견본 화면 */
+.uidev{display:grid;gap:var(--s-6)}
+.uidev .sw{display:flex;flex-wrap:wrap;gap:var(--s-2)}
+.uidev .sw div{width:132px;font-size:var(--t-2xs);color:var(--c-text-3)}
+.uidev .sw i{display:block;height:36px;border-radius:var(--r-md);border:1px solid var(--c-line);margin-bottom:var(--s-1)}
+.uidev .row{display:flex;flex-wrap:wrap;gap:var(--s-2);align-items:center}

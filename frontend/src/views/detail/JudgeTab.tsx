@@ -163,7 +163,7 @@ export function JudgeTab({ run, tick, onChanged, head }: {
         ))}
         {c && (c.past_differs > 0 || onlyPast) && (
           <button type="button" className={'chip' + (onlyPast ? ' on' : '')} aria-pressed={onlyPast} title="다른 검토에서 사람이 같은 요구·같은 제품을 다르게 확정한 줄"
-            onClick={() => reset(() => setOnlyPast(!onlyPast))}><i style={{ background: '#B54708' }} />지난 확정과 다름 <span className="n">{c.past_differs}</span></button>
+            onClick={() => reset(() => setOnlyPast(!onlyPast))}><i style={{ background: 'var(--c-orange)' }} />지난 확정과 다름 <span className="n">{c.past_differs}</span></button>
         )}
         <span style={{ flex: '1 1 0' }} />
         <label className="sr" htmlFor="jq">판정 검색</label>
@@ -224,7 +224,7 @@ export function JudgeTab({ run, tick, onChanged, head }: {
             </table>
           </div>
           {rows.data && list.length === 0 && (
-            <p style={{ margin: 0, padding: '16px 10px', color: '#667085' }}>조건에 맞는 줄이 없습니다.{' '}
+            <p style={{ margin: 0, padding: '16px 10px', color: 'var(--c-muted)' }}>조건에 맞는 줄이 없습니다.{' '}
               <button type="button" className="lnk" onClick={clearFilter}>필터 지우기</button></p>
           )}
           {total > 0 && <Pager total={total} page={page} size={size} shown={list.length} onPage={setPage} onSize={(s) => { setSize(s); setPage(1) }} />}

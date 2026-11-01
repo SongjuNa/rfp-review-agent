@@ -178,7 +178,7 @@ export function Home() {
 
       <section className="sec" aria-labelledby="dueTitle">
         <div className="sech">
-          <h2 id="dueTitle">{engineer ? '내 검토' : '검토'} {view === 'stage' ? '단계별' : '사업별'} <span style={{ fontWeight: 400, color: '#667085' }}>{board.length}건</span>
+          <h2 id="dueTitle">{engineer ? '내 검토' : '검토'} {view === 'stage' ? '단계별' : '사업별'} <span style={{ fontWeight: 400, color: 'var(--c-muted)' }}>{board.length}건</span>
             {filter && <button type="button" className="fchip" onClick={() => setFilter(null)} aria-label="필터 해제">{METRICS.find(([k]) => k === filter)![1]}<span className="ms" aria-hidden="true">close</span></button>}</h2>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <div className="seg" role="group" aria-label="보기 방식">
@@ -284,7 +284,7 @@ function TeamShare({ runs, users, pending }: { runs: RunListItem[]; users: User[
               <span>{m.stage && <span className={m.tone}>{m.stage}</span>}</span>
               <span className={`mono${m.late ? ' c-red' : ''}`}>{m.due}</span>
               <span className="mono hm-mut">{m.upd}</span>
-              <span className="ms" aria-hidden="true" style={{ color: '#98A2B3' }}>chevron_right</span>
+              <span className="ms" aria-hidden="true" style={{ color: 'var(--c-disabled)' }}>chevron_right</span>
             </a>
           ))}
         </div>
@@ -297,7 +297,7 @@ function TeamShare({ runs, users, pending }: { runs: RunListItem[]; users: User[
               <button type="button" className="hm-ph" onClick={() => toggle(`n${i}`)} aria-expanded={!!open[`n${i}`]}>
                 <span className="hm-pt">{n.must && <span className="st c-red">필독</span>}<b className="ell">{n.title}</b>{n.isNew && !open[`n${i}`] && <i className="hm-new" title="읽지 않음" />}</span>
                 <span className="hm-mut">{n.by}</span><span className="mono hm-mut">{n.date}</span>
-                <span className="ms" aria-hidden="true" style={{ color: '#98A2B3' }}>{open[`n${i}`] ? 'expand_less' : 'expand_more'}</span>
+                <span className="ms" aria-hidden="true" style={{ color: 'var(--c-disabled)' }}>{open[`n${i}`] ? 'expand_less' : 'expand_more'}</span>
               </button>
               {open[`n${i}`] && <div className="hm-pb">{n.body}</div>}
             </div>
@@ -312,7 +312,7 @@ function TeamShare({ runs, users, pending }: { runs: RunListItem[]; users: User[
               <button type="button" className="hm-ph" onClick={() => toggle(`s${i}`)} aria-expanded={!!open[`s${i}`]}>
                 <span className="hm-pt"><span className={n.tone}>{n.kind}</span><b className="ell">{n.title}</b>{n.isNew && !open[`s${i}`] && <i className="hm-new" title="읽지 않음" />}</span>
                 <span className="hm-mut">{n.when}</span><span className="mono hm-mut">{n.date}</span>
-                <span className="ms" aria-hidden="true" style={{ color: '#98A2B3' }}>{open[`s${i}`] ? 'expand_less' : 'expand_more'}</span>
+                <span className="ms" aria-hidden="true" style={{ color: 'var(--c-disabled)' }}>{open[`s${i}`] ? 'expand_less' : 'expand_more'}</span>
               </button>
               {open[`s${i}`] && <div className="hm-pb">{n.body}</div>}
             </div>

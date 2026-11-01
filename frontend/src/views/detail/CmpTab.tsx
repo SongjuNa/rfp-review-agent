@@ -50,14 +50,14 @@ function Compare({ run, otherId }: { run: RunSummary; otherId: number }) {
               <tr key={`${r.kind}-${r.equipment}-${r.item_name}-${r.before}-${r.after}-${i}`} className={r.kind === 'del' ? 'cmpd' : undefined}>
                 <td><span className={KINDS[r.kind][1]}>{KINDS[r.kind][0]}</span></td>
                 <td><b style={{ fontWeight: 600 }}>{r.item_name}</b><div className="en" style={{ margin: 0 }}>{r.equipment}{r.item_raw ? ` · ${r.item_raw}` : ''}</div></td>
-                <td style={{ color: '#667085' }}>{r.before}</td>
+                <td style={{ color: 'var(--c-muted)' }}>{r.before}</td>
                 <td style={{ fontWeight: 600 }}>{r.after}</td>
                 <td style={{ whiteSpace: 'nowrap' }}>
                   {r.kind === 'chg' && <><Result r={r.before_result} />
-                    <span className="ms" aria-hidden="true" style={{ fontSize: 14, color: '#98A2B3', verticalAlign: 'middle' }}>arrow_forward</span></>}
+                    <span className="ms" aria-hidden="true" style={{ fontSize: 14, color: 'var(--c-disabled)', verticalAlign: 'middle' }}>arrow_forward</span></>}
                   {r.kind === 'del' ? <Result r={null} /> : <Result r={r.after_result} />}
                 </td>
-                <td style={{ color: '#475467', fontSize: 'var(--fs-sm)' }}>{r.note}</td>
+                <td style={{ color: 'var(--c-text-3)', fontSize: 'var(--fs-sm)' }}>{r.note}</td>
               </tr>
             ))}
           </tbody>

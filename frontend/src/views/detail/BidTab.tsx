@@ -37,27 +37,27 @@ export function BidTab({ run, tick, onChanged }: { run: RunSummary; tick: number
       <div className="sech"><h2>입찰 영향<span className="hint" tabIndex={0} role="img" aria-label={tip} title={tip}><span className="ms" aria-hidden="true">info</span></span></h2></div>
       <div className="cols">
         <div>
-          <div style={{ fontWeight: 600, fontSize: 'var(--fs-sm)', color: '#067647', paddingBottom: 4 }}>유리한 점</div>
+          <div style={{ fontWeight: 600, fontSize: 'var(--fs-sm)', color: 'var(--c-green)', paddingBottom: 4 }}>유리한 점</div>
           {points.error && <p role="alert">{points.error}</p>}
-          {points.data?.length === 0 && <p style={{ color: '#667085', margin: '10px 0' }}>내세울 강점 후보가 없습니다.</p>}
+          {points.data?.length === 0 && <p style={{ color: 'var(--c-muted)', margin: '10px 0' }}>내세울 강점 후보가 없습니다.</p>}
           {points.data?.map((p) => <Point key={p.point_id} runId={id} p={p} canEdit={canEdit} lock={lock} acted={acted[p.point_id]}
             onDone={(a) => { setActed((m) => ({ ...m, [p.point_id]: a })); onChanged() }}
             where={locShort(p, docs.data ?? [])} />)}
         </div>
         <div>
-          <div style={{ fontWeight: 600, fontSize: 'var(--fs-sm)', color: '#B42318', paddingBottom: 4 }}>불리한 점</div>
+          <div style={{ fontWeight: 600, fontSize: 'var(--fs-sm)', color: 'var(--c-red)', paddingBottom: 4 }}>불리한 점</div>
           {cons.error && <p role="alert">{cons.error}</p>}
           {cons.data?.map((j: Judgment) => (
             <div key={j.judgment_id} className="li">
               <span className="ms c-red" aria-hidden="true">trending_down</span>
               <div style={{ flex: '1 1 auto', minWidth: 0 }}>
                 <b style={{ fontWeight: 600 }}>{itemName(j)}{CONS[j.result][0]}</b>
-                <div style={{ fontSize: 'var(--fs-sm)', color: '#475467', marginTop: 2 }}>대응: {CONS[j.result][1]}</div>
+                <div style={{ fontSize: 'var(--fs-sm)', color: 'var(--c-text-3)', marginTop: 2 }}>대응: {CONS[j.result][1]}</div>
                 <div className="en">{locShort(j, docs.data ?? [])}</div>
               </div>
             </div>
           ))}
-          {cons.data?.length === 0 && <p style={{ color: '#667085', margin: '10px 0' }}>불리한 점이 없습니다.</p>}
+          {cons.data?.length === 0 && <p style={{ color: 'var(--c-muted)', margin: '10px 0' }}>불리한 점이 없습니다.</p>}
         </div>
       </div>
     </section>
@@ -89,7 +89,7 @@ function Point({ runId, p, where, canEdit, lock, acted, onDone }: {
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
           <b style={{ fontWeight: 600 }}>{p.basis}</b><span className={TONES[p.status] ?? 'st c-grey'}>{STATUS_NAMES[p.status] ?? p.status}</span>
         </div>
-        <div style={{ fontSize: 'var(--fs-sm)', color: '#475467', marginTop: 2 }}>{p.text_draft}</div>
+        <div style={{ fontSize: 'var(--fs-sm)', color: 'var(--c-text-3)', marginTop: 2 }}>{p.text_draft}</div>
         <div className="en">
           {POINT_KIND_NAMES[p.point_kind] ?? p.point_kind} · {where}
           {p.is_assumed && <span className="st c-ora" style={{ marginLeft: 6 }}>팀 가정</span>}

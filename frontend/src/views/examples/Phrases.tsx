@@ -77,7 +77,7 @@ export function Phrases() {
                 <span className="mono">{st === 'rev' ? '—' : `${used}회`}</span>
                 <span className="ph-mut">{by}<br /><span className="mono">{date}</span></span>
                 <span><span className={STATES[st][1]}>{STATES[st][0]}</span></span>
-                <span className="ms" aria-hidden="true" style={{ color: '#98A2B3' }}>{o ? 'expand_less' : 'expand_more'}</span>
+                <span className="ms" aria-hidden="true" style={{ color: 'var(--c-disabled)' }}>{o ? 'expand_less' : 'expand_more'}</span>
               </button>
               {o && (
                 <div className="ph-det">

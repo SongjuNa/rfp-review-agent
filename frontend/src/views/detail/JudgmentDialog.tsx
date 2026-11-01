@@ -69,7 +69,7 @@ export function JudgmentDialog({ runId, j, w, check, items, log, docs, pos, tota
         <div className="mdb">
           <section className="mdl" aria-label="RFP 원문">
             <div className="mdl-top">
-              <span className="ms" aria-hidden="true" style={{ fontSize: 'var(--ic-s)', color: '#667085' }}>description</span>
+              <span className="ms" aria-hidden="true" style={{ fontSize: 'var(--ic-s)', color: 'var(--c-muted)' }}>description</span>
               <b className="ell">{doc?.file_name ?? req.data?.file_name ?? `파일 ${loc?.file_no ?? ''}`}</b>
               {doc && <span className="lang">{LANGS[doc.language] ?? doc.language}</span>}
             </div>

@@ -26,6 +26,7 @@ import { RunLog } from './views/RunLog'
 import { Rules } from './views/Rules'
 import { Tbe } from './views/Tbe'
 import { Todo } from './views/Todo'
+import { UiSamples } from './views/UiSamples'
 
 type Route = { menu: MenuKey; crumbs: Crumb[]; body: ReactNode }
 
@@ -112,6 +113,10 @@ function route(path: string): Route {
   }
   if (path === '/todo') {
     return { menu: 'todo', crumbs: [home, { label: '협조 요청 현황' }], body: <Todo /> }
+  }
+  if (path === '/dev/ui') {
+    // 공통 부품 견본 (add-ui-foundation). 메뉴에는 없다
+    return { menu: 'home', crumbs: [home, { label: '공통 부품 견본' }], body: <UiSamples /> }
   }
   // 모르는 주소는 홈을 보인다 (모든 메뉴 화면을 만들었다)
   return { menu: 'home', crumbs: [{ label: '홈' }], body: <Home /> }

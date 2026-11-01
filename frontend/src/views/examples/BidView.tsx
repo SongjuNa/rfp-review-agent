@@ -142,7 +142,7 @@ export function BidView({ bid: b }: { bid: Bid }) {
             {tab === 'hist' && (
               <section className="fcard"><h2>이력</h2>
                 <ul className="ftl">{d.hist.map(([t, x, w]) => (
-                  <li key={t + x} style={{ gridTemplateColumns: '78px 1fr' }}><span className="t">{short(t)}</span><span>{x}<span style={{ color: '#667085' }}> · {w}</span></span></li>
+                  <li key={t + x} style={{ gridTemplateColumns: '78px 1fr' }}><span className="t">{short(t)}</span><span>{x}<span style={{ color: 'var(--c-muted)' }}> · {w}</span></span></li>
                 ))}</ul>
               </section>
             )}

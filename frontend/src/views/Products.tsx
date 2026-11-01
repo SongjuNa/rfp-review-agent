@@ -131,8 +131,8 @@ export function Products() {
               <button key={f.family} type="button" className={`chip${fam === f.family ? ' on' : ''}`} aria-pressed={fam === f.family}
                 onClick={() => { setFam(f.family); setPage(1) }}>{f.family === 'all' ? '전체' : FAMILY_NAMES[f.family] ?? f.family} <span className="n">{f.products}</span></button>
             ))}
-            <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 'var(--fs-sm)', color: '#475467', marginLeft: 4 }}>
-              <input type="checkbox" checked={cards} onChange={(e) => { setCards(e.target.checked); setPage(1) }} style={{ accentColor: '#0569A0' }} />설계 사례 카드 포함</label>
+            <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 'var(--fs-sm)', color: 'var(--c-text-3)', marginLeft: 4 }}>
+              <input type="checkbox" checked={cards} onChange={(e) => { setCards(e.target.checked); setPage(1) }} style={{ accentColor: 'var(--c-link)' }} />설계 사례 카드 포함</label>
             <span style={{ flex: '1 1 0' }} />
             <label className="sr" htmlFor="pq">제품 검색</label>
             <input className="fi" id="pq" value={q} onChange={(e) => { setQ(e.target.value); setPage(1) }} placeholder="제품 코드, 이름" style={{ width: 180 }} />
@@ -153,7 +153,7 @@ export function Products() {
                     {rows.map((p) => (
                       <tr key={p.product_code} className={cur === p.product_code ? 'cur' : undefined} onClick={() => { setCur(p.product_code) }} style={{ cursor: 'pointer' }}>
                         <td onClick={(e) => e.stopPropagation()}><input type="checkbox" aria-label={`${p.product_code} 비교에 넣기`} checked={sel.includes(p.product_code)}
-                          disabled={!sel.includes(p.product_code) && sel.length >= 3} onChange={() => toggle(p.product_code)} style={{ accentColor: '#0569A0', marginTop: 2 }} /></td>
+                          disabled={!sel.includes(p.product_code) && sel.length >= 3} onChange={() => toggle(p.product_code)} style={{ accentColor: 'var(--c-link)', marginTop: 2 }} /></td>
                         <td style={{ whiteSpace: 'nowrap' }}><span style={{ fontWeight: 600 }}>{p.product_code}</span>{p.is_design_card && <span className="tag">설계 사례</span>}
                           <div className="en">{p.source_doc}</div></td>
                         <td>{FAMILY_NAMES[p.family] ?? p.family}</td>
@@ -169,7 +169,7 @@ export function Products() {
                 {rows.length > 0 && <Pager total={list.data!.total} page={page} size={size} shown={rows.length} onPage={setPage} onSize={(n) => { setSize(n); setPage(1) }} />}
               </div>
               {list.error && <p role="alert">{list.error}</p>}
-              {list.data !== null && rows.length === 0 && <p style={{ margin: 0, padding: '16px 10px', color: '#667085' }}>조건에 맞는 제품이 없습니다.</p>}
+              {list.data !== null && rows.length === 0 && <p style={{ margin: 0, padding: '16px 10px', color: 'var(--c-muted)' }}>조건에 맞는 제품이 없습니다.</p>}
               <div className="tfoot"><span>{list.data?.total ?? 0}개 · 주요 {COLS.length}칸 (나머지 칸은 오른쪽 "값" 탭)</span><span>— 해당 없음 · <span className="c-ora">비어 있음</span> · 팀 가정</span></div>
             </div>
             {cur && <Panel code={cur} data={detail.data} error={detail.error} tab={ptab} onTab={setPtab} items={items.data ?? []} onClose={() => setCur(null)} />}
@@ -217,7 +217,7 @@ function Panel({ code, data, error, tab, onTab, items, onClose }: {
       {p && tab === 'graph' && (
         <div className="pb">
           <div className="graph">
-            <div className="g-center"><span className="ms" aria-hidden="true" style={{ color: '#0569A0' }}>inventory_2</span><b>{p.product_code}</b><span className="en" style={{ margin: 0 }}>{p.is_design_card ? '설계 사례 카드' : '제품표'}</span></div>
+            <div className="g-center"><span className="ms" aria-hidden="true" style={{ color: 'var(--c-link)' }}>inventory_2</span><b>{p.product_code}</b><span className="en" style={{ margin: 0 }}>{p.is_design_card ? '설계 사례 카드' : '제품표'}</span></div>
             <div className="g-groups">
               {groups.map((g) => (
                 <div key={g.label} className="g-group" aria-label={g.label}>
@@ -328,12 +328,12 @@ function Compare({ products, items, diffOnly, onDiff, onBack }: {
       <div className="sech">
         <h2>제품 비교<span className="note">{products.map((p) => p.product_code).join(' · ')}</span></h2>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 'var(--fs-sm)', color: '#475467' }}>
-            <input type="checkbox" checked={diffOnly} onChange={(e) => onDiff(e.target.checked)} style={{ accentColor: '#0569A0' }} />다른 값만 보기</label>
+          <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 'var(--fs-sm)', color: 'var(--c-text-3)' }}>
+            <input type="checkbox" checked={diffOnly} onChange={(e) => onDiff(e.target.checked)} style={{ accentColor: 'var(--c-link)' }} />다른 값만 보기</label>
           <button type="button" className="bo" onClick={onBack}>목록으로</button>
         </div>
       </div>
-      {products.length < 2 && <p style={{ color: '#667085' }}>목록에서 비교할 제품을 2개 이상 고르세요.</p>}
+      {products.length < 2 && <p style={{ color: 'var(--c-muted)' }}>목록에서 비교할 제품을 2개 이상 고르세요.</p>}
       {products.length >= 2 && (
         <>
           <div className="tw">

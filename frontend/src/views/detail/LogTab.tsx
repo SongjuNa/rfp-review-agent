@@ -18,14 +18,14 @@ export function LogTab({ run, tick }: { run: RunSummary; tick: number }) {
       <table className="mini"><tbody>
         {rows.map((l) => (
           <tr key={l.log_id}>
-            <td style={{ width: 92, whiteSpace: 'nowrap', color: '#667085' }}>{stamp(l.acted_at)}</td>
+            <td style={{ width: 92, whiteSpace: 'nowrap', color: 'var(--c-muted)' }}>{stamp(l.acted_at)}</td>
             <td style={{ width: 96, whiteSpace: 'nowrap' }}>{l.actor}</td>
             <td>{historyText(l)}{l.reason && !SKIP_REASONS.has(l.reason) && <div className="en">{reasonLabel(l)}: {l.reason}</div>}</td>
           </tr>
         ))}
         {run.finished_at && (
           <tr>
-            <td style={{ width: 92, whiteSpace: 'nowrap', color: '#667085' }}>{stamp(run.finished_at)}</td>
+            <td style={{ width: 92, whiteSpace: 'nowrap', color: 'var(--c-muted)' }}>{stamp(run.finished_at)}</td>
             <td style={{ width: 96, whiteSpace: 'nowrap' }}>시스템</td>
             <td>판정 {run.judgments}줄 생성</td>
           </tr>

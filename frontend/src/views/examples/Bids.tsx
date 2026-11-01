@@ -68,13 +68,13 @@ export function Bids() {
       </div>
       <div className="bsum">
         <div><span className="l">수주율</span><b>{done ? `${Math.round((n('win') / done) * 100)} %` : '—'}</b><span className="s">결과가 나온 {done}건 기준</span></div>
-        <div><span className="l">결과</span><b>{n('win')}<span style={{ fontSize: 'var(--fs-sm)', fontWeight: 400, color: '#667085' }}> 수주 · {n('lose')} 실주 · {n('void')} 유찰</span></b><span className="s">결과 대기 {n('wait')}건</span></div>
+        <div><span className="l">결과</span><b>{n('win')}<span style={{ fontSize: 'var(--fs-sm)', fontWeight: 400, color: 'var(--c-muted)' }}> 수주 · {n('lose')} 실주 · {n('void')} 유찰</span></b><span className="s">결과 대기 {n('wait')}건</span></div>
         <div><span className="l">실주 사유</span><ul className="rsn">{reasons.map(([k, v]) => <li key={k}><span>{k}</span><b>{v}건</b></li>)}</ul></div>
         <div><span className="l">기술 사유로 실주한 요구</span><ul className="rsn">{techTop.map(([k, v]) => <li key={k}><span>{k}</span><b className="c-red">{v}건</b></li>)}</ul></div>
       </div>
       <section className="sec">
         <div className="sech">
-          <h2>입찰 <span style={{ fontWeight: 400, color: '#667085' }}>{found.length}</span></h2>
+          <h2>입찰 <span style={{ fontWeight: 400, color: 'var(--c-muted)' }}>{found.length}</span></h2>
           <span className="lock"><span className="ms" aria-hidden="true">lock</span>금액·경쟁사는 영업 권한이 있어야 보임</span>
         </div>
         <div className="filters" role="search">
@@ -113,7 +113,7 @@ export function Bids() {
           </table>
           <Pager total={found.length} page={cur} size={size} shown={rows.length} onPage={setPage} onSize={(v) => { setSize(v); setPage(1) }} />
         </div>
-        {found.length === 0 && <p style={{ margin: 0, padding: '16px 12px', color: '#667085' }}>조건에 맞는 입찰이 없습니다.</p>}
+        {found.length === 0 && <p style={{ margin: 0, padding: '16px 12px', color: 'var(--c-muted)' }}>조건에 맞는 입찰이 없습니다.</p>}
       </section>
       {loader.view}
     </main>
