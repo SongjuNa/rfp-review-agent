@@ -96,3 +96,10 @@ export async function exportItem(page: Page, name: string) {
   await page.getByRole('button', { name: '내보내기' }).click()
   await page.getByRole('menuitem', { name }).click()
 }
+
+/** 판정 줄을 누른 뒤 열린 판정 상세 화면(add-judgment-view)에서 Esc로 판정 목록에 돌아온다. 돌아오면 패널에 그 줄이 열린다 */
+export async function backFromJudgment(page: Page) {
+  await expect(page.locator('.jv .mdpos')).toBeVisible()
+  await page.keyboard.press('Escape')
+  await expect(page.locator('#judge')).toBeVisible()
+}

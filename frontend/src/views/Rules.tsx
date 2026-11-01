@@ -4,6 +4,7 @@ import { ErrorText } from '../components/common'
 import { Pager } from '../components/Pager'
 import { useLoad } from '../components/useLoad'
 import { usePageCss } from '../shell/pageCss'
+import { currentPath, pathQuery } from '../shell/router'
 import { useSession } from '../shell/useSession'
 import { RuleDialog, type RuleTarget } from './RuleDialog'
 import { DIRECTION_NAMES, DOC_KIND_NAMES, EDITOR_ROLES, locationText, RISK_NAMES, RULE_FIELD_NAMES } from '../components/labels'
@@ -116,7 +117,8 @@ function kindTab(rules: DocKindRule[]): Tab {
 export function Rules() {
   usePageCss('Rules')
   const [tab, setTab] = useState<TabKey>('dir')
-  const [q, setQ] = useState('')
+  // 판정 상세의 "판정 규칙 보기"는 #/rules?q=<항목>으로 비교 방향 탭을 그 항목으로 걸러 연다 (add-judgment-view)
+  const [q, setQ] = useState(() => pathQuery(currentPath()).get('q') ?? '')
   const [open, setOpen] = useState<Record<string, boolean>>({})
   const [page, setPage] = useState(1)
   const [size, setSize] = useState(10)

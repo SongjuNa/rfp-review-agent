@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { expect, test } from '@playwright/test'
-import { as, deviationRun, ENGINEER, exportItem } from './helpers'
+import { as, deviationRun, ENGINEER, exportItem, backFromJudgment } from './helpers'
 
 // 명세 review-workspace "목록 초안 내려받기와 문장 고치기"의 Scenario (change update-review-screens).
 
@@ -24,7 +24,7 @@ test('사유 적어 문장 고치기', async ({ page }) => {
   await page.goto(`/#/reviews/${run.run_id}`)
   await page.locator('.fbar .chip', { hasText: '질의 후보' }).click()
   await page.locator('#judge .tw tbody tr').first().click()
-  await page.keyboard.press('Escape')
+  await backFromJudgment(page)
   const panel = page.getByRole('complementary', { name: '원문과 판정' })
   const draft = panel.locator('#draft')
   await expect(draft).toBeEditable()

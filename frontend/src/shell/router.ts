@@ -18,8 +18,15 @@ export function useHashPath(): string {
   return path
 }
 
-export function navigate(path: string) {
-  window.location.hash = path
+/** replace면 방문 기록을 남기지 않는다 (판정 상세 ↑↓처럼 뒤로 가기가 목록으로 가야 할 때) */
+export function navigate(path: string, opts?: { replace?: boolean }) {
+  if (opts?.replace) window.location.replace('#' + path)
+  else window.location.hash = path
+}
+
+/** 주소의 ? 뒤 값. `#/reviews/3?f=x` → f=x */
+export function pathQuery(path: string): URLSearchParams {
+  return new URLSearchParams(path.split('?')[1] ?? '')
 }
 
 export function href(path: string): string {

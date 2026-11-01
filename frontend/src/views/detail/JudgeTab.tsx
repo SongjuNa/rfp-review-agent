@@ -8,12 +8,13 @@ import { stamp } from '../../components/format'
 import { confirmedBy, compareText, itemName, locShort, markSplit, prodCell, reqText, suggested, itemFor } from '../../components/judgment'
 import { RESULT_DOTS, RESULT_NAMES, RESULT_ORDER, RESULT_TONES, TYPE_NAMES } from '../../components/labels'
 import { useLoad } from '../../components/useLoad'
+import { currentPath, navigate, pathQuery } from '../../shell/router'
 import { useSession } from '../../shell/useSession'
-import { JudgmentDialog } from './JudgmentDialog'
+import { filterQuery, parseFilter } from '../../components/judgeFilter'
 import { OutputEditor } from './OutputEditor'
 
 // SCR-08-1 판정 탭 (목업 v4.57 Detail #judge). docs/screens/SCR-08-1-판정.md
-// 판정 칩·거르기·판정 순서 표, 줄을 누르면 판정 상세 창과 오른쪽 패널. 고른 줄·준수 모두를 한꺼번에 제안대로 확정 (add-bulk-confirm).
+// 판정 칩·거르기·판정 순서 표, 줄을 누르면 판정 상세 화면(add-judgment-view), 오른쪽 패널은 돌아온 줄. 고른 줄·준수 모두를 한꺼번에 제안대로 확정 (add-bulk-confirm).
 // 공학 검산(FR-12) 위반·확인 필요 줄 표시와 패널 "공학 검산" 칸 (update-check-display).
 
 
@@ -30,16 +31,21 @@ function useDebounced(value: string, ms = 300): string {
 export function JudgeTab({ run, tick, onChanged }: { run: RunSummary; tick: number; onChanged: () => void }) {
   const { user } = useSession()
   const id = run.run_id
-  const [f, setF] = useState('all')
-  const [onlyUnc, setOnlyUnc] = useState(false)
-  const [onlyPast, setOnlyPast] = useState(false)   // 지난 확정과 다른 줄만 (add-review-memory)
-  const [text, setText] = useState('')
+  // 판정 상세 화면에서 돌아오면 주소의 거르기·쪽·보던 줄로 연다
+  const [init] = useState(() => {
+    const p = pathQuery(currentPath())
+    const cur = Number(p.get('cur'))
+    return { ...parseFilter(p), cur: Number.isInteger(cur) && cur > 0 ? cur : null }
+  })
+  const [f, setF] = useState(init.f)
+  const [onlyUnc, setOnlyUnc] = useState(init.unc)
+  const [onlyPast, setOnlyPast] = useState(init.past)   // 지난 확정과 다른 줄만 (add-review-memory)
+  const [text, setText] = useState(init.q)
   const q = useDebounced(text)
-  const [type, setType] = useState('')
-  const [page, setPage] = useState(1)
-  const [size, setSize] = useState(10)
-  const [cur, setCur] = useState<number | null>(null)
-  const [md, setMd] = useState<number | null>(null)
+  const [type, setType] = useState(init.type)
+  const [page, setPage] = useState(init.page)
+  const [size, setSize] = useState(init.size)
+  const [cur, setCur] = useState<number | null>(init.cur)
   const [edK, setEdK] = useState('')
   const [edWhy, setEdWhy] = useState('')
   const [edHint, setEdHint] = useState(false)
@@ -69,8 +75,6 @@ export function JudgeTab({ run, tick, onChanged }: { run: RunSummary; tick: numb
   const list = rows.data?.items ?? []
   const total = rows.data?.total ?? 0
   const curRow = list.find((r) => r.judgment_id === cur) ?? (cur === null ? list[0] : undefined)
-  const mdIdx = list.findIndex((r) => r.judgment_id === md)
-  const mdRow = mdIdx >= 0 ? list[mdIdx] : null
   const wOf = (j: Judgment) => warranty.data?.find((w) => w.judgment_id === j.judgment_id)
   const c = counts.data
   const n = (r: string) => c?.by_result[r] ?? 0
@@ -78,7 +82,8 @@ export function JudgeTab({ run, tick, onChanged }: { run: RunSummary; tick: numb
 
   const reset = (fn: () => void) => { fn(); setPage(1); setCur(null) }
   const clearFilter = () => reset(() => { setF('all'); setOnlyUnc(false); setOnlyPast(false); setText(''); setType('') })
-  const open = (j: Judgment) => { setCur(j.judgment_id); setMd(j.judgment_id); setEdK(''); setEdWhy(''); setEdHint(false); setPanelError(null); setWVal(''); setWWhy('') }
+  // 줄을 누르면 판정 상세 화면. 지금 거르기·쪽을 주소로 넘겨 이전·다음과 목록으로 돌아오기에 쓴다
+  const open = (j: Judgment) => navigate(`/reviews/${id}/judgments/${j.judgment_id}${filterQuery({ f, unc: onlyUnc, q: text, type, past: onlyPast, page, size })}`)
   const done = () => { onChanged() }
   const say = (m: string) => { setToast(m); setTimeout(() => setToast(''), 3000) }
   const act = (body: Parameters<typeof api.act>[1]) => api.act(id, { ...body, actor_id: user!.user_id }).then(done)
@@ -219,15 +224,6 @@ export function JudgeTab({ run, tick, onChanged }: { run: RunSummary; tick: numb
         )}
       </div>
 
-      {mdRow && (
-        <JudgmentDialog runId={id} j={mdRow} w={wOf(mdRow)} check={checkOf.get(mdRow.requirement_id)} items={items.data ?? []} log={log.data ?? []} docs={docs.data ?? []}
-          pos={(page - 1) * size + mdIdx + 1} total={total} canEdit={canEdit}
-          onPrev={mdIdx > 0 ? () => { setMd(list[mdIdx - 1].judgment_id); setCur(list[mdIdx - 1].judgment_id) } : null}
-          onNext={mdIdx < list.length - 1 ? () => { setMd(list[mdIdx + 1].judgment_id); setCur(list[mdIdx + 1].judgment_id) } : null}
-          onClose={() => setMd(null)} onDone={done} onSaved={say}
-          onEdit={() => { setMd(null); setTimeout(() => document.getElementById('newk')?.focus(), 0) }}
-          onConfirm={() => act({ target: 'judgment', target_id: mdRow.judgment_id, action: 'CONFIRM' }).then(() => say('판정을 제안대로 확정했습니다.'))} />
-      )}
       {toast && <div className="toast" role="status"><span className="ms" aria-hidden="true">check_circle</span>{toast}</div>}
     </section>
   )

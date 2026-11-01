@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { expect, test, type APIRequestContext } from '@playwright/test'
-import { ENGINEER, as } from './helpers'
+import { ENGINEER, as, backFromJudgment } from './helpers'
 
 // 명세 review-workspace "판정 탭의 공학 검산 표시"의 Scenario (change update-check-display, FR-12).
 // 합성 데이터시트 e2e/fixtures/synthetic_check.docx (백엔드 tests/test_engineering_check.build_check_spec, 고객 원문 아님):
@@ -43,6 +43,7 @@ test('검산 계산식 보기', async ({ page, request }) => {
   await page.getByRole('combobox', { name: '한 페이지에 보일 개수' }).selectOption('50')
   const row = page.locator('#judge table.tbl tbody tr', { has: page.locator('.tag.chk.bad'), hasText: 'peak' }).first()
   await row.locator('td').nth(2).click()
+  await backFromJudgment(page)                              // 판정 상세 화면에서 목록으로 돌아오면 패널에 그 줄
   const panel = page.getByRole('complementary', { name: '원문과 판정' })
   await expect(panel).toContainText('공학 검산')
   await expect(panel).toContainText('50 kA × 2.5 = 125 kA')
@@ -57,6 +58,7 @@ test('통과한 검산', async ({ page, request }) => {
   const row = peakRow(page, 'TS-115-GIS')
   await expect(row.locator('.tag.chk')).toHaveCount(0)
   await row.locator('td').nth(2).click()
+  await backFromJudgment(page)                              // 판정 상세 화면에서 목록으로 돌아오면 패널에 그 줄
   const panel = page.getByRole('complementary', { name: '원문과 판정' })
   await expect(panel).toContainText('통과')
   await expect(panel).toContainText('40 kA × 2.5 = 100 kA')

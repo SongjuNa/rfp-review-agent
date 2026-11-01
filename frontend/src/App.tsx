@@ -7,6 +7,7 @@ import { ReviewDetail } from './views/ReviewDetail'
 import { ReviewList } from './views/ReviewList'
 import { Home } from './views/Home'
 import { Datasheet } from './views/Datasheet'
+import { JudgeView } from './views/JudgeView'
 import { businessIdOf } from './api'
 import { findBid } from './examples/SCR-14'
 import { BidView } from './views/examples/BidView'
@@ -45,6 +46,12 @@ function route(path: string): Route {
     return { menu: 'reviews', crumbs: [home, { label: 'RFP 검토', path: '/reviews' }, { label: '검토 상세', path: `/reviews/${id}`, tail: true },
       { label: 'TBE 준수표' }], body: <Tbe runId={id} /> }
   }
+  const judge = path.match(/^\/reviews\/(\d+)\/judgments\/(\d+)/)
+  if (judge) {
+    const id = Number(judge[1])
+    return { menu: 'reviews', crumbs: [home, { label: 'RFP 검토', path: '/reviews' }, { label: '검토 상세', path: `/reviews/${id}`, tail: true },
+      { label: `판정 ${judge[2]}` }], body: <JudgeView key={id} runId={id} judgmentId={Number(judge[2])} /> }
+  }
   const review = path.match(/^\/reviews\/(\d+)/)
   if (review) {
     const id = Number(review[1])
@@ -66,7 +73,7 @@ function route(path: string): Route {
   if (path === '/products') {
     return { menu: 'products', crumbs: [home, { label: '기준 데이터' }, { label: '제품표' }], body: <Products /> }
   }
-  if (path === '/rules') {
+  if (path === '/rules' || path.startsWith('/rules?')) {
     return { menu: 'rules', crumbs: [home, { label: '기준 데이터' }, { label: '판정 규칙' }], body: <Rules /> }
   }
   const bid = path.match(/^\/bids\/([^/]+)$/)

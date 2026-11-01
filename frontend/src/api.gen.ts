@@ -523,6 +523,16 @@ export type DocumentChoice = {
   doc_kind?: 'BID_FORM' | 'REQUIREMENT_SPEC' | 'PURCHASE_SPEC' | 'TEST_SPEC' | 'SUPPLIER_SPEC' | 'UNKNOWN' | null
 }
 
+/** 원문 줄 범위 (add-judgment-view). partial이면 파일이 없어 DB에 남은 줄만 왔다. */
+export type DocumentLines = {
+  file_no: number
+  file_name: string
+  line_from: number
+  line_to: number
+  partial: boolean
+  lines: SourceLine[]
+}
+
 export type DocumentPair = {
   pair_id: number
   file_no_a: number
@@ -1415,6 +1425,11 @@ export type SendResult = {
   failed: number
   no_address: number
   mails: number
+}
+
+export type SourceLine = {
+  line_no: number
+  text: string
 }
 
 export type StageResult = {
