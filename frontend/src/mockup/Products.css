@@ -495,4 +495,4 @@ body,.app,.wk,.ws,.layout,.main{background:#fff}
 .gsb{flex:none;height:36px;padding:0 16px;border:0;border-radius:6px;background:#0A1E5A;color:#fff;font:inherit;font-size:var(--fs-sm);font-weight:600;cursor:pointer;white-space:nowrap}
 .gsb:hover{background:#13307E}
 /* 내보내기 결과 (add-product-export) */
-.pxnote{margin:-6px 0 12px;font-size:var(--fs-sm);color:#475467;text-align:right}
+.pxnote{margin:4px 0 12px;font-size:var(--fs-sm);color:#475467;text-align:right}
