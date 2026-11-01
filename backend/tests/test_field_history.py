@@ -55,8 +55,9 @@ def field_points(conn, run_id):
 
 
 def test_heater_links_to_flt051(db, tmp_path):
-    """Scenario: 결로 방지 히터 — 고압 개폐기 요구가 FLT-051과 이어지고, 문장에는 고장 사전의
-    증상·원인·조치와 해결 사례 수 외 내용이 없다."""
+    """Scenario: 결로 방지 히터 / 문장 내용 / 현장 이력 후보 — 고압 개폐기 요구가 FLT-051과
+    이어지고, 문장에는 고장 사전의 증상·원인·조치와 해결 사례 수 외 내용이 없다. 후보는 1건이고
+    근거는 요구 원문 위치와 연결표 줄이다 (제품 행 없음)."""
     run_id = run_once(db, [build_switchgear_spec(tmp_path / "synthetic_hv_switchgear.docx")])
     [point] = field_points(db, run_id)
     assert point["text_draft"] == HEATER
@@ -148,7 +149,7 @@ def test_unknown_fault_stops_loading(empty_db, settings, tmp_path):
 
 
 def test_no_catalog_turns_feature_off(empty_db, settings, tmp_path, db_url):
-    """Scenario: 고장 사전 파일이 없음 — 현장 이력 표를 비우고 연결하지 않는다."""
+    """Scenario: 고장 사전 파일 없음 — 현장 이력 표를 비우고 연결하지 않는다."""
     migrate(empty_db, settings.migrations_dir)
     seed_rules(empty_db, settings.seed_dir)
     seed_dir = tmp_path / "seed"
