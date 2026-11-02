@@ -30,7 +30,7 @@ from rfp_agent.pipeline.structure import (
     build_tables,
     find_sections,
 )
-from rfp_agent.pipeline.type_tags import tag
+from rfp_agent.pipeline.type_tags import TypeRule, tag
 from rfp_agent.pipeline.values import normalize_candidate, target_of
 
 # 세부 진행 알림: (세부 일, 끝난 줄 수, 전체 줄 수)
@@ -133,17 +133,28 @@ def _save_tables(conn, document_id: int, tables: list[LogicalTable], section_ids
     return row_ids
 
 
+# 협조 요청 유형: 담당(requirement_type.default_role)이 견적·품질·영업인 유형 (0002 기준표)
+HANDOFF_TYPES = frozenset({"COST", "TEST", "MAKER_QUAL"})
+
+
+def _handoff_rules(dicts: PipelineDicts) -> list[TypeRule]:
+    return [r for r in dicts.type_rules if r.type_code in HANDOFF_TYPES]
+
+
 def _refine_with_ai(llm: LLM, candidates: list[Candidate], report: Report,
-                    risk_patterns: list[re.Pattern], doc_hint: str | None = None,
+                    risk_patterns: list[re.Pattern], handoff_rules: list[TypeRule],
+                    doc_hint: str | None = None,
                     only: set[int] | None = None) -> list[list[int]]:
     """AI에 물은 절마다 후보 번호 묶음을 돌려준다. only가 있으면 그 후보만 묻는다."""
     by_section: dict[int | None, list[int]] = {}
     for i, c in enumerate(candidates):
         if only is not None and i not in only:
             continue
-        # 위험 표현이 든 문장은 언어 모델에 묻지 않고 요구사항으로 둔다.
-        # 작성 규칙·설명으로 바뀌면 위험 조건 찾기에서 빠지기 때문이다 (CR-01, FR-06).
-        if any(p.search(c.text) for p in risk_patterns):
+        # 위험 표현이 든 문장과 협조 요청 유형 규칙에 걸리는 문장은 언어 모델에 묻지 않고
+        # 요구사항으로 둔다. 작성 규칙·설명으로 바뀌면 위험 조건 찾기·부서 협조 요청에서
+        # 빠지기 때문이다 (CR-01, FR-06·FR-11, update-ai-label-keep-handoff).
+        if any(p.search(c.text) for p in risk_patterns) \
+                or any(r.matches(c.text) for r in handoff_rules):
             continue
         if c.source_kind == "SENTENCE" and c.req_kind == "REQUIREMENT":
             by_section.setdefault(c.section.index if c.section else None, []).append(i)
@@ -281,8 +292,8 @@ def _prepare(conn, path: Path, dicts: PipelineDicts, llm: LLM | None, report: Re
     risk_terms = [e.pattern for e in dicts.risk_expressions]
     candidates = extract(blocks, sections, tables, proc.rules, risk_terms)
     rules = {i: (c.rule_id, c.extracted_by) for i, c in enumerate(candidates)}
-    asked = _refine_with_ai(llm, candidates, report, risk_terms, proc.hint) \
-        if llm is not None else []
+    asked = _refine_with_ai(llm, candidates, report, risk_terms, _handoff_rules(dicts),
+                            proc.hint) if llm is not None else []
 
     tags, unclassified = _tag(dicts, candidates)
     ai_types: dict[int, str] = {}
@@ -350,7 +361,7 @@ def _redo(conn, dicts: PipelineDicts, llm: LLM, report: Report, digest: str, pre
             candidates[i].req_kind = "REQUIREMENT"
             candidates[i].rule_id, candidates[i].extracted_by = prep.rules[i]
         risk_terms = [e.pattern for e in dicts.risk_expressions]
-        _refine_with_ai(llm, candidates, report, risk_terms, None, dropped)
+        _refine_with_ai(llm, candidates, report, risk_terms, _handoff_rules(dicts), None, dropped)
         # 규칙 유형은 다시 붙이고(코드), 새로 요구사항이 된 줄만 유형을 처음 묻는다
         prep.tags, unclassified = _tag(dicts, candidates)
         new = [i for i in unclassified if i not in prep.ai_types]
