@@ -143,6 +143,8 @@ openspec/
 4. **Scenario마다 자동 테스트가 하나 이상** 있어야 한다. 테스트 이름이나 docstring에 Scenario 이름을 적는다.
 5. 구현하다가 스펙이 틀렸거나 모자라면 코드만 고치지 말고 change의 `specs/`를 먼저 고친다. 결정이 바뀌면 `design.md`에 적는다.
 6. 모든 작업이 `[x]`이고 검사가 통과하면 `openspec archive <change> --yes`로 `openspec/specs/`에 반영하고 PR을 올린다.
+7. PR을 올리기 직전과 머지가 충돌로 막혔을 때 커밋한 뒤 `cd frontend && npm run sync-main`(올리기까지 하려면 `-- --push`)을 돌린다.
+   여러 세션이 동시에 PR을 올리면 늘 겹치는 두 곳(2장 표 끝 줄 번호, `docs/추적표.md`)을 코드가 푼다: main 표는 그대로 두고 이 브랜치 줄만 마지막 번호 다음으로 다시 붙이고, 추적표는 다시 만든다. 다른 파일이 겹치면 멈추고 알린다.
 
 Claude Code에서는 같은 일을 `/opsx:apply <change>`, `/opsx:archive <change>`로 할 수 있다 (`.claude/skills/openspec-*`).
 
