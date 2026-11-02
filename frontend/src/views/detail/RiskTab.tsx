@@ -4,6 +4,7 @@ import { stamp } from '../../components/format'
 import { locName, locShort, markSplit } from '../../components/judgment'
 import { RISK_NAMES, STATUS_NAMES } from '../../components/labels'
 import { useLoad } from '../../components/useLoad'
+import { usePage } from '../../components/usePage'
 import { useSession } from '../../shell/useSession'
 import { OutputEditor } from './OutputEditor'
 
@@ -66,6 +67,7 @@ export function RiskTab({ run, tick, onChanged }: { run: RunSummary; tick: numbe
   const all = risks.data ?? []
   const live = all.filter((r) => r.status !== 'CLOSED_OK')
   const rows = [...live, ...all.filter((r) => r.status === 'CLOSED_OK')]
+  const { shown, pager } = usePage(rows)
   const note = KINDS.map((k) => `${RISK_NAMES[k]} ${live.filter((r) => r.risk_kind === k).length}`).join(' · ')
 
   const act = (r: Risk, action: 'CONFIRM' | 'REJECT') => {
@@ -85,7 +87,7 @@ export function RiskTab({ run, tick, onChanged }: { run: RunSummary; tick: numbe
       {risks.data?.length === 0 && <p style={{ color: 'var(--c-muted)' }}>위험 조건 후보가 없습니다.</p>}
       {rows.length > 0 && (
         <table className="mini"><tbody>
-          {rows.map((r) => {
+          {shown.map((r) => {
             const d = decided(r, log.data ?? [])
             const closed = r.status === 'CLOSED_OK'
             return (
@@ -139,6 +141,7 @@ export function RiskTab({ run, tick, onChanged }: { run: RunSummary; tick: numbe
           })}
         </tbody></table>
       )}
+      {pager}
       {error && <p className="aphint" role="alert">{error}</p>}
       {toast && <div className="toast" role="status"><span className="ms" aria-hidden="true">check_circle</span>{toast}</div>}
     </section>
