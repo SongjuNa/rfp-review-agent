@@ -54,3 +54,34 @@ test('견적 협조 요청 단추는 입찰 영향 탭으로 옮긴다', async (
   await page.getByRole('button', { name: '견적 담당에 협조 요청' }).click()
   await expect(page.getByRole('tab', { name: '입찰 영향' })).toHaveAttribute('aria-selected', 'true')
 })
+
+// 명세 review-workspace "손실 환산 탭" (change update-loss-tab-group). 합성 데이터시트는 단가 표가 하나라
+// 손실 목록 응답을 같은 조건 세 표로 늘리고, 저장 요청이 세 표 모두에 가는지 본다.
+test('같은 조건 손실 환산 표 묶기', async ({ page }) => {
+  const run = await lossRun(page.request, `손실 묶기 ${Date.now()}`)
+  const puts: string[] = []
+  await page.route(`**/api/runs/${run.run_id}/losses`, async (route) => {
+    const res = await route.fetch()
+    const [l] = (await res.json()) as Record<string, unknown>[]
+    if (!l) return route.fulfill({ response: res })
+    const at = (n: number) => ({ ...l, loss_calc_id: Number(l.loss_calc_id) * 10 + n,
+      locations: (l.locations as Record<string, unknown>[]).map((x) => ({ ...x, line_start: 7000 + n, line_end: 7000 + n })) })
+    await route.fulfill({ response: res, json: [at(1), at(2), at(3)] })
+  })
+  await page.route(`**/api/runs/${run.run_id}/losses/*`, async (route) => {
+    puts.push(new URL(route.request().url()).pathname.split('/').pop()!)
+    await route.fulfill({ json: { loss_calc_id: 0, total_usd: null } })
+  })
+  const rows = await openLoss(page, run.run_id)
+  test.skip(await page.getByText('손실 환산 조항이 없어').isVisible(), '합성 데이터시트가 문서 목록(묶음 A)에 없습니다')
+  await expect(page.locator('#loss table.mini')).toHaveCount(1)
+  await expect(rows).toHaveCount(4)
+  const head = page.locator('#loss .en').first()
+  await expect(head).toContainText('같은 조건 3곳')
+  await expect(head).toContainText('7001행')
+  await expect(head).toContainText('7003행')
+  await page.getByLabel('무부하 손실 손실값 (kW)', { exact: true }).fill('60')
+  await page.getByLabel('무부하 손실 손실값 (kW)', { exact: true }).press('Enter')
+  await expect.poll(() => puts.length).toBe(3)
+  await page.unrouteAll({ behavior: 'ignoreErrors' })   // 저장 뒤 다시 불러오기가 끝나기 전에 닫혀도 오류로 보지 않는다
+})

@@ -23,6 +23,15 @@ const REASONS: Record<string, string> = {
 
 const usd = (v: number | null) => (v === null ? '—' : `$${num(Math.round(v))}`)
 
+// 화면에 보이는 값이 모두 같은 단가 표는 한 상자로 묶는다 (update-loss-tab-group). 계산은 표마다 백엔드가 한다
+const sameKey = (l: Loss) => JSON.stringify([l.price_noload, l.price_load, l.price_aux, l.price_unit, l.product_code,
+  l.loss_noload_kw, l.loss_load_kw, l.loss_aux_kw, l.is_assumed, l.reason_code])
+function grouped(list: Loss[]): Loss[][] {
+  const m = new Map<string, Loss[]>()
+  for (const l of list) m.set(sameKey(l), [...(m.get(sameKey(l)) ?? []), l])
+  return [...m.values()]
+}
+
 function lines(l: Loss): string {
   const ns = l.price_locations.map((p) => p.line_start).filter((n): n is number => n !== null)
   if (!ns.length) return ''
@@ -61,15 +70,16 @@ export function LossTab({ run, tick, onChanged, onGoBid }: { run: RunSummary; ti
           <span><b>고객이 손실 환산 조항을 둔 경우에만 계산하는 변압기 참고값입니다.</b> 이 RFP는 {clause ? locName(clause, docs.data ?? []) : '데이터시트'}에 손실 환산 단가가 있어
             계산했습니다. 조항이 없는 RFP에서는 계산하지 않습니다. 콘덴서 용량이나 전기실 전체 손실 계산은 하지 않습니다.</span></div>
       )}
-      {list.map((l) => <LossTable key={l.loss_calc_id} runId={id} l={l} many={list.length > 1} docs={docs.data ?? []}
+      {grouped(list).map((g) => <LossTable key={g[0].loss_calc_id} runId={id} group={g} many={list.length > 1} docs={docs.data ?? []}
         canEdit={canEdit} lock={lock} onDone={onChanged} />)}
     </section>
   )
 }
 
-function LossTable({ runId, l, many, docs, canEdit, lock, onDone }: {
-  runId: number; l: Loss; many: boolean; docs: RunDocument[]; canEdit: boolean; lock?: string; onDone: () => void
+function LossTable({ runId, group, many, docs, canEdit, lock, onDone }: {
+  runId: number; group: Loss[]; many: boolean; docs: RunDocument[]; canEdit: boolean; lock?: string; onDone: () => void
 }) {
+  const l = group[0]
   const initial = () => Object.fromEntries(KINDS.map(([, , , f]) => [f, l[f] === null ? '' : String(Number(l[f]))])) as Record<Field, string>
   const [vals, setVals] = useState(initial)
   const [error, setError] = useState<string | null>(null)
@@ -90,15 +100,20 @@ function LossTable({ runId, l, many, docs, canEdit, lock, onDone }: {
     if (key === sent.current) return
     sent.current = key
     setError(null)
-    queue.current = queue.current.then(() => api.updateLoss(runId, l.loss_calc_id, body)).then(onDone, (e: Error) => setError(e.message))
+    // 묶인 표마다 같은 손실값을 차례로 저장한다
+    queue.current = queue.current.then(async () => { for (const x of group) await api.updateLoss(runId, x.loss_calc_id, body) })
+      .then(onDone, (e: Error) => setError(e.message))
   }
   const hint = l.reason_code ? REASONS[l.reason_code] : null
 
   return (
     <>
       <div className="en" style={{ margin: '12px 0 6px' }}>
-        {many && `${l.locations[0] ? locName(l.locations[0], docs) : ''} · `}비교 제품 {l.product_code ?? '없음'}
+        {group.length > 1 && <b>같은 조건 {group.length}곳 · </b>}
+        {many && group.length === 1 && l.locations[0] && `${locName(l.locations[0], docs)} · `}비교 제품 {l.product_code ?? '없음'}
         {l.is_assumed && <span className="st c-ora" style={{ marginLeft: 8 }}>팀 가정</span>}
+        {group.length > 1 && <ul style={{ margin: '4px 0 0', paddingLeft: 18 }}>
+          {group.map((x) => x.locations[0] && <li key={x.loss_calc_id}>{locName(x.locations[0], docs)}</li>)}</ul>}
       </div>
       <div className="tw">
       <table className="mini" style={{ maxWidth: 640 }}>
