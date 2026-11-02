@@ -17,14 +17,17 @@ class ScriptLLM:
 
     model = "fake-model"
 
-    def __init__(self, steps, fail=False):
+    def __init__(self, steps, fail=False, error=None):
         self.steps = list(steps)
         self.prompts: list[str] = []
         self.usage = Usage()
         self.fail = fail
+        self.error = error
 
     def generate_json(self, prompt, schema):
         self.prompts.append(prompt)
+        if self.error is not None:
+            raise self.error
         if self.fail:
             raise TimeoutError("응답 시간 초과")
         step = self.steps.pop(0)
@@ -133,14 +136,36 @@ def test_no_ai_key_searches_words(db, run):
     assert SENTENCE in texts and len(texts) == 2          # 외함 40 °C, 케이블 50 °C
     assert all("ambient temperature" in t for t in texts)
     assert all(e["locations"] for e in out["evidence"])
-    assert "AI 키가 없어" in out["note"]
+    assert out["note"] == assistant.NO_AI == "AI를 쓰지 않는 설정"
+
+
+class InvalidKeyError(Exception):
+    """google.genai ClientError처럼 code가 붙은 키 오류."""
+
+    code = 401
+
+
+def test_ai_config_error_falls_back(db, run):
+    """Scenario: AI 설정 오류 — 글자로 찾은 줄과 "AI 키·모델 설정 오류 — 설정 확인"."""
+    llm = ScriptLLM([], error=InvalidKeyError("API key not valid"))
+    out = assistant.ask(db, run, "ambient temperature", llm)
+    assert out["mode"] == "SEARCH" and out["note"] == assistant.AI_CONFIG
+    assert out["note"] == "AI 키·모델 설정 오류 — 설정 확인"
+    assert len(out["evidence"]) == 2
+    assert len(llm.prompts) == 1                          # 설정 오류는 다시 묻지 않음
 
 
 def test_ai_failure_falls_back(db, run):
-    """AI가 재시도 뒤에도 답하지 못하면 글자로 찾은 결과 (CR-12)."""
+    """Scenario: AI가 답하지 못함 — 재시도 뒤에도 답이 없으면 글자로 찾은 줄과 까닭 (CR-12)."""
     out = assistant.ask(db, run, "ambient temperature", ScriptLLM([], fail=True))
-    assert out["mode"] == "SEARCH" and "AI 응답을 받지 못해" in out["note"]
+    assert out["mode"] == "SEARCH" and out["note"] == assistant.AI_FAILED == "AI가 답하지 못함"
     assert len(out["evidence"]) == 2
+
+
+def test_search_note_is_reason_only(db, run):
+    """맞는 줄이 없어도 note에는 까닭만 (0건 안내는 화면이 한다)."""
+    out = assistant.ask(db, run, "시험 입회 조건이 있는 조항", None)
+    assert out["evidence"] == [] and out["note"] == assistant.NO_AI
 
 
 def test_search_limit_then_answer(db, run):
