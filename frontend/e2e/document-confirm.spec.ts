@@ -1,4 +1,5 @@
 import { expect, test, type Route } from '@playwright/test'
+import { fileURLToPath } from 'node:url'
 
 // 명세 review-workspace "검토 등록 문서 분류 확인"의 Scenario (change add-document-confirm).
 // 합성 데이터시트(e2e/fixtures/synthetic_judgment.docx)는 로컬 DB 문서 목록에 묶음 A로 있다 (helpers.ts).
@@ -7,7 +8,7 @@ const isoAfter = (days: number) => new Date(Date.now() + days * 86_400_000).toIS
 
 test('올린 문서의 분류 추천 보기', async ({ page }) => {
   await page.goto('/#/register')
-  await page.getByLabel('docx 올리기').setInputFiles(DOCX.pathname)
+  await page.getByLabel('docx 올리기').setInputFiles(fileURLToPath(DOCX))
   const row = page.locator('tr', { hasText: 'synthetic_judgment.docx' })
   await expect(row.getByLabel('묶음')).toHaveValue('A', { timeout: 10_000 })
   await expect(row.getByLabel('문서 종류')).toBeVisible()
@@ -24,7 +25,7 @@ test('묶음을 바꿔 시작', async ({ page }) => {
     reason: '문서 목록에 없음 · 주 규격 체계 모름이라 판정하지 않음',
   }] }))
   await page.goto('/#/register')
-  await page.getByLabel('docx 올리기').setInputFiles(DOCX.pathname)
+  await page.getByLabel('docx 올리기').setInputFiles(fileURLToPath(DOCX))
   const row = page.locator('tr', { hasText: 'synthetic_judgment.docx' })
   await expect(row.getByLabel('묶음')).toHaveValue('C')
   await expect(row).toContainText('판정 안 함')
@@ -55,7 +56,7 @@ test('등록 화면 판정 대상 없음 안내', async ({ page }) => {
     reason: '문서 목록에 없음 · IEEE·UL이라 판정하지 않음',
   }] }))
   await page.goto('/#/register')
-  await page.getByLabel('docx 올리기').setInputFiles(DOCX.pathname)
+  await page.getByLabel('docx 올리기').setInputFiles(fileURLToPath(DOCX))
   const row = page.locator('tr', { hasText: 'synthetic_judgment.docx' })
   await expect(row).toContainText('판정 안 함')
   await expect(page.locator('.foot2')).toContainText('판정 대상 문서(묶음 A·B)가 없습니다')
