@@ -107,7 +107,8 @@ def test_field_sentence_is_not_written_by_ai(db, tmp_path):
 
 
 def test_suspicious_cases_are_not_counted(seeded_db):
-    """Scenario: 의심 사례 — 해결 사례 수에서 뺀다 (FLT-051: 5건 중 1건 의심 → 4건)."""
+    """Scenario: 의심 사례 표시 ·
+    Scenario: 의심 사례 — 해결 사례 수에서 뺀다 (FLT-051: 5건 중 1건 의심 → 4건)."""
     link = next(x for x in load_links(seeded_db) if x.fault_id == "FLT-051")
     assert (link.cases, link.suspects) == (4, 1)
     total = seeded_db.execute("SELECT count(*), count(suspect_reason) FROM resolution_case"
@@ -116,7 +117,8 @@ def test_suspicious_cases_are_not_counted(seeded_db):
 
 
 def test_suspect_reasons():
-    """Scenario: 고장 사전과 어긋난 사례 — RMA 번호 불일치, 처리 시간 10배 초과."""
+    """Scenario: 의심 이유 ·
+    Scenario: 고장 사전과 어긋난 사례 — RMA 번호 불일치, 처리 시간 10배 초과."""
     fault = {"needs_rma": "N", "typical_resolution_hours": "24"}
     normal = {"rma_no": "", "time_to_resolve_hours": "30.0"}
     assert suspect_reason(normal, fault) is None

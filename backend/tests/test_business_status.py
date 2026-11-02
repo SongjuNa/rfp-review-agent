@@ -208,7 +208,8 @@ def test_linked_project_name_is_locked(db, spec, client):
 # ── 범위별 진행 상태 ─────────────────────────────────────────
 
 def test_state_waiting_for_help(db, spec):
-    """Scenario: 협조 대기 — 메일을 보냈지만 회신 받지 않은 협조 요청이 남은 담당자 확인."""
+    """Scenario: 협조가 끝난 담당자 확인 ·
+    Scenario: 협조 대기 — 메일을 보냈지만 회신 받지 않은 협조 요청이 남은 담당자 확인."""
     run_id = run_once(db, [spec])
     business_id = business.create(db, {"business_name": "예시 사업"}, None)
     business.link(db, run_id, business_id, None)

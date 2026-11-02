@@ -39,7 +39,8 @@ def row(conn, run_id, jid):
 
 
 def test_mark_and_undo(db, spec):
-    """Scenario: 질의 보냄 표시 — 시각·표시한 사람이 남고, 되돌리면 비며, 이력에 둘 다 남는다."""
+    """Scenario: 질의 보냄과 되돌리기 ·
+    Scenario: 질의 보냄 표시 — 시각·표시한 사람이 남고, 되돌리면 비며, 이력에 둘 다 남는다."""
     run_id, jid = query_run(db, spec)
     eng = user(db, "ENGINEER")
     outputs = db.execute("SELECT count(*) FROM output_item WHERE run_id = %s", (run_id,)).fetchone()
@@ -62,7 +63,8 @@ def test_mark_and_undo(db, spec):
 
 
 def test_only_query_candidate_and_engineer(db, spec):
-    """Scenario: 질의 후보가 아닌 판정·엔지니어가 아닌 사람은 표시할 수 없다."""
+    """Scenario: 질의 후보·엔지니어만 ·
+    Scenario: 질의 후보가 아닌 판정·엔지니어가 아닌 사람은 표시할 수 없다."""
     run_id, jid = query_run(db, spec)
     other = db.execute("SELECT min(judgment_id) FROM judgment WHERE run_id = %s AND is_current "
                        "AND result <> 'QUERY_CANDIDATE'", (run_id,)).fetchone()[0]
@@ -77,7 +79,8 @@ def test_only_query_candidate_and_engineer(db, spec):
 
 
 def test_carry_after_addendum(db, spec, tmp_path):
-    """Scenario: 문서를 더해 다시 분석해도 같은 줄의 질의 보냄 표시가 남는다."""
+    """Scenario: 문서 추가 뒤에도 남음 ·
+    Scenario: 문서를 더해 다시 분석해도 같은 줄의 질의 보냄 표시가 남는다."""
     run_id, jid = query_run(db, spec)
     eng = user(db, "ENGINEER")
     review.act(ctx(db), run_id, "judgment", jid, "QUERY_SENT", actor_id=eng)

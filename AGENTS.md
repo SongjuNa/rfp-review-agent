@@ -112,6 +112,7 @@ openspec/
 | 73 | `archive/2026-11-01-add-revision-notice` | 개정 안내 띠(Q5): 문서를 더해 다시 판정하면 같은 줄 기준 바뀜·추가·사라짐을 `graph_state.revision`에 남김(`RunSummary`·`RunListItem.revision`, 판정 `revised`, `?revised=true`). 판정 탭 위 띠·[바뀐 줄만 보기]·닫기, "바뀜(개정)" 꼬리표, 제목 "개정 n 반영", 홈 바뀐 것에 문서 추가. 마이그레이션 없음 (완료) |
 | 74 | `archive/2026-11-01-add-query-sent` | 질의 보냄 표시(Q4): 질의 후보 판정에 엔지니어가 "질의 보냄"을 표시·되돌림(`POST /actions` `QUERY_SENT`·`QUERY_UNSENT`, 담당자 확인 단계, 이력), 판정 `query_sent_at`·`query_sent_by_name`, 문서 추가 뒤에도 같은 줄로 옮김. 판정 상세 단추·판정 표 꼬리표. 0031 (완료) |
 | 75 | `archive/2026-11-01-add-screen-summary` | 요약 상자(Q1): 검토 상세 제목 줄 아래·홈 나의 업무 아래 "요약" 상자("코드가 씀", 요약 시각, [다시 요약]). `GET /runs/{id}/summary`(반려·승인, 꼭 볼 것·상신 권장일, 먼저 볼 일탈 링크, 개정, 빈 작성 칸, 최대 4문장)·`GET /home/summary?user_id=`(내 차례 수 = "내가 처리할 건", 멈춘·결재 중·협조 대기, 부서는 회신 안 한 요청). 코드가 틀에 채움, AI 없음. 마이그레이션 없음 (완료) |
+| 76 | `archive/2026-11-01-add-spec-trace` | 스펙 기준 검증(SDD 5단계): 추적표 `docs/추적표.md`(FR → 스펙 시나리오 → 화면 수용 기준 → 컴포넌트 → 테스트, 이름이 같으면 잇기, `npm run trace`·CI `check:trace`), 핵심 흐름 e2e "RFP 한 건 처음부터 끝까지", 목업 v4.96 26화면 나란히 찍기·영역 배치 점검(`compare-out/layout.json`). 마이그레이션 없음 (완료) |
 
 ## 3. 작업 흐름
 
@@ -172,7 +173,7 @@ archive는 마지막 묶음을 끝낸 사람이 한다.
 
 ```bash
 cd backend && uv run ruff check . && TEST_DATABASE_URL=postgresql://rfp:rfp@localhost:5433/rfp_test uv run pytest
-cd frontend && npm run lint && npm run check:api && npm run build
+cd frontend && npm run lint && npm run check:api && npm run check:trace && npm run build
 openspec validate --all --strict
 ```
 

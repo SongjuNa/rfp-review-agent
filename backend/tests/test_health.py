@@ -6,6 +6,7 @@ from rfp_agent.db.migrate import migrate
 
 
 def test_health_reports_degraded_when_db_is_down(monkeypatch):
+    """Scenario: DB 장애."""
     monkeypatch.setenv("DATABASE_URL", "postgresql://nobody@127.0.0.1:1/none")
     get_settings.cache_clear()
     try:
@@ -17,6 +18,7 @@ def test_health_reports_degraded_when_db_is_down(monkeypatch):
 
 
 def test_health_reports_schema_version(monkeypatch, empty_db, db_url, settings):
+    """Scenario: 정상."""
     migrate(empty_db, settings.migrations_dir)
     monkeypatch.setenv("DATABASE_URL", db_url)
     get_settings.cache_clear()

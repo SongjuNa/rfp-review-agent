@@ -116,7 +116,8 @@ def test_add_same_file_rejected(db, spec):
 
 
 def test_add_document_keeps_warranty(db, spec, tmp_path):
-    """확정한 보증값 후보는 새 판정 줄에 다시 이어져 그대로 남는다."""
+    """Scenario: 확정한 보증값 그대로 —
+    확정한 보증값 후보는 새 판정 줄에 다시 이어져 그대로 남는다."""
     run_id = finished(db, spec)
     row = db.execute("""SELECT w.candidate_id, w.judgment_id FROM warranty_candidate w
                         WHERE w.run_id = %s AND w.candidate_value IS NOT NULL
@@ -137,7 +138,8 @@ def explain_calls(llm):
 
 
 def test_add_document_reuses_risk_explanation(db, spec, tmp_path):
-    """같은 위험 조건은 AI에 다시 묻지 않고 설명과 근거 문장을 이어 쓴다 (문서 추가 비용)."""
+    """Scenario: 같은 위험 조건은 AI 다시 안 부름 —
+    같은 위험 조건은 AI에 다시 묻지 않고 설명과 근거 문장을 이어 쓴다 (문서 추가 비용)."""
     from tests.conftest import FakeLLM
 
     gis = build_gis_spec(tmp_path / "synthetic_154kV_GIS_spec.docx")
@@ -166,7 +168,8 @@ def test_add_document_reuses_risk_explanation(db, spec, tmp_path):
 
 
 def test_add_documents_api(db, db_url, monkeypatch, spec, tmp_path):
-    """문서 추가 API: 엔지니어만(승인자 403), 끝나면 담당자 확인 단계, 문서 하나 늘어남."""
+    """Scenario: 문서를 더해 다시 분석 / 엔지니어만 더함 —
+    문서 추가 API: 엔지니어만(승인자 403), 끝나면 담당자 확인 단계, 문서 하나 늘어남."""
     import json
 
     from fastapi.testclient import TestClient

@@ -110,6 +110,7 @@ test('질의 보냄 되돌리기', async ({ page }) => {
   expect(posts).toContainEqual(expect.objectContaining({ target_id: 502, action: 'QUERY_UNSENT' }))
 })
 
+// Scenario: 승인자는 잠김
 test('승인자는 질의 보냄을 표시할 수 없다', async ({ page }) => {
   await mock(page, 'ENGINEER_REVIEW', 2)
   await page.goto(`/#/reviews/${ID}/judgments/502`)

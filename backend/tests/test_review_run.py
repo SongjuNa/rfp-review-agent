@@ -31,6 +31,7 @@ def scalar(conn, sql, *params):
 
 
 def test_run_records_version_and_moves_to_engineer_review(seeded_db, spec_docx):
+    """Scenario: 파일 1로 검토 시작."""
     run_id, stage = run_once(seeded_db, [spec_docx])
     assert stage == "ENGINEER_REVIEW"
     summary = queries.run_summary(seeded_db, run_id)
@@ -42,6 +43,7 @@ def test_run_records_version_and_moves_to_engineer_review(seeded_db, spec_docx):
 
 
 def test_every_requirement_has_a_location(seeded_db, spec_docx):
+    """Scenario: 위치가 없는 값."""
     run_id, _ = run_once(seeded_db, [spec_docx])
     reqs = queries.run_requirements(seeded_db, run_id, limit=500)
     assert reqs and all(r["locations"] for r in reqs)
@@ -93,7 +95,7 @@ def test_deemed_kept_when_ai_says_writing_rule(seeded_db, spec_docx):
 
 
 def test_risk_candidates(seeded_db, spec_docx):
-    """Scenario: 겹치는 열린 표현.
+    """Scenario: including but not limited to · Scenario: 겹치는 열린 표현.
 
     "including but not limited to"는 사전의 두 표현에 걸려도 범위 모호 1건이다.
     """
@@ -110,6 +112,7 @@ def test_risk_candidates(seeded_db, spec_docx):
 
 
 def test_same_document_twice_gives_same_results(seeded_db, spec_docx):
+    """Scenario: 같은 문서 두 번."""
     first, _ = run_once(seeded_db, [spec_docx])
     second, _ = run_once(seeded_db, [spec_docx])
     a, b = (queries.run_summary(seeded_db, r) for r in (first, second))
@@ -121,7 +124,8 @@ def test_same_document_twice_gives_same_results(seeded_db, spec_docx):
 
 
 def test_same_name_different_content_is_processed_again(seeded_db, tmp_path):
-    """이름·파일 번호가 같아도 내용이 다르면 저장된 처리 결과를 다시 쓰지 않는다."""
+    """Scenario: 이름이 같고 내용이 다른 파일 —
+    이름·파일 번호가 같아도 내용이 다르면 저장된 처리 결과를 다시 쓰지 않는다."""
     from docx import Document
 
     name = "RFP_product_master_based_EN.docx"      # 파일 목록 23번
@@ -143,6 +147,7 @@ def test_same_name_different_content_is_processed_again(seeded_db, tmp_path):
 
 
 def test_ai_failure_stops_run_with_message(seeded_db, spec_docx):
+    """Scenario: 계속 실패."""
     run_id, stage = run_once(seeded_db, [spec_docx], llm=FakeLLM(fail=True))
     summary = queries.run_summary(seeded_db, run_id)
     assert stage == "FAILED" == summary["stage"]
@@ -151,6 +156,7 @@ def test_ai_failure_stops_run_with_message(seeded_db, spec_docx):
 
 
 def test_ai_inputs_are_per_section(seeded_db, spec_docx):
+    """Scenario: 가장 긴 문서."""
     llm = FakeLLM()
     run_id, stage = run_once(seeded_db, [spec_docx], llm=llm)
     assert stage == "ENGINEER_REVIEW"

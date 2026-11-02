@@ -26,6 +26,7 @@ async function dueToday(request: APIRequestContext, project: string, scope: stri
   return run
 }
 
+// Scenario: 내 업무 칸으로 강조 / 사업별 보기
 test('내 업무와 단계별 카드', async ({ page, request }) => {
   const scope = `홈 카드 ${Date.now()}`
   const run = await dueToday(request, '예시 변전소 H', scope)

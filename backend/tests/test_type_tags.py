@@ -24,10 +24,12 @@ def primary(text, rules):
 
 
 def test_test_report(rules):
+    """Scenario: 시험."""
     assert primary("Type Test Report / Required", rules)[0] == "TEST"
 
 
 def test_maker_qualification(rules):
+    """Scenario: 제조사 자격."""
     assert primary("ISO 9001 or equivalent certificates / Required", rules)[0] == "MAKER_QUAL"
 
 

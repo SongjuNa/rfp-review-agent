@@ -32,6 +32,7 @@ test('홈 요약 상자', async ({ page }) => {
   await expect(box.locator('.ais-p')).toContainText(n === '0' ? '지금 내 차례인 검토는 없습니다.' : `내 차례인 검토는 ${n}건입니다.`)
 })
 
+// Scenario: 요약 실패
 test('요약 실패와 다시 요약', async ({ page }) => {
   let fail = true
   await page.route('**/api/home/summary**', async (route) => {

@@ -5,6 +5,7 @@ import { expect, test } from '@playwright/test'
 
 test.beforeEach(async ({ page }) => { await page.goto('/#/dev/ui') })
 
+// Scenario: 순번이 이어짐
 test('쪽을 넘겨도 순번이 이어짐', async ({ page }) => {
   const table = page.getByRole('table', { name: '견본 목록' })
   await expect(table.locator('thead th').first()).toHaveText('순번')
@@ -21,6 +22,7 @@ test('빈 목록', async ({ page }) => {
   await expect(table.locator('tbody')).toHaveText('조건에 맞는 줄이 없습니다.')
 })
 
+// Scenario: 알림 쌓기
 test('알림 두 개', async ({ page }) => {
   await page.getByRole('button', { name: '성공 알림 1' }).click()
   await page.getByRole('button', { name: '성공 알림 2' }).click()

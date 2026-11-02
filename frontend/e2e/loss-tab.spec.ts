@@ -24,6 +24,7 @@ test('손실 환산 표', async ({ page }) => {
   await expect(page.locator('#loss .sech .note')).toContainText(/단가 \d+~\d+행/)
 })
 
+// Scenario: 손실 환산 결과
 test('손실값 넣어 다시 계산', async ({ page }) => {
   const run = await lossRun(page.request, `손실 계산 ${Date.now()}`)
   const rows = await openLoss(page, run.run_id)
