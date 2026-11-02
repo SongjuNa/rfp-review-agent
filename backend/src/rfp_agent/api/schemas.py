@@ -1217,6 +1217,31 @@ class RunLogItem(ReviewFields):
     steps: list[RunStepTime]
 
 
+AiFeature = Literal["ANALYSIS", "ASSISTANT", "HANDOFF_ASK", "PRODUCT_SWITCH", "LOSS_EDIT",
+                    "REVIEW_ACTION", "BULK_CONFIRM"]
+
+
+class AiUsageRow(Out):
+    """날짜·기능·모델별 AI 사용량 (add-ai-usage-log). ANALYSIS는 분석 실행(review_run) 합."""
+    day: date
+    feature: AiFeature
+    feature_name: str
+    model: str | None
+    calls: int
+    retries: int
+    input_tokens: int
+    output_tokens: int
+    thinking_tokens: int
+    estimated_cost_krw: int | None          # 팀 가정 단가. 단가를 모르는 모델이면 null
+
+
+class AiUsage(Out):
+    days: int
+    items: list[AiUsageRow]
+    total_calls: int
+    total_cost_krw: int | None
+
+
 # ---------------------------------------------------------------------
 # 정답지·채점 (add-evaluation, 명세 evaluation)
 
