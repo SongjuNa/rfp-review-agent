@@ -5,7 +5,7 @@
 
 import argparse
 import sys
-from datetime import date, timedelta
+from datetime import timedelta
 from pathlib import Path
 
 from rfp_agent.config import get_settings
@@ -45,7 +45,10 @@ def demo_businesses(groups: list[list[str]], customer: str | None, due_in: int) 
     from rfp_agent.pipeline import business, review, review_info
     from rfp_agent.pipeline.service import run_to_end, start_run
 
-    due = date.today() + timedelta(days=due_in)
+    # 마감일은 화면의 "남은 날"과 같은 DB 날짜(CURRENT_DATE) 기준. 컴퓨터 날짜(KST)로 하면
+    # 한국 시간 0~9시에 DB(UTC)와 하루 어긋난다
+    with connect() as conn:
+        due = conn.execute("SELECT CURRENT_DATE").fetchone()[0] + timedelta(days=due_in)
     for name, *files in groups:
         paths = [Path(f) for f in files]
         missing = [str(p) for p in paths if not p.exists()]
