@@ -26,7 +26,7 @@ function req(id: number, run: number, role: string, text: string, extra: Partial
 const ago = (h: number) => new Date(Date.now() - h * H).toISOString()
 const sentAgo = (h: number, role = 'cost'): Partial<A> => ({ status: 'DOING', mail_sent_at: ago(h), mail_to: `${role}@example.com` })
 
-async function mock(page: Page, userId = 1) {
+async function mock(page: Page, userId = 1, more: A[] = []) {
   const list: A[] = [
     req(1, 9301, 'COST', 'Liquidated damages for delay 0.5 % per week', sentAgo(120)),
     req(2, 9301, 'COST', 'Performance security 10 % of contract price', sentAgo(100)),
@@ -38,6 +38,7 @@ async function mock(page: Page, userId = 1) {
     req(8, 9303, 'COST', 'Price adjustment not allowed'),
     req(9, 9301, 'QUALITY', 'Type Test Report shall be submitted', { type_code: 'TEST', type_name: '시험' }),
     req(10, 9303, 'SALES', 'Bid validity 180 days', { type_code: 'CONTRACT', type_name: '계약 조건' }),
+    ...more,
   ]
   const posts: { path: string; body: Record<string, unknown> }[] = []
   await page.route('**/api/**', async (r) => {
@@ -135,6 +136,25 @@ test('RFP별 묶어 보기', async ({ page }) => {
   await expect(g.locator('table')).toHaveCount(0)
   await g.getByRole('button', { name: 'RV-TEST-302 펼치기' }).click()
   await expect(g.locator('tbody tr')).toHaveCount(2)
+})
+
+// 명세 review-workspace "협조 요청 RFP별 보기" (change update-todo-rfp-paging)
+test('RFP별 쪽 나누기', async ({ page }) => {
+  // 302 검토에 요청 5건을 더해 모두 15건: 301 4건 → 302 7건 → 303 4건 순서로 10건씩 자른다
+  await mock(page, 1, [11, 12, 13, 14, 15].map((id) => req(id, 9302, 'QUALITY', `Routine test item ${id}`, { type_code: 'TEST', type_name: '시험' })))
+  await page.goto('/#/todo')
+  await page.getByRole('group', { name: '보기 방식' }).getByRole('button', { name: 'RFP별' }).click()
+  await expect(page.locator('.rg tbody tr')).toHaveCount(10)
+  await expect(page.locator('.pager')).toContainText('1–10 / 전체 15건')
+  const g = page.getByRole('region', { name: 'RV-TEST-302 협조 요청' })
+  await expect(g.locator('tbody tr')).toHaveCount(6)
+  await expect(g.locator('.rg-s')).toContainText('회신 1 / 7')          // 머리 숫자는 검토 전체
+  await expect(page.getByRole('region', { name: 'RV-TEST-303 협조 요청' })).toHaveCount(0)
+  await page.getByRole('button', { name: '다음 페이지' }).click()
+  await expect(page.locator('.rg tbody tr')).toHaveCount(5)
+  await expect(g.locator('tbody tr')).toHaveCount(1)                     // 302의 남은 1건이 이어진다
+  await expect(page.getByRole('region', { name: 'RV-TEST-303 협조 요청' }).locator('tbody tr')).toHaveCount(4)
+  await expect(page.getByRole('region', { name: 'RV-TEST-301 협조 요청' })).toHaveCount(0)
 })
 
 test('협조 요청 내보내기', async ({ page }) => {
