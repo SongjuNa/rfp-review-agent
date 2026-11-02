@@ -63,7 +63,7 @@ test('머리글에서 고치기', async ({ page, request }) => {
   await dialog.getByLabel('고객사').fill('새 고객사')
   await dialog.getByRole('button', { name: '저장' }).click()
   await expect(dialog).toBeHidden()
-  await expect(page.locator('main .idl').nth(1)).toContainText('새 고객사')
+  await expect(page.getByRole('definition').filter({ hasText: '새 고객사' })).toBeVisible()   // 사업 상자 고객사 (v4.96)
   await page.getByRole('tab', { name: '이력' }).click()
   await expect(page.locator('#log')).toContainText('검토 정보 고침: 고객사 비어 있음 → 새 고객사')   // 이력 탭 문장 (SCR-08-9)
   await page.goto('/#/reviews')
