@@ -99,7 +99,8 @@ export function RiskTab({ run, tick, onChanged }: { run: RunSummary; tick: numbe
       {risks.error && <p role="alert">{risks.error} <button type="button" className="lnk" onClick={risks.reload}>다시 불러오기</button></p>}
       {risks.data?.length === 0 && <p style={{ color: 'var(--c-muted)' }}>위험 조건 후보가 없습니다.</p>}
       {rows.length > 0 && (
-        <table className="mini"><tbody>
+        // 칸 폭 고정: 긴 파일 이름이 설명 칸을 눌러 한 낱말씩 줄이 바뀌지 않게 (위치는 줄을 바꿔 보인다)
+        <table className="mini rkt"><colgroup><col className="c-s" /><col /><col className="c-w" /><col className="c-a" /></colgroup><tbody>
           {shown.map((r) => {
             const d = decided(r, log.data ?? [])
             const closed = r.status === 'CLOSED_OK'
@@ -115,7 +116,7 @@ export function RiskTab({ run, tick, onChanged }: { run: RunSummary; tick: numbe
                     <button type="button" className="lnk" aria-expanded={open === r.risk_id} style={{ fontSize: 'inherit', fontWeight: 400, color: 'inherit', textAlign: 'left' }}
                       onClick={() => setOpen(open === r.risk_id ? null : r.risk_id)}>{where(r, docs.data ?? [])}</button>
                   </td>
-                  <td className="loc" style={{ width: 1 }}>
+                  <td className="loc">
                     {r.status === 'CANDIDATE'
                       ? closing === r.risk_id
                         ? <span style={{ display: 'flex', gap: 6, alignItems: 'center' }}>

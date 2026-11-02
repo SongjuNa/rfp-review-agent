@@ -1,5 +1,8 @@
 /* 공통 부품 중 목업 CSS에 없는 모양만 (add-ui-foundation). 색·간격은 styles/tokens.css 토큰만 쓴다. */
 
+/* 줄바꿈: 한국어도 낱말(띄어쓰기) 단위로 바꾸고, 칸보다 긴 낱말(파일 이름·URL 등)만 낱말 안에서 끊는다 */
+body{word-break:keep-all;overflow-wrap:break-word}
+
 /* 창 (목업 Detail .mdo > .apw 모양을 모든 화면에서 쓰려고 옮김) */
 .uim{position:fixed;inset:0;z-index:var(--z-modal);background:var(--c-overlay-strong);display:flex;align-items:center;justify-content:center;padding:var(--s-8);box-sizing:border-box}
 .uid{width:min(var(--uid-w,640px),100%);max-height:100%;background:var(--c-white);border-radius:var(--r-lg);box-shadow:0 24px 48px var(--c-shade-strong);display:flex;flex-direction:column;overflow:hidden;outline:none}
