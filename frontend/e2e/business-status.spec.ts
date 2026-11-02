@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { expect, test, type APIRequestContext } from '@playwright/test'
-import { as, ENGINEER } from './helpers'
+import { as, dueIn, ENGINEER } from './helpers'
 
 // 명세 review-workspace "사업 현황 화면", "사업 상세 화면", "검토 등록 사업 연결"의 Scenario (change add-project-status).
 // 합성 문서(e2e/fixtures, 고객 원문 아님)를 API로 올려 실행을 만든다. 백엔드(8000)와 `npm run dev`(5173)가 필요하다.
@@ -14,7 +14,7 @@ async function start(request: APIRequestContext, form: Record<string, string>): 
       files: { name: 'synthetic_154kV_GIS_spec.docx', mimeType: 'application/octet-stream', buffer: readFileSync(DOCX) },
       // 문서 목록에 없는 문서라 묶음을 정해 보낸다 (reject-unjudged-registration)
       choices: JSON.stringify({ 'synthetic_154kV_GIS_spec.docx': { bundle: 'B' } }),
-      actor_id: String(ENGINEER), ...form,
+      actor_id: String(ENGINEER), due_date: dueIn(), ...form,
     },
   })
   expect(res.status()).toBe(202)

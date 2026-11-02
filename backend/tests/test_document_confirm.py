@@ -106,7 +106,8 @@ def test_same_file_with_another_bundle(db, tmp_path):
 def test_upload_with_choices(client, db, tmp_path):
     path = build_judgment_spec(tmp_path / "new_plain_datasheet.docx")
     files = [("files", (path.name, path.read_bytes()))]
-    choose = lambda bundle: {"choices": json.dumps({path.name: {"bundle": bundle}})}  # noqa: E731
+    choose = lambda bundle: {"choices": json.dumps({path.name: {"bundle": bundle}}),  # noqa: E731
+                              "due_date": "2026-12-01"}
     bad = client.post("/api/runs", files=files, data=choose("E"))
     assert bad.status_code == 400
     res = client.post("/api/runs", files=files, data=choose("B"))
@@ -149,7 +150,7 @@ def test_same_file_uploaded_at_once(db, tmp_path, monkeypatch):
 
 def upload(client, paths, choices=None):
     files = [("files", (p.name, p.read_bytes())) for p in paths]
-    data = {"choices": json.dumps(choices)} if choices else {}
+    data = ({"choices": json.dumps(choices)} if choices else {}) | {"due_date": "2026-12-01"}
     return client.post("/api/runs", files=files, data=data)
 
 
@@ -183,5 +184,6 @@ def test_start_with_one_judge_target(client, db, spec, tmp_path):
 
 def test_broken_docx_is_not_rejected_here(client, db):
     """열 수 없는 docx는 거절 판단에서 빼고 지금처럼 분석 실패로 남긴다."""
-    res = client.post("/api/runs", files=[("files", ("빈 파일.docx", b""))])
+    res = client.post("/api/runs", files=[("files", ("빈 파일.docx", b""))],
+                      data={"due_date": "2026-12-01"})
     assert res.status_code == 202

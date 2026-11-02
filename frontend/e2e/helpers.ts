@@ -8,6 +8,13 @@ import { expect, test, type APIRequestContext, type Page } from '@playwright/tes
 //   INSERT INTO document_catalog (file_no, file_key, bundle, language) VALUES (91, 'synthetic_judgment', 'A', 'en');
 const DOCX = new URL('./fixtures/synthetic_judgment.docx', import.meta.url)
 export const ENGINEER = 1
+
+/** 검토를 만들 때 꼭 보내는 제출 마감일: 오늘부터 days일 뒤 (update-due-required) */
+export function dueIn(days = 14): string {
+  const d = new Date(Date.now() + days * 86_400_000)
+  const p = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`
+}
 export const APPROVER = 2
 export const COMMENT = '질의 1건은 10-27 회신 예정'
 
@@ -15,7 +22,7 @@ export async function deviationRun(request: APIRequestContext, name: string) {
   const res = await request.post('/api/runs', {
     multipart: {
       files: { name: 'synthetic_judgment.docx', mimeType: 'application/octet-stream', buffer: readFileSync(DOCX) },
-      review_name: name, actor_id: String(ENGINEER),
+      review_name: name, actor_id: String(ENGINEER), due_date: dueIn(),
     },
   })
   const run = await res.json() as { run_id: number; review_no: string }
@@ -44,7 +51,7 @@ async function upload(request: APIRequestContext, file: string, name: string, bu
   const res = await request.post('/api/runs', {
     multipart: {
       files: { name: file, mimeType: 'application/octet-stream', buffer: readFileSync(new URL(`./fixtures/${file}`, import.meta.url)) },
-      review_name: name, actor_id: String(ENGINEER),
+      review_name: name, actor_id: String(ENGINEER), due_date: dueIn(),
       ...(bundle ? { choices: JSON.stringify({ [file]: { bundle } }) } : {}),
     },
   })

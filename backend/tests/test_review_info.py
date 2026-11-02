@@ -33,7 +33,11 @@ def client(db, db_url, monkeypatch):
     get_settings.cache_clear()
 
 
+DUE = "2026-12-01"
+
+
 def upload(client, spec, **form):
+    form.setdefault("due_date", DUE)        # 마감일은 꼭 받는다 (update-due-required)
     with spec.open("rb") as f:
         return client.post("/api/runs", data=form, files=[("files", (spec.name, f.read()))])
 
@@ -54,12 +58,51 @@ def test_start_with_review_info(db, spec, client):
 
 
 def test_start_without_review_info(db, spec, client):
-    """Scenario: 검토 정보 없이 시작 — 실행은 시작되고 칸은 모두 비어 있다 (채우지 않음)."""
+    """Scenario: 검토 정보 없이 시작 — 마감일만 넣으면 시작되고 나머지 칸은 비어 있다."""
     started = upload(client, spec)
     assert started.status_code == 202
     summary = client.get(f"/api/runs/{started.json()['run_id']}").json()
     assert summary["stage"] == "ENGINEER_REVIEW"
-    assert all(summary[k] is None for k in review_info.FIELDS)
+    assert summary["due_date"] == DUE
+    assert all(summary[k] is None for k in review_info.FIELDS if k != "due_date")
+
+
+def test_start_without_due_date(db, spec, client):
+    """Scenario: 마감일 없이 시작 — 오류, 실행을 만들지 않는다."""
+    runs_before = len(client.get("/api/runs").json())
+    for due in ("", "  "):
+        refused = upload(client, spec, due_date=due, review_name="마감 없음")
+        assert refused.status_code == 400
+        assert refused.json()["detail"] == "제출 마감일을 입력해 주세요."
+    assert len(client.get("/api/runs").json()) == runs_before
+
+
+def test_cannot_clear_due_date(db, spec, client):
+    """Scenario: 마감일 비우기 — 오류, 마감일과 이력은 그대로."""
+    run_id = upload(client, spec).json()["run_id"]
+    logs = db.execute("SELECT count(*) FROM review_log WHERE run_id = %s", (run_id,)).fetchone()[0]
+    put = client.put(f"/api/runs/{run_id}/info", json={"due_date": ""})
+    assert put.status_code == 400 and "비울 수 없습니다" in put.json()["detail"]
+    assert client.get(f"/api/runs/{run_id}").json()["due_date"] == DUE
+    assert db.execute("SELECT count(*) FROM review_log WHERE run_id = %s",
+                      (run_id,)).fetchone()[0] == logs
+
+
+def test_fill_empty_due_dates(db, spec, client):
+    """Scenario: 빈 마감 채우기 — 빈 검토는 시작일 + 14일과 이력 1건, 마감이 있던 검토는 그대로."""
+    empty = run_once(db, [spec])          # 파이프라인으로 바로 만든 검토는 마감이 비어 있다
+    kept = upload(client, spec).json()["run_id"]
+    engineer = review.default_user(db, "ENGINEER")
+    done = review_info.fill_due(db, 14, engineer)
+    assert empty in done and kept not in done
+    due, started = db.execute("SELECT due_date, started_at::date FROM review_run WHERE run_id = %s",
+                              (empty,)).fetchone()
+    assert (due - started).days == 14
+    [reason] = db.execute("""SELECT reason FROM review_log WHERE run_id = %s
+                             AND action = 'EDIT' AND target_table = 'review_run'""",
+                          (empty,)).fetchone()
+    assert reason.startswith("시연 데이터 마감 채움")
+    assert client.get(f"/api/runs/{kept}").json()["due_date"] == DUE
 
 
 def test_non_engineer_cannot_be_assigned(db, spec, client):
@@ -93,8 +136,8 @@ def test_change_due_date_logs_once(db, spec, client):
     # 같은 값을 다시 보내면 이력이 늘지 않는다
     client.put(f"/api/runs/{run_id}/info", json={"due_date": "2026-11-02"})
     assert len(review.history(db, run_id, "review_run")) == before_logs + 1
-    # 빈 문자열은 비우기, 틀린 날짜는 400
-    assert client.put(f"/api/runs/{run_id}/info", json={"due_date": ""}).json()["due_date"] is None
+    # 마감일은 비울 수 없고(update-due-required), 틀린 날짜는 400
+    assert client.put(f"/api/runs/{run_id}/info", json={"due_date": ""}).status_code == 400
     assert client.put(f"/api/runs/{run_id}/info", json={"due_date": "10/30"}).status_code in (400,
                                                                                               422)
 

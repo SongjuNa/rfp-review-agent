@@ -64,6 +64,18 @@ def demo_businesses(groups: list[list[str]], customer: str | None, due_in: int) 
                 print(f"[시연 사업] {name}: 검토 {run_id} {path.name} → {stage}")
 
 
+def fill_due(due_in: int) -> None:
+    """마감이 빈 검토(테스트·스크립트로 만든 것)를 시작일 + due_in일로 채운다.
+
+    개발·시연 DB에서만 사람이 돌린다 (update-due-required, CR-04).
+    """
+    from rfp_agent.pipeline import review, review_info
+
+    with connect() as conn:
+        done = review_info.fill_due(conn, due_in, review.default_user(conn, "ENGINEER"))
+    print(f"[마감 채움] 검토 {len(done)}건: 시작일 + {due_in}일")
+
+
 def load_answer_key(path: Path, name: str, human: bool, kind: str = "TYPE",
                     doc: str | None = None) -> None:
     from rfp_agent.pipeline.evaluation import load_key
@@ -101,7 +113,7 @@ def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(prog="rfp-db")
     parser.add_argument("command", choices=["migrate", "seed-rules", "seed-products", "setup",
                                             "demo-businesses", "load-answer-key",
-                                            "make-answer-key"])
+                                            "make-answer-key", "fill-due"])
     parser.add_argument("path", nargs="?",
                         help="load-answer-key: 정답지 CSV / make-answer-key: 공급사 답안 docx")
     parser.add_argument("--name", help="load-answer-key: 정답지 이름 (같은 이름이면 줄을 바꿈)")
@@ -114,7 +126,8 @@ def main(argv: list[str] | None = None) -> None:
                         help="demo-businesses: 사업명과 docx 파일들 (여러 번 줄 수 있음)")
     parser.add_argument("--customer", help="demo-businesses: 고객사 (주지 않으면 비움)")
     parser.add_argument("--due-in", type=int, default=14,
-                        help="demo-businesses: 오늘부터 제출 마감까지 날 수 (기본 14)")
+                        help="demo-businesses: 오늘부터 제출 마감까지 날 수 (기본 14), "
+                             "fill-due: 시작일부터 채울 마감까지 날 수")
     parser.add_argument("--replace", action="store_true",
                         help="이전 제품과 검토 실행 결과를 지우고 파일 내용만 넣음")
     parser.add_argument("--reset-edits", action="store_true",
@@ -125,6 +138,9 @@ def main(argv: list[str] | None = None) -> None:
         if not args.business or any(len(g) < 2 for g in args.business):
             parser.error("--business 사업명 a.docx [b.docx ...] 가 필요합니다")
         demo_businesses(args.business, args.customer, args.due_in)
+        return
+    if args.command == "fill-due":
+        fill_due(args.due_in)
         return
     if args.command == "load-answer-key":
         if not args.path or not args.name:
