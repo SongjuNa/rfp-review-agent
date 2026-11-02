@@ -14,7 +14,7 @@
 
 ### 3. 요청 (`pipeline/doc_add.py`와 같은 자리, `prepare_rewind`)
 - 검사: 사용자 역할 ENGINEER(아니면 403), 단계 ENGINEER_REVIEW(아니면 409, "상신 취소 먼저"), 흐름 기록이 담당자 확인에서 멈춤(아니면 409), 단계 이름이 `PIPELINE`에 있음(아니면 400), 사유 비지 않음(400), 처음 파일 정보 있음(409).
-- 통과하면 한 트랜잭션에서 단계 PROCESSING, `graph_state.rewind_pending = 단계`, 이력 `review_log`(target `review_run`, action `REWIND`, after `{step}`, reason). 백그라운드로 `run_to_end(run_id, paths, choices, rewind=단계)`.
+- 통과하면 한 트랜잭션에서 단계 PROCESSING, 이력 `review_log`(target `review_run`, action `REWIND`, after `{step}`, reason). **[구현 때 바뀜]** `graph_state.rewind_pending`은 두지 않았다: 단계는 `run_to_end(rewind=)` 인자로 넘기고, 다시 처리 중 실패하면 흐름이 처리 중간에 멈춰 있어 다시 시도가 그 자리부터 잇는다. 이력 동작 제약에 `REWIND`를 더하는 마이그레이션 **0034**가 필요했다(계획에 빠짐). 백그라운드로 `run_to_end(run_id, paths, choices, rewind=단계)`.
 - `execute_run(…, rewind=None)` → `graph_flow.start_input`: 담당자 확인에서 멈췄고 rewind가 있으면 `Command(resume={"action": "rewind", "step": 단계})`. 실행 기록 `resumed_from`에 그 단계(이어서 시작한 단계와 같은 칸).
 - API `POST /api/runs/{id}/rewind {step, reason, actor_id}` → 202, `RunSummary`.
 

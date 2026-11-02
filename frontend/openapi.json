@@ -2599,6 +2599,59 @@
         }
       }
     },
+    "/api/runs/{run_id}/rewind": {
+      "post": {
+        "tags": [
+          "검토 실행"
+        ],
+        "summary": "Rewind",
+        "description": "담당자 확인 단계의 검토를 고른 처리 단계부터 다시 처리한다 (add-step-rewind, C2).\n\n같은 줄의 사람 확정·수정·반려와 위험 조건 확인은 이어받는다 (CR-08, FR-10 ⑤).",
+        "operationId": "rewind_api_runs__run_id__rewind_post",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Run Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Rewind"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunSummary"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/runs/{run_id}/compare": {
       "get": {
         "tags": [
@@ -13845,6 +13898,36 @@
         ],
         "title": "Revision",
         "description": "문서 추가로 다시 분석한 결과 (add-revision-notice).\n\n줄 수는 같은 줄(요구값·비교 제품·비교 규칙) 기준."
+      },
+      "Rewind": {
+        "properties": {
+          "step": {
+            "type": "string",
+            "title": "Step"
+          },
+          "reason": {
+            "type": "string",
+            "title": "Reason"
+          },
+          "actor_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Actor Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "step",
+          "reason"
+        ],
+        "title": "Rewind",
+        "description": "단계부터 다시 처리 (add-step-rewind): 처리 단계 이름과 사유."
       },
       "Risk": {
         "properties": {

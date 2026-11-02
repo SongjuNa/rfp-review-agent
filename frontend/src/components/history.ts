@@ -1,5 +1,5 @@
 import type { LogEntry } from '../api'
-import { RESULT_NAMES, ROLE_NAMES, STATUS_NAMES } from './labels'
+import { RESULT_NAMES, ROLE_NAMES, STATUS_NAMES, STEP_NAMES } from './labels'
 
 // SCR-08-9 이력 탭의 한 줄 문장 (목업 v4.57 Detail logs: '위험 조건 "주위 온도"를 정상으로 닫음').
 // 기록(before/after) 그대로 문장으로만 바꾼다. 값을 계산하거나 고치지 않는다.
@@ -58,6 +58,8 @@ export function historyText(l: LogEntry): string {
     case 'run_product_choice':
       return `비교 제품 바꿈: ${v(b.product_code === null ? '자동' : b.product_code)} → ${v(a.product_code === null ? '자동' : a.product_code)}`
     case 'review_run': {
+      // 단계부터 다시 처리 (add-step-rewind)
+      if (l.action === 'REWIND') return `${STEP_NAMES[String(a.step)] ?? v(a.step)}부터 다시 처리`
       if (a.stage === 'APPROVAL') return '결재 상신'
       if (a.stage === 'APPROVED') return '승인'
       if (a.stage === 'REJECTED') return '반려'
@@ -74,5 +76,5 @@ export function historyText(l: LogEntry): string {
 
 /** 사유 줄의 이름: 결재·상신은 "의견", 나머지는 "사유" */
 export function reasonLabel(l: LogEntry): string {
-  return l.target_table === 'review_run' && l.action !== 'EDIT' ? '의견' : '사유'
+  return l.target_table === 'review_run' && l.action !== 'EDIT' && l.action !== 'REWIND' ? '의견' : '사유'
 }

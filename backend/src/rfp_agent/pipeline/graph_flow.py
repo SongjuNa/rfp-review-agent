@@ -17,6 +17,7 @@ from psycopg.rows import dict_row
 
 # 사람 동작 → 그 동작을 받는 멈춤 자리
 ACTION_STOP = {"submit": "engineer_review", "add_documents": "engineer_review",
+               "rewind": "engineer_review",
                "approve": "approval", "reject": "approval", "withdraw": "approval",
                "reopen": "rejected"}
 NO_FLOW = None        # 흐름 기록이 없음 (이 change 전에 만든 검토)
@@ -84,13 +85,17 @@ def start_input(graph, run_id: int, inputs: dict) -> tuple[Any, str | None]:
     """처리를 시작할 입력과 이어서 시작하는 단계(처음부터면 None).
 
     - 흐름 기록 없음: 처음부터
-    - 담당자 확인에서 멈춤: 문서 추가 → 문서 처리부터 다시 (처음 파일 + 더한 파일)
+    - 담당자 확인에서 멈춤: 문서 추가 → 문서 처리부터 다시 (처음 파일 + 더한 파일),
+      되돌리기(inputs["rewind"]) → 고른 처리 단계부터 다시 (add-step-rewind)
     - 처리 중간에 멈춤(실패·취소): 멈춘 단계부터 이어서
     """
     stop = stop_of(graph, run_id)
     if stop is NO_FLOW:
         return inputs, None
     if stop == "engineer_review":
+        if inputs.get("rewind"):
+            return Command(resume={"action": "rewind", "step": inputs["rewind"]}), \
+                inputs["rewind"]
         return Command(resume={"action": "add_documents", "paths": inputs["paths"],
                                "choices": inputs["choices"]}), None
     if stop == RUNNING:
