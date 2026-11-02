@@ -36,6 +36,7 @@
 3. `cd frontend && npm run trace` — `docs/추적표.md`는 손으로 고치지 않는다
 4. `AGENTS.md` 7장 검사를 모두 돌린다. pytest는 DB가 필요하다: `docker compose up -d db`
 5. PR 설명에 change 이름, 통과한 Scenario, 남은 `[확인 필요]`
+6. 커밋한 뒤 `cd frontend && npm run sync-main -- --push` — 다른 세션 PR이 먼저 머지돼 표 번호·추적표가 겹쳐도 코드가 풀고 올린다. 머지가 "merge conflicts"로 막히면 다시 돌린다. 다른 파일이 겹치면 멈추고 알린다.
 
 ### E2E (Playwright, `frontend/e2e/`)
 - CI에서는 돌지 않는다. PR 전에 로컬에서 돌린다.
