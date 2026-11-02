@@ -91,7 +91,9 @@ def _judgment_drafts(conn: psycopg.Connection, run_id: int) -> list[Draft]:
         draft = drafts.get(key)
         if draft is None:
             name = r["name_ko"] or r["item_key"] or "항목"
-            values = {"v1": req, "p": r["product_code"] or ""}
+            values = {"v1": req}
+            if r["product_code"]:
+                values["p"] = r["product_code"]
             if kind == "DEVIATION":
                 values["v2"] = r["product_value_raw"] or ""
                 marks = {"v1": "요구값", "v2": "제품값", "p": "비교 제품"}
@@ -108,6 +110,8 @@ def _judgment_drafts(conn: psycopg.Connection, run_id: int) -> list[Draft]:
                 facts = f"항목: {name}, 요구 칸 {{v1}} {unit}에 값이 여럿, 어느 값인지 질의"
                 template = (f"{name} 요구 칸에 값이 여럿({{v1}} {unit}) 있어 어느 값을 적용하는지 "
                             "질의합니다.")
+            if "p" not in values:           # 비교 제품이 없으면 AI에 "비교 제품" 자리표시자를 주지 않는다
+                marks = {k: v for k, v in marks.items() if k != "p"}
             draft = drafts[key] = Draft(kind, key, facts, " ".join(template.split()), marks,
                                         values)
         draft.judgment_ids.append(r["judgment_id"])
