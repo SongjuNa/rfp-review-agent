@@ -66,7 +66,11 @@ def client(db, db_url, monkeypatch):
     get_settings.cache_clear()
 
 
+DUE = "2026-12-01"
+
+
 def upload(client, spec, **form):
+    form.setdefault("due_date", DUE)        # 마감일은 꼭 받는다 (update-due-required)
     with spec.open("rb") as f:
         return client.post("/api/runs", data=form, files=[("files", (spec.name, f.read()))])
 

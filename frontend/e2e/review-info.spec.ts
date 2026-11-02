@@ -19,7 +19,7 @@ async function start(request: APIRequestContext, form: Record<string, string>) {
       files: { name: 'synthetic_154kV_GIS_spec.docx', mimeType: 'application/octet-stream', buffer: readFileSync(DOCX) },
       // 문서 목록에 없는 문서라 묶음을 정해 보낸다 (reject-unjudged-registration)
       choices: JSON.stringify({ 'synthetic_154kV_GIS_spec.docx': { bundle: 'B' } }),
-      ...form,
+      due_date: isoAfter(14), ...form,
     },
   })
   expect(res.status()).toBe(202)
@@ -51,7 +51,7 @@ test('검토명이 빈 검토', async ({ page, request }) => {
   await page.getByRole('button', { name: '팀 전체' }).click()
   const row = page.locator('tr', { hasText: run.review_no })
   await expect(row).toContainText('synthetic_154kV_GIS_spec.docx')    // 검토명 자리에 첫 파일 이름
-  await expect(row.locator('td').nth(4)).toHaveText('')                // 마감 자리는 비어 있다
+  await expect(row.locator('td').nth(4)).toContainText('D-14')         // 마감 자리에 D-day (update-due-required)
 })
 
 test('머리글에서 고치기', async ({ page, request }) => {

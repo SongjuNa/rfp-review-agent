@@ -35,6 +35,27 @@ def clean(info: dict) -> dict:
     return out
 
 
+NEED_DUE = "제출 마감일을 입력해 주세요."
+
+
+def require_due(info: dict) -> None:
+    """제출 마감일은 시작할 때 꼭 받는다 (update-due-required). 다른 칸은 비어도 된다."""
+    if clean(info).get("due_date") is None:
+        raise ReviewError(400, NEED_DUE)
+
+
+def fill_due(conn: psycopg.Connection, due_in: int, actor_id: int) -> list[int]:
+    """마감이 빈 검토를 시작일 + due_in일로 채운다. 사람이 개발·시연 DB에서 돌리는 명령용(CR-04)."""
+    rows = conn.execute("""UPDATE review_run SET due_date = started_at::date + %s
+                           WHERE due_date IS NULL RETURNING run_id, due_date""",
+                        (due_in,)).fetchall()
+    for run_id, due in rows:
+        log(conn, run_id, "review_run", run_id, "EDIT", {"due_date": None},
+            {"due_date": due.isoformat()}, "시연 데이터 마감 채움 (rfp-db fill-due)", actor_id)
+    conn.commit()
+    return [r[0] for r in rows]
+
+
 def _role(conn: psycopg.Connection, user_id: int) -> str | None:
     row = conn.execute("SELECT role FROM app_user WHERE user_id = %s", (user_id,)).fetchone()
     return row[0] if row else None
@@ -84,6 +105,8 @@ def update(conn: psycopg.Connection, run_id: int, info: dict, actor_id: int | No
     values = clean(info)
     if "engineer_id" in values:
         check_engineer(conn, values["engineer_id"])
+    if "due_date" in values and values["due_date"] is None:
+        raise ReviewError(400, "제출 마감일은 비울 수 없습니다.")
     changed = {k: v for k, v in values.items() if before[k] != v}
     if not changed:
         return {"changed": []}
