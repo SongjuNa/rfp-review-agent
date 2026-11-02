@@ -3,7 +3,7 @@ import type {
   ActionResult, TypeEditResult, ApprovalScreen, AssignmentStatus, BulkResult, CompareTargets, CostSummary, PastCompare, BusinessDetail, BusinessList, BusinessLog,
   DecisionResult, DocumentChoice, DocumentPreview, HandoffResult, SalesHandoff,
   LossResult, ProductSwitch, RuleEdit,
-  RunLogItem, RunSummary, ScreenSummary, SendResult, StageResult, SubmitResult,
+  RunFlow, RunLogItem, RunSummary, ScreenSummary, SendResult, StageResult, SubmitResult,
   AnswerKey, EvalRun, EvalScore, RuleSuggestion, AssistantAnswer, MeaningCandidate, RiskMeaning,
 } from './api.gen'
 
@@ -13,7 +13,7 @@ export type {
   DocumentChoice, DocumentLines, DocumentPreview, EngineeringCheck,
   Equipment, Health, ItemKey, Judgment, JudgmentCounts, Location, LogEntry, Loss, MyTasks, OutputItem, Product,
   ProductDetail, ProductFamily, ProductUse, Proposal, ReadCheck, Requirement, ReviewCard, Risk, RiskExpression, RuleEdit, RunDocument,
-  AnswerKey, EvalMetric, EvalRun, EvalScore, AssistantAnswer, AssistantEvidence, Revision, RunListItem, RunLogItem, RunSummary, RuleSuggestion, ScreenSummary, MeaningCandidate, RiskMeaning, SalesHandoff, SubmissionCheck, Tbe, TbeRow, User, Warranty,
+  AnswerKey, EvalMetric, EvalRun, EvalScore, AssistantAnswer, AssistantEvidence, Revision, FlowStep, RunFlow, RunListItem, RunLogItem, RunSummary, RuleSuggestion, ScreenSummary, MeaningCandidate, RiskMeaning, SalesHandoff, SubmissionCheck, Tbe, TbeRow, User, Warranty,
 } from './api.gen'
 import type {
   CompareRule, DatasheetInfo, Datasheet, DocKindRule, EngineeringCheck, Equipment, Health, ItemKey, Judgment, JudgmentCounts,
@@ -208,6 +208,7 @@ export const api = {
     call<SubmitResult>(`/runs/${id}/finish-review`, json('POST', { approver_id, comment, actor_id })),
   withdraw: (id: number, actor_id: number) => call<StageResult>(`/runs/${id}/withdraw`, json('POST', { actor_id })),
   runLog: () => call<RunLogItem[]>('/run-log'),
+  runFlow: (id: number) => call<RunFlow>(`/runs/${id}/flow`),
   // 정답지·채점 (add-evaluation). 정답지 넣기는 명령 `rfp-db load-answer-key`
   evalKeys: () => call<AnswerKey[]>('/eval/keys'),
   evalRuns: () => call<EvalRun[]>('/eval/runs'),

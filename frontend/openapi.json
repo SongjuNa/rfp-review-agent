@@ -168,6 +168,49 @@
         }
       }
     },
+    "/api/runs/{run_id}/flow": {
+      "get": {
+        "tags": [
+          "검토 실행"
+        ],
+        "summary": "Run Flow",
+        "description": "흐름 기록: 단계마다 걸린 시간·바뀐 건수·사람 동작·멈춘 자리 (add-flow-history, 읽기 전용).",
+        "operationId": "run_flow_api_runs__run_id__flow_get",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Run Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunFlow"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/requirements/{requirement_id}": {
       "get": {
         "tags": [
@@ -9837,6 +9880,84 @@
         ],
         "title": "FieldHistory"
       },
+      "FlowChange": {
+        "properties": {
+          "key": {
+            "type": "string",
+            "title": "Key"
+          },
+          "before": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Before"
+          },
+          "after": {
+            "type": "integer",
+            "title": "After"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "key",
+          "before",
+          "after"
+        ],
+        "title": "FlowChange",
+        "description": "흐름 기록 한 단계에서 바뀐 건수 (add-flow-history). before가 없으면 그 단계에서 처음 생김."
+      },
+      "FlowStep": {
+        "properties": {
+          "node": {
+            "type": "string",
+            "title": "Node"
+          },
+          "finished_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Finished At"
+          },
+          "seconds": {
+            "type": "number",
+            "title": "Seconds"
+          },
+          "changes": {
+            "items": {
+              "$ref": "#/components/schemas/FlowChange"
+            },
+            "type": "array",
+            "title": "Changes"
+          },
+          "action": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Action"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "node",
+          "finished_at",
+          "seconds",
+          "changes",
+          "action"
+        ],
+        "title": "FlowStep",
+        "description": "흐름 기록의 단계 하나 (add-flow-history, C2). 시간은 흐름 저장 시각 기준."
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -14447,6 +14568,58 @@
           "requirements"
         ],
         "title": "RunDocument"
+      },
+      "RunFlow": {
+        "properties": {
+          "run_id": {
+            "type": "integer",
+            "title": "Run Id"
+          },
+          "recorded": {
+            "type": "boolean",
+            "title": "Recorded"
+          },
+          "stop": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stop"
+          },
+          "next_node": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Node"
+          },
+          "steps": {
+            "items": {
+              "$ref": "#/components/schemas/FlowStep"
+            },
+            "type": "array",
+            "title": "Steps"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "run_id",
+          "recorded",
+          "stop",
+          "next_node",
+          "steps"
+        ],
+        "title": "RunFlow",
+        "description": "검토 하나의 흐름 기록 (add-flow-history). 읽기 전용."
       },
       "RunListItem": {
         "properties": {

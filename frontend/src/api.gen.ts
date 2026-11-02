@@ -687,6 +687,22 @@ export type FieldHistory = {
   cases: number
 }
 
+/** 흐름 기록 한 단계에서 바뀐 건수 (add-flow-history). before가 없으면 그 단계에서 처음 생김. */
+export type FlowChange = {
+  key: string
+  before: number | null
+  after: number
+}
+
+/** 흐름 기록의 단계 하나 (add-flow-history, C2). 시간은 흐름 저장 시각 기준. */
+export type FlowStep = {
+  node: string
+  finished_at: string
+  seconds: number
+  changes: FlowChange[]
+  action: string | null
+}
+
 export type HandoffRequest = {
   actor_id?: number | null
   table_id?: number | null
@@ -1298,6 +1314,15 @@ export type RunDocument = {
   process_check?: string | null
   reprocessed?: boolean
   reprocessed_lines?: number
+}
+
+/** 검토 하나의 흐름 기록 (add-flow-history). 읽기 전용. */
+export type RunFlow = {
+  run_id: number
+  recorded: boolean
+  stop: string | null
+  next_node: string | null
+  steps: FlowStep[]
 }
 
 export type RunListItem = {

@@ -115,6 +115,7 @@ openspec/
 | 76 | `archive/2026-11-01-add-spec-trace` | 스펙 기준 검증(SDD 5단계): 추적표 `docs/추적표.md`(FR → 스펙 시나리오 → 화면 수용 기준 → 컴포넌트 → 테스트, 이름이 같으면 잇기, `npm run trace`·CI `check:trace`), 핵심 흐름 e2e "RFP 한 건 처음부터 끝까지", 목업 v4.96 26화면 나란히 찍기·영역 배치 점검(`compare-out/layout.json`). 마이그레이션 없음 (완료) |
 | 77 | `archive/2026-11-02-update-partial-reprocess` | 점검에서 떨어진 부분만 다시 묻기(C1 이어서): 처리기마다 다시 물을 AI 단계(`fix`) — 요구사항 0줄 점검은 요구 문장이 다 빠진 절의 문장 구분만, 시험 유형 0줄 점검은 유형 NONE 줄만 일반 처리기로 한 번 다시 묻고 나머지는 첫 답, 표 칸·C/D/E 점검(입찰 서식·공급사 사양서)은 다시 묻지 않음. `processor`는 처음 고른 처리기, 문서 `reprocessed_lines`·실행 기록 `lines_reprocessed`. 0032 (완료) |
 | 78 | `archive/2026-11-02-add-boq-processor` | 물량표(BOQ) 처리기(C1 새 종류): 문서 종류 코드표에 `BOQ` 물량표(7종, DB 제약·스키마·AI 문서 종류 질문 p6·사전 검사·화면 이름표), 문서 종류 규칙 6번 줄(`boq|bill of quantit|물량`), 처리기 설명과 "표 줄 0" 점검(`Stats.table_rows`, 다시 묻지 않음). 수량 판정·금액 없음, 단선도는 범위 밖. 0033 (완료) |
+| 79 | `archive/2026-11-02-add-flow-history` | 흐름 기록 보기(C2 이어서): 저장된 흐름 상태(checkpoint)를 `graph_flow.history`로 읽어 단계마다 끝난 시각·걸린 시간·바뀐 건수(판정 0 → n 등)·사람 동작(상신·승인 등)·멈춘 자리. `GET /api/runs/{id}/flow`(읽기 전용, 흐름 기록 없는 검토는 비움), 실행 기록 화면 펼친 줄에 "흐름 기록". 마이그레이션 없음 (완료) |
 
 ## 3. 작업 흐름
 
