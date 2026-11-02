@@ -16,6 +16,7 @@ class Stats:
     requirements: int       # 요구사항 줄
     tests: int              # 시험(TEST) 유형 요구사항 줄
     marks: int              # 공급사 C/D/E 표시가 있는 줄
+    table_rows: int = 0     # 논리 표의 행 수 (물량표 점검, add-boq-processor)
 
 
 # 점검: 줄 수 → 걸린 이유(통과면 None)
@@ -42,6 +43,10 @@ def _no_tests(s: Stats) -> str | None:
 
 def _no_marks(s: Stats) -> str | None:
     return None if s.marks else "공급사 사양서인데 C/D/E 준수 표시가 하나도 없습니다"
+
+
+def _no_table_rows(s: Stats) -> str | None:
+    return None if s.table_rows else "물량표인데 표 줄이 하나도 없습니다"
 
 
 @dataclass(frozen=True)
@@ -73,6 +78,10 @@ PROCESSORS: dict[str, Processor] = {
     "SUPPLIER_SPEC": Processor(
         "SUPPLIER_SPEC", "공급사 사양서",
         "공급사 사양서(답안). 조항마다 공급사의 C/D/E 준수 표시와 고객 의견이 있다.", _no_marks),
+    # 표 줄은 AI에 묻지 않아 다시 물어도 같으므로 다시 묻지 않는다
+    "BOQ": Processor(
+        "BOQ", "물량표",
+        "물량표(BOQ). 품목·수량·단위 표가 대부분이고 기술 요구 문장은 적다.", _no_table_rows),
     "UNKNOWN": GENERAL,
 }
 

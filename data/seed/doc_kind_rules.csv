@@ -4,3 +4,4 @@ priority,doc_kind,name_pattern,page_pattern,note
 3,TEST_SPEC,testing|시험,,시험 사양서
 4,PURCHASE_SPEC,prepurchase|requisition,\brequisition\b,구매 요청서
 5,REQUIREMENT_SPEC,specification|spec\.|employers requirement|기술규격|설계기준|계통설명서|일반사항|송변전,\bspecification\b|\bPART 1\b|\bSECTION \d{2} ?\d{2},요구 사양서 (기술 사양·설계 기준). 앞 줄에 안 맞는 사양서
+6,BOQ,boq|bill of quantit|물량,\bbill of quantities\b,물량표 (품목·수량·단위 표)

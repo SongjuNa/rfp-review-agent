@@ -62,6 +62,27 @@ def no_tests(path: Path) -> Path:
     return path
 
 
+def boq(path: Path, rows: bool = True) -> Path:
+    """물량표: 품목·수량·단위 표와 안내 문장 몇 줄 (rows=False면 표 없이 문장만)."""
+    doc = Document()
+    doc.add_paragraph("BILL OF QUANTITIES")
+    doc.add_paragraph("1. GENERAL")
+    doc.add_paragraph("The bidder shall quote for all items listed in this schedule.")
+    doc.add_paragraph("Quantities shall be verified by the bidder before the bid submission.")
+    doc.add_paragraph("2. SCHEDULE")
+    if rows:
+        table = doc.add_table(rows=0, cols=4)
+        for r in [["Item", "Description", "Qty", "Unit"], ["1", "145 kV GIS bay", "4", "set"],
+                  ["2", "Local control cubicle", "4", "set"], ["3", "Spare parts", "1", "lot"]]:
+            cells = table.add_row().cells
+            for c, v in zip(cells, r, strict=True):
+                c.text = v
+    for n in range(6):
+        doc.add_paragraph(f"Note {n + 1}: The unit of each item shall be as in the schedule.")
+    doc.save(str(path))
+    return path
+
+
 class HintMisleads(FakeLLM):
     """문서 종류 설명이 붙은 문장 구분 질문에는 모두 작성 규칙이라고 답하는 대역."""
 
@@ -147,6 +168,28 @@ def test_failed_bid_form_not_reasked(db, tmp_path):
     assert result.reprocessed is False and reprocessed_lines(db, result.document_id) == 0
     asked = [p for p in llm.prompts if LABEL in p or TYPE in p]
     assert asked and all(p.startswith("문서 종류: 입찰 서식") for p in asked)
+
+
+def test_boq_uses_boq_processor(db, tmp_path):
+    """Scenario: 물량표는 물량표 처리기 — 종류·처리기 물량표, 질문에 물량표 설명, 점검 통과."""
+    llm = FakeLLM()
+    result = process(db, boq(tmp_path / "BOQ_substation.docx"), llm)
+    kind = db.execute("SELECT doc_kind FROM document WHERE document_id = %s",
+                      (result.document_id,)).fetchone()[0]
+    assert kind == "BOQ"
+    assert document_row(db, result.document_id)[:3] == ("BOQ", None, False)
+    labels = [p for p in llm.prompts if LABEL in p]
+    assert labels and all(p.startswith("문서 종류: 물량표(BOQ)") for p in labels)
+
+
+def test_boq_without_table(db, tmp_path):
+    """Scenario: 표가 없는 물량표 — 다시 묻지 않고 처리기·이유·확인 필요만."""
+    llm = FakeLLM()
+    result = process(db, boq(tmp_path / "BOQ_substation.docx", rows=False), llm)
+    assert document_row(db, result.document_id) == (
+        "BOQ", "물량표인데 표 줄이 하나도 없습니다", False, True)
+    asked = [p for p in llm.prompts if LABEL in p or TYPE in p]
+    assert asked and all(p.startswith("문서 종류: 물량표(BOQ)") for p in asked)
 
 
 def test_failed_check_without_ai(db, tmp_path):
@@ -252,7 +295,7 @@ def test_run_log_not_reasked(db, spec, tmp_path):
     assert (row["documents_reprocessed"], row["lines_reprocessed"]) == (0, 0)
 
 
-@pytest.mark.parametrize("kind", ["REQUIREMENT_SPEC", "PURCHASE_SPEC", "SUPPLIER_SPEC"])
+@pytest.mark.parametrize("kind", ["REQUIREMENT_SPEC", "PURCHASE_SPEC", "SUPPLIER_SPEC", "BOQ"])
 def test_every_kind_has_check(kind):
     """처리기 표: 종류마다 설명과 점검이 있다 (일반 처리기는 둘 다 없음)."""
     from rfp_agent.pipeline.processors import GENERAL, processor_for
@@ -267,6 +310,6 @@ def test_fix_only_where_ai_can_change_check():
     from rfp_agent.pipeline.processors import TYPE as FIX_TYPE
     from rfp_agent.pipeline.processors import processor_for
     assert {k: processor_for(k).fix for k in ["BID_FORM", "REQUIREMENT_SPEC", "TEST_SPEC",
-                                               "PURCHASE_SPEC", "SUPPLIER_SPEC"]} == {
+                                               "PURCHASE_SPEC", "SUPPLIER_SPEC", "BOQ"]} == {
         "BID_FORM": None, "REQUIREMENT_SPEC": FIX_LABEL, "TEST_SPEC": FIX_TYPE,
-        "PURCHASE_SPEC": FIX_LABEL, "SUPPLIER_SPEC": None}
+        "PURCHASE_SPEC": FIX_LABEL, "SUPPLIER_SPEC": None, "BOQ": None}

@@ -196,7 +196,7 @@ class DocumentLines(Out):
 
 
 DocKind = Literal["BID_FORM", "REQUIREMENT_SPEC", "PURCHASE_SPEC", "TEST_SPEC", "SUPPLIER_SPEC",
-                  "UNKNOWN"]
+                  "BOQ", "UNKNOWN"]
 
 
 class DocumentPreview(Out):

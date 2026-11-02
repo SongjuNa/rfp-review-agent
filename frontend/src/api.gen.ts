@@ -510,7 +510,7 @@ export type DeliverableWarranty = {
 export type DocKindRule = {
   doc_kind_rule_id: number
   priority: number
-  doc_kind: 'BID_FORM' | 'REQUIREMENT_SPEC' | 'PURCHASE_SPEC' | 'TEST_SPEC' | 'SUPPLIER_SPEC' | 'UNKNOWN'
+  doc_kind: 'BID_FORM' | 'REQUIREMENT_SPEC' | 'PURCHASE_SPEC' | 'TEST_SPEC' | 'SUPPLIER_SPEC' | 'BOQ' | 'UNKNOWN'
   name_pattern: string
   page_pattern: string | null
   note: string | null
@@ -520,7 +520,7 @@ export type DocKindRule = {
 /** 등록 화면에서 사람이 정한 문서 분류. 비운 칸은 규칙 결과를 쓴다. */
 export type DocumentChoice = {
   bundle?: 'A' | 'B' | 'C' | 'D' | null
-  doc_kind?: 'BID_FORM' | 'REQUIREMENT_SPEC' | 'PURCHASE_SPEC' | 'TEST_SPEC' | 'SUPPLIER_SPEC' | 'UNKNOWN' | null
+  doc_kind?: 'BID_FORM' | 'REQUIREMENT_SPEC' | 'PURCHASE_SPEC' | 'TEST_SPEC' | 'SUPPLIER_SPEC' | 'BOQ' | 'UNKNOWN' | null
 }
 
 /** 원문 줄 범위 (add-judgment-view). partial이면 파일이 없어 DB에 남은 줄만 왔다. */
@@ -547,7 +547,7 @@ export type DocumentPreview = {
   file_name: string
   in_catalog: boolean
   file_no: number | null
-  doc_kind: 'BID_FORM' | 'REQUIREMENT_SPEC' | 'PURCHASE_SPEC' | 'TEST_SPEC' | 'SUPPLIER_SPEC' | 'UNKNOWN'
+  doc_kind: 'BID_FORM' | 'REQUIREMENT_SPEC' | 'PURCHASE_SPEC' | 'TEST_SPEC' | 'SUPPLIER_SPEC' | 'BOQ' | 'UNKNOWN'
   bundle: 'A' | 'B' | 'C' | 'D'
   language: string
   standard_system: string | null

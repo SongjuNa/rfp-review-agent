@@ -46,9 +46,9 @@ def test_doc_kind_rules_seed_twice(empty_db, settings):
     """Scenario: 문서 종류 규칙 두 번 적재 — 문서 종류 규칙 두 번 적재"""
     migrate(empty_db, settings.migrations_dir)
     expected = [(1, "BID_FORM"), (2, "SUPPLIER_SPEC"), (3, "TEST_SPEC"), (4, "PURCHASE_SPEC"),
-                (5, "REQUIREMENT_SPEC")]
+                (5, "REQUIREMENT_SPEC"), (6, "BOQ")]
     for _ in range(2):
-        assert seed_rules(empty_db, settings.seed_dir).counts["doc_kind_rule"] == 5
+        assert seed_rules(empty_db, settings.seed_dir).counts["doc_kind_rule"] == 6
         assert kinds(empty_db) == expected
 
 
@@ -75,7 +75,7 @@ def test_doc_kind_rules_view(seeded_db, tmp_path):
     run_id = create_run(seeded_db, "v", None)
     assert execute_run(RunContext(seeded_db, "v", None, None), run_id, [path]) == "ENGINEER_REVIEW"
     rows = reference.doc_kind_rules(seeded_db)
-    assert [r["priority"] for r in rows] == [1, 2, 3, 4, 5]
+    assert [r["priority"] for r in rows] == [1, 2, 3, 4, 5, 6]
     bid = rows[0]
     assert (bid["doc_kind"], bid["name_pattern"], bid["used"]) == ("BID_FORM", "bidding forms", 1)
     assert all(r["used"] == 0 for r in rows[1:])

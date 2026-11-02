@@ -8684,6 +8684,7 @@
               "PURCHASE_SPEC",
               "TEST_SPEC",
               "SUPPLIER_SPEC",
+              "BOQ",
               "UNKNOWN"
             ],
             "title": "Doc Kind"
@@ -8762,6 +8763,7 @@
                   "PURCHASE_SPEC",
                   "TEST_SPEC",
                   "SUPPLIER_SPEC",
+                  "BOQ",
                   "UNKNOWN"
                 ]
               },
@@ -8894,6 +8896,7 @@
               "PURCHASE_SPEC",
               "TEST_SPEC",
               "SUPPLIER_SPEC",
+              "BOQ",
               "UNKNOWN"
             ],
             "title": "Doc Kind"
