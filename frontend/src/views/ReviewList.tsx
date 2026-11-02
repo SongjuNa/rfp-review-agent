@@ -1,10 +1,10 @@
-import { useState } from 'react'
+import { useCallback, useState } from 'react'
 import { api, type RunListItem } from '../api'
 import { dday, dueText, filesText, isoDay, num, scopeName, stamp } from '../components/format'
 import { STAGE_NAMES, STAGE_TONES, STEP_NAMES } from '../components/labels'
 import { Pager } from '../components/Pager'
 import { useLoad, useRepeat } from '../components/useLoad'
-import { progress } from '../components/progress'
+import { progress, STALL_MS, stepLine } from '../components/progress'
 import { currentPath, href } from '../shell/router'
 import { useSession } from '../shell/useSession'
 import './detail.css'
@@ -80,7 +80,7 @@ function Count({ v, hot, processing }: { v: number; hot?: string; processing: bo
   return <span className={v === 0 ? 'dimv' : hot ?? ''}>{num(v)}</span>
 }
 
-function Row({ r, seq, me, now }: { r: RunListItem; seq: number; me: number | null; now: number | null }) {
+function Row({ r, seq, me, now, clock }: { r: RunListItem; seq: number; me: number | null; now: number | null; clock: number }) {
   const scope = scopeName(r)
   const detail = href(`/reviews/${r.run_id}`)
   const processing = r.stage === 'PROCESSING'
@@ -90,14 +90,14 @@ function Row({ r, seq, me, now }: { r: RunListItem; seq: number; me: number | nu
   return (
     <tr className={r.stage === 'APPROVED' || r.stage === 'REJECTED' ? 'dis' : ''}>
       <td className="num mono" style={{ color: 'var(--c-muted)' }}>{seq}</td>
-      <td><span className={`st ${STAGE_TONES[r.stage]}`}>{STAGE_NAMES[r.stage]}</span></td>
+      <td><span className={`st ${STAGE_TONES[r.stage]}`}>{STAGE_NAMES[r.stage]}</span>{processing && <RowProgress r={r} clock={clock} />}</td>
       <td>{r.project_name && <span className="pjn">{r.project_name}</span>}</td>
       <td>
         {failed || r.stage === 'APPROVAL'
           ? <a className="failnm" href={detail}>{scope}</a>
           : <a href={detail} style={{ color: 'var(--c-text)', fontWeight: 600 }}>{scope}</a>}
         {failed && step && <a className="tag failtag" href={detail}>{step}에서 멈춤<span className="ms" aria-hidden="true">chevron_right</span></a>}
-        {processing && step && <span className="tag">{step} 중 {progress(r)}%</span>}
+        {processing && step && <span className="tag">{step} 중</span>}
         <div className="cond meta">
           <span>{r.review_no}</span>
           {r.customer_name && <span>{r.customer_name}</span>}
@@ -125,6 +125,20 @@ function Row({ r, seq, me, now }: { r: RunListItem; seq: number; me: number | nu
   )
 }
 
+/** 처리 중인 줄의 진행 막대와 단계 (목업 v4.96 목록 줄 진행 막대). 10분 넘게 진행이 없으면 주황 */
+function RowProgress({ r, clock }: { r: RunListItem; clock: number }) {
+  const p = progress(r)
+  const stalled = clock - Date.parse(r.step_updated_at) > STALL_MS
+  return (
+    <div className={'lprog' + (stalled ? ' warn' : '')}>
+      <div className="anbar" role="progressbar" aria-label={`${r.review_no} 진행`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={p}>
+        <i style={{ width: `${p}%` }} />
+      </div>
+      <div className="lprog-t">{stepLine(r)}</div>
+    </div>
+  )
+}
+
 function SortHead({ k, label, sort, onSort, num: isNum }: {
   k: SortKey; label: string; sort: { key: SortKey; dir: 'asc' | 'desc' }; onSort: (k: SortKey) => void; num?: boolean
 }) {
@@ -141,7 +155,10 @@ function SortHead({ k, label, sort, onSort, num: isNum }: {
 export function ReviewList() {
   const { user, users } = useSession()
   const runs = useLoad(() => api.runs(), [])
-  useRepeat(!!runs.data?.some((r) => r.stage === 'PROCESSING'), runs.reload)   // 처리 중이면 5초마다 다시 본다
+  const [clock, setClock] = useState(() => Date.now())   // 목록 줄 진행의 멈춤 판단 기준 (다시 볼 때마다 새로)
+  const { reload } = runs
+  const refresh = useCallback(() => { reload(); setClock(Date.now()) }, [reload])
+  useRepeat(!!runs.data?.some((r) => r.stage === 'PROCESSING'), refresh)   // 처리 중이면 5초마다 다시 본다
   const [period, setPeriod] = useState<Period>('all')
   const [scope, setScope] = useState<Scope>(initialScope)
   const [ap, setAp] = useState<Ap>('all')
@@ -292,7 +309,7 @@ export function ReviewList() {
               {runs.data === null && !runs.error && (
                 <tr><td colSpan={submitted ? 12 : 11} className="dimv">불러오는 중…</td></tr>
               )}
-              {shown.map((r, i) => <Row key={r.run_id} r={r} seq={(cur - 1) * size + i + 1} me={me} now={submitted ? now : null} />)}
+              {shown.map((r, i) => <Row key={r.run_id} r={r} seq={(cur - 1) * size + i + 1} me={me} now={submitted ? now : null} clock={clock} />)}
             </tbody>
           </table>
           <Pager total={rows.length} page={cur} size={size} shown={shown.length} onPage={setPage}

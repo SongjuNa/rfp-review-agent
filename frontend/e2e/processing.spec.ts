@@ -83,3 +83,25 @@ test('목록이 저절로 바뀜', async ({ page, request }) => {
   await expect(row).not.toContainText('처리 중', { timeout: 15_000 })
   await expect(row).toContainText('담당자 확인')
 })
+
+// 명세 review-workspace "처리 중 목록 새로고침" (change update-list-progress, 목업 v4.96 목록 줄 진행 막대)
+test('목록 줄 진행 막대', async ({ page, request }) => {
+  const [a, b] = [await deviationRun(request, `목록 막대 ${Date.now()}`), await deviationRun(request, `목록 멈춤 ${Date.now()}`)]
+  const old = new Date(Date.now() - 15 * 60_000).toISOString()
+  await page.route('**/api/runs?limit=*', async (route) => {
+    const res = await route.fetch()
+    const body = await res.json()
+    await route.fulfill({ response: res, json: body.map((r: { run_id: number }) => r.run_id === a.run_id
+      ? { ...r, stage: 'PROCESSING', step: 'documents', step_detail: typing(480), step_updated_at: new Date().toISOString() }
+      : r.run_id === b.run_id ? { ...r, stage: 'PROCESSING', step: 'judge', step_detail: null, step_updated_at: old } : r) })
+  })
+  await as(page, ENGINEER)
+  await page.goto('/#/reviews')
+  const ra = page.getByRole('row').filter({ hasText: a.review_no })
+  await expect(ra.getByRole('progressbar', { name: `${a.review_no} 진행` })).toBeVisible()
+  await expect(ra.locator('.lprog-t')).toHaveText(/^1\/11 AI로 유형 붙이는 중 · \d+ %$/)
+  await expect(ra.locator('.lprog')).not.toHaveClass(/warn/)
+  const rb = page.getByRole('row').filter({ hasText: b.review_no })
+  await expect(rb.locator('.lprog-t')).toHaveText(/^4\/11 제품과 비교해 판정하는 중 · \d+ %$/)
+  await expect(rb.locator('.lprog')).toHaveClass(/warn/)
+})
