@@ -78,7 +78,7 @@ def run_documents(conn: psycopg.Connection, run_id: int) -> list[dict]:
     return _rows(conn, """
         SELECT d.document_id, d.file_no, d.file_name, d.bundle, d.doc_kind, d.language,
                d.standard_system, d.judge_target, d.readable, d.classify_by, d.needs_review,
-               d.processor, d.process_check, d.reprocessed,
+               d.processor, d.process_check, d.reprocessed, d.reprocessed_lines,
                d.line_basis,
                (SELECT count(*) FROM requirement q WHERE q.document_id = d.document_id
                   AND q.req_kind = 'REQUIREMENT') AS requirements

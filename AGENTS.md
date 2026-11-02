@@ -113,6 +113,7 @@ openspec/
 | 74 | `archive/2026-11-01-add-query-sent` | 질의 보냄 표시(Q4): 질의 후보 판정에 엔지니어가 "질의 보냄"을 표시·되돌림(`POST /actions` `QUERY_SENT`·`QUERY_UNSENT`, 담당자 확인 단계, 이력), 판정 `query_sent_at`·`query_sent_by_name`, 문서 추가 뒤에도 같은 줄로 옮김. 판정 상세 단추·판정 표 꼬리표. 0031 (완료) |
 | 75 | `archive/2026-11-01-add-screen-summary` | 요약 상자(Q1): 검토 상세 제목 줄 아래·홈 나의 업무 아래 "요약" 상자("코드가 씀", 요약 시각, [다시 요약]). `GET /runs/{id}/summary`(반려·승인, 꼭 볼 것·상신 권장일, 먼저 볼 일탈 링크, 개정, 빈 작성 칸, 최대 4문장)·`GET /home/summary?user_id=`(내 차례 수 = "내가 처리할 건", 멈춘·결재 중·협조 대기, 부서는 회신 안 한 요청). 코드가 틀에 채움, AI 없음. 마이그레이션 없음 (완료) |
 | 76 | `archive/2026-11-01-add-spec-trace` | 스펙 기준 검증(SDD 5단계): 추적표 `docs/추적표.md`(FR → 스펙 시나리오 → 화면 수용 기준 → 컴포넌트 → 테스트, 이름이 같으면 잇기, `npm run trace`·CI `check:trace`), 핵심 흐름 e2e "RFP 한 건 처음부터 끝까지", 목업 v4.96 26화면 나란히 찍기·영역 배치 점검(`compare-out/layout.json`). 마이그레이션 없음 (완료) |
+| 77 | `archive/2026-11-02-update-partial-reprocess` | 점검에서 떨어진 부분만 다시 묻기(C1 이어서): 처리기마다 다시 물을 AI 단계(`fix`) — 요구사항 0줄 점검은 요구 문장이 다 빠진 절의 문장 구분만, 시험 유형 0줄 점검은 유형 NONE 줄만 일반 처리기로 한 번 다시 묻고 나머지는 첫 답, 표 칸·C/D/E 점검(입찰 서식·공급사 사양서)은 다시 묻지 않음. `processor`는 처음 고른 처리기, 문서 `reprocessed_lines`·실행 기록 `lines_reprocessed`. 0032 (완료) |
 
 ## 3. 작업 흐름
 

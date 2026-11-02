@@ -1,6 +1,7 @@
 """문서 종류별 처리기 (add-document-processors, C1).
 
-처리기는 두 가지만 정한다: AI 문장 구분·유형 질문에 넣는 문서 종류 설명 한 줄과, 처리 뒤 점검 기준.
+처리기는 세 가지만 정한다: AI 문장 구분·유형 질문에 넣는 문서 종류 설명 한 줄, 처리 뒤 점검 기준,
+점검에 걸렸을 때 다시 물을 AI 단계(update-partial-reprocess).
 추출 규칙은 모든 종류가 같고, 처리기는 판정·후보를 고르지 않는다(CR-01). 문장은 [제안].
 """
 
@@ -19,6 +20,10 @@ class Stats:
 
 # 점검: 줄 수 → 걸린 이유(통과면 None)
 Check = Callable[[Stats], str | None]
+
+# 점검에 걸리면 다시 물을 AI 단계. 표 칸·C/D/E 표시는 AI에 묻지 않아 다시 물어도 같으므로 없음
+LABEL = "LABEL"     # 요구 문장이 하나도 남지 않은 절의 문장 구분
+TYPE = "TYPE"       # 유형을 정하지 못한(NONE) 줄의 유형
 
 
 def _no_table_cells(s: Stats) -> str | None:
@@ -45,6 +50,7 @@ class Processor:
     name: str                   # 사람이 읽는 이름
     hint: str | None            # AI 질문 첫머리에 넣는 문서 종류 설명
     check: Check | None         # 처리 뒤 점검 (없으면 점검하지 않음)
+    fix: str | None = None      # 점검에 걸리면 다시 물을 AI 단계 (없으면 다시 묻지 않음)
 
 
 GENERAL = Processor("GENERAL", "일반", None, None)
@@ -56,14 +62,14 @@ PROCESSORS: dict[str, Processor] = {
     "REQUIREMENT_SPEC": Processor(
         "REQUIREMENT_SPEC", "요구 사양서",
         "기술 요구 사양서. 입찰자가 지켜야 할 shall·must 요구 문장이 많다.",
-        _no_requirements("요구 사양서")),
+        _no_requirements("요구 사양서"), LABEL),
     "TEST_SPEC": Processor(
         "TEST_SPEC", "시험 사양서",
-        "시험 사양서. 시험 항목·시험 입회·성적서 제출 요구가 많다.", _no_tests),
+        "시험 사양서. 시험 항목·시험 입회·성적서 제출 요구가 많다.", _no_tests, TYPE),
     "PURCHASE_SPEC": Processor(
         "PURCHASE_SPEC", "구매 요청서",
         "구매 요청서. 공급 범위·수량·납기·상업 조건 문장이 많다.",
-        _no_requirements("구매 요청서")),
+        _no_requirements("구매 요청서"), LABEL),
     "SUPPLIER_SPEC": Processor(
         "SUPPLIER_SPEC", "공급사 사양서",
         "공급사 사양서(답안). 조항마다 공급사의 C/D/E 준수 표시와 고객 의견이 있다.", _no_marks),
