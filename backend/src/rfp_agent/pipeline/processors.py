@@ -1,12 +1,14 @@
 """문서 종류별 처리기 (add-document-processors, C1).
 
-처리기는 세 가지만 정한다: AI 문장 구분·유형 질문에 넣는 문서 종류 설명 한 줄, 처리 뒤 점검 기준,
-점검에 걸렸을 때 다시 물을 AI 단계(update-partial-reprocess).
-추출 규칙은 모든 종류가 같고, 처리기는 판정·후보를 고르지 않는다(CR-01). 문장은 [제안].
+처리기는 네 가지만 정한다: AI 문장 구분·유형 질문에 넣는 문서 종류 설명 한 줄, 처리 뒤 점검 기준,
+점검에 걸렸을 때 다시 물을 AI 단계(update-partial-reprocess), 공통 추출 규칙에 더할 종류별 추출 규칙
+(add-kind-extract-rules). 처리기는 판정·후보를 고르지 않는다(CR-01). 문장은 [제안].
 """
 
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+
+from rfp_agent.pipeline.extract import FORM_NOTES, MARK_TABLE_ROWS
 
 
 @dataclass(frozen=True)
@@ -56,6 +58,7 @@ class Processor:
     hint: str | None            # AI 질문 첫머리에 넣는 문서 종류 설명
     check: Check | None         # 처리 뒤 점검 (없으면 점검하지 않음)
     fix: str | None = None      # 점검에 걸리면 다시 물을 AI 단계 (없으면 다시 묻지 않음)
+    rules: frozenset[str] = field(default_factory=frozenset)   # 종류별 추출 규칙 (extract.py)
 
 
 GENERAL = Processor("GENERAL", "일반", None, None)
@@ -63,7 +66,7 @@ PROCESSORS: dict[str, Processor] = {
     "BID_FORM": Processor(
         "BID_FORM", "입찰 서식",
         "입찰 서식(가격표·데이터시트 묶음). 표 칸의 요구값과 제출 서식을 채우는 안내 문장이 많다.",
-        _no_table_cells),
+        _no_table_cells, rules=frozenset({FORM_NOTES})),
     "REQUIREMENT_SPEC": Processor(
         "REQUIREMENT_SPEC", "요구 사양서",
         "기술 요구 사양서. 입찰자가 지켜야 할 shall·must 요구 문장이 많다.",
@@ -77,7 +80,8 @@ PROCESSORS: dict[str, Processor] = {
         _no_requirements("구매 요청서"), LABEL),
     "SUPPLIER_SPEC": Processor(
         "SUPPLIER_SPEC", "공급사 사양서",
-        "공급사 사양서(답안). 조항마다 공급사의 C/D/E 준수 표시와 고객 의견이 있다.", _no_marks),
+        "공급사 사양서(답안). 조항마다 공급사의 C/D/E 준수 표시와 고객 의견이 있다.", _no_marks,
+        rules=frozenset({MARK_TABLE_ROWS})),
     # 표 줄은 AI에 묻지 않아 다시 물어도 같으므로 다시 묻지 않는다
     "BOQ": Processor(
         "BOQ", "물량표",
