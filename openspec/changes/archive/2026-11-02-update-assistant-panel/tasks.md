@@ -11,5 +11,5 @@
 
 ## 3. 마무리
 
-- [ ] 3.1 검사 통과(ruff·pytest·lint·check:api·build), 화면 확인
-- [ ] 3.2 archive, `npm run trace`로 추적표 다시 만들기
+- [x] 3.1 검사 통과(ruff·pytest·lint·check:api·build), 화면 확인
+- [x] 3.2 archive, `npm run trace`로 추적표 다시 만들기

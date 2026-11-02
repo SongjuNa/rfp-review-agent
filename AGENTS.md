@@ -121,6 +121,7 @@ openspec/
 | 82 | `archive/2026-11-02-update-gis-catalog-values` | GIS 카탈로그 정격값: 실제 제품표 GIS-145-40·245-40·245-50·170-50의 정격 전류(3150·3150·3150·4000 A)와 정격 단시간 전류 시간(3·3·3·1초)을 카탈로그 쪽수와 함께 채움(팀 가정 아님). 실제 제품표를 적재해 값·판정을 보는 테스트. 마이그레이션 없음, 받은 뒤 `rfp-db seed-products` (완료) |
 | 83 | `archive/2026-11-02-add-pdf-input` | PDF 문서 읽기: 글자가 든 PDF를 pdfplumber로 쪽마다 표 행·단락(줄 간격·번호로 묶음)으로 읽어 docx와 같은 단계로 처리(`pipeline/pdf_reader.py`, `reader.read_document`), 2쪽 이상 반복 머리말·꼬리말 빼기, 스캔·암호 PDF는 판독 불가. 등록·문서 추가·서버 목록·분류 추천이 `.pdf`도 받음. 0036 (완료) |
 | 84 | `archive/2026-11-02-add-ocr` | OCR: 글자 층 없는 PDF 쪽과 docx 그림을 로컬 Tesseract(eng+kor, `pipeline/ocr.py`)로 읽어 단락으로 더함. 줄 신뢰도 60 미만은 버림, AI 없음. OCR 요구사항은 `extracted_by=OCR`·신뢰도 0.5, 문서 확인 필요·`ocr_lines`. 엔진 판을 처리 판에, `RFP_OCR`, 상태 점검 `ocr_available`. Dockerfile·CI에 Tesseract. 범위 밖 목록에서 OCR 뺌(도면 기호 해석은 계속 밖). 0037 (완료) |
+| 85 | `archive/2026-11-02-update-assistant-panel` | 검토 도우미 창 정리(FR-17): AI 답이 없을 때 안내를 원인별로(AI를 쓰지 않는 설정 / AI 키·모델 설정 오류 — 설정 확인 / AI가 답하지 못함, CR-12), "맞는 조항 없음"은 화면이 정함(API 모양 그대로). 상태 한 줄 중립색, 근거 카드 머리는 번호·원문 위치(내부 번호는 마우스를 올리면), 답 근거 [1] [2], "근거 조항 n건", 접는 "찾은 방법 보기", 예시 칩은 영어 낱말, 한국어 질문 0건이면 영어 낱말 안내. 마이그레이션 없음 (완료) |
 
 ## 3. 작업 흐름
 
