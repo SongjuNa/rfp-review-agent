@@ -426,7 +426,7 @@ def _save(conn, path: Path, dicts: PipelineDicts, key: str, report: Report,
                    RETURNING requirement_id""",
                 (doc_id, sec_id, row_ids.get(cand.block.seq), cand.source_kind, cand.text,
                  cand.req_kind, rep[0] if rep else None, cand.extracted_by,
-                 1.0 if cand.extracted_by == "RULE" else 0.7, cand.rule_id, cand.supplier_mark,
+                 CONFIDENCE.get(cand.extracted_by, 0.7), cand.rule_id, cand.supplier_mark,
                  cand.dedup_key),
             ).fetchone()[0]
             conn.execute("INSERT INTO requirement_location VALUES (%s, %s)", (req_id, loc_id))
@@ -472,17 +472,22 @@ def _save(conn, path: Path, dicts: PipelineDicts, key: str, report: Report,
                      dicts.projects.get(c.project_key) if c.project_key else None, v.flag, v.seq),
                 )
 
+        # OCR로 읽은 줄이 있으면 사람이 글자를 확인해야 한다 (add-ocr)
+        ocr_lines = sum(b.line_count for b in blocks if b.ocr)
         conn.execute(
             """UPDATE document SET processor = %s, process_check = %s, reprocessed = %s,
-                      reprocessed_lines = %s, needs_review = needs_review OR %s
+                      reprocessed_lines = %s, ocr_lines = %s,
+                      needs_review = needs_review OR %s OR %s > 0
                 WHERE document_id = %s""",
-            (proc.kind, check, lines > 0, lines, check is not None, doc_id))
+            (proc.kind, check, lines > 0, lines, ocr_lines, check is not None, ocr_lines, doc_id))
 
     return DocumentResult(doc_id, file_no, False, True, saved, prep.with_examples, lines > 0,
                           lines)
 
 
 FIRST_TITLE_BLOCKS = 15
+# 추출 방법별 신뢰도. OCR은 글자를 잘못 읽을 수 있어 낮게 둔다 (add-ocr)
+CONFIDENCE = {"RULE": 1.0, "AI": 0.7, "OCR": 0.5}
 
 
 def type_context(cand) -> str | None:

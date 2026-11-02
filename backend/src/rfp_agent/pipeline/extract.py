@@ -155,6 +155,9 @@ def extract(blocks: list[Block], sections: list[Section],
                 # 입찰 서식의 서식 작성 안내 ("Each Bidder must fill out this form")
                 cand.req_kind, cand.rule_id = "WRITING_RULE", "E-FORM-NOTE"
             out.append(cand)
+    for c in out:
+        if c.block.ocr:                     # 그림·스캔 쪽에서 OCR로 읽은 줄 (add-ocr)
+            c.extracted_by = "OCR"
     out.sort(key=lambda c: c.block.seq)
     return out
 

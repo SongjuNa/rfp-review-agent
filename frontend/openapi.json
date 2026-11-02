@@ -10164,6 +10164,22 @@
           "external_send": {
             "type": "boolean",
             "title": "External Send"
+          },
+          "ocr_available": {
+            "type": "boolean",
+            "title": "Ocr Available",
+            "default": false
+          },
+          "ocr_engine": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ocr Engine"
           }
         },
         "type": "object",
@@ -14630,6 +14646,11 @@
           "reprocessed_lines": {
             "type": "integer",
             "title": "Reprocessed Lines",
+            "default": 0
+          },
+          "ocr_lines": {
+            "type": "integer",
+            "title": "Ocr Lines",
             "default": 0
           }
         },

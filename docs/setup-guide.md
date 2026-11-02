@@ -30,6 +30,7 @@ Docker는 "프로그램마다 필요한 재료를 상자에 담아 두고, 상�
 | **GitHub 저장소 권한** | 비공개 저장소라서 초대를 받아야 함 | 팀장(최민정)에게 GitHub 아이디 알려 주기 |
 | **RFP 원본 docx** | 검토할 문서 | 팀 공유 폴더 (`RFP_Cleansed_styled_v6.zip`) |
 | Gemini API 키 (선택) | AI가 문장을 읽고 쓰는 단계 | 팀장에게 따로 받기. 없어도 실행됨 |
+| Tesseract (선택, 로컬 실행만) | 스캔 PDF·그림 속 글자 읽기(OCR). Docker로 켜면 이미 들어 있음 | 맥 `brew install tesseract tesseract-lang`, 윈도우 <https://github.com/UB-Mannheim/tesseract/wiki>. 없어도 실행됨(OCR만 꺼짐) |
 
 설치가 끝나면 **Docker Desktop을 한 번 실행**해 두세요. 고래 아이콘이 "Running(실행 중)"이 되어야 합니다.
 윈도우에서 처음 설치하면 WSL 2를 설치하라는 안내가 나올 수 있는데, 안내대로 설치하고 컴퓨터를 다시 켜면 됩니다.

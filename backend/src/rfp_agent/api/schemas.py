@@ -178,6 +178,7 @@ class RunDocument(Out):
     process_check: str | None = None        # 처리 뒤 점검에 걸린 이유 (통과면 비움)
     reprocessed: bool = False               # 점검 뒤 떨어진 부분을 일반 처리기로 다시 물음
     reprocessed_lines: int = 0              # 다시 물은 줄 수 (update-partial-reprocess)
+    ocr_lines: int = 0                      # OCR로 읽은 줄 수 (add-ocr). 있으면 글자 확인 필요
 
 
 class SourceLine(Out):

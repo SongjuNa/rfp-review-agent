@@ -12,6 +12,7 @@ from rfp_agent.api import assistant, businesses, evaluation, reference, runs, su
 from rfp_agent.config import get_settings
 from rfp_agent.db.connection import connect
 from rfp_agent.llm.client import ai_mode, ai_model
+from rfp_agent.pipeline import ocr
 
 app = FastAPI(title="RFP 기술 검토 지원 API", version="0.2.0")
 app.include_router(runs.router)
@@ -44,6 +45,9 @@ class Health(BaseModel):
     ai_mode: Literal["GEMINI", "LOCAL", "OFF"]
     ai_model: str | None
     external_send: bool
+    # 스캔 PDF·그림 속 글자 읽기 (add-ocr): 엔진이 있고 켜져 있는지, 엔진 판
+    ocr_available: bool = False
+    ocr_engine: str | None = None
 
 
 @app.get("/api/health", response_model=Health)
@@ -66,6 +70,8 @@ def health() -> Health:
         ai_mode=mode,
         ai_model=ai_model(settings),
         external_send=mode == "GEMINI",
+        ocr_available=ocr.available(),
+        ocr_engine=ocr.engine_version() if ocr.available() else None,
     )
 
 

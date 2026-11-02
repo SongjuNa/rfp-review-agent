@@ -12,7 +12,8 @@ import pytest
 from rfp_agent.config import get_settings
 from rfp_agent.db.migrate import migrate
 from rfp_agent.db.seed import dict_version, seed_products, seed_rules
-from rfp_agent.pipeline import queries
+from rfp_agent.pipeline import dictionaries, ocr, queries
+from rfp_agent.pipeline.document import process_document
 from rfp_agent.pipeline.run import RunContext, create_run, execute_run
 from tests.conftest import JUDGMENT_LOSS_FILE, JUDGMENT_PRODUCT_FILES, FakeLLM
 
@@ -99,10 +100,24 @@ def test_us_spec_is_not_judged(conn, main_run):
         "C", "REQUIREMENT_SPEC", False, "IEEE_UL")
 
 
-def test_image_only_document(conn, main_run):
-    """Scenario: 이미지만 있는 문서."""
+def test_image_only_document(conn, monkeypatch):
+    """Scenario: 이미지만 있는 문서 — OCR 엔진 없이는 판독 불가."""
+    monkeypatch.setattr(ocr, "available", lambda: False)
+    result = process_document(conn, path_of(8), dictionaries.load(conn), "corpus-ocr-off", None,
+                              None)
+    conn.commit()
+    assert (result.readable, result.requirement_count) == (False, 0)
+
+
+@pytest.mark.skipif(ocr.engine_version() is None, reason="Tesseract 없음")
+def test_image_document_with_ocr(conn, main_run):
+    """Scenario: OCR로 읽은 이미지 문서 — 판독 가능, OCR 요구사항, 확인 필요 (add-ocr)."""
     d = document(conn, main_run, 8)
-    assert (d["readable"], d["requirements"]) == (False, 0)
+    assert d["readable"] and d["requirements"] > 0 and d["needs_review"] and d["ocr_lines"] > 0
+    kinds = {r[0] for r in conn.execute(
+        "SELECT DISTINCT extracted_by FROM requirement WHERE document_id = %s",
+        (d["document_id"],))}
+    assert kinds == {"OCR"}
 
 
 # ---------------------------------------------------------------- FR-02

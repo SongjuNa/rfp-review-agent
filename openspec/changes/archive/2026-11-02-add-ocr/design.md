@@ -12,6 +12,7 @@
 - **PDF**(`pdf_reader`): 쪽에 글자 줄이 하나도 없고 엔진이 있으면 쪽을 300 dpi 그림으로 만들어(`page.to_image`, pypdfium2) OCR. 줄을 지금 단락 묶기(`_paragraphs`)에 넣는다(위치 키 `top`·`bottom`은 그림 좌표를 쪽 좌표로 바꿈). 표 칸 나누기는 하지 않는다.
 - **docx**(`docx_reader`): 그림 단락(`w:drawing`의 `a:blip r:embed`)의 그림을 꺼내 OCR하고, 읽은 줄을 그 그림 단락 **바로 뒤** 단락으로 더한다. 그림 단락 자체는 지금처럼 그림 위치로만 기록.
 - OCR 블록은 `Block.ocr = True`.
+- **[구현 때 바뀜]** 그림 설명("Fig. …") 찾기가 그림 단락 바로 뒤 단락을 보던 것을, 사이에 낀 OCR 단락은 건너뛰고 보게 고쳤다(OCR 단락이 그림과 설명 사이에 들어가서).
 
 ### 3. 저장 표시
 - 추출(`extract`): OCR 블록에서 나온 후보는 `extracted_by = "OCR"`. 마이그레이션 **0037**: `requirement.extracted_by` 제약에 `OCR`.
@@ -34,3 +35,6 @@
 ## 위험
 - 스캔 품질이 낮으면 글자가 틀릴 수 있다 → 신뢰도 기준·"OCR" 표시·확인 필요로 사람이 본다.
 - 처리 시간: 쪽마다 수 초. 스캔 쪽이 많은 문서는 느려진다 [확인 필요].
+
+## 구현 때 알게 된 것
+- 실제 파일 8(Specification No. E-039, 115 kV 차단기)은 "이미지가 지워져 시험 대상 없음"으로 알려져 있었으나, 실제로는 **쪽이 스캔 그림으로 들어 있었고 OCR로 본문이 읽힌다**("115 KV AC POWER GAS CIRCUIT BREAKERS", "1.1 This specification covers …"). 그래서 document-intake "문서 분류"의 "이미지만 있는 문서" Scenario를 "OCR 엔진 없이"로 좁히고 "OCR로 읽은 이미지 문서" Scenario를 더했다(MODIFIED). 실제 문서 테스트(test_corpus)도 두 경우로 나눴다.
