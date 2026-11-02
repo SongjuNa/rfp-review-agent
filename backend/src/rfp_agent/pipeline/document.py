@@ -18,10 +18,11 @@ from rfp_agent.llm.client import LLM
 from rfp_agent.pipeline import classify as cls
 from rfp_agent.pipeline import type_examples
 from rfp_agent.pipeline.dictionaries import PipelineDicts
-from rfp_agent.pipeline.docx_reader import find_figures, read_blocks
+from rfp_agent.pipeline.docx_reader import find_figures
 from rfp_agent.pipeline.extract import Candidate, extract
 from rfp_agent.pipeline.line_map import map_lines
 from rfp_agent.pipeline.processors import LABEL, TYPE, Processor, Stats, processor_for
+from rfp_agent.pipeline.reader import is_pdf, read_document
 from rfp_agent.pipeline.structure import (
     LogicalTable,
     Section,
@@ -178,9 +179,9 @@ def process_document(conn: psycopg.Connection, path: Path, dicts: PipelineDicts,
                      dedup: bool = True) -> DocumentResult:
     """ordered는 저장 차례를 기다리는 문맥(문서 병렬 처리, C1). 차례로 할 때는 바로 들어간다."""
     report("classify")
-    blocks = read_blocks(path)
-    line_basis = "DOCX"
-    txt = txt_dir / f"{path.stem}.txt" if txt_dir else None
+    blocks = read_document(path)              # docx 또는 PDF (add-pdf-input)
+    line_basis = "PDF" if is_pdf(path) else "DOCX"
+    txt = txt_dir / f"{path.stem}.txt" if txt_dir and not is_pdf(path) else None
     if txt and txt.exists():
         blocks, ratio = map_lines(blocks, txt)
         line_basis = "TXT" if ratio == 1.0 else "DOCX"

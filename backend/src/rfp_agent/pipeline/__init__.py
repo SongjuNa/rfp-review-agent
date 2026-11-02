@@ -9,7 +9,7 @@ from pathlib import Path
 PIPELINE_DIR = Path(__file__).parent
 # 문서 하나의 처리 결과(①~⑤)를 바꾸는 코드. 조회·실행 코드는 넣지 않는다.
 DOCUMENT_MODULES = ["classify", "dictionaries", "docx_reader", "document", "extract", "line_map",
-                    "structure", "type_tags", "values"]
+                    "pdf_reader", "reader", "structure", "type_tags", "values"]
 
 
 def code_version() -> str:

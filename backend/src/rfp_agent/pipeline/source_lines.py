@@ -12,8 +12,8 @@ from threading import Lock
 
 import psycopg
 
-from rfp_agent.pipeline.docx_reader import read_blocks
 from rfp_agent.pipeline.line_map import map_lines
+from rfp_agent.pipeline.reader import read_document
 
 MAX_LINES = 40
 _CACHE_SIZE = 8
@@ -41,7 +41,7 @@ def file_lines(path: Path, txt_dir: Path | None) -> dict[int, str]:
         if key in _cache:
             _cache.move_to_end(key)
             return _cache[key]
-    blocks = read_blocks(path)
+    blocks = read_document(path)
     if txt:
         blocks, _ = map_lines(blocks, txt)
     lines: dict[int, str] = {}
