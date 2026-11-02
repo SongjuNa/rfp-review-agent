@@ -1150,6 +1150,31 @@ class BusinessLog(Out):
     acted_at: datetime
 
 
+class FlowChange(Out):
+    """흐름 기록 한 단계에서 바뀐 건수 (add-flow-history). before가 없으면 그 단계에서 처음 생김."""
+    key: str                                # documents, judgment_count 등
+    before: int | None
+    after: int
+
+
+class FlowStep(Out):
+    """흐름 기록의 단계 하나 (add-flow-history, C2). 시간은 흐름 저장 시각 기준."""
+    node: str                               # 돈 단계 (documents … assign, engineer_review 등)
+    finished_at: datetime
+    seconds: float
+    changes: list[FlowChange]
+    action: str | None                      # 그 단계에서 받은 사람 동작 (submit·approve 등)
+
+
+class RunFlow(Out):
+    """검토 하나의 흐름 기록 (add-flow-history). 읽기 전용."""
+    run_id: int
+    recorded: bool                          # 흐름 기록이 있는지 (예전 검토는 false)
+    stop: str | None                        # 멈춘 자리: 사람 단계 이름, "END", 처리 중간이면 비움
+    next_node: str | None                   # 처리 중간에 멈췄으면 다음 단계
+    steps: list[FlowStep]
+
+
 class RunStepTime(Out):
     """실행 기록의 단계 하나 (add-run-log). 끝나지 않은 단계는 seconds가 null."""
     attempt: int                            # 0 = 처음 처리, 1 = 첫 다시 시도
