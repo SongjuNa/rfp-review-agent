@@ -248,6 +248,7 @@ def _start(paths: list[Path], background: BackgroundTasks, info: dict,
             raise HTTPException(400, NO_JUDGE_TARGET)
         # 검토 정보·사업 칸이 틀리면 실행을 만들기 전에 막는다
         _review(lambda: review_info.clean(info))
+        _review(lambda: review_info.require_due(info))
         _review(lambda: review_info.check_engineer(conn, info.get("engineer_id") or None))
         _review(lambda: business.check_start(conn, business_id, new_business_name))
         run_id = start_run(conn, actor_id)

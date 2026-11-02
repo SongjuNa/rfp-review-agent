@@ -183,7 +183,8 @@ def test_add_documents_api(db, db_url, monkeypatch, spec, tmp_path):
     try:
         client = TestClient(app)
         files = [("files", (spec.name, spec.read_bytes()))]
-        run_id = client.post("/api/runs", files=files).json()["run_id"]
+        run_id = client.post("/api/runs", files=files,
+                             data={"due_date": "2026-12-01"}).json()["run_id"]
         extra = build_gis_spec(tmp_path / "addendum_gis.docx")
         files = [("files", (extra.name, extra.read_bytes()))]
         data = {"choices": json.dumps({extra.name: {"bundle": "A"}})}

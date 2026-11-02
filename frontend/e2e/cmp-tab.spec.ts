@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { expect, test, type APIRequestContext } from '@playwright/test'
-import { as, deviationRun, ENGINEER, openTab } from './helpers'
+import { as, deviationRun, dueIn, ENGINEER, openTab } from './helpers'
 
 // 명세 review-workspace "지난 RFP 비교 탭"의 Scenario (change add-past-compare).
 // 같은 고객사로 합성 데이터시트(지난 입찰)와 다음 입찰 데이터시트(e2e/fixtures/next_datasheet.docx,
@@ -10,7 +10,7 @@ async function upload(request: APIRequestContext, file: string, customer: string
   const res = await request.post('/api/runs', {
     multipart: {
       files: { name: file, mimeType: 'application/octet-stream', buffer: readFileSync(new URL(`./fixtures/${file}`, import.meta.url)) },
-      review_name: `지난 비교 ${file}`, customer_name: customer, actor_id: String(ENGINEER),
+      review_name: `지난 비교 ${file}`, customer_name: customer, actor_id: String(ENGINEER), due_date: dueIn(),
       choices: JSON.stringify({ [file]: { bundle: 'A' } }),
     },
   })

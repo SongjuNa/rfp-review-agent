@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { expect, test, type APIRequestContext } from '@playwright/test'
-import { ENGINEER, as, backFromJudgment } from './helpers'
+import { ENGINEER, as, backFromJudgment, dueIn } from './helpers'
 
 // 명세 review-workspace "판정 탭의 공학 검산 표시"의 Scenario (change update-check-display, FR-12).
 // 합성 데이터시트 e2e/fixtures/synthetic_check.docx (백엔드 tests/test_engineering_check.build_check_spec, 고객 원문 아님):
@@ -11,7 +11,7 @@ async function checkRun(request: APIRequestContext) {
   const res = await request.post('/api/runs', {
     multipart: {
       files: { name: file, mimeType: 'application/octet-stream', buffer: readFileSync(new URL(`./fixtures/${file}`, import.meta.url)) },
-      review_name: `검산 표시 ${Date.now()}`, actor_id: String(ENGINEER), choices: JSON.stringify({ [file]: { bundle: 'A' } }),
+      review_name: `검산 표시 ${Date.now()}`, actor_id: String(ENGINEER), due_date: dueIn(), choices: JSON.stringify({ [file]: { bundle: 'A' } }),
     },
   })
   expect(res.status(), await res.text()).toBe(202)
