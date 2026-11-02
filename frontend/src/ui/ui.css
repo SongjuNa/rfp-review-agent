@@ -43,3 +43,10 @@
 .uidev .sw i{display:block;height:36px;border-radius:var(--r-md);border:1px solid var(--c-line);margin-bottom:var(--s-1)}
 .uidev .row{display:flex;flex-wrap:wrap;gap:var(--s-2);align-items:center}
 .uit p a{font-weight:600;margin-left:var(--s-1)}
+
+/* 줄 안 작은 보조 단추 (예: [유형 고치기]). 화면마다 다른 목업 .bo 대신 어느 화면에서나 같은 모양 */
+.uib{display:inline-flex;align-items:center;gap:var(--s-1);height:30px;padding:0 var(--s-3);box-sizing:border-box;border:1px solid var(--c-line);border-radius:var(--r-md);background:var(--c-white);color:var(--c-text);font:inherit;font-size:var(--t-sm);font-weight:600;white-space:nowrap;cursor:pointer}
+.uib:hover{background:var(--c-bg-hover);border-color:var(--c-line-strong)}
+.uib:focus-visible{outline:2px solid var(--c-link);outline-offset:2px}
+.uib .ms{font-size:16px;color:var(--c-text-3)}
+.uib .uib-v{font-weight:400;color:var(--c-muted)}
