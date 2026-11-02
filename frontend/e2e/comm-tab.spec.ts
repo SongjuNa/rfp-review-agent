@@ -110,3 +110,36 @@ test('같은 상업 영향 묶기', async ({ page, request }) => {
   await expect(rows.getByRole('button', { name: '손실 환산 →' })).toBeVisible()
   await page.unrouteAll({ behavior: 'ignoreErrors' })
 })
+
+// change update-comm-impact-open
+test('상업 영향 펼치기', async ({ page, request }) => {
+  const run = await deviationRun(request, `상업 영향 펼치기 ${Date.now()}`)
+  await page.goto(`/#/reviews/${run.run_id}`)
+  await page.getByRole('tab', { name: '상업 조건' }).click()
+  const comm = page.locator('#comm')
+  const row = comm.locator('tr.cmrow', { hasText: '일탈 가격 영향' }).first()
+  await row.click()
+  await expect(row.getByRole('button', { name: '일탈 가격 영향' })).toHaveAttribute('aria-expanded', 'true')
+  const open = comm.locator('tr.cmopen')
+  await expect(open.locator('.cmfull')).toContainText('요구값')
+  await expect(open.locator('.cmlocs li').first()).toBeVisible()
+  await row.click()                                                                // 다시 누르면 접힘
+  await expect(comm.locator('tr.cmopen')).toHaveCount(0)
+  await row.getByRole('button', { name: '판정 →' }).click()                        // 이동 단추는 펼치지 않고 판정 탭으로
+  await expect(page.getByRole('tab', { name: /판정/ }).first()).toHaveAttribute('aria-selected', 'true')
+})
+
+test('종류 모르는 문서 위치', async ({ page, request }) => {
+  const run = await deviationRun(request, `종류 모름 ${Date.now()}`)
+  await page.route(`**/api/runs/${run.run_id}/documents`, async (route) => {
+    const res = await route.fetch()
+    const docs = (await res.json()) as { doc_kind: string }[]
+    await route.fulfill({ response: res, json: docs.map((d) => ({ ...d, doc_kind: 'UNKNOWN' })) })
+  })
+  await page.goto(`/#/reviews/${run.run_id}`)
+  await page.getByRole('tab', { name: '상업 조건' }).click()
+  const loc = page.locator('#comm tr.cmrow', { hasText: '일탈 가격 영향' }).first().locator('td.loc')
+  await expect(loc).toContainText('synthetic_judgment.docx')
+  await expect(loc).not.toContainText('종류 모름')
+  await page.unrouteAll({ behavior: 'ignoreErrors' })
+})
