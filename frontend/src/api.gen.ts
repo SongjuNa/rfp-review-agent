@@ -31,6 +31,27 @@ export type ActorBody = {
   actor_id?: number | null
 }
 
+export type AiUsage = {
+  days: number
+  items: AiUsageRow[]
+  total_calls: number
+  total_cost_krw: number | null
+}
+
+/** 날짜·기능·모델별 AI 사용량 (add-ai-usage-log). ANALYSIS는 분석 실행(review_run) 합. */
+export type AiUsageRow = {
+  day: string
+  feature: 'ANALYSIS' | 'ASSISTANT' | 'HANDOFF_ASK' | 'PRODUCT_SWITCH' | 'LOSS_EDIT' | 'REVIEW_ACTION' | 'BULK_CONFIRM'
+  feature_name: string
+  model: string | null
+  calls: number
+  retries: number
+  input_tokens: number
+  output_tokens: number
+  thinking_tokens: number
+  estimated_cost_krw: number | null
+}
+
 /** 정답지. TYPE = 유형 정답지, REQ = 요구사항 정답지(add-requirement-answer-key). made_by가 CLAUDE_DRAFT(Claude 초안)·AUTO(코드 자동)면 사람 확인 전. */
 export type AnswerKey = {
   key_id: number

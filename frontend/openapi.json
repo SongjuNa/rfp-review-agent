@@ -168,6 +168,52 @@
         }
       }
     },
+    "/api/ai-usage": {
+      "get": {
+        "tags": [
+          "검토 실행"
+        ],
+        "summary": "Get Ai Usage",
+        "description": "최근 days일의 날짜·기능별 AI 사용량과 추정 비용. 분석 실행 포함 (add-ai-usage-log).",
+        "operationId": "get_ai_usage_api_ai_usage_get",
+        "parameters": [
+          {
+            "name": "days",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 366,
+              "minimum": 1,
+              "default": 30,
+              "title": "Days"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AiUsage"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/runs/{run_id}/flow": {
       "get": {
         "tags": [
@@ -5372,6 +5418,129 @@
         },
         "type": "object",
         "title": "ActorBody"
+      },
+      "AiUsage": {
+        "properties": {
+          "days": {
+            "type": "integer",
+            "title": "Days"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/AiUsageRow"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total_calls": {
+            "type": "integer",
+            "title": "Total Calls"
+          },
+          "total_cost_krw": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Total Cost Krw"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "days",
+          "items",
+          "total_calls",
+          "total_cost_krw"
+        ],
+        "title": "AiUsage"
+      },
+      "AiUsageRow": {
+        "properties": {
+          "day": {
+            "type": "string",
+            "format": "date",
+            "title": "Day"
+          },
+          "feature": {
+            "type": "string",
+            "enum": [
+              "ANALYSIS",
+              "ASSISTANT",
+              "HANDOFF_ASK",
+              "PRODUCT_SWITCH",
+              "LOSS_EDIT",
+              "REVIEW_ACTION",
+              "BULK_CONFIRM"
+            ],
+            "title": "Feature"
+          },
+          "feature_name": {
+            "type": "string",
+            "title": "Feature Name"
+          },
+          "model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model"
+          },
+          "calls": {
+            "type": "integer",
+            "title": "Calls"
+          },
+          "retries": {
+            "type": "integer",
+            "title": "Retries"
+          },
+          "input_tokens": {
+            "type": "integer",
+            "title": "Input Tokens"
+          },
+          "output_tokens": {
+            "type": "integer",
+            "title": "Output Tokens"
+          },
+          "thinking_tokens": {
+            "type": "integer",
+            "title": "Thinking Tokens"
+          },
+          "estimated_cost_krw": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Estimated Cost Krw"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "day",
+          "feature",
+          "feature_name",
+          "model",
+          "calls",
+          "retries",
+          "input_tokens",
+          "output_tokens",
+          "thinking_tokens",
+          "estimated_cost_krw"
+        ],
+        "title": "AiUsageRow",
+        "description": "날짜·기능·모델별 AI 사용량 (add-ai-usage-log). ANALYSIS는 분석 실행(review_run) 합."
       },
       "AnswerKey": {
         "properties": {
