@@ -30,7 +30,7 @@ test('사전 추가 제안 알림', async ({ page }) => {
   const box = page.locator('#risk .rk')
   await box.getByLabel('놓친 위험 표현').fill(PHRASE)
   await box.getByRole('button', { name: '위험 표현 사전에 추가 제안' }).click()
-  const toast = page.locator('.uit').filter({ hasText: `“${PHRASE}”: 위험 표현 사전에 추가를 제안했습니다` })
+  const toast = page.locator('.uisnk').filter({ hasText: `“${PHRASE}”: 위험 표현 사전에 추가를 제안했습니다` })
   await expect(toast).toContainText('다음 검토부터 잡힙니다')
   await expect(toast.getByRole('link', { name: '판정 규칙 보기' })).toHaveAttribute('href', /#\/rules/)
   await expect(box.getByTestId('suggestion').filter({ hasText: PHRASE })).toBeVisible()

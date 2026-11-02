@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { api } from '../../api'
 import { saveFile } from '../../components/download'
+import { useToast } from '../../ui'
 
 // SCR-08-11 일탈 목록·질의서 초안 내려받기 (목업 v4.57 Detail exDev/exQ: 로딩 화면 → .docx → 알림).
 // 진행 막대는 응답이 올 때까지 90 %에서 멈추고, 받으면 100 %가 된다.
@@ -16,7 +17,7 @@ function stages(kind: Kind, n: number): [number, string][] {
 
 export function useExport(runId: number) {
   const [job, setJob] = useState<{ kind: Kind; n: number; pct: number } | null>(null)
-  const [toast, setToast] = useState('')
+  const toast = useToast()
   const timer = useRef<number | undefined>(undefined)
   useEffect(() => () => { clearInterval(timer.current) }, [])
 
@@ -27,13 +28,11 @@ export function useExport(runId: number) {
       clearInterval(timer.current)
       setJob((j) => j && { ...j, pct: 100 })
       saveFile(name, blob)
-      setTimeout(() => { setJob(null); setToast(`${name}를 만들었습니다.`) }, 350)
-      setTimeout(() => setToast(''), 3350)
+      setTimeout(() => { setJob(null); toast.done(`${name}를 만들었습니다.`) }, 350)
     }, (e: Error) => {
       clearInterval(timer.current)
       setJob(null)
-      setToast(`만들지 못했습니다: ${e.message}`)
-      setTimeout(() => setToast(''), 4000)
+      toast.show(`만들지 못했습니다: ${e.message}`, 'error')
     })
   }
 
@@ -51,7 +50,6 @@ export function useExport(runId: number) {
           <div className="ldtx" aria-live="polite">{text}</div>
         </div></div>
       )}
-      {toast && <div className="ltoast" role="status"><span className="ms" aria-hidden="true">check_circle</span>{toast}</div>}
     </>
   )
   return { start, view }

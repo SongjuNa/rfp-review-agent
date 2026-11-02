@@ -27,6 +27,14 @@
 /* 알림 쌓기 (목업 v4.96 .antstw 모양) */
 .uitw{position:fixed;z-index:var(--z-toast);right:var(--s-6);top:76px;width:360px;display:flex;flex-direction:column;gap:var(--s-2);max-height:calc(100vh - 96px);overflow:auto;pointer-events:none}
 .uitw>*{pointer-events:auto}
+/* 동작 결과 알림: 아래 가운데 하나 (update-action-toast-place). 검토 상세 아래 행동 줄(.ftb)이 있으면 그 위 */
+.uisnk{position:fixed;z-index:var(--z-toast);left:50%;bottom:28px;transform:translateX(-50%);max-width:min(640px,calc(100vw - 32px));box-sizing:border-box;display:flex;align-items:flex-start;gap:var(--s-2);padding:10px var(--s-4);border-radius:var(--r-lg);background:var(--c-text);color:var(--c-white);font-size:var(--t-sm);line-height:1.5;box-shadow:var(--sh-pop);animation:uiUp .2s ease-out}
+.uisnk p{margin:0}
+.uisnk .ms{font-size:18px;color:var(--c-green-dot);margin-top:1px}
+.uisnk a{color:var(--c-white);font-weight:600;text-decoration:underline;margin-left:6px}
+body:has(.ftb) .uisnk{bottom:88px}
+@keyframes uiUp{from{opacity:0;transform:translate(-50%,8px)}to{opacity:1;transform:translate(-50%,0)}}
+@media (prefers-reduced-motion: reduce){.uisnk{animation:none}}
 @keyframes uiIn{from{opacity:0;transform:translateX(16px)}to{opacity:1;transform:none}}
 .uit{position:relative;box-sizing:border-box;animation:uiIn .25s ease-out;background:var(--c-white);border:1px solid var(--c-green-line);border-left:4px solid var(--c-green);border-radius:var(--r-lg);box-shadow:var(--sh-pop);padding:var(--s-3) 14px;font-size:var(--t-sm);color:var(--c-text);display:flex;gap:10px;align-items:flex-start}
 .uit .ms{color:var(--c-green);font-size:20px}

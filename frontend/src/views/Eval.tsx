@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { api, type AnswerKey, type EvalMetric, type EvalScore } from '../api'
 import { Pager } from '../components/Pager'
 import { stamp } from '../components/format'
@@ -6,6 +6,7 @@ import { useLoad } from '../components/useLoad'
 import { usePageCss } from '../shell/pageCss'
 import { href } from '../shell/router'
 import { useSession } from '../shell/useSession'
+import { useToast } from '../ui'
 
 // SCR-19 정답지·채점 (목업 v4.57 Eval, add-evaluation). docs/screens/SCR-19-정답지채점.md
 // 사람이 확정·수정한 판정과 유형 정답지로 지표를 코드로 잰다(CR-01). 사전·규칙을 고친 뒤 다시 채점해 개선 전후를 남긴다.
@@ -50,14 +51,9 @@ export function Eval() {
   const [note, setNote] = useState('')
   const [running, setRunning] = useState(false)
   const [error, setError] = useState('')
-  const [toast, setToast] = useState('')
+  const toast = useToast()
   const [page, setPage] = useState(1)
   const [size, setSize] = useState(10)
-  useEffect(() => {
-    if (!toast) return
-    const t = setTimeout(() => setToast(''), 2800)
-    return () => clearTimeout(t)
-  }, [toast])
 
   const runList = runs.data ?? []
   const keyList = (keys.data ?? []).filter((k) => k.key_kind === 'TYPE')
@@ -82,7 +78,7 @@ export function Eval() {
         setTab('k')
         setPage(1)
         scores.reload()
-        setToast(`채점을 마쳤습니다. 검토 ${s.run_ids.length}건${s.key_name ? `, 정답지 "${s.key_name}"` : ''}${s.req_key_name ? `, 요구사항 정답지 "${s.req_key_name}"` : ''} 기준으로 지표 ${s.metrics.items.length}개를 쟀습니다.`)
+        toast.done(`채점을 마쳤습니다. 검토 ${s.run_ids.length}건${s.key_name ? `, 정답지 "${s.key_name}"` : ''}${s.req_key_name ? `, 요구사항 정답지 "${s.req_key_name}"` : ''} 기준으로 지표 ${s.metrics.items.length}개를 쟀습니다.`)
       }, (e: Error) => setError(e.message))
       .finally(() => setRunning(false))
   }
@@ -184,7 +180,6 @@ export function Eval() {
           ))}
         </div>
       )}
-      {toast && <div className="stt" role="status"><span className="ms" aria-hidden="true">check_circle</span>{toast}</div>}
     </main>
   )
 }

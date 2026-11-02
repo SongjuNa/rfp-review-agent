@@ -64,6 +64,8 @@ export function UiSamples() {
             <Button onClick={() => toast.show('첫 번째 알림입니다')}>성공 알림 1</Button>
             <Button onClick={() => toast.show('두 번째 알림입니다')}>성공 알림 2</Button>
             <Button onClick={() => toast.show('저장하지 못했습니다. 다시 시도해 주세요.', 'error')}>오류 알림</Button>
+            <Button onClick={() => toast.done('첫 번째 동작 결과입니다')}>동작 결과 1</Button>
+            <Button onClick={() => toast.done('두 번째 동작 결과입니다')}>동작 결과 2</Button>
           </div>
         </section>
         <section aria-labelledby="uiTable">

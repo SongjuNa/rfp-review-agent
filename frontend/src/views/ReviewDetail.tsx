@@ -78,7 +78,7 @@ export function ReviewDetail({ runId }: { runId: number }) {
   if (!run) return <main className="main"><ErrorText error={error} /></main>
   const withdrawn = () => {
     setTab('judge')
-    toast.show('상신을 취소했습니다. 판정을 고친 뒤 다시 결재 상신해 주세요.')
+    toast.done('상신을 취소했습니다. 판정을 고친 뒤 다시 결재 상신해 주세요.')
     reload()
   }
   if (run.stage === 'APPROVAL') return <WaitView key={run.run_id} run={run} onChanged={reload} onWithdrawn={withdrawn} />

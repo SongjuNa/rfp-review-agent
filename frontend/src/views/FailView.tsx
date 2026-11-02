@@ -1,10 +1,11 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { api, type RunSummary } from '../api'
 import { dday, dueText, reviewTitle, stamp } from '../components/format'
 import { DOC_KIND_NAMES, STEP_NAMES } from '../components/labels'
 import { useLoad } from '../components/useLoad'
 import { useSession } from '../shell/useSession'
 import { ExampleBand } from './detail/ExampleTab'
+import { useToast } from '../ui'
 
 // SCR-11 분석 실패 상세 (목업 v4.57 Fail). docs/screens/SCR-11-분석실패.md
 // 멈춘 단계·오류 문장·진행 상황·문서·지금 볼 수 있는 것·문의용 정보는 실제 값.
@@ -45,19 +46,14 @@ export function FailView({ run, approver, onChanged }: { run: RunSummary; approv
   const docs = useLoad(() => api.documents(run.run_id), [run.run_id])
   const others = useLoad(() => api.runs().then((rs) => rs.filter((r) => r.stage === 'FAILED' && r.run_id !== run.run_id)), [run.run_id])
   const [pick, setPick] = useState('retry')
-  const [toast, setToast] = useState('')
-  useEffect(() => {
-    if (!toast) return
-    const timer = setTimeout(() => setToast(''), 3000)
-    return () => clearTimeout(timer)
-  }, [toast])
+  const toast = useToast()
 
   const stepName = STEP_NAMES[run.failed_step ?? ''] ?? run.failed_step ?? '처리'
   const cancelled = Boolean(run.cancel_requested_at)          // 사람이 취소한 검토
   const go = () => {
-    if (pick !== 'retry') { setToast('예시 화면이라 처리하지 않았습니다.'); return }
+    if (pick !== 'retry') { toast.done('예시 화면이라 처리하지 않았습니다.'); return }
     setBusy(true)
-    api.retryRun(run.run_id, user?.user_id ?? null).then(onChanged, (e: Error) => { setToast(e.message); setBusy(false) })
+    api.retryRun(run.run_id, user?.user_id ?? null).then(onChanged, (e: Error) => { toast.show(e.message, 'error'); setBusy(false) })
   }
   const failedAt = run.finished_at ?? run.started_at
   const due = run.due_date ? dday(run.due_date) : null
@@ -72,7 +68,7 @@ export function FailView({ run, approver, onChanged }: { run: RunSummary; approv
   ]
   const copy = () => {
     navigator.clipboard?.writeText([run.review_no, ...tech.map(([k, v]) => `${k}: ${v}`)].join('\n')).catch(() => undefined)
-    setToast('문의용 정보를 복사했습니다.')
+    toast.done('문의용 정보를 복사했습니다.')
   }
 
   return (
@@ -144,7 +140,6 @@ export function FailView({ run, approver, onChanged }: { run: RunSummary; approv
           </section>
         </aside>
       </div>
-      {toast && <div className="ftoast" role="status"><span className="ms" aria-hidden="true">check_circle</span>{toast}</div>}
     </>
   )
 }

@@ -164,7 +164,7 @@ function Detail({ runId, stage, j, docs, pos, total, onPrev, onNext, editing, se
     setBusy(true)
     setError(null)
     api.act(runId, { target: 'judgment', target_id: j.judgment_id, action: 'CONFIRM', actor_id: user!.user_id })
-      .then(() => { toast.show('판정을 제안대로 확정했습니다.'); onConfirmed() }, (e: Error) => setError(e.message))
+      .then(() => { toast.done('판정을 제안대로 확정했습니다.'); onConfirmed() }, (e: Error) => setError(e.message))
       .finally(() => setBusy(false))
   }
   // 질의 보냄 표시·되돌리기 (add-query-sent). 판정 결과는 바뀌지 않는다
@@ -172,7 +172,7 @@ function Detail({ runId, stage, j, docs, pos, total, onPrev, onNext, editing, se
     setBusy(true)
     setError(null)
     api.act(runId, { target: 'judgment', target_id: j.judgment_id, action: sent ? 'QUERY_SENT' : 'QUERY_UNSENT', actor_id: user!.user_id })
-      .then(() => { toast.show(sent ? '질의 보냄으로 표시했습니다.' : '질의 보냄 표시를 되돌렸습니다.'); onChanged() }, (e: Error) => setError(e.message))
+      .then(() => { toast.done(sent ? '질의 보냄으로 표시했습니다.' : '질의 보냄 표시를 되돌렸습니다.'); onChanged() }, (e: Error) => setError(e.message))
       .finally(() => setBusy(false))
   }
   const found = req.data ? (req.data.extracted_by === 'AI' ? 'AI가 찾음' : '코드 규칙으로 찾음') : null
@@ -254,7 +254,7 @@ function Detail({ runId, stage, j, docs, pos, total, onPrev, onNext, editing, se
               </div>
             )}
             {draft && <div style={{ marginTop: 18 }}><OutputEditor key={`${draft.item_id}-${draft.text_draft}-${draft.status}`} runId={runId} item={draft} id="mdDraft"
-              canEdit={!lock} onDone={() => { outputs.reload(); onChanged() }} onSaved={(m) => toast.show(m)} /></div>}
+              canEdit={!lock} onDone={() => { outputs.reload(); onChanged() }} onSaved={(m) => toast.done(m)} /></div>}
           </section>
         </div>
         <div className="mdf">
@@ -265,7 +265,7 @@ function Detail({ runId, stage, j, docs, pos, total, onPrev, onNext, editing, se
         </div>
       </div>
       {editing && <EditDialog runId={runId} j={j} onClose={() => setEditing(false)}
-        onDone={(was, now) => { setEditing(false); toast.show(`판정을 바꿨습니다: ${RESULT_NAMES[was]} → ${RESULT_NAMES[now]}`); onChanged() }} />}
+        onDone={(was, now) => { setEditing(false); toast.done(`판정을 바꿨습니다: ${RESULT_NAMES[was]} → ${RESULT_NAMES[now]}`); onChanged() }} />}
     </div>
   )
 }

@@ -158,7 +158,7 @@ test('제안대로 확정하고 다음 판정', async ({ page }) => {
   await page.goto(`/#/reviews/${ID}/judgments/501`)
   await expect(view(page)).toBeVisible()
   await page.getByRole('button', { name: '제안대로 확정' }).click()
-  await expect(page.locator('.uitw')).toContainText('판정을 제안대로 확정했습니다.')
+  await expect(page.locator('.uisnk')).toContainText('판정을 제안대로 확정했습니다.')
   await expect(page.locator('h1#mdTitle')).toContainText('모선 연결 정격 전류')
   await expect(page.locator('.mdpos')).toHaveText('판정 2 / 3')
   expect(posts).toEqual([expect.objectContaining({ target_id: 501, action: 'CONFIRM', actor_id: 1 })])

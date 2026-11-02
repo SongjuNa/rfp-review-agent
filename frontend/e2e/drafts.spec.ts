@@ -15,7 +15,7 @@ test('일탈 목록 초안 내려받기', async ({ page }) => {
   // 헤드리스 Chromium은 blob 내려받기의 한글 파일 이름을 "download"로 줄 때가 있어, 이름은 알림으로 확인한다
   const head = readFileSync(await file.path()).subarray(0, 2).toString()
   expect(head).toBe('PK')                                                    // docx(zip)
-  await expect(page.locator('.ltoast')).toContainText(`일탈 목록 초안_${run.review_no}.docx를 만들었습니다.`)
+  await expect(page.locator('.uisnk')).toContainText(`일탈 목록 초안_${run.review_no}.docx를 만들었습니다.`)
 })
 
 test('사유 적어 문장 고치기', async ({ page }) => {
@@ -33,7 +33,7 @@ test('사유 적어 문장 고치기', async ({ page }) => {
   await expect(save).toBeDisabled()
   await panel.getByLabel('고친 사유').fill('발주처 표현에 맞춤')
   await save.click()
-  await expect(page.locator('.toast')).toContainText('정상적으로 사유가 등록되었습니다.')
+  await expect(page.locator('.uisnk')).toContainText('정상적으로 사유가 등록되었습니다.')
   await expect(panel.locator('label[for="draft"] .st')).toHaveText('확정')
   await expect(draft).toHaveValue('수정한 질의 문장입니다. 적용 값을 회신해 주십시오.')
 })

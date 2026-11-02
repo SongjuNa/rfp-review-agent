@@ -3,6 +3,7 @@ import { ToastCtx, TOAST_MS, type ToastKind, type ToastLink } from './toastConte
 
 // 알림 쌓기 (SCR-00 7장, 목업 v4.96). 오른쪽 위에 위에서 아래로 쌓는다.
 // 성공·안내는 4초 뒤 사라지고, 오류는 닫기 전까지 남는다. 같은 문장이 떠 있으면 하나만.
+// 동작 결과(done)는 아래 가운데에 하나만 보이고 새 결과가 오면 바꿔 끼운다 (update-action-toast-place).
 type Toast = { id: number; kind: ToastKind; text: string; link?: ToastLink }
 
 const ICON: Record<ToastKind, string> = { success: 'check_circle', info: 'info', error: 'error' }
@@ -17,7 +18,13 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     setList((l) => l.some((t) => t.text === text && t.kind === kind) ? l : [...l, { id, kind, text, link }])
     if (kind !== 'error') setTimeout(() => remove(id), TOAST_MS)
   }, [remove])
-  const api = useMemo(() => ({ show }), [show])
+  const [snack, setSnack] = useState<{ id: number; text: string; link?: ToastLink } | null>(null)
+  const done = useCallback((text: string, link?: ToastLink) => {
+    const id = ++seq.current
+    setSnack({ id, text, link })
+    setTimeout(() => setSnack((s) => (s?.id === id ? null : s)), TOAST_MS)
+  }, [])
+  const api = useMemo(() => ({ show, done }), [show, done])
   return (
     <ToastCtx.Provider value={api}>
       {children}
@@ -30,6 +37,12 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
               <button type="button" onClick={() => remove(t.id)}>닫기</button>
             </div>
           ))}
+        </div>
+      )}
+      {snack && (
+        <div key={snack.id} className="uisnk" role="status" aria-live="polite">
+          <span className="ms" aria-hidden="true">check_circle</span>
+          <p>{snack.text}{snack.link && <> <a href={snack.link.href} onClick={() => setSnack(null)}>{snack.link.label}</a></>}</p>
         </div>
       )}
     </ToastCtx.Provider>
