@@ -20,7 +20,7 @@ test('결재 상신 창', async ({ page, request }) => {
   await expect(page.locator('.wop')).toContainText(COMMENT)
   // 결정 전 상신 취소 → 바로 검토 상세 판정 탭으로 돌아간다
   await page.getByRole('button', { name: '상신 취소' }).click()
-  await expect(page.locator('.uit')).toContainText('상신을 취소했습니다.')
+  await expect(page.locator('.uisnk')).toContainText('상신을 취소했습니다.')
   await expect(page.getByRole('button', { name: '결재 상신' })).toBeEnabled()
 })
 

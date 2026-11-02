@@ -13,6 +13,7 @@ import { useSession } from '../../shell/useSession'
 import { filterQuery, parseFilter } from '../../components/judgeFilter'
 import { OutputEditor } from './OutputEditor'
 import { RevisionBar } from './RevisionBar'
+import { useToast } from '../../ui'
 
 // SCR-08-1 판정 탭 (목업 v4.57 Detail #judge). docs/screens/SCR-08-1-판정.md
 // 판정 칩·거르기·판정 순서 표, 줄을 누르면 판정 상세 화면(add-judgment-view), 오른쪽 패널은 돌아온 줄. 고른 줄·준수 모두를 한꺼번에 제안대로 확정 (add-bulk-confirm).
@@ -55,7 +56,7 @@ export function JudgeTab({ run, tick, onChanged }: { run: RunSummary; tick: numb
   const [wWhy, setWWhy] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [sel, setSel] = useState<Record<number, string>>({})   // 고른 판정 id → 판정 (쪽을 넘겨도 남는다)
-  const [toast, setToast] = useState('')
+  const toast = useToast()
   const [busy, setBusy] = useState(false)
   const [applying, setApplying] = useState(false)
   const [panelError, setPanelError] = useState<string | null>(null)
@@ -87,7 +88,7 @@ export function JudgeTab({ run, tick, onChanged }: { run: RunSummary; tick: numb
   // 줄을 누르면 판정 상세 화면. 지금 거르기·쪽을 주소로 넘겨 이전·다음과 목록으로 돌아오기에 쓴다
   const open = (j: Judgment) => navigate(`/reviews/${id}/judgments/${j.judgment_id}${filterQuery({ f, unc: onlyUnc, q: text, type, past: onlyPast, rev: onlyRev, page, size })}`)
   const done = () => { onChanged() }
-  const say = (m: string) => { setToast(m); setTimeout(() => setToast(''), 3000) }
+  const say = (m: string) => toast.done(m)
   const act = (body: Parameters<typeof api.act>[1]) => api.act(id, { ...body, actor_id: user!.user_id }).then(done)
   const go = (d: number) => {
     const i = list.findIndex((r) => r.judgment_id === (curRow?.judgment_id ?? -1)) + d
@@ -230,7 +231,6 @@ export function JudgeTab({ run, tick, onChanged }: { run: RunSummary; tick: numb
         )}
       </div>
 
-      {toast && <div className="toast" role="status"><span className="ms" aria-hidden="true">check_circle</span>{toast}</div>}
     </section>
   )
 }

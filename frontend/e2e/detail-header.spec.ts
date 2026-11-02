@@ -110,7 +110,7 @@ test('아래 행동 줄로 한꺼번에 확정', async ({ page }) => {
   const bar = page.locator('.ftb')
   await expect(bar).toContainText('준수 45줄은')
   await bar.getByRole('button', { name: '모두 확정' }).click()
-  await expect(page.locator('.uitw')).toContainText('판정 45줄을 제안대로 확정했습니다.')
+  await expect(page.locator('.uisnk')).toContainText('판정 45줄을 제안대로 확정했습니다.')
   await expect(bar.getByRole('button', { name: '모두 확정' })).toHaveCount(0)
 })
 

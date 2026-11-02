@@ -67,7 +67,7 @@ export function RiskTab({ run, tick, onChanged }: { run: RunSummary; tick: numbe
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const toast = useToast()
-  const say = (m: string) => toast.show(m)
+  const say = (m: string) => toast.done(m)
   const canEdit = run.stage === 'ENGINEER_REVIEW' && user?.role === 'ENGINEER'
   const lock = run.stage !== 'ENGINEER_REVIEW' ? '담당자 확인 단계에서만 고칠 수 있습니다' : !canEdit ? '엔지니어만 고칠 수 있습니다' : undefined
 
@@ -84,7 +84,7 @@ export function RiskTab({ run, tick, onChanged }: { run: RunSummary; tick: numbe
       .then(() => {
         setClosing(null); setWhy(''); onChanged()
         // 한 일 + 바뀌는 것 (update-risk-action-toasts). 닫은 위험 조건은 질의 후보를 만들지 않고 결재 확인 사유에서도 빠진다
-        toast.show(action === 'CONFIRM'
+        toast.done(action === 'CONFIRM'
           ? `${name(r)}: 위험으로 확정했습니다. 질의 후보와 결재 확인 사유에 남습니다.`
           : `${name(r)}: 문제 없음으로 닫았습니다. 이 조건에서 만든 질의 후보는 목록에서 빠집니다.`)
       })
@@ -182,8 +182,8 @@ function Found({ run, docs }: { run: RunSummary; docs: RunDocument[] }) {
     setError(null)
     api.suggestRule(run.run_id, text.trim(), note.trim(), user.user_id)
       .then(() => {
-        toast.show(`“${text.trim()}”: 위험 표현 사전에 추가를 제안했습니다. 규칙 담당이 판정 규칙 화면에서 반영하면 다음 검토부터 잡힙니다.`,
-          'success', { href: href('/rules'), label: '판정 규칙 보기' })
+        toast.done(`“${text.trim()}”: 위험 표현 사전에 추가를 제안했습니다. 규칙 담당이 판정 규칙 화면에서 반영하면 다음 검토부터 잡힙니다.`,
+          { href: href('/rules'), label: '판정 규칙 보기' })
         setText(''); setNote(''); list.reload()
       }, (e: Error) => setError(e.message))
       .finally(() => setBusy(false))

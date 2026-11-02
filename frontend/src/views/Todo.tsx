@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react'
 import { api, type Assignment, type User } from '../api'
 import { Pager } from '../components/Pager'
 import { saveFile } from '../components/download'
-import { Button } from '../ui'
+import { Button, useToast } from '../ui'
 import { stamp } from '../components/format'
 import { locShort } from '../components/judgment'
 import { POINT_KIND_NAMES } from '../components/labels'
@@ -134,7 +134,7 @@ export function Todo() {
   const [rsize, setRsize] = useState(10)                   // RFP별 쪽 크기 (update-todo-rfp-paging)
   const [open, setOpen] = useState<number | null>(null)
   const [writing, setWriting] = useState(false)
-  const [toast, setToast] = useState('')
+  const toast = useToast()
   const [draft, setDraft] = useState<Filter>(NO_FILTER)      // 검색 영역에 고르는 중인 조건
   const [applied, setApplied] = useState<Filter>(NO_FILTER)  // 검색을 눌러 걸린 조건
   const [sum, setSum] = useState<St | null>(null)           // 요약 줄로 거른 상태
@@ -142,11 +142,6 @@ export function Todo() {
   const [closed, setClosed] = useState<number[]>([])        // RFP별에서 접은 검토
   const [exporting, setExporting] = useState(false)
   const list = useLoad(() => api.assignments(), [])        // 세 부서 요청을 한 번에 받아 화면에서 거른다
-  useEffect(() => {
-    if (!toast) return
-    const timer = setTimeout(() => setToast(''), 3000)
-    return () => clearTimeout(timer)
-  }, [toast])
 
   const [now, setNow] = useState(() => Date.now())   // 화면을 연 시각 기준으로 24시간·회신 기한을 센다
   const engineer = user?.role === 'ENGINEER'        // 보내기·재요청·회신 기록은 엔지니어만 (견적·품질·영업은 읽기만)
@@ -155,9 +150,9 @@ export function Todo() {
     if (!user) return
     setSending(a.assignment_id)
     api.sendRequests(a.run_id, [a.assignment_id], user.user_id, resend)
-      .then((r) => setToast(r.sent ? resend ? '다시 보냈습니다' : `${address(a)}(으)로 메일을 보냈습니다`
-        : r.no_address ? '부서 주소가 설정되지 않아 보내지 않았습니다' : '메일을 보내지 못했습니다. 잠시 뒤 다시 보내 주세요'),
-      (e: Error) => setToast(e.message))
+      .then((r) => r.sent ? toast.done(resend ? '다시 보냈습니다' : `${address(a)}(으)로 메일을 보냈습니다`)
+        : toast.show(r.no_address ? '부서 주소가 설정되지 않아 보내지 않았습니다' : '메일을 보내지 못했습니다. 잠시 뒤 다시 보내 주세요', 'error'),
+      (e: Error) => toast.show(e.message, 'error'))
       .finally(() => { setSending(null); setNow(Date.now()); list.reload() })
   }
   const all = list.data ?? []
@@ -201,7 +196,7 @@ export function Todo() {
     if (exporting || !rows.length) return
     setExporting(true)
     api.exportAssignments(view === 'rfp' ? null : dept, rows.map((a) => a.assignment_id))
-      .then(({ name, blob }) => { saveFile(name, blob); setToast(`${name}를 만들었습니다.`) }, (e: Error) => setToast(e.message))
+      .then(({ name, blob }) => { saveFile(name, blob); toast.done(`${name}를 만들었습니다.`) }, (e: Error) => toast.show(e.message, 'error'))
       .finally(() => setExporting(false))
   }
 
@@ -343,10 +338,9 @@ export function Todo() {
       </section>
       {picked && <Detail a={picked} now={now} dept={DEPTS.find(([k]) => k === picked.assignee_role)?.[1] ?? label} user={user}
         sending={sending !== null} onSend={send} onClose={() => setOpen(null)}
-        onChanged={(msg) => { setToast(msg); list.reload() }} />}
+        onChanged={(msg) => { toast.done(msg); list.reload() }} />}
       {writing && <NewRequest dept={dept} rows={all.filter(inTab)} users={users} onClose={() => setWriting(false)}
-        onSent={() => { setWriting(false); setToast('예시 화면이라 보내지 않았습니다.') }} />}
-      {toast && <div className="toast" role="status"><span className="ms" aria-hidden="true">check_circle</span>{toast}</div>}
+        onSent={() => { setWriting(false); toast.done('예시 화면이라 보내지 않았습니다.') }} />}
     </main>
   )
 }

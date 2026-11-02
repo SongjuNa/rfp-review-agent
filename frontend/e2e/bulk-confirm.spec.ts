@@ -29,7 +29,7 @@ test('준수 모두 확정', async ({ page, request }) => {
   const quick = page.locator('.ftb').getByRole('button', { name: '모두 확정' })
   await expect(quick).toBeVisible()
   await quick.click()
-  await expect(page.locator('.uitw').filter({ hasText: /판정 \d+줄을 제안대로 확정했습니다/ })).toBeVisible()
+  await expect(page.locator('.uisnk').filter({ hasText: /판정 \d+줄을 제안대로 확정했습니다/ })).toBeVisible()
   await expect(quick).toHaveCount(0)
   const left = await (await request.get(`/api/runs/${run.run_id}/judgments?result=COMPLY&unconfirmed=true&limit=1`)).json()
   expect(left).toEqual([])

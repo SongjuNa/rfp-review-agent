@@ -44,6 +44,21 @@ test('오류 알림은 남음', async ({ page }) => {
   await expect(alert).toHaveCount(0)
 })
 
+// Scenario: 알림 쌓기 / 동작 결과는 아래 가운데 (change update-action-toast-place)
+test('동작 결과는 아래 가운데', async ({ page }) => {
+  await page.getByRole('button', { name: '동작 결과 1' }).click()
+  await page.getByRole('button', { name: '동작 결과 2' }).click()
+  const snack = page.locator('.uisnk')
+  await expect(snack).toHaveCount(1)
+  await expect(snack).toContainText('두 번째 동작 결과입니다')
+  await expect(page.locator('.uitw')).toHaveCount(0)                    // 오른쪽 위 쌓기에는 없다
+  const box = (await snack.boundingBox())!
+  const view = page.viewportSize()!
+  expect(Math.abs(box.x + box.width / 2 - view.width / 2)).toBeLessThan(4)   // 가운데
+  expect(box.y + box.height).toBeGreaterThan(view.height - 80)                // 아래
+  await expect(snack).toHaveCount(0, { timeout: 6_000 })                       // 4초 뒤 사라짐
+})
+
 test('잠긴 단추에 이유', async ({ page }) => {
   const btn = page.getByRole('button', { name: '승인', exact: true })
   await expect(btn).toBeDisabled()

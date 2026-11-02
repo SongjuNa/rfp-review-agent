@@ -131,7 +131,7 @@ export function Home() {
     setRetrying(r.run_id)
     setRetryError(null)
     api.retryRun(r.run_id, user?.user_id ?? null).then(() => {
-      toast.show('다시 분석을 시작했습니다', 'success', { href: href(`/reviews/${r.run_id}`), label: '검토 열기' })
+      toast.done('다시 분석을 시작했습니다', { href: href(`/reviews/${r.run_id}`), label: '검토 열기' })
       runs.reload()
     }, (e: Error) => setRetryError({ id: r.run_id, text: e.message })).finally(() => setRetrying(null))
   }

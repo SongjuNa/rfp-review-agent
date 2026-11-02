@@ -44,7 +44,7 @@ test('RFP 한 건 처음부터 끝까지', async ({ page, request }) => {
   await page.locator('#judge table tbody tr').first().click()
   await expect(page.locator('.jv .mdpos')).toBeVisible()
   await page.getByRole('button', { name: '제안대로 확정' }).click()
-  await expect(page.locator('.uitw')).toContainText('판정을 제안대로 확정했습니다.')
+  await expect(page.locator('.uisnk')).toContainText('판정을 제안대로 확정했습니다.')
   await page.keyboard.press('Escape')
   await expect(page.locator('#judge')).toBeVisible()
 
