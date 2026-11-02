@@ -628,6 +628,15 @@ body,.app,.wk,.ws,.layout,.main{background:#fff}
 /* 사전 추가 후보에서 채운 줄 잠깐 강조 (update-suggest-fill-focus) */
 .rk-f{transition:background-color .3s}
 .rk-f.on{background:var(--c-orange-bg)}
+/* 위험 조건 표 칸 폭: 상태 · 설명(나머지) · 원문 위치 · 처리 단추 */
+.rkt{table-layout:fixed;width:100%}
+.rkt col.c-s{width:96px}
+.rkt col.c-w{width:280px}
+.rkt col.c-a{width:340px}
+.rkt td{vertical-align:top}
+.rkt td.loc{white-space:normal}
+.rkt td.loc:last-child{text-align:right}
+.rkt td.loc:last-child>span{justify-content:flex-end}
 /* 제출본 탭 인계 패키지 (add-submission-package, 앱에서 더함) */
 .subpk{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:14px;padding:12px 14px;border:1px solid #DCE3EC;border-radius:8px;background:#F7F9FC;font-size:var(--fs-sm);color:#475467}
 .subpk b{color:#344054}
