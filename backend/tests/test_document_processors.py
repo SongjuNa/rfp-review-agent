@@ -46,10 +46,14 @@ def letters(path: Path) -> Path:
 
 
 def no_tests(path: Path) -> Path:
-    """시험 유형 규칙에 걸리는 낱말이 없는 요구 문장 문서 (시험 사양서 이름이면 점검에 걸린다)."""
+    """시험 유형 규칙에 걸리는 낱말이 없는 요구 문장 문서 (시험 사양서 이름이면 점검에 걸린다).
+
+    협조 요청 유형 낱말(spare parts 등)이 든 문장은 AI에 묻지 않아 절이 통째로 떨어지지 않으므로
+    넣지 않는다 (update-ai-label-keep-handoff).
+    """
     doc = Document()
     doc.add_paragraph("1. GENERAL")
-    doc.add_paragraph("The contractor shall provide spare parts for five years of operation.")
+    doc.add_paragraph("The contractor shall paint all steel parts before the final inspection.")
     doc.add_paragraph("The vendor shall supply operation and maintenance manuals in English.")
     doc.add_paragraph("2. PACKING")
     doc.add_paragraph("All equipment shall be packed for sea transport and long storage.")
