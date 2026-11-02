@@ -1,4 +1,4 @@
-import { Fragment, useState } from 'react'
+import { Fragment, useState, type ReactNode } from 'react'
 import { api, type CommercialImpact, type CostCondition, type Location, type RunDocument, type RunSummary } from '../../api'
 import { locName, markSplit } from '../../components/judgment'
 import { DOC_KIND_NAMES, locationText } from '../../components/labels'
@@ -19,12 +19,29 @@ const NONE: [string, string] = ['협조 요청 없음', 'st c-grey']
 
 const usd = (n: number) => `$${n.toLocaleString('en-US', { maximumFractionDigits: 0 })}`
 
-/** 줄인 원문 위치: 파일 이름 대신 문서 종류(없으면 파일 n) · 절이나 표 · 행 */
+/** 줄인 원문 위치: 파일 이름 대신 문서 종류 · 절이나 표 · 행. 종류를 모르면 파일 이름(없으면 파일 n) (update-comm-impact-open) */
 function shortLoc(loc: Location, docs: RunDocument[]): string {
   const doc = docs.find((d) => d.file_no === loc.file_no)
-  const kind = doc ? DOC_KIND_NAMES[doc.doc_kind] ?? doc.doc_kind : null
-  const text = locationText(loc)
-  return kind ? text.replace(/^파일 \d+/, kind) : text
+  if (!doc || doc.doc_kind === 'UNKNOWN') return locName(loc, docs)
+  return locationText(loc).replace(/^파일 \d+/, DOC_KIND_NAMES[doc.doc_kind] ?? doc.doc_kind)
+}
+
+/** 펼친 줄 아래: 원문 전체와 모든 원문 위치 */
+function Opened({ children, locations, docs }: { children: ReactNode; locations: Location[]; docs: RunDocument[] }) {
+  return (
+    <tr className="cmopen"><td /><td colSpan={3}>
+      <div className="cmfull">{children}</div>
+      <ul className="cmlocs">{locations.map((l, i) => <li key={i}>{locName(l, docs)}</li>)}</ul>
+    </td></tr>
+  )
+}
+
+/** 종류 칸의 펼치기 단추 */
+function Toggle({ open, onToggle, children }: { open: boolean; onToggle: () => void; children: ReactNode }) {
+  return (
+    <button type="button" className="cmk cmtg" aria-expanded={open} onClick={(e) => { e.stopPropagation(); onToggle() }}>
+      <span className="ms" aria-hidden="true">{open ? 'expand_more' : 'chevron_right'}</span>{children}</button>
+  )
 }
 
 /** 위치 칸: 줄인 첫 위치 + "외 n곳", 마우스를 올리면 전체 위치 */
@@ -74,7 +91,8 @@ export function CommTab({ run, tick, onGoJudge, onGoLoss }: {
   const data = useLoad(() => api.costConditions(id), [id, tick])
   const docs = useLoad(() => api.documents(id), [id])
   const [kind, setKind] = useState<string | null>(null)
-  const [open, setOpen] = useState<number | null>(null)
+  const [open, setOpen] = useState<string | null>(null)     // 펼친 줄: c-<요구사항> / i-<상업 영향>
+  const flip = (k: string) => setOpen(open === k ? null : k)
   const conds = data.data?.conditions ?? []
   const groups = grouped(data.data?.impacts ?? [])
   const cp = usePage(kind ? conds.filter((c) => c.kind === kind) : conds)
@@ -99,7 +117,7 @@ export function CommTab({ run, tick, onGoJudge, onGoLoss }: {
       <p className="rdi">RFP에서 돈이 드는 조건과 기술 판단에서 생긴 상업 영향입니다. 모두 규칙으로 찾은 <b>후보</b>이고 금액은 계산하지 않습니다.
         받아들일지는 견적 담당이 정하고, 메일은 협조 요청 현황에서 보냅니다.</p>
 
-      <h3 className="cmh">RFP의 비용 조건<span className="cmsub">견적 담당 확인 · 줄을 누르면 원문 전체</span></h3>
+      <h3 className="cmh">RFP의 비용 조건<span className="cmsub">견적 담당 확인{conditions.length > 0 && ' · 줄을 누르면 원문 전체'}</span></h3>
       {conditions.length === 0
         ? <p className="dimv" style={{ margin: '8px 0' }}>찾은 비용 조건이 없습니다. 상업 조항이 요구사항으로 뽑히지 않은 문서일 수 있습니다.</p>
         : <>
@@ -111,33 +129,36 @@ export function CommTab({ run, tick, onGoJudge, onGoLoss }: {
             ))}
           </div>
           <table className="mini cmt cmfix"><Cols /><tbody>
-            {cp.shown.map((c) => <CondRow key={c.requirement_id} c={c} docs={files} open={open === c.requirement_id}
-              onToggle={() => setOpen(open === c.requirement_id ? null : c.requirement_id)} />)}
+            {cp.shown.map((c) => <CondRow key={c.requirement_id} c={c} docs={files} open={open === `c-${c.requirement_id}`}
+              onToggle={() => flip(`c-${c.requirement_id}`)} />)}
           </tbody></table>
           {cp.pager}
         </>}
 
-      <h3 className="cmh">기술 판단에서 생긴 상업 영향<span className="cmsub">견적 담당 확인</span></h3>
+      <h3 className="cmh">기술 판단에서 생긴 상업 영향<span className="cmsub">견적 담당 확인{impacts.length > 0 && ' · 줄을 누르면 내용 전체'}</span></h3>
       {impacts.length === 0
         ? <p className="dimv" style={{ margin: '8px 0' }}>손실 환산 결과와 일탈 후보가 없습니다.</p>
         : <table className="mini cmt cmfix"><Cols /><tbody>
-          {ip.shown.map(({ first: i, count, locations }) => (
-            <tr key={`${i.kind}-${i.loss_calc_id ?? i.item_id}`}>
-              <td><b className="cmk">{i.kind === 'LOSS' ? '손실 환산 가산액' : '일탈 가격 영향'}</b></td>
+          {ip.shown.map(({ first: i, count, locations }) => {
+            const k = `i-${i.kind}-${i.loss_calc_id ?? i.item_id}`
+            const what = i.kind === 'LOSS'
+              ? <>{i.product_code ?? '비교 제품 없음'} · 평가 가격에 {i.total_usd === null ? <span className="c-ora">확인 필요</span> : <b>{usd(i.total_usd)}</b>} 더해짐</>
+              : <>일탈을 받아들이거나 옵션으로 맞출 때 가격 영향 확인</>
+            return <Fragment key={k}>
+            <tr className={'cmrow' + (open === k ? ' on' : '')} onClick={() => flip(k)}>
+              <td><Toggle open={open === k} onToggle={() => flip(k)}>{i.kind === 'LOSS' ? '손실 환산 가산액' : '일탈 가격 영향'}</Toggle></td>
               <td>
-                <div className="cm1">
-                  {i.kind === 'LOSS'
-                    ? <>{i.product_code ?? '비교 제품 없음'} · 평가 가격에 {i.total_usd === null ? <span className="c-ora">확인 필요</span> : <b>{usd(i.total_usd)}</b>} 더해짐</>
-                    : <>일탈을 받아들이거나 옵션으로 맞출 때 가격 영향 확인 <span className="en">— {i.text}</span></>}
-                </div>
+                <div className="cm1">{what}{open !== k && i.text && <span className="en"> — {i.text}</span>}</div>
                 <div className="cmsm">후보{count > 1 ? ` · 같은 조건 ${count}곳` : ''}{i.is_assumed && <span className="tag">팀 가정</span>}</div>
               </td>
               <Where locations={locations} docs={files} />
               <td className="cmst">
-                <button type="button" className="lnk" onClick={i.kind === 'LOSS' ? onGoLoss : onGoJudge}>{i.kind === 'LOSS' ? '손실 환산' : '판정'} →</button>
+                <button type="button" className="lnk" onClick={(e) => { e.stopPropagation(); (i.kind === 'LOSS' ? onGoLoss : onGoJudge)() }}>{i.kind === 'LOSS' ? '손실 환산' : '판정'} →</button>
               </td>
             </tr>
-          ))}
+            {open === k && <Opened locations={locations} docs={files}>{i.text ?? what}</Opened>}
+            </Fragment>
+          })}
         </tbody></table>}
       {ip.pager}
       <p className="cmfoot">견적 담당 협조 요청은 판정을 확정하면 메일로 나가고, <a href={href('/todo')}>협조 요청 현황</a>에서 보내기·회신을 확인할 수 있습니다.</p>
@@ -152,8 +173,7 @@ function CondRow({ c, docs, open, onToggle }: { c: CostCondition; docs: RunDocum
     <>
       <tr className={'cmrow' + (open ? ' on' : '')} onClick={onToggle}>
         <td>
-          <button type="button" className="cmk cmtg" aria-expanded={open} onClick={(e) => { e.stopPropagation(); onToggle() }}>
-            <span className="ms" aria-hidden="true">{open ? 'expand_more' : 'chevron_right'}</span>{c.kind}</button>
+          <Toggle open={open} onToggle={onToggle}>{c.kind}</Toggle>
           {c.risk && <div><span className="st c-ora" style={{ marginTop: 4 }}>{c.risk}</span></div>}
           {c.burden && <div><span className="st c-blue" style={{ marginTop: 4 }}>{c.burden}</span></div>}
         </td>
@@ -167,12 +187,7 @@ function CondRow({ c, docs, open, onToggle }: { c: CostCondition; docs: RunDocum
         <td className="cmst"><span className={st[1]}>{st[0]}</span>
           {c.mail_error && <div className="c-red" style={{ fontSize: 'var(--fs-xs)', marginTop: 2 }}>{c.mail_error === '주소 없음' ? '주소 없음' : '발송 실패'}</div>}</td>
       </tr>
-      {open && (
-        <tr className="cmopen"><td /><td colSpan={3}>
-          <div className="cmfull"><Marked text={c.text} values={c.values} /></div>
-          <ul className="cmlocs">{c.locations.map((l, i) => <li key={i}>{locName(l, docs)}</li>)}</ul>
-        </td></tr>
-      )}
+      {open && <Opened locations={c.locations} docs={docs}><Marked text={c.text} values={c.values} /></Opened>}
     </>
   )
 }
