@@ -15,7 +15,7 @@ type Bundle = DocumentPreview['bundle']
 const KINDS = Object.keys(DOC_KIND_NAMES) as Kind[]
 const BUNDLES: Bundle[] = ['A', 'B', 'C', 'D']
 
-/** 문서 추가: docx 고르기 → 분류 추천 → 묶음·종류 고르기 → 추가하고 다시 분석 */
+/** 문서 추가: docx·PDF 고르기 → 분류 추천 → 묶음·종류 고르기 → 추가하고 다시 분석 */
 function AddDocuments({ run, docs, onAdded }: { run: RunSummary; docs: RunDocument[]; onAdded: () => void }) {
   const { user } = useSession()
   const input = useRef<HTMLInputElement>(null)
@@ -27,7 +27,7 @@ function AddDocuments({ run, docs, onAdded }: { run: RunSummary; docs: RunDocume
   const have = new Set(docs.map((d) => d.file_name))
 
   const pick = (e: ChangeEvent<HTMLInputElement>) => {
-    const list = Array.from(e.target.files ?? []).filter((f) => f.name.toLowerCase().endsWith('.docx'))
+    const list = Array.from(e.target.files ?? []).filter((f) => /\.(docx|pdf)$/i.test(f.name))
     e.target.value = ''
     setError(null)
     setChosen({})
@@ -55,9 +55,9 @@ function AddDocuments({ run, docs, onAdded }: { run: RunSummary; docs: RunDocume
       <h3 id="docAddTitle">문서 추가</h3>
       <p className="aphint" style={{ color: 'var(--c-muted)' }}>발주처가 낸 정정본·추가 문서(Addendum)를 더하면 처음 문서와 함께 이 검토를 다시 분석합니다.
         처리한 문서는 다시 쓰고, 확정·수정·반려한 판정과 위험 조건은 같은 줄이면 그대로 이어받습니다.</p>
-      <input ref={input} type="file" accept=".docx" multiple hidden onChange={pick} aria-label="더할 docx 파일" />
+      <input ref={input} type="file" accept=".docx,.pdf" multiple hidden onChange={pick} aria-label="더할 docx 파일" />
       <button type="button" className="bo" onClick={() => input.current?.click()} disabled={busy}>
-        <span className="ms" aria-hidden="true" style={{ fontSize: 'var(--ic-s)' }}>note_add</span>docx 고르기</button>
+        <span className="ms" aria-hidden="true" style={{ fontSize: 'var(--ic-s)' }}>note_add</span>docx·PDF 고르기</button>
       {files.length > 0 && (
         <div className="tw" style={{ marginTop: 8 }}><table className="tbl doct">
           <thead><tr><th>파일 이름</th><th>문서 종류</th><th>묶음</th><th>판정</th></tr></thead>

@@ -52,7 +52,7 @@ def prepare_add(conn: psycopg.Connection, run_id: int, new_paths: list[Path],
             raise ReviewError(409, f"처음 올린 파일을 찾을 수 없습니다({', '.join(missing)}). "
                                    "검토를 다시 등록해 주세요.")
         if not new_paths:
-            raise ReviewError(400, "더할 docx 파일을 하나 이상 골라 주세요.")
+            raise ReviewError(400, "더할 docx·PDF 파일을 하나 이상 골라 주세요.")
         names = {p.name for p in paths}
         same = [p.name for p in new_paths if p in paths or p.name in names]
         if same:

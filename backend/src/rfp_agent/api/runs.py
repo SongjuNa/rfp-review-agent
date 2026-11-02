@@ -88,6 +88,7 @@ from rfp_agent.pipeline.handoff_mail import send_requests
 from rfp_agent.pipeline.loss import recalculate
 from rfp_agent.pipeline.outputs import check_submission
 from rfp_agent.pipeline.proposals import build_proposals
+from rfp_agent.pipeline.reader import SUFFIXES
 from rfp_agent.pipeline.run import switch_product
 from rfp_agent.pipeline.screen_summary import home_summary, review_summary
 from rfp_agent.pipeline.service import make_context, run_to_end, start_run
@@ -260,8 +261,8 @@ def _start(paths: list[Path], background: BackgroundTasks, info: dict,
 
 def _safe_name(name: str) -> str:
     name = Path(name).name
-    if not name.lower().endswith(".docx") or re.search(r"[\x00/\\]", name):
-        raise HTTPException(400, f"docx 파일만 받습니다: {name}")
+    if not name.lower().endswith(SUFFIXES) or re.search(r"[\x00/\\]", name):
+        raise HTTPException(400, f"docx·PDF 파일만 받습니다: {name}")
     return name
 
 
@@ -307,7 +308,9 @@ def requirement(requirement_id: int, run_id: int | None = None) -> Requirement:
 def library() -> list[str]:
     """서버에 미리 둔 RFP 원문(data/private/rfp_docx) 목록."""
     docx_dir = get_settings().docx_dir
-    return sorted(p.name for p in docx_dir.glob("*.docx")) if docx_dir.exists() else []
+    if not docx_dir.exists():
+        return []
+    return sorted(p.name for p in docx_dir.iterdir() if p.suffix.lower() in SUFFIXES)
 
 
 def _library_paths(files: list[str]) -> list[Path]:
@@ -341,7 +344,7 @@ def _preview(paths: list[Path]) -> list[dict]:
         try:
             return preview.preview(conn, paths)
         except preview.UnreadableFile as exc:
-            raise HTTPException(400, f"docx를 열 수 없습니다: {exc}") from exc
+            raise HTTPException(400, f"문서를 열 수 없습니다: {exc}") from exc
 
 
 @router.post("/runs/library/preview")

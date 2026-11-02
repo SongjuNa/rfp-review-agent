@@ -5,11 +5,11 @@ from pathlib import Path
 import psycopg
 
 from rfp_agent.pipeline import classify as cls
-from rfp_agent.pipeline.docx_reader import read_blocks
+from rfp_agent.pipeline.reader import read_document
 
 
 class UnreadableFile(Exception):
-    """docx로 열리지 않는 파일 (빈 파일, 이름만 docx 등)."""
+    """docx·PDF로 열리지 않는 파일 (빈 파일, 이름만 docx 등)."""
 
 
 def _catalog(conn: psycopg.Connection) -> list[cls.CatalogEntry]:
@@ -23,7 +23,7 @@ def preview(conn: psycopg.Connection, paths: list[Path]) -> list[dict]:
     out = []
     for path in paths:
         try:
-            blocks = read_blocks(path)
+            blocks = read_document(path)
         except Exception as exc:          # python-docx는 여러 종류의 예외를 낸다
             raise UnreadableFile(path.name) from exc
         c = cls.classify(path.name, blocks, catalog, kind_rules)
@@ -49,7 +49,7 @@ def has_judge_target(conn: psycopg.Connection, paths: list[Path],
     kind_rules = cls.load_kind_rules(conn)
     for path in paths:
         try:
-            blocks = read_blocks(path)
+            blocks = read_document(path)
         except Exception:                 # 열 수 없는 docx는 지금처럼 분석 실패로 남긴다
             return True
         c = cls.classify(path.name, blocks, catalog, kind_rules)
