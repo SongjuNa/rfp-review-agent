@@ -67,6 +67,14 @@ GEMINI_API_KEY=여기에_받은_키
 
 키가 없으면 비워 두세요. AI 보조 단계만 건너뛰고 나머지(코드 규칙으로 하는 판정)는 그대로 돌아갑니다.
 
+키가 있어도 AI를 쓰지 않으려면(요금·외부 전송을 막으려면) 한 줄을 더합니다. 다시 켤 때는 `gemini`로 바꿉니다.
+
+```
+RFP_AI_MODE=off
+```
+
+바꾼 뒤에는 `docker compose up -d backend`로 다시 띄웁니다(`restart`는 설정을 다시 읽지 않습니다). `http://localhost:8000/api/health`에서 `"ai_mode":"OFF"`, `"external_send":false`이면 꺼진 것입니다.
+
 > ⚠️ `.env`와 키는 **절대 GitHub에 올리지 않습니다.** (`.gitignore`가 막아 두었지만 키를 채팅이나 코드에 붙여 넣지도 마세요.)
 
 ### 2-3. RFP 파일 넣기
