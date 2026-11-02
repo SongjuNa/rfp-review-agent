@@ -10,7 +10,7 @@ import re
 import psycopg
 from psycopg.rows import dict_row
 
-from rfp_agent.llm.client import LLM, LLMFailure
+from rfp_agent.llm.client import LLM, LLMConfigError, LLMFailure
 from rfp_agent.llm.tasks import NUMBER, TYPE_CODES, assistant_step, one_line
 from rfp_agent.pipeline.queries import _locations
 from rfp_agent.pipeline.review import ReviewError
@@ -19,6 +19,11 @@ MAX_SEARCHES = 3            # AI가 도구를 쓰는 최대 횟수
 LIMIT = 15                  # 도구 한 번에 돌려주는 최대 줄 수
 CLOSED_STAGES = ("PROCESSING", "FAILED")
 NOT_FOUND = "근거를 찾지 못했습니다."
+# AI 답이 없어 글자로 찾을 때 알리는 까닭 (update-assistant-panel, CR-12).
+# "맞는 줄 없음"은 화면이 정한다.
+NO_AI = "AI를 쓰지 않는 설정"
+AI_CONFIG = "AI 키·모델 설정 오류 — 설정 확인"
+AI_FAILED = "AI가 답하지 못함"
 JUDGMENT_RESULTS = ("COMPLY", "DEVIATION_CANDIDATE", "QUERY_CANDIDATE", "NEEDS_REVIEW",
                     "WARRANTY_TO_FILL")
 _WORD = re.compile(r"[\w.\-/]{2,}", re.UNICODE)
@@ -158,13 +163,14 @@ def verify(sentences: list[dict], seen: dict[str, dict]) -> tuple[list[dict], in
     return kept, dropped
 
 
-def _search_only(conn: psycopg.Connection, run_id: int, question: str, note: str) -> dict:
+def _search_only(conn: psycopg.Connection, run_id: int, question: str, reason: str) -> dict:
+    """AI 답 없이 질문 낱말로 찾는다. note에는 AI 답이 없는 까닭만 담는다."""
     items = search_requirements(conn, run_id, question) or \
         search_requirements(conn, run_id, question, any_word=True)
     return {"mode": "SEARCH", "sentences": [], "evidence": items, "dropped": 0,
             "steps": [{"tool": "search_requirements", "words": " ".join(_words(question)),
                        "type_code": None, "result": None, "ref": None, "found": len(items)}],
-            "note": note if items else f"{note} 글자가 맞는 줄이 없습니다."}
+            "note": reason}
 
 
 def ask(conn: psycopg.Connection, run_id: int, question: str, llm: LLM | None) -> dict:
@@ -178,7 +184,7 @@ def ask(conn: psycopg.Connection, run_id: int, question: str, llm: LLM | None) -
     if stage[0] in CLOSED_STAGES:
         raise ReviewError(409, "분석이 끝난 검토에만 물을 수 있습니다.")
     if llm is None:
-        return _search_only(conn, run_id, question, "AI 키가 없어 질문 글자로만 찾았습니다.")
+        return _search_only(conn, run_id, question, NO_AI)
 
     seen: dict[str, dict] = {}
     order: list[str] = []
@@ -212,9 +218,10 @@ def ask(conn: psycopg.Connection, run_id: int, question: str, llm: LLM | None) -
                     order.append(e["ref"])
         else:
             step = {"sentences": []}
-    except LLMFailure:
-        return _search_only(conn, run_id, question,
-                            "AI 응답을 받지 못해 질문 글자로만 찾았습니다.")
+    except LLMConfigError:              # 키·권한·모델 이름 오류: 다시 물어도 같다
+        return _search_only(conn, run_id, question, AI_CONFIG)
+    except LLMFailure:                  # 연결·시간 초과(재시도 끝)·형식 오류
+        return _search_only(conn, run_id, question, AI_FAILED)
 
     sentences, dropped = verify(step.get("sentences") or [], seen)
     cited = list(dict.fromkeys(i for s in sentences for i in s["evidence_ids"]))
