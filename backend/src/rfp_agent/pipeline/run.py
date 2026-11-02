@@ -182,10 +182,12 @@ def _documents_node(ctx: RunContext):
         reused = sum(r.reused for r in results)
         examples = sum(r.type_examples for r in results)
         reprocessed = sum(r.reprocessed for r in results)
+        lines = sum(r.reprocessed_lines for r in results)
         conn.execute("UPDATE review_run SET documents_reused = %s, graph_state = graph_state || "
                      "jsonb_build_object('type_examples', %s::int, "
-                     "'documents_reprocessed', %s::int) WHERE run_id = %s",
-                     (reused, examples, reprocessed, run_id))
+                     "'documents_reprocessed', %s::int, 'lines_reprocessed', %s::int) "
+                     "WHERE run_id = %s",
+                     (reused, examples, reprocessed, lines, run_id))
         projects = {r[0] for r in conn.execute(
             "SELECT DISTINCT project_id FROM document WHERE document_id = ANY(%s)", (ids,))}
         if len(projects) == 1 and None not in projects:

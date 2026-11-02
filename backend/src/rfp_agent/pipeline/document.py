@@ -21,7 +21,7 @@ from rfp_agent.pipeline.dictionaries import PipelineDicts
 from rfp_agent.pipeline.docx_reader import find_figures, read_blocks
 from rfp_agent.pipeline.extract import Candidate, extract
 from rfp_agent.pipeline.line_map import map_lines
-from rfp_agent.pipeline.processors import GENERAL, Processor, Stats, processor_for
+from rfp_agent.pipeline.processors import LABEL, TYPE, Processor, Stats, processor_for
 from rfp_agent.pipeline.structure import (
     LogicalTable,
     Section,
@@ -49,7 +49,8 @@ class DocumentResult:
     readable: bool
     requirement_count: int = 0
     type_examples: int = 0          # 사람 예시를 붙여 물은 줄 수 (add-type-examples)
-    reprocessed: bool = False       # 점검 뒤 일반 처리기로 다시 처리함 (add-document-processors)
+    reprocessed: bool = False       # 점검 뒤 일반 처리기로 다시 물음 (add-document-processors)
+    reprocessed_lines: int = 0      # 다시 물은 줄 수 (update-partial-reprocess)
 
 
 
@@ -132,29 +133,35 @@ def _save_tables(conn, document_id: int, tables: list[LogicalTable], section_ids
 
 
 def _refine_with_ai(llm: LLM, candidates: list[Candidate], report: Report,
-                    risk_patterns: list[re.Pattern], doc_hint: str | None = None) -> None:
-    by_section: dict[int | None, list[Candidate]] = {}
-    for c in candidates:
+                    risk_patterns: list[re.Pattern], doc_hint: str | None = None,
+                    only: set[int] | None = None) -> list[list[int]]:
+    """AI에 물은 절마다 후보 번호 묶음을 돌려준다. only가 있으면 그 후보만 묻는다."""
+    by_section: dict[int | None, list[int]] = {}
+    for i, c in enumerate(candidates):
+        if only is not None and i not in only:
+            continue
         # 위험 표현이 든 문장은 언어 모델에 묻지 않고 요구사항으로 둔다.
         # 작성 규칙·설명으로 바뀌면 위험 조건 찾기에서 빠지기 때문이다 (CR-01, FR-06).
         if any(p.search(c.text) for p in risk_patterns):
             continue
         if c.source_kind == "SENTENCE" and c.req_kind == "REQUIREMENT":
-            by_section.setdefault(c.section.index if c.section else None, []).append(c)
+            by_section.setdefault(c.section.index if c.section else None, []).append(i)
     total = sum(len(g) for g in by_section.values())
     report("label", 0, total)
     groups = list(by_section.values())
     # 절마다 40줄씩 묻되 모든 절의 묶음을 함께 동시에 보낸다. 진행은 문서 전체 문장 수로 센다
     answers = tasks.label_sections(
-        llm, [(g[0].section.title if g[0].section else None, [c.text for c in g])
-              for g in groups],
+        llm, [(candidates[g[0]].section.title if candidates[g[0]].section else None,
+               [candidates[i].text for i in g]) for g in groups],
         lambda done, _: report("label", done, total), doc_hint)
     for group, labels in zip(groups, answers, strict=True):
-        for c, label in zip(group, labels, strict=True):
+        for i, label in zip(group, labels, strict=True):
+            c = candidates[i]
             if label == "WRITING_RULE":
                 c.req_kind, c.rule_id, c.extracted_by = "WRITING_RULE", "E-AI-WRITING-RULE", "AI"
             elif label == "DESCRIPTION":
                 c.req_kind, c.rule_id, c.extracted_by = "DESCRIPTION", "E-AI-DESCRIPTION", "AI"
+    return groups
 
 
 @dataclass
@@ -195,16 +202,16 @@ def process_document(conn: psycopg.Connection, path: Path, dicts: PipelineDicts,
         c = cls.apply_ai_kind(c, tasks.classify_document(llm, path.name,
                                                          cls.first_page_text(blocks)))
 
-    prep, proc, check, again = None, None, None, False
+    prep, proc, check, lines = None, None, None, 0
     if c.readable:
         proc = processor_for(c.doc_kind)
         prep = _prepare(conn, path, dicts, llm, report, blocks, digest, proc)
-        # 처리 뒤 점검 (처리기 표). 걸리면 걸린 이유를 남기고, AI가 있으면 틀린 종류 설명이
-        # AI를 잘못 이끌었을 수 있어 일반 처리기로 한 번만 다시 한다 (CR-01: 코드가 정함)
+        # 처리 뒤 점검 (처리기 표). 걸리면 걸린 이유를 남기고, AI가 있고 AI 답이 점검 결과를
+        # 바꿀 수 있으면 틀린 종류 설명이 AI를 잘못 이끌었을 수 있어 떨어진 부분만 일반 처리기
+        # (설명 없음)로 한 번 다시 묻는다 (CR-01: 코드가 정함, CR-12: 한 번만)
         check = proc.check(prep.stats) if proc.check else None
-        if check and llm is not None and proc is not GENERAL:
-            proc, again = GENERAL, True
-            prep = _prepare(conn, path, dicts, llm, report, blocks, digest, proc)
+        if check and llm is not None and proc.fix:
+            lines = _redo(conn, dicts, llm, report, digest, prep, proc.fix)
     # 준비 중 저장한 문장 벡터(캐시)를 먼저 커밋한다. 동시에 처리하는 다른 문서가 같은 글을
     # 넣으려다 이 연결을 기다리며 막히지 않게
     if conn.info.transaction_status == psycopg.pq.TransactionStatus.INTRANS:
@@ -212,7 +219,7 @@ def process_document(conn: psycopg.Connection, path: Path, dicts: PipelineDicts,
     try:
         with ordered():
             return _save(conn, path, dicts, key, report, c, blocks, line_basis, digest, dedup,
-                         prep, proc, check, again)
+                         prep, proc, check, lines)
     except psycopg.errors.UniqueViolation:
         # 같은 파일을 거의 동시에 두 검토가 올리면 먼저 넣은 쪽이 이긴다.
         # 진 쪽은 자기 작업을 되돌리고 먼저 처리된 결과를 다시 쓴다
@@ -257,6 +264,8 @@ class _Prepared:
     ai_types: dict[int, str]                    # 후보 번호 → AI 유형 (NONE 포함)
     with_examples: int
     stats: Stats
+    asked: list[list[int]]                      # AI 문장 구분에 물은 절마다 후보 번호
+    rules: dict[int, tuple[str, str]]           # 후보 번호 → AI 문장 구분 전 (rule_id, 추출 방법)
 
 
 def _prepare(conn, path: Path, dicts: PipelineDicts, llm: LLM | None, report: Report,
@@ -269,10 +278,24 @@ def _prepare(conn, path: Path, dicts: PipelineDicts, llm: LLM | None, report: Re
 
     report("extract")
     candidates = extract(blocks, sections, tables)
+    rules = {i: (c.rule_id, c.extracted_by) for i, c in enumerate(candidates)}
     risk_terms = [e.pattern for e in dicts.risk_expressions]
-    if llm is not None:
-        _refine_with_ai(llm, candidates, report, risk_terms, proc.hint)
+    asked = _refine_with_ai(llm, candidates, report, risk_terms, proc.hint) \
+        if llm is not None else []
 
+    tags, unclassified = _tag(dicts, candidates)
+    ai_types: dict[int, str] = {}
+    with_examples = 0
+    if llm is not None and unclassified:
+        ai_types, with_examples = _ask_types(conn, llm, report, digest, candidates,
+                                             unclassified, proc.hint)
+    return _Prepared(sections, tables, candidates, tags, ai_types, with_examples,
+                     _stats(candidates, tags, ai_types), asked, rules)
+
+
+def _tag(dicts: PipelineDicts, candidates: list[Candidate]) -> tuple[dict[int, list], list[int]]:
+    """요구사항 줄마다 규칙 유형 표시(코드)와, 규칙에 안 걸린 줄 번호."""
+    risk_terms = [e.pattern for e in dicts.risk_expressions]
     tags: dict[int, list] = {}
     unclassified: list[int] = []
     for i, cand in enumerate(candidates):
@@ -281,34 +304,76 @@ def _prepare(conn, path: Path, dicts: PipelineDicts, llm: LLM | None, report: Re
         tags[i] = tag(cand, dicts.type_rules, risk_terms)
         if not tags[i]:
             unclassified.append(i)
+    return tags, unclassified
 
-    ai_types: dict[int, str] = {}
-    with_examples = 0
-    if llm is not None and unclassified:
-        report("type", 0, len(unclassified))
-        texts = [candidates[i].text for i in unclassified]
-        examples = type_examples.pick(conn, llm, digest, texts)
-        with_examples = sum(1 for e in examples if e)
-        codes = tasks.type_unclassified(llm, texts,
-                                        lambda done, total: report("type", done, total),
-                                        [type_context(candidates[i]) for i in unclassified],
-                                        examples, proc.hint)
-        ai_types = dict(zip(unclassified, codes, strict=True))
 
+def _ask_types(conn, llm: LLM, report: Report, digest: str, candidates: list[Candidate],
+               lines: list[int], hint: str | None) -> tuple[dict[int, str], int]:
+    """AI에 유형을 묻는다. (후보 번호 → 유형, 사람 예시를 붙인 줄 수)"""
+    report("type", 0, len(lines))
+    texts = [candidates[i].text for i in lines]
+    examples = type_examples.pick(conn, llm, digest, texts)
+    codes = tasks.type_unclassified(llm, texts,
+                                    lambda done, total: report("type", done, total),
+                                    [type_context(candidates[i]) for i in lines],
+                                    examples, hint)
+    return dict(zip(lines, codes, strict=True)), sum(1 for e in examples if e)
+
+
+def _stats(candidates: list[Candidate], tags: dict[int, list], ai_types: dict[int, str]) -> Stats:
     kept = [c for c in candidates if c.req_kind != "DESCRIPTION"]
-    stats = Stats(
+    return Stats(
         table_cells=sum(1 for c in kept if c.source_kind == "TABLE_CELL"),
         requirements=sum(1 for c in kept if c.req_kind == "REQUIREMENT"),
         tests=sum(1 for i in tags if any(t.type_code == "TEST" for t in tags[i])
                   or ai_types.get(i) == "TEST"),
         marks=sum(1 for c in kept if c.supplier_mark is not None))
-    return _Prepared(sections, tables, candidates, tags, ai_types, with_examples, stats)
+
+
+def _redo(conn, dicts: PipelineDicts, llm: LLM, report: Report, digest: str, prep: _Prepared,
+          fix: str) -> int:
+    """점검에서 떨어진 부분만 일반 처리기(설명 없음)로 한 번 다시 묻고 prep을 고친다.
+
+    나머지 절·줄은 첫 답을 그대로 쓴다. 다시 물은 줄 수를 돌려준다 (update-partial-reprocess).
+    """
+    candidates = prep.candidates
+    if fix == LABEL:
+        # 요구 문장을 하나도 남기지 않은 절만 AI 문장 구분 전으로 되돌려 다시 묻는다
+        dropped = {i for g in prep.asked
+                   if all(candidates[i].req_kind != "REQUIREMENT" for i in g) for i in g}
+        if not dropped:
+            return 0
+        for i in dropped:
+            candidates[i].req_kind = "REQUIREMENT"
+            candidates[i].rule_id, candidates[i].extracted_by = prep.rules[i]
+        risk_terms = [e.pattern for e in dicts.risk_expressions]
+        _refine_with_ai(llm, candidates, report, risk_terms, None, dropped)
+        # 규칙 유형은 다시 붙이고(코드), 새로 요구사항이 된 줄만 유형을 처음 묻는다
+        prep.tags, unclassified = _tag(dicts, candidates)
+        new = [i for i in unclassified if i not in prep.ai_types]
+        if new:
+            types, examples = _ask_types(conn, llm, report, digest, candidates, new, None)
+            prep.ai_types.update(types)
+            prep.with_examples += examples
+        lines = len(dropped)
+    elif fix == TYPE:
+        unknown = [i for i, code in prep.ai_types.items() if code == "NONE"]
+        if not unknown:
+            return 0
+        types, examples = _ask_types(conn, llm, report, digest, candidates, unknown, None)
+        prep.ai_types.update(types)
+        prep.with_examples += examples
+        lines = len(unknown)
+    else:
+        return 0
+    prep.stats = _stats(candidates, prep.tags, prep.ai_types)
+    return lines
 
 
 def _save(conn, path: Path, dicts: PipelineDicts, key: str, report: Report,
           c: cls.Classification, blocks, line_basis: str, digest: str, dedup: bool,
           prep: _Prepared | None, proc: Processor | None, check: str | None,
-          reprocessed: bool) -> DocumentResult:
+          lines: int) -> DocumentResult:
     """준비한 결과를 한 트랜잭션으로 저장한다. prep이 없으면 판독 불가 문서."""
     with conn.transaction():
         doc_id, file_no = _insert_document(conn, path, c, dicts, line_basis, key, digest)
@@ -406,10 +471,12 @@ def _save(conn, path: Path, dicts: PipelineDicts, key: str, report: Report,
 
         conn.execute(
             """UPDATE document SET processor = %s, process_check = %s, reprocessed = %s,
-                      needs_review = needs_review OR %s WHERE document_id = %s""",
-            (proc.kind, check, reprocessed, check is not None, doc_id))
+                      reprocessed_lines = %s, needs_review = needs_review OR %s
+                WHERE document_id = %s""",
+            (proc.kind, check, lines > 0, lines, check is not None, doc_id))
 
-    return DocumentResult(doc_id, file_no, False, True, saved, prep.with_examples, reprocessed)
+    return DocumentResult(doc_id, file_no, False, True, saved, prep.with_examples, lines > 0,
+                          lines)
 
 
 FIRST_TITLE_BLOCKS = 15

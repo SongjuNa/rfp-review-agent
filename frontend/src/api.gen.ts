@@ -1297,6 +1297,7 @@ export type RunDocument = {
   processor?: string | null
   process_check?: string | null
   reprocessed?: boolean
+  reprocessed_lines?: number
 }
 
 export type RunListItem = {
@@ -1370,6 +1371,7 @@ export type RunLogItem = {
   type_examples?: number
   resumed_from?: string | null
   documents_reprocessed?: number
+  lines_reprocessed?: number
   explanations_unverified: number
   retries: number
   steps: RunStepTime[]

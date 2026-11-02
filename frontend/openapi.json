@@ -14419,6 +14419,11 @@
             "type": "boolean",
             "title": "Reprocessed",
             "default": false
+          },
+          "reprocessed_lines": {
+            "type": "integer",
+            "title": "Reprocessed Lines",
+            "default": 0
           }
         },
         "additionalProperties": false,
@@ -15039,6 +15044,11 @@
           "documents_reprocessed": {
             "type": "integer",
             "title": "Documents Reprocessed",
+            "default": 0
+          },
+          "lines_reprocessed": {
+            "type": "integer",
+            "title": "Lines Reprocessed",
             "default": 0
           },
           "explanations_unverified": {
