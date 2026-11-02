@@ -26,6 +26,16 @@ STANDARD_TITLE = re.compile(r"\bPart\s+\d+\s*:")    # 규격 목록 줄 ("… Pa
 MARK_TABLE_ROWS = "MARK_TABLE_ROWS"     # 공급사 답안: 표시 있는 문서의 표 조항 줄은 모두 후보
 FORM_NOTES = "FORM_NOTES"               # 입찰 서식: 표 밖 서식 작성 안내 문장은 작성 규칙
 MIN_CLAUSE = 15                         # 답안 표 조항 줄 최소 글자 수 (요구사항 정답지와 같은 기준)
+# 요구 표의 상태 칸 값 ("Mandatory", "Mandatory where applicable", "필수"). 칸 하나가 이 값으로
+# 반복되면 그 칸이 있는 줄만 요구사항이고 머리 줄은 뺀다 (update-extract-recall)
+STATUS_VALUE = re.compile(r"^\s*(mandatory|compulsory|required|필수)\b", re.IGNORECASE)
+MIN_STATUS_ROWS = 2
+# 제출물 목록 절 제목 ("2. Mandatory Proposal Submission", "Documents to be submitted", "제출 서류")
+SUBMISSION_TITLE = re.compile(
+    r"(mandatory|required)\b.*\bsubmission|\bsubmission requirements?\b"
+    r"|documents? to be submitted|제출\s*(서류|물|자료)", re.IGNORECASE)
+MAX_LIST_ITEM = 200                     # 제출물 목록 줄로 보는 글자 수 범위와 최소 낱말 수
+MIN_LIST_ITEM, MIN_LIST_WORDS = 15, 3
 FORM_NOTE = re.compile(
     r"\bfill(?:ed|ing)?\s+(?:out|in)\b|\bthis form\b|\bfollowing table\b|\[note:"
     r"|\btypewritten\b|\bin print form\b",
@@ -74,6 +84,17 @@ def _clause(row: TableRow) -> str | None:
     return text if len(text) >= MIN_CLAUSE and any(c.islower() for c in text) else None
 
 
+def _status_column(table: LogicalTable) -> int | None:
+    """칸 값이 상태 값("Mandatory" 등)으로 반복되는 칸 번호. 없으면 None."""
+    counts: dict[int, int] = {}
+    for row in table.rows:
+        for n, cell in enumerate(row.block.cells):
+            if STATUS_VALUE.match(cell):
+                counts[n] = counts.get(n, 0) + 1
+    best = max(counts.items(), key=lambda kv: (kv[1], -kv[0]), default=None)
+    return best[0] if best and best[1] >= MIN_STATUS_ROWS else None
+
+
 def extract(blocks: list[Block], sections: list[Section],
             tables: list[LogicalTable], rules: frozenset[str] = frozenset(),
             risk_patterns: list[re.Pattern] | None = None) -> list[Candidate]:
@@ -88,12 +109,19 @@ def extract(blocks: list[Block], sections: list[Section],
     heading_seqs = set(heading_style)
     table_seqs: set[int] = set()
     index = SectionIndex(sections)
+    # 문서에 두 번 이상 나오는 단락(머리말·꼬리말)은 제출물 목록 줄로 보지 않는다
+    seen: dict[str, int] = {}
+    for b in blocks:
+        if b.kind == "P" and b.text.strip():
+            key = normalize(b.text).lower()
+            seen[key] = seen.get(key, 0) + 1
 
     # 문서에 C/D/E 표시 줄이 하나라도 있으면 모든 표의 조항 줄이 답안 조항이다 (MARK_TABLE_ROWS)
     marked_doc = MARK_TABLE_ROWS in rules and any(r.supplier_mark for t in tables for r in t.rows)
     for table in tables:
         part = None
         mark_table = marked_doc
+        status = None if table.is_datasheet else _status_column(table)
         for row in table.rows:
             table_seqs.add(row.block.seq)
             sec = index.at(row.block.seq)
@@ -119,6 +147,14 @@ def extract(blocks: list[Block], sections: list[Section],
                     section=sec, table=table, row=row, supplier_mark=row.supplier_mark,
                     dedup_key="A|" + normalize(text).lower(),
                 ))
+            elif status is not None:
+                # 상태 칸이 있는 요구 표: 상태 값이 있는 줄만 (머리 줄의 "Required" 낱말은 빼고)
+                cells = row.block.cells
+                if status < len(cells) and STATUS_VALUE.match(cells[status]):
+                    text = " | ".join(c.strip() for c in cells if c.strip())
+                    cand = _sentence(row.block, text, sec, table=table)
+                    cand.rule_id = "E-STATUS-ROW"
+                    out.append(cand)
             else:
                 text = " | ".join(c.strip() for c in row.block.cells if c.strip())
                 if SENTENCE_MARKERS.search(text):
@@ -147,8 +183,16 @@ def extract(blocks: list[Block], sections: list[Section],
             if not raw.strip():
                 continue
         text = normalize(raw)
-        if WRITING_RULE.search(text) or SENTENCE_MARKERS.search(text):
+        listed = sec is not None and offset == 0 and SUBMISSION_TITLE.search(sec.title or "") \
+            and MIN_LIST_ITEM <= len(text) <= MAX_LIST_ITEM \
+            and len(text.split()) >= MIN_LIST_WORDS and seen.get(text.lower(), 0) == 1
+        if WRITING_RULE.search(text) or SENTENCE_MARKERS.search(text) or listed \
+                or any(p.search(text) for p in risky):
             cand = _sentence(b, text, sec)
+            if listed and cand.rule_id == "E-SENTENCE-MARKER" and not SENTENCE_MARKERS.search(text):
+                cand.rule_id = "E-SUBMISSION-ITEM"
+            elif cand.rule_id == "E-SENTENCE-MARKER" and not SENTENCE_MARKERS.search(text):
+                cand.rule_id = "E-RISK-SENTENCE"     # 의무 표현 없이 위험 표현만 든 문장
             cand.line_offset = offset
             if FORM_NOTES in rules and cand.req_kind == "REQUIREMENT" and FORM_NOTE.search(text) \
                     and not any(p.search(text) for p in risky):
