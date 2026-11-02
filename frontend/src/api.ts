@@ -207,6 +207,8 @@ export const api = {
   submit: (id: number, approver_id: number, comment: string, actor_id: number) =>
     call<SubmitResult>(`/runs/${id}/finish-review`, json('POST', { approver_id, comment, actor_id })),
   withdraw: (id: number, actor_id: number) => call<StageResult>(`/runs/${id}/withdraw`, json('POST', { actor_id })),
+  rewind: (id: number, step: string, reason: string, actor_id: number) =>
+    call<RunSummary>(`/runs/${id}/rewind`, json('POST', { step, reason, actor_id })),
   runLog: () => call<RunLogItem[]>('/run-log'),
   runFlow: (id: number) => call<RunFlow>(`/runs/${id}/flow`),
   // 정답지·채점 (add-evaluation). 정답지 넣기는 명령 `rfp-db load-answer-key`

@@ -23,7 +23,8 @@ def start_run(conn: psycopg.Connection, started_by: int | None = None) -> int:
     return create_run(conn, ctx.version, ctx.llm, started_by)
 
 
-def run_to_end(run_id: int, paths: list[Path], choices: dict[str, dict] | None = None) -> str:
+def run_to_end(run_id: int, paths: list[Path], choices: dict[str, dict] | None = None,
+               rewind: str | None = None) -> str:
     """새 연결로 실행을 끝까지 돌린다 (API 백그라운드 작업용).
 
     세부 진행은 자동 커밋 연결 하나를 더 열어 바로 적는다 (처리 상태 화면).
@@ -32,4 +33,4 @@ def run_to_end(run_id: int, paths: list[Path], choices: dict[str, dict] | None =
         side.autocommit = True
         ctx = make_context(conn)
         ctx.progress = write_progress(side)
-        return execute_run(ctx, run_id, paths, choices)
+        return execute_run(ctx, run_id, paths, choices, rewind)

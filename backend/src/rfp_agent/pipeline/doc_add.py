@@ -73,6 +73,56 @@ def prepare_add(conn: psycopg.Connection, run_id: int, new_paths: list[Path],
     return paths + new_paths, choices
 
 
+def prepare_rewind(conn: psycopg.Connection, run_id: int, step: str, reason: str,
+                   actor_id: int | None) -> tuple[list[Path], dict[str, dict]]:
+    """단계부터 다시 처리 요청을 검사하고 검토를 처리 중으로 돌린다 (add-step-rewind, C2).
+
+    엔지니어만, 담당자 확인 단계에서 흐름이 그 자리에 멈춰 있을 때만. 사람 확정은 다시 도는
+    판정·위험 조건 단계가 같은 줄로 이어받는다. (처음 파일, 분류)를 돌려준다.
+    """
+    from rfp_agent.pipeline import graph_flow
+    from rfp_agent.pipeline.review import ReviewError, log
+    from rfp_agent.pipeline.run import PIPELINE
+
+    if actor_id is None:
+        actor_id = conn.execute("SELECT min(user_id) FROM app_user WHERE role = 'ENGINEER'"
+                                ).fetchone()[0]
+    role = conn.execute("SELECT role FROM app_user WHERE user_id = %s", (actor_id,)).fetchone()
+    if role is None:
+        raise ReviewError(400, f"사용자 {actor_id}이(가) 없습니다.")
+    if role[0] != "ENGINEER":
+        raise ReviewError(403, "단계부터 다시 처리는 검토 엔지니어만 할 수 있습니다.")
+    if step not in PIPELINE:
+        raise ReviewError(400, f"처리 단계가 아닙니다: {step}")
+    if not (reason or "").strip():
+        raise ReviewError(400, "다시 처리하는 사유를 적어 주세요.")
+    with conn.transaction():
+        row = conn.execute("SELECT stage, graph_state->'inputs' FROM review_run "
+                           "WHERE run_id = %s FOR UPDATE", (run_id,)).fetchone()
+        if row is None:
+            raise ReviewError(404, f"검토 실행 {run_id}이(가) 없습니다.")
+        stage, inputs = row
+        if stage != "ENGINEER_REVIEW":
+            raise ReviewError(409, "단계부터 다시 처리는 담당자 확인 단계(결재 상신 전)에서만 "
+                                   "할 수 있습니다. 상신했으면 상신 취소부터 해 주세요.")
+        if graph_flow.history(conn, run_id)["stop"] != "engineer_review":
+            raise ReviewError(409, "이 검토는 흐름 기록이 없어 단계부터 다시 처리할 수 없습니다.")
+        if not inputs or not inputs.get("paths"):
+            raise ReviewError(409, "이 검토는 처음 올린 파일 정보가 없어 다시 처리할 수 없습니다.")
+        paths = [Path(p) for p in inputs["paths"]]
+        missing = [p.name for p in paths if not p.exists()]
+        if missing:
+            raise ReviewError(409, f"처음 올린 파일을 찾을 수 없습니다({', '.join(missing)}).")
+        conn.execute(
+            """UPDATE review_run SET stage = 'PROCESSING', finished_at = NULL,
+                      graph_state = graph_state || jsonb_build_object(
+                          'step', 'created', 'detail', NULL, 'updated_at', now())
+               WHERE run_id = %s""", (run_id,))
+        log(conn, run_id, "review_run", run_id, "REWIND", None, {"step": step}, reason.strip(),
+            actor_id)
+    return paths, inputs.get("choices") or {}
+
+
 def current_judgments(conn: psycopg.Connection, run_id: int) -> list[int]:
     """다시 판정하기 전 지금 판정 줄. 이 줄의 확인 상태만 옮긴다(바꿔 보기 전 제품 줄은 아님)."""
     return [r[0] for r in conn.execute(

@@ -176,6 +176,13 @@ class Actor(BaseModel):
     actor_id: int | None = None
 
 
+class Rewind(BaseModel):
+    """단계부터 다시 처리 (add-step-rewind): 처리 단계 이름과 사유."""
+    step: str
+    reason: str
+    actor_id: int | None = None
+
+
 class TaskStatus(BaseModel):
     status: str = Field(pattern="^(TODO|DOING|DONE)$")
     actor_id: int
@@ -775,6 +782,19 @@ async def add_documents(run_id: int, files: list[UploadFile], background: Backgr
         paths, merged = _review(lambda: doc_add.prepare_add(conn, run_id, new_paths, added,
                                                             actor_id))
     background.add_task(run_to_end, run_id, paths, merged)
+    return _summary(run_id)
+
+
+@router.post("/runs/{run_id}/rewind", status_code=202)
+def rewind(run_id: int, body: Rewind, background: BackgroundTasks) -> RunSummary:
+    """담당자 확인 단계의 검토를 고른 처리 단계부터 다시 처리한다 (add-step-rewind, C2).
+
+    같은 줄의 사람 확정·수정·반려와 위험 조건 확인은 이어받는다 (CR-08, FR-10 ⑤).
+    """
+    with connect() as conn:
+        paths, choices = _review(lambda: doc_add.prepare_rewind(conn, run_id, body.step,
+                                                                body.reason, body.actor_id))
+    background.add_task(run_to_end, run_id, paths, choices, body.step)
     return _summary(run_id)
 
 

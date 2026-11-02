@@ -1207,6 +1207,13 @@ export type Revision = {
   removed: number
 }
 
+/** 단계부터 다시 처리 (add-step-rewind): 처리 단계 이름과 사유. */
+export type Rewind = {
+  step: string
+  reason: string
+  actor_id?: number | null
+}
+
 export type Risk = {
   risk_id: number
   risk_kind: string

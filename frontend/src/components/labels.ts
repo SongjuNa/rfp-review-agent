@@ -39,12 +39,15 @@ export const STEP_NAMES: Record<string, string> = {
 // 흐름 기록 (add-flow-history): 사람 동작과 바뀐 건수 이름. 단계 이름은 STEP_NAMES (+ meaning)
 export const FLOW_ACTION_NAMES: Record<string, string> = {
   submit: '상신', approve: '승인', reject: '반려', withdraw: '상신 취소', reopen: '다시 확인', add_documents: '문서 추가',
+  rewind: '되돌려 다시 처리',
 }
 export const FLOW_COUNT_NAMES: Record<string, string> = {
   documents: '문서', readable_documents: '읽은 문서', risk_count: '위험 조건', judgment_count: '판정', check_count: '검산',
   warranty_count: '보증값', loss_count: '손실 환산', output_count: '목록 줄', proposal_count: '제안 포인트',
   assignment_count: '담당 전달', meaning_count: '문장 벡터',
 }
+// 단계부터 다시 처리 (add-step-rewind)에서 고를 수 있는 처리 단계, 흐름 순서
+export const PIPELINE_STEPS = ['documents', 'pairs', 'risks', 'judge', 'meaning', 'check', 'warranty', 'loss', 'outputs', 'proposals', 'assign']
 export const STATUS_NAMES: Record<string, string> = {
   CANDIDATE: '후보', CONFIRMED: '확정', EDITED: '수정함', REJECTED: '반려', EMPTY_REVIEW: '확인 필요',
   DRAFT: '초안', REMOVED: '뺌', ADOPTED: '채택', DISCARDED: '버림', CLOSED_OK: '문제 없음',
