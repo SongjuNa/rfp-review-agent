@@ -277,9 +277,9 @@ def _prepare(conn, path: Path, dicts: PipelineDicts, llm: LLM | None, report: Re
                               b.text for b in blocks[:400]))))
 
     report("extract")
-    candidates = extract(blocks, sections, tables)
-    rules = {i: (c.rule_id, c.extracted_by) for i, c in enumerate(candidates)}
     risk_terms = [e.pattern for e in dicts.risk_expressions]
+    candidates = extract(blocks, sections, tables, proc.rules, risk_terms)
+    rules = {i: (c.rule_id, c.extracted_by) for i, c in enumerate(candidates)}
     asked = _refine_with_ai(llm, candidates, report, risk_terms, proc.hint) \
         if llm is not None else []
 
