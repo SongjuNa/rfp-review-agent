@@ -1,4 +1,4 @@
-import { Fragment, useState } from 'react'
+import { Fragment, useRef, useState } from 'react'
 import { api, type LogEntry, type Risk, type RunDocument, type RunSummary } from '../../api'
 import { stamp } from '../../components/format'
 import { locName, locShort, markSplit } from '../../components/judgment'
@@ -173,6 +173,19 @@ function Found({ run, docs }: { run: RunSummary; docs: RunDocument[] }) {
   const near = useLoad(() => api.riskMeaning(run.run_id), [run.run_id])   // 사전 추가 후보 (add-meaning-search)
   const [text, setText] = useState('')
   const [note, setNote] = useState('')
+  const [flash, setFlash] = useState(false)
+  const input = useRef<HTMLInputElement>(null)
+  // 후보가 많으면 제안 칸이 화면 밖이라, 채운 뒤 그 칸으로 옮기고 커서를 둔다 (update-suggest-fill-focus)
+  const fill = (sentence: string, memo: string) => {
+    setText(sentence); setNote(memo); setFlash(true)
+    requestAnimationFrame(() => {
+      input.current?.scrollIntoView({ block: 'center', behavior: 'smooth' })
+      input.current?.focus({ preventScroll: true })
+      input.current?.select()
+    })
+    setTimeout(() => setFlash(false), 1500)
+    toast.done('제안 칸에 문장을 채웠습니다. 위험한 표현만 남기고 줄인 뒤 [위험 표현 사전에 추가 제안]을 누르세요.')
+  }
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const canSuggest = user?.role === 'ENGINEER'
@@ -213,11 +226,11 @@ function Found({ run, docs }: { run: RunSummary; docs: RunDocument[] }) {
             <span>{locShort(c, docs)} · 가까운 {c.target ? `${RISK_NAMES[c.target] ?? c.target} ` : ''}“{c.near_text}” · 뜻 비슷 {c.score.toFixed(2)}</span></div>
           <button type="button" className="bo" disabled={!canSuggest || busy}
             title={canSuggest ? '아래 제안 칸에 이 문장을 채웁니다. 표현만 남기고 줄여서 제안하세요.' : '엔지니어만 제안할 수 있습니다'}
-            onClick={() => { setText(c.text_raw.slice(0, 100)); setNote(`뜻이 비슷한 문장 (점수 ${c.score.toFixed(2)})`) }}>사전 추가 제안</button>
+            onClick={() => fill(c.text_raw.slice(0, 100), `뜻이 비슷한 문장 (점수 ${c.score.toFixed(2)})`)}>사전 추가 제안</button>
         </div>
       ))}
-      <div className="rk-f">
-        <input className="fi" value={text} onChange={(e) => setText(e.target.value)} disabled={!canSuggest || busy}
+      <div className={'rk-f' + (flash ? ' on' : '')}>
+        <input ref={input} className="fi" value={text} onChange={(e) => setText(e.target.value)} disabled={!canSuggest || busy}
           placeholder="놓친 표현을 원문 그대로 붙여 넣기 (예: shall be capable of ...)" aria-label="놓친 위험 표현" />
         <input className="fi" value={note} onChange={(e) => setNote(e.target.value)} disabled={!canSuggest || busy}
           placeholder="메모 (선택: 왜 위험한지)" aria-label="제안 메모" />

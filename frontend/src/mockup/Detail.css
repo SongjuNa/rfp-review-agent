@@ -625,6 +625,9 @@ body,.app,.wk,.ws,.layout,.main{background:#fff}
 .rk-r .bo{white-space:nowrap}
 .rk-f{display:flex;gap:8px;padding:12px 16px}
 .rk-f .fi{flex:1;height:36px}
+/* 사전 추가 후보에서 채운 줄 잠깐 강조 (update-suggest-fill-focus) */
+.rk-f{transition:background-color .3s}
+.rk-f.on{background:var(--c-orange-bg)}
 /* 제출본 탭 인계 패키지 (add-submission-package, 앱에서 더함) */
 .subpk{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:14px;padding:12px 14px;border:1px solid #DCE3EC;border-radius:8px;background:#F7F9FC;font-size:var(--fs-sm);color:#475467}
 .subpk b{color:#344054}

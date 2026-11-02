@@ -27,6 +27,32 @@ test('사전 추가 후보 보기', async ({ page }) => {
   await expect(page.getByLabel('제안 메모')).toHaveValue('뜻이 비슷한 문장 (점수 0.79)')
 })
 
+// 명세 review-workspace "사전 추가 후보에서 제안 칸으로" (change update-suggest-fill-focus)
+test('사전 추가 제안 칸으로 옮김', async ({ page }) => {
+  const run = await riskRun(page.request, `제안 칸 ${Date.now()}`)
+  // 긴 후보 20개로 제안 칸을 화면 밖으로 민다
+  const long = (i: number) => `Candidate sentence ${i}: the Contractor shall provide all items necessary for complete operation of the plant, ` + 'including accessories and works not specifically mentioned herein. '.repeat(3)
+  await page.route(`**/api/runs/${run.run_id}/meaning-candidates`, (route) => route.fulfill({ json: { status: 'DONE', items: Array.from({ length: 20 }, (_, i) => ({
+    candidate_id: 100 + i, run_id: run.run_id, review_no: run.review_no, kind: 'RISK_SENTENCE', requirement_id: 1, text_raw: long(i),
+    near_text: 'Any item not listed shall be deemed to be accepted by the Vendor.', target: 'BLANKET', score: 0.8,
+    second_target: null, second_score: null, status: 'OPEN', locations: [LOC],
+  })) } }))
+  await page.setViewportSize({ width: 1280, height: 800 })
+  await as(page, ENGINEER)
+  await page.goto(`/#/reviews/${run.run_id}`)
+  await page.getByRole('tab', { name: '위험 조건' }).click()
+  const field = page.getByLabel('놓친 위험 표현')
+  await expect(field).not.toBeInViewport()
+  const before = await page.getByTestId('suggestion').count()
+  await page.getByTestId('meaning-candidate').first().getByRole('button', { name: '사전 추가 제안' }).click()
+  await expect(field).toBeInViewport()
+  await expect(field).toBeFocused()
+  await expect(field).toHaveValue(long(0).slice(0, 100))
+  await expect(page.locator('.uisnk')).toContainText('제안 칸에 문장을 채웠습니다')
+  await expect(page.getByTestId('suggestion')).toHaveCount(before)            // 바로 보내지 않는다
+  await page.unrouteAll({ behavior: 'ignoreErrors' })
+})
+
 test('항목 연결 후보 받아들이기', async ({ page }) => {
   let accepted = false
   const cand = { candidate_id: 9, run_id: 3, review_no: 'RV-2026-003', kind: 'ITEM_LINK', requirement_id: 2, text_raw: 'Busbar ampacity',
