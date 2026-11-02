@@ -75,3 +75,34 @@ test('읽지 못한 곳이 없는 검토', async ({ page }) => {
   await expect(read.locator('.sech .note')).toHaveText('표 0 · 그림 0 · 단위 0 · 위치 0')
   await expect(tab.locator('.tabn')).toHaveCount(0)
 })
+
+// 명세 review-workspace "검토 상세 탭 쪽 나누기"의 Scenario (change update-detail-tab-paging)
+test('상세 탭 쪽 나누기', async ({ page }) => {
+  // 점검 줄 4개를 15개로 늘려 돌려준다(줄 열쇠만 바꿈)
+  await page.route(/\/api\/runs\/\d+\/read-checks$/, async (route) => {
+    const res = await route.fetch()
+    const base = (await res.json()) as { key: string }[]
+    const many = Array.from({ length: 15 }, (_, i) => ({ ...base[i % base.length], key: `${base[i % base.length].key}-${i}` }))
+    await route.fulfill({ response: res, json: many })
+  })
+  const rows = await openRead(page, '점검 쪽 나누기')
+  const read = page.locator('#read')
+  await expect(rows).toHaveCount(10)
+  await expect(read.locator('.pager')).toContainText('1–10 / 전체 15건')
+  await expect(read.locator('.sech > .st')).toHaveText('확인 안 함 15건')
+  await read.locator('.pager').getByRole('button', { name: '2', exact: true }).click()
+  await expect(rows).toHaveCount(5)
+  await expect(read.locator('.pager')).toContainText('11–15 / 전체 15건')
+  await page.unrouteAll({ behavior: 'ignoreErrors' })
+})
+
+test('짧은 목록은 쪽 번호 없음', async ({ page }) => {
+  await openRead(page, '이력 짧음')
+  await page.getByRole('tab', { name: '이력' }).click()
+  const log = page.locator('#log')
+  await expect(log.locator('table.mini tr').last()).toContainText('판정')
+  const n = await log.locator('table.mini tr').count()
+  expect(n).toBeLessThanOrEqual(10)
+  await expect(log.locator('.pager')).toHaveCount(0)
+  await expect(page.locator('#read .pager')).toHaveCount(0)
+})

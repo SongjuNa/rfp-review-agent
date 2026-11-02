@@ -4,6 +4,7 @@ import { stamp } from '../../components/format'
 import { historyText, reasonLabel } from '../../components/history'
 import { PIPELINE_STEPS, STEP_NAMES } from '../../components/labels'
 import { useLoad } from '../../components/useLoad'
+import { usePage } from '../../components/usePage'
 import { useSession } from '../../shell/useSession'
 
 // SCR-08-9 이력 탭 (목업 v4.57 Detail #log). docs/screens/SCR-08-9-이력.md
@@ -41,28 +42,30 @@ function Rewind({ run, onChanged }: { run: RunSummary; onChanged: () => void }) 
 
 export function LogTab({ run, tick, onChanged }: { run: RunSummary; tick: number; onChanged: () => void }) {
   const log = useLoad(() => api.history(run.run_id), [run.run_id, tick])
-  const rows = [...(log.data ?? [])].reverse()
+  // "시스템 · 판정 n줄 생성" 줄(null)도 한 줄로 세어 맨 끝에 둔다 (update-detail-tab-paging)
+  const rows = [...[...(log.data ?? [])].reverse(), ...(run.finished_at ? [null] : [])]
+  const { shown, pager } = usePage(rows)
   return (
     <section className="sec" id="log">
       <div className="sech"><h2>이력</h2></div>
       <Rewind run={run} onChanged={onChanged} />
       {log.error && <p role="alert">{log.error} <button type="button" className="lnk" onClick={log.reload}>다시 불러오기</button></p>}
       <table className="mini"><tbody>
-        {rows.map((l) => (
+        {shown.map((l) => l ? (
           <tr key={l.log_id}>
             <td style={{ width: 92, whiteSpace: 'nowrap', color: 'var(--c-muted)' }}>{stamp(l.acted_at)}</td>
             <td style={{ width: 96, whiteSpace: 'nowrap' }}>{l.actor}</td>
             <td>{historyText(l)}{l.reason && !SKIP_REASONS.has(l.reason) && <div className="en">{reasonLabel(l)}: {l.reason}</div>}</td>
           </tr>
-        ))}
-        {run.finished_at && (
-          <tr>
-            <td style={{ width: 92, whiteSpace: 'nowrap', color: 'var(--c-muted)' }}>{stamp(run.finished_at)}</td>
+        ) : (
+          <tr key="system">
+            <td style={{ width: 92, whiteSpace: 'nowrap', color: 'var(--c-muted)' }}>{stamp(run.finished_at!)}</td>
             <td style={{ width: 96, whiteSpace: 'nowrap' }}>시스템</td>
             <td>판정 {run.judgments}줄 생성</td>
           </tr>
-        )}
+        ))}
       </tbody></table>
+      {pager}
     </section>
   )
 }
