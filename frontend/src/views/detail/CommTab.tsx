@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { api, type CommercialImpact, type CostCondition, type RunDocument, type RunSummary } from '../../api'
 import { locName } from '../../components/judgment'
 import { useLoad } from '../../components/useLoad'
+import { usePage } from '../../components/usePage'
 import { href } from '../../shell/router'
 
 // SCR-08-6 상업 조건 탭 (목업 v4.57 Detail #comm). docs/screens/SCR-08-6-상업조건.md
@@ -29,6 +30,10 @@ export function CommTab({ run, tick, onGoJudge, onGoLoss }: {
   const data = useLoad(() => api.costConditions(id), [id, tick])
   const docs = useLoad(() => api.documents(id), [id])
   const [kind, setKind] = useState<string | null>(null)
+  const conds = data.data?.conditions ?? []
+  const cp = usePage(kind ? conds.filter((c) => c.kind === kind) : conds)
+  const ip = usePage(data.data?.impacts ?? [])
+  const pick = (k: string | null) => { setKind(k); cp.reset() }
 
   if (data.error) return <section className="sec" id="comm"><p role="alert">{data.error} <button type="button" className="lnk" onClick={data.reload}>다시 불러오기</button></p></section>
   if (!data.data) return <section className="sec" id="comm"><p className="dimv">불러오는 중…</p></section>
@@ -36,7 +41,6 @@ export function CommTab({ run, tick, onGoJudge, onGoLoss }: {
   const { conditions, impacts } = data.data
   const files = docs.data ?? []
   const kinds = [...new Map(conditions.map((c) => [c.kind, conditions.filter((x) => x.kind === c.kind).length])).entries()]
-  const shown = kind ? conditions.filter((c) => c.kind === kind) : conditions
   const unsent = conditions.filter((c) => c.request_status === 'TODO').length
 
   return (
@@ -54,14 +58,14 @@ export function CommTab({ run, tick, onGoJudge, onGoLoss }: {
         ? <p className="dimv" style={{ margin: '8px 0' }}>찾은 비용 조건이 없습니다. 상업 조항이 요구사항으로 뽑히지 않은 문서일 수 있습니다.</p>
         : <>
           <div className="fbar" role="group" aria-label="조항 종류">
-            <button type="button" className={'chip' + (kind === null ? ' on' : '')} aria-pressed={kind === null} onClick={() => setKind(null)}>전체 <span className="n">{conditions.length}</span></button>
+            <button type="button" className={'chip' + (kind === null ? ' on' : '')} aria-pressed={kind === null} onClick={() => pick(null)}>전체 <span className="n">{conditions.length}</span></button>
             {kinds.map(([k, n]) => (
               <button key={k} type="button" className={'chip' + (kind === k ? ' on' : '')} aria-pressed={kind === k}
-                onClick={() => setKind(k)}>{k} <span className="n">{n}</span></button>
+                onClick={() => pick(k)}>{k} <span className="n">{n}</span></button>
             ))}
           </div>
           <table className="mini cmt"><tbody>
-            {shown.map((c) => {
+            {cp.shown.map((c) => {
               const st = c.request_status ? REQ_ST[c.request_status] : NONE
               return (
                 <tr key={c.requirement_id}>
@@ -83,13 +87,14 @@ export function CommTab({ run, tick, onGoJudge, onGoLoss }: {
               )
             })}
           </tbody></table>
+          {cp.pager}
         </>}
 
       <h3 className="cmh">기술 판단에서 생긴 상업 영향</h3>
       {impacts.length === 0
         ? <p className="dimv" style={{ margin: '8px 0' }}>손실 환산 결과와 일탈 후보가 없습니다.</p>
         : <table className="mini cmt"><tbody>
-          {impacts.map((i) => (
+          {ip.shown.map((i) => (
             <tr key={`${i.kind}-${i.loss_calc_id ?? i.item_id}`}>
               <td style={{ width: 120 }}><b style={{ fontWeight: 600 }}>{i.kind === 'LOSS' ? '손실 환산 가산액' : '일탈 가격 영향'}</b></td>
               <td>
@@ -107,6 +112,7 @@ export function CommTab({ run, tick, onGoJudge, onGoLoss }: {
             </tr>
           ))}
         </tbody></table>}
+      {ip.pager}
       <p className="cmfoot">견적 담당 협조 요청은 판정을 확정하면 메일로 나가고, <a href={href('/todo')}>협조 요청 현황</a>에서 보내기·회신을 확인할 수 있습니다.</p>
     </section>
   )
