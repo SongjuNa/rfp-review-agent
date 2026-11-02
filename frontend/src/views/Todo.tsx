@@ -131,6 +131,7 @@ export function Todo() {
   const dept = chosen ?? defaultDept(user)          // 고르기 전에는 담당자 자기 부서, 그 밖에는 견적 담당
   const [page, setPage] = useState(1)
   const [size, setSize] = useState(5)
+  const [rsize, setRsize] = useState(10)                   // RFP별 쪽 크기 (update-todo-rfp-paging)
   const [open, setOpen] = useState<number | null>(null)
   const [writing, setWriting] = useState(false)
   const [toast, setToast] = useState('')
@@ -166,9 +167,14 @@ export function Todo() {
   const found = base.filter((a) => passes(a, applied, now))
   const rows = sum ? found.filter((a) => stOf(a, now) === sum) : found
   const count = (k: St) => found.filter((a) => stOf(a, now) === k).length
-  const pages = Math.max(1, Math.ceil(rows.length / size))
+  // RFP별: 검토마다 묶음 (첫 요청 순서 = 최근 검토 먼저). 쪽은 묶음 순서로 늘어놓은 요청 줄로 자른다
+  const groups = [...rows.reduce((m, a) => m.set(a.run_id, [...(m.get(a.run_id) ?? []), a]), new Map<number, Assignment[]>()).entries()]
+  const listed = view === 'rfp' ? groups.flatMap(([, items]) => items) : rows
+  const per = view === 'rfp' ? rsize : size
+  const pages = Math.max(1, Math.ceil(listed.length / per))
   const cur = Math.min(page, pages)
-  const shown = rows.slice((cur - 1) * size, cur * size)
+  const shown = listed.slice((cur - 1) * per, cur * per)
+  const pageGroups = [...shown.reduce((m, a) => m.set(a.run_id, [...(m.get(a.run_id) ?? []), a]), new Map<number, Assignment[]>()).entries()]
   const label = view === 'rfp' ? '전체 담당' : DEPTS.find(([k]) => k === dept)![1]
   const picked = all.find((a) => a.assignment_id === open) ?? null
   const anyF = JSON.stringify(applied) !== JSON.stringify(NO_FILTER) || sum !== null
@@ -225,9 +231,6 @@ export function Todo() {
       </tr>
     )
   }
-
-  // RFP별: 검토마다 묶음 (첫 요청 순서 = 최근 검토 먼저)
-  const groups = [...rows.reduce((m, a) => m.set(a.run_id, [...(m.get(a.run_id) ?? []), a]), new Map<number, Assignment[]>()).entries()]
 
   return (
     <main className="main">
@@ -293,7 +296,8 @@ export function Todo() {
             onSize={(n) => { setSize(n); setPage(1) }} />}
         </div>}
         {view === 'rfp' && rows.length > 0 && <div className="rgs">
-          {groups.map(([runId, items]) => {
+          {pageGroups.map(([runId, onPage]) => {
+            const items = groups.find(([id]) => id === runId)![1]   // 머리 숫자는 그 검토의 거른 요청 전체
             const a = items[0]
             const isOpen = !closed.includes(runId)
             const done = items.filter((x) => x.status === 'DONE').length
@@ -323,11 +327,13 @@ export function Todo() {
                 </div>
                 {isOpen && <div className="tw"><table className="tbl">
                   <thead><tr><th style={{ width: 150 }}>상태</th><th style={{ width: '42%' }}>요구사항</th><th>담당</th><th>보낸 주소</th><th>보낸 일시</th><th /></tr></thead>
-                  <tbody>{items.map((x) => cells(x, true))}</tbody>
+                  <tbody>{onPage.map((x) => cells(x, true))}</tbody>
                 </table></div>}
               </section>
             )
           })}
+          <Pager total={listed.length} page={cur} size={rsize} shown={shown.length} onPage={setPage} sizes={SIZES}
+            onSize={(n) => { setRsize(n); setPage(1) }} />
         </div>}
         {list.data !== null && rows.length === 0 && <div className="emp">
           <div>{anyF ? '조건에 맞는 요청이 없습니다.'
