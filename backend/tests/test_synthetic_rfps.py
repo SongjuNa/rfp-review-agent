@@ -12,12 +12,13 @@ import pytest
 from rfp_agent.config import get_settings
 from rfp_agent.db.seed import seed_products
 from rfp_agent.pipeline import classify as cls
-from rfp_agent.pipeline import dictionaries, queries
+from rfp_agent.pipeline import dictionaries, evaluation, queries, req_eval
 from rfp_agent.pipeline.docx_reader import read_blocks
 from rfp_agent.pipeline.run import RunContext, create_run, execute_run, switch_product
 
 FILE_27 = get_settings().docx_dir / "RFP_Product_Master_Evaluative_EN_With_Risk_Clauses.docx"
 FILE_28 = get_settings().docx_dir / "RFP_Product_Master_Evaluative_EN_With_Product_Switch.docx"
+KEYS = get_settings().seed_dir / "answer_keys"
 
 pytestmark = pytest.mark.skipif(
     not (FILE_27.exists() and os.environ.get("TEST_DATABASE_URL")),
@@ -81,3 +82,21 @@ def test_product_switch(db):
     old = db.execute("SELECT count(*) FROM judgment WHERE run_id = %s AND equipment_group = %s "
                      "AND NOT is_current", (run_id, group)).fetchone()[0]
     assert old == 14                                  # 처음 7줄 + 1250 A 7줄
+
+
+def load_keys(db) -> tuple[int, int]:
+    req = req_eval.load_req_key(db, KEYS / "synthetic_rfp28_req.csv", "합성 RFP 28 요구사항",
+                                FILE_28.stem, False)
+    types = evaluation.load_key(db, KEYS / "synthetic_rfp28_type.csv", "합성 RFP 28 유형")
+    return req.key_id, types.key_id
+
+
+@pytest.mark.skipif(not FILE_28.exists(), reason="파일 28 없음 — generate_switch_rfp.py로 만든다")
+def test_synthetic_answer_key_score(db):
+    """Scenario: 합성 RFP 정답지 채점 — K1 47/65, K2 47/50, K3 30/30, K10 3/4, K13 36/37."""
+    run_id = processed(db, FILE_28)
+    req_key, type_key = load_keys(db)
+    got = {m["code"]: (m["num"], m["den"])
+           for m in evaluation.metrics(db, [run_id], type_key, req_key)["items"]}
+    assert {k: got[k] for k in ("K1", "K2", "K3", "K10", "K13")} == {
+        "K1": (47, 65), "K2": (47, 50), "K3": (30, 30), "K10": (3, 4), "K13": (36, 37)}
