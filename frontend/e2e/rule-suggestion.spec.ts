@@ -20,6 +20,22 @@ async function dropRule(request: import('@playwright/test').APIRequestContext) {
 
 test.afterAll(async ({ request }) => { await dropRule(request) })
 
+// 명세 review-workspace "위험 조건 처리 알림"의 Scenario (change update-risk-action-toasts)
+test('사전 추가 제안 알림', async ({ page }) => {
+  await dropRule(page.request)
+  const run = await riskRun(page.request, `제안 알림 ${Date.now()}`)
+  await as(page, ENGINEER)
+  await page.goto(`/#/reviews/${run.run_id}`)
+  await page.getByRole('tab', { name: '위험 조건' }).click()
+  const box = page.locator('#risk .rk')
+  await box.getByLabel('놓친 위험 표현').fill(PHRASE)
+  await box.getByRole('button', { name: '위험 표현 사전에 추가 제안' }).click()
+  const toast = page.locator('.uit').filter({ hasText: `“${PHRASE}”: 위험 표현 사전에 추가를 제안했습니다` })
+  await expect(toast).toContainText('다음 검토부터 잡힙니다')
+  await expect(toast.getByRole('link', { name: '판정 규칙 보기' })).toHaveAttribute('href', /#\/rules/)
+  await expect(box.getByTestId('suggestion').filter({ hasText: PHRASE })).toBeVisible()
+})
+
 test('제안하고 반영하기', async ({ page }) => {
   await dropRule(page.request)
   const run = await riskRun(page.request, `사전 제안 ${Date.now()}`)
