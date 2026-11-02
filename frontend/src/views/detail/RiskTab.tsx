@@ -5,7 +5,9 @@ import { locName, locShort, markSplit } from '../../components/judgment'
 import { RISK_NAMES, STATUS_NAMES } from '../../components/labels'
 import { useLoad } from '../../components/useLoad'
 import { usePage } from '../../components/usePage'
+import { href } from '../../shell/router'
 import { useSession } from '../../shell/useSession'
+import { useToast } from '../../ui'
 import { OutputEditor } from './OutputEditor'
 
 // SCR-08-3 위험 조건 탭 (목업 v4.57 Detail #risk). docs/screens/SCR-08-3-위험조건.md
@@ -40,6 +42,11 @@ function where(r: Risk, docs: RunDocument[]): string {
   return locShort({ locations: r.members.flatMap((m) => m.locations) }, docs)
 }
 
+/** 알림에 넣는 이름: 값 불일치는 항목 이름, 나머지는 표현 */
+function name(r: Risk): string {
+  return r.risk_kind === 'VALUE_MISMATCH' ? r.item_name ?? RISK_NAMES[r.risk_kind] : r.expression ? `“${r.expression}”` : RISK_NAMES[r.risk_kind] ?? r.risk_kind
+}
+
 /** 마지막 확정·닫기 기록 (누가, 언제, 사유) */
 function decided(r: Risk, log: LogEntry[]): LogEntry | null {
   const mine = log.filter((l) => l.target_table === 'risk_flag' && l.target_id === r.risk_id
@@ -59,8 +66,8 @@ export function RiskTab({ run, tick, onChanged }: { run: RunSummary; tick: numbe
   const [why, setWhy] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [toast, setToast] = useState('')
-  const say = (m: string) => { setToast(m); setTimeout(() => setToast(''), 3000) }
+  const toast = useToast()
+  const say = (m: string) => toast.show(m)
   const canEdit = run.stage === 'ENGINEER_REVIEW' && user?.role === 'ENGINEER'
   const lock = run.stage !== 'ENGINEER_REVIEW' ? '담당자 확인 단계에서만 고칠 수 있습니다' : !canEdit ? '엔지니어만 고칠 수 있습니다' : undefined
 
@@ -74,7 +81,13 @@ export function RiskTab({ run, tick, onChanged }: { run: RunSummary; tick: numbe
     setBusy(true)
     setError(null)
     api.act(id, { target: 'risk_flag', target_id: r.risk_id, action, reason: action === 'REJECT' ? why.trim() : undefined, actor_id: user!.user_id })
-      .then(() => { setClosing(null); setWhy(''); onChanged() })
+      .then(() => {
+        setClosing(null); setWhy(''); onChanged()
+        // 한 일 + 바뀌는 것 (update-risk-action-toasts). 닫은 위험 조건은 질의 후보를 만들지 않고 결재 확인 사유에서도 빠진다
+        toast.show(action === 'CONFIRM'
+          ? `${name(r)}: 위험으로 확정했습니다. 질의 후보와 결재 확인 사유에 남습니다.`
+          : `${name(r)}: 문제 없음으로 닫았습니다. 이 조건에서 만든 질의 후보는 목록에서 빠집니다.`)
+      })
       .catch((e: Error) => setError(e.message))
       .finally(() => setBusy(false))
   }
@@ -143,7 +156,6 @@ export function RiskTab({ run, tick, onChanged }: { run: RunSummary; tick: numbe
       )}
       {pager}
       {error && <p className="aphint" role="alert">{error}</p>}
-      {toast && <div className="toast" role="status"><span className="ms" aria-hidden="true">check_circle</span>{toast}</div>}
     </section>
   )
 }
@@ -156,6 +168,7 @@ const SUGGEST_TONES: Record<string, [string, string]> = {
  * 표현은 이 검토 문서에 있어야 하고, 처음 나온 문장의 위치를 근거로 붙인다(CR-02). 반영은 판정 규칙 화면에서 한다. */
 function Found({ run, docs }: { run: RunSummary; docs: RunDocument[] }) {
   const { user } = useSession()
+  const toast = useToast()
   const list = useLoad(() => api.runSuggestions(run.run_id), [run.run_id])
   const near = useLoad(() => api.riskMeaning(run.run_id), [run.run_id])   // 사전 추가 후보 (add-meaning-search)
   const [text, setText] = useState('')
@@ -168,7 +181,11 @@ function Found({ run, docs }: { run: RunSummary; docs: RunDocument[] }) {
     setBusy(true)
     setError(null)
     api.suggestRule(run.run_id, text.trim(), note.trim(), user.user_id)
-      .then(() => { setText(''); setNote(''); list.reload() }, (e: Error) => setError(e.message))
+      .then(() => {
+        toast.show(`“${text.trim()}”: 위험 표현 사전에 추가를 제안했습니다. 규칙 담당이 판정 규칙 화면에서 반영하면 다음 검토부터 잡힙니다.`,
+          'success', { href: href('/rules'), label: '판정 규칙 보기' })
+        setText(''); setNote(''); list.reload()
+      }, (e: Error) => setError(e.message))
       .finally(() => setBusy(false))
   }
   return (
