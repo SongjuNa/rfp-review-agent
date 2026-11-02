@@ -168,6 +168,49 @@
         }
       }
     },
+    "/api/runs/{run_id}/flow": {
+      "get": {
+        "tags": [
+          "검토 실행"
+        ],
+        "summary": "Run Flow",
+        "description": "흐름 기록: 단계마다 걸린 시간·바뀐 건수·사람 동작·멈춘 자리 (add-flow-history, 읽기 전용).",
+        "operationId": "run_flow_api_runs__run_id__flow_get",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Run Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunFlow"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/requirements/{requirement_id}": {
       "get": {
         "tags": [
@@ -2528,6 +2571,59 @@
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/Actor"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunSummary"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/runs/{run_id}/rewind": {
+      "post": {
+        "tags": [
+          "검토 실행"
+        ],
+        "summary": "Rewind",
+        "description": "담당자 확인 단계의 검토를 고른 처리 단계부터 다시 처리한다 (add-step-rewind, C2).\n\n같은 줄의 사람 확정·수정·반려와 위험 조건 확인은 이어받는다 (CR-08, FR-10 ⑤).",
+        "operationId": "rewind_api_runs__run_id__rewind_post",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Run Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Rewind"
               }
             }
           }
@@ -8684,6 +8780,7 @@
               "PURCHASE_SPEC",
               "TEST_SPEC",
               "SUPPLIER_SPEC",
+              "BOQ",
               "UNKNOWN"
             ],
             "title": "Doc Kind"
@@ -8762,6 +8859,7 @@
                   "PURCHASE_SPEC",
                   "TEST_SPEC",
                   "SUPPLIER_SPEC",
+                  "BOQ",
                   "UNKNOWN"
                 ]
               },
@@ -8894,6 +8992,7 @@
               "PURCHASE_SPEC",
               "TEST_SPEC",
               "SUPPLIER_SPEC",
+              "BOQ",
               "UNKNOWN"
             ],
             "title": "Doc Kind"
@@ -9833,6 +9932,84 @@
           "cases"
         ],
         "title": "FieldHistory"
+      },
+      "FlowChange": {
+        "properties": {
+          "key": {
+            "type": "string",
+            "title": "Key"
+          },
+          "before": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Before"
+          },
+          "after": {
+            "type": "integer",
+            "title": "After"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "key",
+          "before",
+          "after"
+        ],
+        "title": "FlowChange",
+        "description": "흐름 기록 한 단계에서 바뀐 건수 (add-flow-history). before가 없으면 그 단계에서 처음 생김."
+      },
+      "FlowStep": {
+        "properties": {
+          "node": {
+            "type": "string",
+            "title": "Node"
+          },
+          "finished_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Finished At"
+          },
+          "seconds": {
+            "type": "number",
+            "title": "Seconds"
+          },
+          "changes": {
+            "items": {
+              "$ref": "#/components/schemas/FlowChange"
+            },
+            "type": "array",
+            "title": "Changes"
+          },
+          "action": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Action"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "node",
+          "finished_at",
+          "seconds",
+          "changes",
+          "action"
+        ],
+        "title": "FlowStep",
+        "description": "흐름 기록의 단계 하나 (add-flow-history, C2). 시간은 흐름 저장 시각 기준."
       },
       "HTTPValidationError": {
         "properties": {
@@ -13722,6 +13899,36 @@
         "title": "Revision",
         "description": "문서 추가로 다시 분석한 결과 (add-revision-notice).\n\n줄 수는 같은 줄(요구값·비교 제품·비교 규칙) 기준."
       },
+      "Rewind": {
+        "properties": {
+          "step": {
+            "type": "string",
+            "title": "Step"
+          },
+          "reason": {
+            "type": "string",
+            "title": "Reason"
+          },
+          "actor_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Actor Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "step",
+          "reason"
+        ],
+        "title": "Rewind",
+        "description": "단계부터 다시 처리 (add-step-rewind): 처리 단계 이름과 사유."
+      },
       "Risk": {
         "properties": {
           "risk_id": {
@@ -14419,6 +14626,11 @@
             "type": "boolean",
             "title": "Reprocessed",
             "default": false
+          },
+          "reprocessed_lines": {
+            "type": "integer",
+            "title": "Reprocessed Lines",
+            "default": 0
           }
         },
         "additionalProperties": false,
@@ -14439,6 +14651,58 @@
           "requirements"
         ],
         "title": "RunDocument"
+      },
+      "RunFlow": {
+        "properties": {
+          "run_id": {
+            "type": "integer",
+            "title": "Run Id"
+          },
+          "recorded": {
+            "type": "boolean",
+            "title": "Recorded"
+          },
+          "stop": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stop"
+          },
+          "next_node": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Node"
+          },
+          "steps": {
+            "items": {
+              "$ref": "#/components/schemas/FlowStep"
+            },
+            "type": "array",
+            "title": "Steps"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "run_id",
+          "recorded",
+          "stop",
+          "next_node",
+          "steps"
+        ],
+        "title": "RunFlow",
+        "description": "검토 하나의 흐름 기록 (add-flow-history). 읽기 전용."
       },
       "RunListItem": {
         "properties": {
@@ -15039,6 +15303,11 @@
           "documents_reprocessed": {
             "type": "integer",
             "title": "Documents Reprocessed",
+            "default": 0
+          },
+          "lines_reprocessed": {
+            "type": "integer",
+            "title": "Lines Reprocessed",
             "default": 0
           },
           "explanations_unverified": {

@@ -64,6 +64,7 @@ class RunState(TypedDict, total=False):
     assignment_count: int
     meaning_count: int
     action: str                   # 사람 단계에서 받은 동작 (update-graph-stops)
+    rewind_to: str                # 되돌려 다시 처리할 단계 (add-step-rewind)
 
 
 # 세부 진행 기록: (run_id, {"part", "done", "total", "file_index", "file_count"})
@@ -182,10 +183,12 @@ def _documents_node(ctx: RunContext):
         reused = sum(r.reused for r in results)
         examples = sum(r.type_examples for r in results)
         reprocessed = sum(r.reprocessed for r in results)
+        lines = sum(r.reprocessed_lines for r in results)
         conn.execute("UPDATE review_run SET documents_reused = %s, graph_state = graph_state || "
                      "jsonb_build_object('type_examples', %s::int, "
-                     "'documents_reprocessed', %s::int) WHERE run_id = %s",
-                     (reused, examples, reprocessed, run_id))
+                     "'documents_reprocessed', %s::int, 'lines_reprocessed', %s::int) "
+                     "WHERE run_id = %s",
+                     (reused, examples, reprocessed, lines, run_id))
         projects = {r[0] for r in conn.execute(
             "SELECT DISTINCT project_id FROM document WHERE document_id = ANY(%s)", (ids,))}
         if len(projects) == 1 and None not in projects:
@@ -563,8 +566,9 @@ COUNTS = ["risk_count", "judgment_count"] + [key for _, key, _ in STEPS]
 # 사람 단계 노드(멈춤 자리) → 단계 칸 (update-graph-stops, C2)
 STOPS = {"engineer_review": "ENGINEER_REVIEW", "approval": "APPROVAL", "rejected": "REJECTED"}
 # 멈춤 자리마다 사람 동작 → 다음 노드. 갈 곳은 이 표로 코드가 고른다 (CR-01)
+# rewind(단계부터 다시 처리, add-step-rewind)는 받은 단계(rewind_to)로 간다
 NEXT = {
-    "engineer_review": {"submit": "approval", "add_documents": "documents"},
+    "engineer_review": {"submit": "approval", "add_documents": "documents", "rewind": None},
     "approval": {"approve": END, "reject": "rejected", "withdraw": "engineer_review"},
     "rejected": {"reopen": "engineer_review"},
 }
@@ -581,13 +585,18 @@ def _stop_node(name: str):
         out: RunState = {"action": action}
         if action == "add_documents":       # 처음 파일 + 더한 파일로 문서 처리부터 다시
             out |= {"paths": got["paths"], "choices": got["choices"]}
+        if action == "rewind":              # 고른 처리 단계부터 다시 (사람 확정은 이어받음)
+            if got["step"] not in PIPELINE:
+                raise ValueError(f"처리 단계가 아닙니다: {got['step']}")
+            out |= {"rewind_to": got["step"]}
         return out
     return node
 
 
 def _router(name: str):
     def route(state: RunState) -> str:
-        return NEXT[name][state["action"]]
+        action = state["action"]
+        return state["rewind_to"] if action == "rewind" else NEXT[name][action]
     return route
 
 
@@ -609,14 +618,20 @@ def build_graph(ctx: RunContext, checkpointer: BaseCheckpointSaver | None = None
         return graph.compile()
     for name in STOPS:
         graph.add_node(name, _stop_node(name))
-        graph.add_conditional_edges(name, _router(name), list(set(NEXT[name].values())))
+        goes = {g for g in NEXT[name].values() if g is not None}
+        if "rewind" in NEXT[name]:
+            goes |= set(PIPELINE)
+        graph.add_conditional_edges(name, _router(name), sorted(goes, key=str))
     graph.add_edge(PIPELINE[-1], "engineer_review")
     return graph.compile(checkpointer=checkpointer)
 
 
 def execute_run(ctx: RunContext, run_id: int, paths: list[Path],
-                choices: dict[str, dict] | None = None) -> str:
-    """실행을 끝까지 돌리고 마지막 단계를 돌려준다 (ENGINEER_REVIEW 또는 FAILED)."""
+                choices: dict[str, dict] | None = None, rewind: str | None = None) -> str:
+    """실행을 끝까지 돌리고 마지막 단계를 돌려준다 (ENGINEER_REVIEW 또는 FAILED).
+
+    rewind는 담당자 확인에서 멈춘 흐름을 그 처리 단계부터 다시 돌릴 때 (add-step-rewind).
+    """
     conn = ctx.conn
     # 다시 시도(add-run-control)할 때 같은 파일·분류로 돌리려고 입력을 남긴다
     conn.execute("UPDATE review_run SET graph_state = graph_state || %s WHERE run_id = %s",
@@ -625,7 +640,8 @@ def execute_run(ctx: RunContext, run_id: int, paths: list[Path],
     conn.commit()
     usage = usage_of(ctx.llm)
     before = usage.copy() if usage else None
-    inputs = {"run_id": run_id, "paths": [str(p) for p in paths], "choices": choices or {}}
+    inputs = {"run_id": run_id, "paths": [str(p) for p in paths], "choices": choices or {},
+              "rewind": rewind}
     try:
         with graph_flow.saver_for(ctx) as saver:
             graph = build_graph(ctx, saver)

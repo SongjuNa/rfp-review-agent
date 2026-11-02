@@ -8,11 +8,11 @@ from rfp_agent.llm.client import LLM, LLMFormatError, call_with_retry
 from rfp_agent.llm.evidence import EvidenceSpan, normalize_quote
 from rfp_agent.llm.parallel import run_ordered, workers_of
 
-# p5: 문서 종류 설명 (add-document-processors). p4: 유형 질문에 사람이 고른 예
-# (add-type-examples). p3: 절·표 문맥
-PROMPT_VERSION = "p5"
+# p6: 문서 종류에 물량표(BOQ) (add-boq-processor). p5: 문서 종류 설명 (add-document-processors).
+# p4: 유형 질문에 사람이 고른 예 (add-type-examples). p3: 절·표 문맥
+PROMPT_VERSION = "p6"
 DOC_KINDS = ["BID_FORM", "REQUIREMENT_SPEC", "PURCHASE_SPEC", "TEST_SPEC", "SUPPLIER_SPEC",
-             "UNKNOWN"]
+             "BOQ", "UNKNOWN"]
 SENTENCE_LABELS = ["REQUIREMENT", "WRITING_RULE", "DESCRIPTION"]
 TYPE_CODES = ["TECH_PERF", "RISK", "STANDARD_CERT", "COST", "TEST", "MAKER_QUAL", "SITE_ENV",
               "NONE"]
@@ -30,7 +30,8 @@ def classify_document(llm: LLM, file_name: str, first_page: str) -> str:
     prompt = (
         "다음은 전력 설비 입찰 RFP 문서의 파일명과 첫 장이다. 문서 종류를 하나 고른다.\n"
         "BID_FORM=입찰 서식, REQUIREMENT_SPEC=요구 사양, PURCHASE_SPEC=구매 사양, "
-        "TEST_SPEC=시험 사양, SUPPLIER_SPEC=공급사 사양·답안, UNKNOWN=모름.\n"
+        "TEST_SPEC=시험 사양, SUPPLIER_SPEC=공급사 사양·답안, BOQ=물량표(품목·수량 표), "
+        "UNKNOWN=모름.\n"
         f"파일명: {file_name}\n첫 장:\n{first_page[:4000]}"
     )
     schema = {"type": "object", "properties": {"doc_kind": {"type": "string", "enum": DOC_KINDS}},

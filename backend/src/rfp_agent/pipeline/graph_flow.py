@@ -17,6 +17,7 @@ from psycopg.rows import dict_row
 
 # 사람 동작 → 그 동작을 받는 멈춤 자리
 ACTION_STOP = {"submit": "engineer_review", "add_documents": "engineer_review",
+               "rewind": "engineer_review",
                "approve": "approval", "reject": "approval", "withdraw": "approval",
                "reopen": "rejected"}
 NO_FLOW = None        # 흐름 기록이 없음 (이 change 전에 만든 검토)
@@ -84,13 +85,17 @@ def start_input(graph, run_id: int, inputs: dict) -> tuple[Any, str | None]:
     """처리를 시작할 입력과 이어서 시작하는 단계(처음부터면 None).
 
     - 흐름 기록 없음: 처음부터
-    - 담당자 확인에서 멈춤: 문서 추가 → 문서 처리부터 다시 (처음 파일 + 더한 파일)
+    - 담당자 확인에서 멈춤: 문서 추가 → 문서 처리부터 다시 (처음 파일 + 더한 파일),
+      되돌리기(inputs["rewind"]) → 고른 처리 단계부터 다시 (add-step-rewind)
     - 처리 중간에 멈춤(실패·취소): 멈춘 단계부터 이어서
     """
     stop = stop_of(graph, run_id)
     if stop is NO_FLOW:
         return inputs, None
     if stop == "engineer_review":
+        if inputs.get("rewind"):
+            return Command(resume={"action": "rewind", "step": inputs["rewind"]}), \
+                inputs["rewind"]
         return Command(resume={"action": "add_documents", "paths": inputs["paths"],
                                "choices": inputs["choices"]}), None
     if stop == RUNNING:
@@ -116,3 +121,47 @@ def advance(conn: psycopg.Connection, run_id: int, action: str) -> None:
             raise ReviewError(409, f"검토 흐름이 멈춘 자리({stop or '처리 중'})와 단계가 맞지 "
                                    "않아 처리하지 않았습니다. 관리자에게 알려 주세요.")
         graph.invoke(Command(resume={"action": action}), config(run_id))
+
+
+# 흐름 기록에 내는 값: 건수만 (파일 경로·사람 분류는 내지 않는다, add-flow-history)
+LIST_COUNTS = {"document_ids": "documents", "readable_ids": "readable_documents"}
+
+
+def _counts(values: dict) -> dict[str, int]:
+    out = {name: len(values[key]) for key, name in LIST_COUNTS.items() if key in values}
+    out.update({k: v for k, v in values.items() if k.endswith("_count") and isinstance(v, int)})
+    return out
+
+
+def history(conn: psycopg.Connection, run_id: int) -> dict:
+    """저장된 흐름 기록을 단계 순서대로 읽는다 (add-flow-history, C2). 읽기만 한다.
+
+    이웃한 두 상태 A → B에서 돈 단계는 A의 다음 단계, 끝난 시각은 B의 저장 시각,
+    바뀐 값은 두 상태의 건수 차이, 사람 동작은 B에 남은 동작이다.
+    """
+    from datetime import datetime
+
+    from rfp_agent.pipeline.run import RunContext, build_graph
+
+    with _saver_conn(conn) as side:
+        graph = build_graph(RunContext(conn, "", None, None), PostgresSaver(side))
+        snaps = list(graph.get_state_history(config(run_id)))[::-1]
+        stop = stop_of(graph, run_id)
+        upcoming = next_node(graph, run_id) if stop == RUNNING else None
+    steps = []
+    for a, b in zip(snaps, snaps[1:], strict=False):
+        if not a.next or a.next[0] == "__start__":
+            continue
+        before, after = _counts(a.values), _counts(b.values)
+        changes = [{"key": k, "before": before.get(k), "after": after[k]}
+                   for k in after if before.get(k) != after[k]]
+        acted = b.values.get("action")
+        steps.append({
+            "node": a.next[0], "finished_at": b.created_at,
+            "seconds": (datetime.fromisoformat(b.created_at)
+                        - datetime.fromisoformat(a.created_at)).total_seconds(),
+            "changes": changes,
+            "action": acted if acted and acted != a.values.get("action") else None,
+        })
+    return {"run_id": run_id, "recorded": stop is not NO_FLOW,
+            "stop": stop or None, "next_node": upcoming, "steps": steps}

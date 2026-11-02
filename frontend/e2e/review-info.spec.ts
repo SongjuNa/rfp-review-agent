@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { expect, test, type APIRequestContext } from '@playwright/test'
+import { fileURLToPath } from 'node:url'
 
 // 명세 review-workspace "검토 정보 입력과 표시"의 Scenario (change add-review-info).
 // 합성 문서(e2e/fixtures, 고객 원문 아님)를 API로 올려 실행을 만든다. 백엔드(8000)와 `npm run dev`(5173)가 필요하다.
@@ -62,7 +63,7 @@ test('머리글에서 고치기', async ({ page, request }) => {
   await dialog.getByLabel('고객사').fill('새 고객사')
   await dialog.getByRole('button', { name: '저장' }).click()
   await expect(dialog).toBeHidden()
-  await expect(page.locator('main .idl').nth(1)).toContainText('새 고객사')
+  await expect(page.getByRole('definition').filter({ hasText: '새 고객사' })).toBeVisible()   // 사업 상자 고객사 (v4.96)
   await page.getByRole('tab', { name: '이력' }).click()
   await expect(page.locator('#log')).toContainText('검토 정보 고침: 고객사 비어 있음 → 새 고객사')   // 이력 탭 문장 (SCR-08-9)
   await page.goto('/#/reviews')
@@ -72,7 +73,7 @@ test('머리글에서 고치기', async ({ page, request }) => {
 
 test('검토 등록 화면으로 시작', async ({ page }) => {
   await page.goto('/#/register')
-  await page.getByLabel('docx 올리기').setInputFiles(DOCX.pathname)
+  await page.getByLabel('docx 올리기').setInputFiles(fileURLToPath(DOCX))
   await expect(page.getByText('올릴 준비')).toBeVisible()
   // 문서 목록에 없는 문서라 묶음을 B로 정해야 다음으로 간다 (reject-unjudged-registration)
   await page.locator('tr', { hasText: 'synthetic_154kV_GIS_spec.docx' }).getByLabel('묶음').selectOption('B')

@@ -15,14 +15,14 @@ import { useSession } from '../shell/useSession'
 type Info = { project_name: string; review_name: string; customer_name: string; country: string; due_date: string }
 type Picked = { name: string; size: string | null; file: File | null }   // file이 없으면 서버에 둔 RFP
 
-const STEPS: [string, string][] = [['문서 올리기', 'docx 여러 개'], ['검토 정보', '사업명 · 마감일'], ['검토 설정', '담당 엔지니어']]
+const STEPS: [string, string][] = [['문서 올리기', 'docx·PDF 여러 개'], ['검토 정보', '사업명 · 마감일'], ['검토 설정', '담당 엔지니어']]
 const EMPTY: Info = { project_name: '', review_name: '', customer_name: '', country: '', due_date: '' }
 
 function sizeText(bytes: number): string {
   return bytes >= 1_048_576 ? `${(bytes / 1_048_576).toFixed(1)} MB` : `${Math.max(1, Math.round(bytes / 1024))} KB`
 }
 
-const isDocx = (name: string) => name.toLowerCase().endsWith('.docx')
+const isDocx = (name: string) => /\.(docx|pdf)$/i.test(name)     // docx·PDF (add-pdf-input)
 
 type Kind = DocumentPreview['doc_kind']
 type Bundle = DocumentPreview['bundle']
@@ -142,8 +142,8 @@ export function Register({ businessId = null }: { businessId?: number | null }) 
   let msgCls = 'msg'
   let nextDis = false
   if (step === 1) {
-    if (!ok.length) { msg = 'docx 문서를 하나 이상 올려 주세요.'; msgCls = 'msg ok'; nextDis = true }
-    else if (picked.length > ok.length) msg = 'docx가 아닌 파일은 빼고 진행합니다.'
+    if (!ok.length) { msg = 'docx·PDF 문서를 하나 이상 올려 주세요.'; msgCls = 'msg ok'; nextDis = true }
+    else if (picked.length > ok.length) msg = 'docx·PDF가 아닌 파일은 빼고 진행합니다.'
     // 추천이 모두 왔는데 판정할 문서가 없으면 분석해도 판정이 0건이라 막는다 (CR-09)
     const rows = ok.map((p) => ({ pv: previews[p.name], c: chosen[p.name] }))
     const judged = ({ pv, c }: (typeof rows)[number]) =>
@@ -211,9 +211,9 @@ export function Register({ businessId = null }: { businessId?: number | null }) 
           <h2>RFP 문서</h2>
           <p className="sub2">입찰 안내서, 기술 명세서, 가격표를 함께 올리면 정보를 더 많이 채울 수 있습니다.</p>
           <label className="drop2" onDragOver={(e) => e.preventDefault()} onDrop={onDrop}>
-            <span className="ms" aria-hidden="true">upload_file</span><b>docx 파일을 끌어다 놓거나 눌러서 고르기</b>
+            <span className="ms" aria-hidden="true">upload_file</span><b>docx·PDF 파일을 끌어다 놓거나 눌러서 고르기</b>
             <span>여러 개 가능 · 스캔한 문서의 글자는 읽지 않음</span>
-            <input type="file" multiple accept=".docx" aria-label="docx 올리기"
+            <input type="file" multiple accept=".docx,.pdf" aria-label="docx 올리기"
               onChange={(e) => { addFiles(e.target.files); e.target.value = '' }} />
           </label>
           {(library.data?.length ?? 0) > 0 && (
@@ -249,7 +249,7 @@ export function Register({ businessId = null }: { businessId?: number | null }) 
                         {bad ? <><td className="dimv" colSpan={3}>—</td><td /></>
                           : <ClassifyCells p={previews[p.name]} chosen={chosen[p.name]}
                             onChange={(c) => setChosen({ ...chosen, [p.name]: c })} />}
-                        <td>{bad ? <span className="st c-red">docx 아님</span> : <span className="st c-green">올릴 준비</span>}</td>
+                        <td>{bad ? <span className="st c-red">docx·PDF 아님</span> : <span className="st c-green">올릴 준비</span>}</td>
                         <td style={{ textAlign: 'right' }}>
                           <button type="button" className="ib" aria-label={`${p.name} 빼기`} title="빼기"
                             onClick={() => setPicked(picked.filter((x) => x !== p))}><span className="ms" aria-hidden="true">close</span></button>

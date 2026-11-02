@@ -53,7 +53,7 @@ export function DetailBody({ run, tab, tick, onTab, onChanged }: {
       {tab === 'comm' && <CommTab run={run} tick={tick} onGoJudge={() => onTab('judge')} onGoLoss={() => onTab('loss')} />}
       {tab === 'cmp' && <CmpTab run={run} />}
       {tab === 'subm' && <SubmTab run={run} />}
-      {tab === 'log' && <LogTab run={run} tick={tick} />}
+      {tab === 'log' && <LogTab run={run} tick={tick} onChanged={onChanged} />}
     </>
   )
 }

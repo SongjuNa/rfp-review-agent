@@ -510,7 +510,7 @@ export type DeliverableWarranty = {
 export type DocKindRule = {
   doc_kind_rule_id: number
   priority: number
-  doc_kind: 'BID_FORM' | 'REQUIREMENT_SPEC' | 'PURCHASE_SPEC' | 'TEST_SPEC' | 'SUPPLIER_SPEC' | 'UNKNOWN'
+  doc_kind: 'BID_FORM' | 'REQUIREMENT_SPEC' | 'PURCHASE_SPEC' | 'TEST_SPEC' | 'SUPPLIER_SPEC' | 'BOQ' | 'UNKNOWN'
   name_pattern: string
   page_pattern: string | null
   note: string | null
@@ -520,7 +520,7 @@ export type DocKindRule = {
 /** 등록 화면에서 사람이 정한 문서 분류. 비운 칸은 규칙 결과를 쓴다. */
 export type DocumentChoice = {
   bundle?: 'A' | 'B' | 'C' | 'D' | null
-  doc_kind?: 'BID_FORM' | 'REQUIREMENT_SPEC' | 'PURCHASE_SPEC' | 'TEST_SPEC' | 'SUPPLIER_SPEC' | 'UNKNOWN' | null
+  doc_kind?: 'BID_FORM' | 'REQUIREMENT_SPEC' | 'PURCHASE_SPEC' | 'TEST_SPEC' | 'SUPPLIER_SPEC' | 'BOQ' | 'UNKNOWN' | null
 }
 
 /** 원문 줄 범위 (add-judgment-view). partial이면 파일이 없어 DB에 남은 줄만 왔다. */
@@ -547,7 +547,7 @@ export type DocumentPreview = {
   file_name: string
   in_catalog: boolean
   file_no: number | null
-  doc_kind: 'BID_FORM' | 'REQUIREMENT_SPEC' | 'PURCHASE_SPEC' | 'TEST_SPEC' | 'SUPPLIER_SPEC' | 'UNKNOWN'
+  doc_kind: 'BID_FORM' | 'REQUIREMENT_SPEC' | 'PURCHASE_SPEC' | 'TEST_SPEC' | 'SUPPLIER_SPEC' | 'BOQ' | 'UNKNOWN'
   bundle: 'A' | 'B' | 'C' | 'D'
   language: string
   standard_system: string | null
@@ -685,6 +685,22 @@ export type FieldHistory = {
   action: string | null
   confirmed_by: string | null
   cases: number
+}
+
+/** 흐름 기록 한 단계에서 바뀐 건수 (add-flow-history). before가 없으면 그 단계에서 처음 생김. */
+export type FlowChange = {
+  key: string
+  before: number | null
+  after: number
+}
+
+/** 흐름 기록의 단계 하나 (add-flow-history, C2). 시간은 흐름 저장 시각 기준. */
+export type FlowStep = {
+  node: string
+  finished_at: string
+  seconds: number
+  changes: FlowChange[]
+  action: string | null
 }
 
 export type HandoffRequest = {
@@ -1191,6 +1207,13 @@ export type Revision = {
   removed: number
 }
 
+/** 단계부터 다시 처리 (add-step-rewind): 처리 단계 이름과 사유. */
+export type Rewind = {
+  step: string
+  reason: string
+  actor_id?: number | null
+}
+
 export type Risk = {
   risk_id: number
   risk_kind: string
@@ -1297,6 +1320,16 @@ export type RunDocument = {
   processor?: string | null
   process_check?: string | null
   reprocessed?: boolean
+  reprocessed_lines?: number
+}
+
+/** 검토 하나의 흐름 기록 (add-flow-history). 읽기 전용. */
+export type RunFlow = {
+  run_id: number
+  recorded: boolean
+  stop: string | null
+  next_node: string | null
+  steps: FlowStep[]
 }
 
 export type RunListItem = {
@@ -1370,6 +1403,7 @@ export type RunLogItem = {
   type_examples?: number
   resumed_from?: string | null
   documents_reprocessed?: number
+  lines_reprocessed?: number
   explanations_unverified: number
   retries: number
   steps: RunStepTime[]

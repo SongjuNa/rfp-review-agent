@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { expect, test } from '@playwright/test'
 import { APPROVER, ENGINEER, as, openTab } from './helpers'
+import { fileURLToPath } from 'node:url'
 
 // 핵심 흐름 (change add-spec-trace, 명세 spec-verification "핵심 흐름 e2e").
 // 엔지니어가 검토 등록 화면에서 RFP를 올리고(FR-01) → 분석이 끝나면 판정 하나를 확정하고(FR-07·FR-10)
@@ -18,7 +19,7 @@ test('RFP 한 건 처음부터 끝까지', async ({ page, request }) => {
   // 1. 검토 등록 (SCR-07): 올리고, 분류 추천을 보고, 검토 정보를 적고 시작
   await as(page, ENGINEER)
   await page.goto('/#/register')
-  await page.getByLabel('docx 올리기').setInputFiles(DOCX.pathname)
+  await page.getByLabel('docx 올리기').setInputFiles(fileURLToPath(DOCX))
   const doc = page.locator('tr', { hasText: 'synthetic_judgment.docx' })
   await expect(doc).toBeVisible()
   test.skip(await page.getByText(/판정 대상.*없/).first().isVisible(), '합성 데이터시트가 문서 목록(묶음 A)에 없습니다')

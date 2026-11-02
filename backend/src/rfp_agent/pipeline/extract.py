@@ -22,6 +22,16 @@ SPEC_VALUE = re.compile(r"\d\s*(?:kVA|MVA|kV|kA|kW|MW|A|V|Hz|%|℃|°C)(?![A-Za-
 CHAPTER_STYLES = ("NUM", "PART", "CHAPTER")       # 장·절 번호 제목은 값이 있어도 제목이다
 STANDARD_TITLE = re.compile(r"\bPart\s+\d+\s*:")    # 규격 목록 줄 ("… Part 103: … 52 kV")
 
+# 문서 종류별 추출 규칙 (add-kind-extract-rules, C1). 처리기가 고르고, 규칙 자체는 코드다(CR-01).
+MARK_TABLE_ROWS = "MARK_TABLE_ROWS"     # 공급사 답안: 표시 있는 문서의 표 조항 줄은 모두 후보
+FORM_NOTES = "FORM_NOTES"               # 입찰 서식: 표 밖 서식 작성 안내 문장은 작성 규칙
+MIN_CLAUSE = 15                         # 답안 표 조항 줄 최소 글자 수 (요구사항 정답지와 같은 기준)
+FORM_NOTE = re.compile(
+    r"\bfill(?:ed|ing)?\s+(?:out|in)\b|\bthis form\b|\bfollowing table\b|\[note:"
+    r"|\btypewritten\b|\bin print form\b",
+    re.IGNORECASE,
+)
+
 
 @dataclass
 class Candidate:
@@ -58,8 +68,20 @@ def _row_kind(row: TableRow) -> tuple[str, str]:
     return "REQUIREMENT", "E-TABLE-ROW"
 
 
+def _clause(row: TableRow) -> str | None:
+    """답안 표의 조항 원문: 가장 긴 칸. 짧거나 소문자가 없는 줄(제목·머리)은 None."""
+    text = max(row.block.cells, key=len).strip() if row.block.cells else ""
+    return text if len(text) >= MIN_CLAUSE and any(c.islower() for c in text) else None
+
+
 def extract(blocks: list[Block], sections: list[Section],
-            tables: list[LogicalTable]) -> list[Candidate]:
+            tables: list[LogicalTable], rules: frozenset[str] = frozenset(),
+            risk_patterns: list[re.Pattern] | None = None) -> list[Candidate]:
+    """rules는 처리기가 고른 문서 종류별 추출 규칙 (없으면 모든 종류 공통 규칙만).
+
+    risk_patterns(위험 표현 사전)가 든 문장은 종류별 규칙으로 작성 규칙이 되지 않는다(FR-06).
+    """
+    risky = risk_patterns or []
     out: list[Candidate] = []
     toc_seqs = {s.block_seq for s in sections if s.is_toc}
     heading_style = {s.block_seq: s.style for s in sections if not s.is_toc and s.line_offset == 0}
@@ -67,8 +89,11 @@ def extract(blocks: list[Block], sections: list[Section],
     table_seqs: set[int] = set()
     index = SectionIndex(sections)
 
+    # 문서에 C/D/E 표시 줄이 하나라도 있으면 모든 표의 조항 줄이 답안 조항이다 (MARK_TABLE_ROWS)
+    marked_doc = MARK_TABLE_ROWS in rules and any(r.supplier_mark for t in tables for r in t.rows)
     for table in tables:
         part = None
+        mark_table = marked_doc
         for row in table.rows:
             table_seqs.add(row.block.seq)
             sec = index.at(row.block.seq)
@@ -84,12 +109,14 @@ def extract(blocks: list[Block], sections: list[Section],
                                               (table.name, row.item_no, row.item_name,
                                                row.unit, row.required)),
                 ))
-            elif row.supplier_mark:
+            elif row.supplier_mark or (mark_table and _clause(row)):
+                # 답안 표 조항 줄: 표시가 없거나 못 읽은 줄도 후보 (MARK_TABLE_ROWS)
                 text = max(row.block.cells, key=len)
                 out.append(Candidate(
                     block=row.block, source_kind="SUPPLIER_ANSWER", text=text,
-                    req_kind="REQUIREMENT", rule_id="E-SUPPLIER-MARK", section=sec,
-                    table=table, row=row, supplier_mark=row.supplier_mark,
+                    req_kind="REQUIREMENT",
+                    rule_id="E-SUPPLIER-MARK" if row.supplier_mark else "E-MARK-TABLE-ROW",
+                    section=sec, table=table, row=row, supplier_mark=row.supplier_mark,
                     dedup_key="A|" + normalize(text).lower(),
                 ))
             else:
@@ -123,6 +150,10 @@ def extract(blocks: list[Block], sections: list[Section],
         if WRITING_RULE.search(text) or SENTENCE_MARKERS.search(text):
             cand = _sentence(b, text, sec)
             cand.line_offset = offset
+            if FORM_NOTES in rules and cand.req_kind == "REQUIREMENT" and FORM_NOTE.search(text) \
+                    and not any(p.search(text) for p in risky):
+                # 입찰 서식의 서식 작성 안내 ("Each Bidder must fill out this form")
+                cand.req_kind, cand.rule_id = "WRITING_RULE", "E-FORM-NOTE"
             out.append(cand)
     out.sort(key=lambda c: c.block.seq)
     return out

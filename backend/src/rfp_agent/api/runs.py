@@ -45,6 +45,7 @@ from rfp_agent.api.schemas import (
     Requirement,
     Risk,
     RunDocument,
+    RunFlow,
     RunListItem,
     RunLogItem,
     RunSummary,
@@ -67,6 +68,7 @@ from rfp_agent.pipeline import (
     business,
     datasheet,
     doc_add,
+    graph_flow,
     past_compare,
     preview,
     queries,
@@ -86,6 +88,7 @@ from rfp_agent.pipeline.handoff_mail import send_requests
 from rfp_agent.pipeline.loss import recalculate
 from rfp_agent.pipeline.outputs import check_submission
 from rfp_agent.pipeline.proposals import build_proposals
+from rfp_agent.pipeline.reader import SUFFIXES
 from rfp_agent.pipeline.run import switch_product
 from rfp_agent.pipeline.screen_summary import home_summary, review_summary
 from rfp_agent.pipeline.service import make_context, run_to_end, start_run
@@ -174,6 +177,13 @@ class Actor(BaseModel):
     actor_id: int | None = None
 
 
+class Rewind(BaseModel):
+    """단계부터 다시 처리 (add-step-rewind): 처리 단계 이름과 사유."""
+    step: str
+    reason: str
+    actor_id: int | None = None
+
+
 class TaskStatus(BaseModel):
     status: str = Field(pattern="^(TODO|DOING|DONE)$")
     actor_id: int
@@ -251,8 +261,8 @@ def _start(paths: list[Path], background: BackgroundTasks, info: dict,
 
 def _safe_name(name: str) -> str:
     name = Path(name).name
-    if not name.lower().endswith(".docx") or re.search(r"[\x00/\\]", name):
-        raise HTTPException(400, f"docx 파일만 받습니다: {name}")
+    if not name.lower().endswith(SUFFIXES) or re.search(r"[\x00/\\]", name):
+        raise HTTPException(400, f"docx·PDF 파일만 받습니다: {name}")
     return name
 
 
@@ -276,6 +286,14 @@ def get_run_log(limit: int = Query(200, le=500)) -> list[RunLogItem]:
         return run_log.run_log(conn, limit)
 
 
+@router.get("/runs/{run_id}/flow")
+def run_flow(run_id: int) -> RunFlow:
+    """흐름 기록: 단계마다 걸린 시간·바뀐 건수·사람 동작·멈춘 자리 (add-flow-history, 읽기 전용)."""
+    _summary(run_id)
+    with connect() as conn:
+        return graph_flow.history(conn, run_id)
+
+
 @router.get("/requirements/{requirement_id}")
 def requirement(requirement_id: int, run_id: int | None = None) -> Requirement:
     """요구사항 원문. run_id를 주면 그 실행의 문서 위치만 낸다."""
@@ -290,7 +308,9 @@ def requirement(requirement_id: int, run_id: int | None = None) -> Requirement:
 def library() -> list[str]:
     """서버에 미리 둔 RFP 원문(data/private/rfp_docx) 목록."""
     docx_dir = get_settings().docx_dir
-    return sorted(p.name for p in docx_dir.glob("*.docx")) if docx_dir.exists() else []
+    if not docx_dir.exists():
+        return []
+    return sorted(p.name for p in docx_dir.iterdir() if p.suffix.lower() in SUFFIXES)
 
 
 def _library_paths(files: list[str]) -> list[Path]:
@@ -324,7 +344,7 @@ def _preview(paths: list[Path]) -> list[dict]:
         try:
             return preview.preview(conn, paths)
         except preview.UnreadableFile as exc:
-            raise HTTPException(400, f"docx를 열 수 없습니다: {exc}") from exc
+            raise HTTPException(400, f"문서를 열 수 없습니다: {exc}") from exc
 
 
 @router.post("/runs/library/preview")
@@ -765,6 +785,19 @@ async def add_documents(run_id: int, files: list[UploadFile], background: Backgr
         paths, merged = _review(lambda: doc_add.prepare_add(conn, run_id, new_paths, added,
                                                             actor_id))
     background.add_task(run_to_end, run_id, paths, merged)
+    return _summary(run_id)
+
+
+@router.post("/runs/{run_id}/rewind", status_code=202)
+def rewind(run_id: int, body: Rewind, background: BackgroundTasks) -> RunSummary:
+    """담당자 확인 단계의 검토를 고른 처리 단계부터 다시 처리한다 (add-step-rewind, C2).
+
+    같은 줄의 사람 확정·수정·반려와 위험 조건 확인은 이어받는다 (CR-08, FR-10 ⑤).
+    """
+    with connect() as conn:
+        paths, choices = _review(lambda: doc_add.prepare_rewind(conn, run_id, body.step,
+                                                                body.reason, body.actor_id))
+    background.add_task(run_to_end, run_id, paths, choices, body.step)
     return _summary(run_id)
 
 

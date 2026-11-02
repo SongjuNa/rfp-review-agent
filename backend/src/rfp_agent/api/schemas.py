@@ -174,9 +174,10 @@ class RunDocument(Out):
     needs_review: bool
     line_basis: str | None
     requirements: int
-    processor: str | None = None            # 쓴 처리기 (C1). GENERAL = 일반, 예전 문서는 비움
+    processor: str | None = None            # 처음 고른 처리기 (C1). GENERAL = 일반, 예전 문서 비움
     process_check: str | None = None        # 처리 뒤 점검에 걸린 이유 (통과면 비움)
-    reprocessed: bool = False               # 점검 뒤 일반 처리기로 다시 처리함
+    reprocessed: bool = False               # 점검 뒤 떨어진 부분을 일반 처리기로 다시 물음
+    reprocessed_lines: int = 0              # 다시 물은 줄 수 (update-partial-reprocess)
 
 
 class SourceLine(Out):
@@ -195,7 +196,7 @@ class DocumentLines(Out):
 
 
 DocKind = Literal["BID_FORM", "REQUIREMENT_SPEC", "PURCHASE_SPEC", "TEST_SPEC", "SUPPLIER_SPEC",
-                  "UNKNOWN"]
+                  "BOQ", "UNKNOWN"]
 
 
 class DocumentPreview(Out):
@@ -1149,6 +1150,31 @@ class BusinessLog(Out):
     acted_at: datetime
 
 
+class FlowChange(Out):
+    """흐름 기록 한 단계에서 바뀐 건수 (add-flow-history). before가 없으면 그 단계에서 처음 생김."""
+    key: str                                # documents, judgment_count 등
+    before: int | None
+    after: int
+
+
+class FlowStep(Out):
+    """흐름 기록의 단계 하나 (add-flow-history, C2). 시간은 흐름 저장 시각 기준."""
+    node: str                               # 돈 단계 (documents … assign, engineer_review 등)
+    finished_at: datetime
+    seconds: float
+    changes: list[FlowChange]
+    action: str | None                      # 그 단계에서 받은 사람 동작 (submit·approve 등)
+
+
+class RunFlow(Out):
+    """검토 하나의 흐름 기록 (add-flow-history). 읽기 전용."""
+    run_id: int
+    recorded: bool                          # 흐름 기록이 있는지 (예전 검토는 false)
+    stop: str | None                        # 멈춘 자리: 사람 단계 이름, "END", 처리 중간이면 비움
+    next_node: str | None                   # 처리 중간에 멈췄으면 다음 단계
+    steps: list[FlowStep]
+
+
 class RunStepTime(Out):
     """실행 기록의 단계 하나 (add-run-log). 끝나지 않은 단계는 seconds가 null."""
     attempt: int                            # 0 = 처음 처리, 1 = 첫 다시 시도
@@ -1183,7 +1209,8 @@ class RunLogItem(ReviewFields):
     explanations_dropped: int               # 근거 대조에서 버린 위험 조건 설명 수
     type_examples: int = 0                  # 사람이 고른 유형 예시를 붙여 물은 줄 수 (C3)
     resumed_from: str | None = None         # 이어서 다시 시도한 단계 (C2). 처음부터면 비움
-    documents_reprocessed: int = 0          # 점검 뒤 다시 처리한 문서 수 (C1)
+    documents_reprocessed: int = 0          # 점검 뒤 다시 물은 문서 수 (C1)
+    lines_reprocessed: int = 0              # 점검 뒤 다시 물은 줄 수 (update-partial-reprocess)
     explanations_unverified: int            # AI 검증에서 확인 필요로 표시된 설명 수
     retries: int
     steps: list[RunStepTime]

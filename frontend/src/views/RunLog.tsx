@@ -3,7 +3,7 @@ import { api, type RunLogItem } from '../api'
 import { AiModeLine } from '../components/AiMode'
 import './detail.css'
 import { stamp } from '../components/format'
-import { STAGE_NAMES, STAGE_TONES, STEP_NAMES } from '../components/labels'
+import { FLOW_ACTION_NAMES, FLOW_COUNT_NAMES, STAGE_NAMES, STAGE_TONES, STEP_NAMES } from '../components/labels'
 import { duration } from '../components/progress'
 import { useLoad } from '../components/useLoad'
 import { href } from '../shell/router'
@@ -35,6 +35,32 @@ function Steps({ r }: { r: RunLogItem }) {
           </ol>
         </div>
       ))}
+    </div>
+  )
+}
+
+/** 흐름 기록 (add-flow-history, C2): 저장된 흐름 상태로 단계마다 바뀐 건수·사람 동작·멈춘 자리. 보기만 한다 */
+function Flow({ runId }: { runId: number }) {
+  const flow = useLoad(() => api.runFlow(runId), [runId])
+  if (flow.error) return <p className="c-red">{flow.error}</p>
+  if (!flow.data) return <p className="dimv">흐름 기록 불러오는 중…</p>
+  const f = flow.data
+  if (!f.recorded) return <div className="rlflow"><b>흐름 기록</b><p className="dimv">흐름 기록 없음</p></div>
+  const stopText = f.stop === 'END' ? '흐름 끝' : f.stop ? `${STEP_NAMES[f.stop] ?? f.stop}에서 멈춤`
+    : f.next_node ? `${STEP_NAMES[f.next_node] ?? f.next_node} 앞에서 멈춤 (처리 중이거나 실패)` : ''
+  return (
+    <div className="rlflow">
+      <b>흐름 기록 <span className="en">흐름 저장 시각 기준</span></b>
+      <ol>
+        {f.steps.map((s, i) => (
+          <li key={i}>
+            <span>{STEP_NAMES[s.node] ?? s.node}{s.action && <span className="rlact"> · {FLOW_ACTION_NAMES[s.action] ?? s.action}</span>}</span>
+            <span>{secs(s.seconds)}</span>
+            <span className="en">{s.changes.map((c) => `${FLOW_COUNT_NAMES[c.key] ?? c.key} ${c.before ?? 0} → ${c.after}`).join(' · ')}</span>
+          </li>
+        ))}
+      </ol>
+      {stopText && <p className="rlstop">{stopText}</p>}
     </div>
   )
 }
@@ -88,7 +114,7 @@ export function RunLog() {
                   <td style={{ textAlign: 'right' }}>{num(r.judgments)}</td>
                   <td style={{ textAlign: 'right' }}>{r.retries}</td>
                 </tr>
-                {open === r.run_id && <tr className="rlopen"><td colSpan={12}><Steps r={r} /></td></tr>}
+                {open === r.run_id && <tr className="rlopen"><td colSpan={12}><Steps r={r} /><Flow runId={r.run_id} /></td></tr>}
               </Fragment>
             ))}
           </tbody>
