@@ -5,6 +5,7 @@
 그래서 txt가 있으면 line_map으로 txt 줄 번호(추적표 v3의 "N행")에 맞출 수 있다.
 """
 
+import io
 import re
 from collections.abc import Iterator
 from dataclasses import dataclass, field
@@ -14,6 +15,9 @@ from docx import Document
 from docx.oxml.ns import qn
 from docx.table import Table
 from docx.text.paragraph import Paragraph
+from PIL import Image
+
+from rfp_agent.pipeline import ocr
 
 REDACTION_MARKS = ("[REDACTED", "REDACTED]", "［")
 
@@ -32,6 +36,7 @@ class Block:
     cells: list[str] = field(default_factory=list)          # 칸 원문 (병합 칸은 한 번만)
     raw_cells: list[str] = field(default_factory=list)      # 병합 칸 반복 포함 (txt와 같은 모양)
     has_figure: bool = False        # 그림 개체(w:drawing, w:pict)가 든 단락
+    ocr: bool = False               # 그림·스캔 쪽에서 OCR로 읽은 단락 (add-ocr)
 
     @property
     def last_line(self) -> int:
@@ -52,6 +57,23 @@ def _cell_text(cell) -> str:
     return "\n".join(p.text for p in cell.paragraphs)
 
 
+def _figure_text(el, doc) -> list[str]:
+    """그림 단락 속 그림들을 OCR로 읽은 단락들 (add-ocr). 엔진이 없으면 빈 목록."""
+    if not ocr.available():
+        return []
+    out = []
+    for blip in el.iter(qn("a:blip")):
+        part = doc.part.related_parts.get(blip.get(qn("r:embed")))
+        if part is None:
+            continue
+        try:
+            image = Image.open(io.BytesIO(part.blob))
+        except Exception:                               # 그림이 아닌 개체(EMF 등)는 건너뜀
+            continue
+        out += ocr.paragraphs(ocr.read_lines(image))
+    return out
+
+
 def read_blocks(path: Path) -> list[Block]:
     doc = Document(str(path))
     blocks: list[Block] = []
@@ -63,6 +85,8 @@ def read_blocks(path: Path) -> list[Block]:
             items = [("P", text, None, [], [])]
             figure = el.find(".//" + qn("w:drawing")) is not None \
                 or el.find(".//" + qn("w:pict")) is not None
+            # 그림 속 글자는 그림 단락 바로 뒤 단락으로 더한다 (add-ocr)
+            items += [("O", t, None, [], []) for t in (_figure_text(el, doc) if figure else [])]
         else:
             figure = False
             table_no += 1
@@ -77,12 +101,13 @@ def read_blocks(path: Path) -> list[Block]:
                         seen.append(cell._tc)
                         cells.append(text)
                 items.append(("R", " | ".join(raw), row_no, cells, raw))
-        for kind, text, row_no, cells, raw in items:
+        for i, (kind, text, row_no, cells, raw) in enumerate(items):
             count = text.count("\n") + 1
             blocks.append(Block(
-                seq=len(blocks), kind=kind, text=text, line_no=line_no, line_count=count,
-                table_no=table_no if kind == "R" else None, row_no=row_no,
-                cells=cells, raw_cells=raw, has_figure=kind == "P" and figure,
+                seq=len(blocks), kind="P" if kind == "O" else kind, text=text, line_no=line_no,
+                line_count=count, table_no=table_no if kind == "R" else None, row_no=row_no,
+                cells=cells, raw_cells=raw, has_figure=kind == "P" and figure and i == 0,
+                ocr=kind == "O",
             ))
             line_no += count
     return blocks
@@ -100,7 +125,10 @@ def find_figures(blocks: list[Block]) -> list[tuple[Block, str | None]]:
     for i, b in enumerate(blocks):
         if not b.has_figure:
             continue
-        near = [blocks[j] for j in (i + 1, i - 1) if 0 <= j < len(blocks) and blocks[j].kind == "P"]
+        after = i + 1
+        while after < len(blocks) and blocks[after].ocr:    # 그림 속 글자(OCR) 단락은 건너뜀
+            after += 1
+        near = [blocks[j] for j in (after, i - 1) if 0 <= j < len(blocks) and blocks[j].kind == "P"]
         caption = next((n.text.strip() for n in near if CAPTION.match(n.text)), None)
         if caption is None and CAPTION.match(b.text):
             caption = b.text.strip()

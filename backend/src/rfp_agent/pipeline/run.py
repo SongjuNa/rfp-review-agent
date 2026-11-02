@@ -25,7 +25,7 @@ from rfp_agent.llm import tasks
 from rfp_agent.llm.client import FAILURE_MESSAGE, LLM, LLMConfigError, LLMFailure, Usage, usage_of
 from rfp_agent.llm.evidence import EvidenceSpan, evidence_id, parse_evidence_id
 from rfp_agent.llm.parallel import run_ordered, workers_of
-from rfp_agent.pipeline import code_version, dictionaries, doc_add, graph_flow, meaning
+from rfp_agent.pipeline import code_version, dictionaries, doc_add, graph_flow, meaning, ocr
 from rfp_agent.pipeline.assignments import build_assignments
 from rfp_agent.pipeline.document import Choice, DocumentResult, Report, process_document
 from rfp_agent.pipeline.engineering import build_checks
@@ -101,7 +101,8 @@ class RunContext:
     def processing_key(self) -> str:
         """문서 처리 결과를 다시 쓸 수 있는 조건: 사전 판 + 처리 코드 판 + AI 모델·프롬프트 판."""
         ai = f"{self.llm.model}/{tasks.PROMPT_VERSION}" if self.llm else "rule"
-        return f"{self.version}-{code_version()}-{ai}"
+        # OCR 엔진 판이 바뀌면 같은 파일도 새로 분석한다 (add-ocr, CR-11)
+        return f"{self.version}-{code_version()}-{ai}-{ocr.version_tag()}"
 
 
 def create_run(conn: psycopg.Connection, version: str, llm: LLM | None,

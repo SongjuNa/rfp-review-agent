@@ -39,6 +39,7 @@ docker compose exec backend rfp-db seed-products   # 제품표 적재 (처음 �
 ### 로컬
 
 PostgreSQL 16, Python 3.12+, [uv](https://docs.astral.sh/uv/), Node 22가 필요합니다.
+스캔 PDF·그림 속 글자를 읽으려면(OCR, add-ocr) Tesseract도 설치합니다: macOS `brew install tesseract tesseract-lang`, Ubuntu `sudo apt-get install tesseract-ocr tesseract-ocr-kor`. 없으면 OCR만 꺼지고 나머지는 그대로 돕니다(`/api/health`의 `ocr_available`).
 
 ```bash
 cd backend
@@ -51,7 +52,7 @@ cd ../frontend
 npm install && npm run dev               # http://localhost:5173
 ```
 
-화면에서 docx를 올리거나 서버의 `data/private/rfp_docx` 파일을 골라 검토를 시작합니다. 처리가 끝나면 **담당자 확인** 단계에서 결과(요구사항, 위험 조건, 적합성 판정, 보증값, 손실 환산, 일탈·질의 목록, 제안 포인트)를 확정·수정·반려하고, "담당자 확인 마치기"를 누르면 승인 기준(AR-01·02·03·06·07·08)에 걸릴 때 **승인 대기**가 됩니다. 오른쪽 위 사용자를 "기본 승인자"로 바꾸면 승인·반려할 수 있습니다(로그인 전 임시).
+화면에서 docx·PDF를 올리거나 서버의 `data/private/rfp_docx` 파일을 골라 검토를 시작합니다. 처리가 끝나면 **담당자 확인** 단계에서 결과(요구사항, 위험 조건, 적합성 판정, 보증값, 손실 환산, 일탈·질의 목록, 제안 포인트)를 확정·수정·반려하고, "담당자 확인 마치기"를 누르면 승인 기준(AR-01·02·03·06·07·08)에 걸릴 때 **승인 대기**가 됩니다. 오른쪽 위 사용자를 "기본 승인자"로 바꾸면 승인·반려할 수 있습니다(로그인 전 임시).
 
 ### 테스트
 

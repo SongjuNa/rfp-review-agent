@@ -19,3 +19,10 @@
 #### Scenario: AI 방식 표시
 - **WHEN** 방식이 Gemini이고 키가 있으면 / 사내 모델이면 / AI 끄기이면
 - **THEN** ai_mode는 GEMINI·LOCAL·OFF, external_send는 true·false·false이고 응답에 키·주소 글자가 없다
+
+### Requirement: OCR 사용 가능 표시
+시스템은 `/api/health`에서 OCR을 쓸 수 있는지(엔진이 있고 켜져 있음)와 엔진 판을 돌려줘야 한다(SHALL). [제안 11-02]
+
+#### Scenario: OCR 상태
+- **WHEN** OCR 엔진이 있고 켜진 상태와 끈 상태에서 상태를 조회하면
+- **THEN** ocr_available은 각각 true·false이고, 켜진 상태에서는 엔진 판이 있다

@@ -2,7 +2,8 @@
 
 쪽마다 표는 표 행으로, 표 밖 글자 줄은 줄 간격으로 묶어 단락으로 만든다. 줄 번호는 문서 처음부터
 이어 센다. 쪽마다 같은 높이에 반복되는 머리말·꼬리말(쪽 번호 등)은 뺀다.
-글자 층이 없거나 열 수 없는 PDF는 블록 0개(분류에서 판독 불가).
+글자 층이 없는 쪽은 OCR 엔진이 있으면 OCR로 읽는다(add-ocr).
+엔진이 없는 스캔 PDF나 열 수 없는 PDF는 블록 0개(판독 불가).
 """
 
 import re
@@ -11,6 +12,7 @@ from pathlib import Path
 
 import pdfplumber
 
+from rfp_agent.pipeline import ocr
 from rfp_agent.pipeline.docx_reader import Block
 
 PARA_GAP = 1.5          # 줄 위아래 간격이 줄 높이의 이 배를 넘으면 새 단락
@@ -54,9 +56,31 @@ def _next_line(blocks: list[Block]) -> int:
 
 
 def _add_paragraphs(blocks: list[Block], lines: list[dict]) -> None:
-    for text in _paragraphs(lines):
-        blocks.append(Block(seq=len(blocks), kind="P", text=text, line_no=_next_line(blocks),
-                            line_count=text.count("\n") + 1))
+    # OCR 줄과 글자 층 줄은 섞지 않는다 (OCR 단락은 표시가 따로 붙는다)
+    groups: list[list[dict]] = []
+    for line in lines:
+        if groups and groups[-1][0].get("ocr", False) == line.get("ocr", False):
+            groups[-1].append(line)
+        else:
+            groups.append([line])
+    for group in groups:
+        for text in _paragraphs(group):
+            blocks.append(Block(seq=len(blocks), kind="P", text=text, line_no=_next_line(blocks),
+                                line_count=text.count("\n") + 1,
+                                ocr=group[0].get("ocr", False)))
+
+
+OCR_DPI = 300
+
+
+def _ocr_page(page) -> list[dict]:
+    """글자 층이 없는 쪽을 그림으로 만들어 OCR한 줄 (add-ocr). 위치는 쪽 좌표로 바꾼다."""
+    if not ocr.available():
+        return []
+    image = page.to_image(resolution=OCR_DPI).original
+    scale = page.height / image.height
+    return [{"text": ln.text, "top": ln.top * scale, "bottom": ln.bottom * scale,
+             "x0": 0, "x1": page.width, "ocr": True} for ln in ocr.read_lines(image)]
 
 
 def _add_table(blocks: list[Block], rows: list[list[str | None]], table_no: int) -> None:
@@ -81,6 +105,8 @@ def read_blocks(path: Path) -> list[Block]:
             tables = page.find_tables()
             boxes = [t.bbox for t in tables]
             lines = [ln for ln in page.extract_text_lines() if ln["text"].strip()]
+            if not lines and not tables:
+                lines = _ocr_page(page)                 # 스캔한 쪽 (add-ocr)
             pages.append((page, tables, [ln for ln in lines if not _inside(ln, boxes)]))
         # 쪽 절반 이상(2쪽 이상)에서 같은 높이에 반복되는 줄은 머리말·꼬리말
         counts = Counter(k for page, _, lines in pages

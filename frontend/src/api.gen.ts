@@ -726,6 +726,8 @@ export type Health = {
   ai_mode: 'GEMINI' | 'LOCAL' | 'OFF'
   ai_model: string | null
   external_send: boolean
+  ocr_available?: boolean
+  ocr_engine?: string | null
 }
 
 export type HTTPValidationError = {
@@ -1321,6 +1323,7 @@ export type RunDocument = {
   process_check?: string | null
   reprocessed?: boolean
   reprocessed_lines?: number
+  ocr_lines?: number
 }
 
 /** 검토 하나의 흐름 기록 (add-flow-history). 읽기 전용. */
