@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test'
 import { ENGINEER, as, deviationRun } from './helpers'
 
-// 명세 review-workspace "상업 조건 탭"의 Scenario (change add-cost-conditions, FR-16).
+// 명세 review-workspace "상업 조건 탭"의 Scenario (change add-cost-conditions, FR-16, update-comm-tab-layout).
 // 합성 데이터시트에는 상업 조항이 없어, 비용 조건 줄은 응답을 바꿔 넣는다(상업 영향의 일탈 줄은 실제 데이터).
 
 const LOC = { file_no: 91, section_no: '3', section_title: 'COMMERCIAL CONDITIONS', table_name: null, item_no: null, line_start: 40, line_end: 40 }
@@ -33,8 +33,11 @@ test('상업 조건 탭 열기', async ({ page, request }) => {
   await expect(comm.locator('.sech .note')).toContainText('비용 조건 5')
   const ld = comm.locator('tr', { hasText: 'Liquidated damages' })
   await expect(ld).toContainText('지체상금')
-  await expect(ld).toContainText('synthetic_judgment.docx')
-  await expect(ld).toContainText('견적 담당')
+  await expect(ld.locator('.cmv')).toHaveText('0.5 %')                          // 값 먼저
+  await expect(ld.locator('td.loc')).toContainText('3 COMMERCIAL CONDITIONS · 40행')   // 줄인 위치
+  await expect(ld.locator('td.loc')).toHaveAttribute('title', /synthetic_judgment\.docx/)
+  await expect(comm.locator('.cmh').first()).toContainText('견적 담당 확인')
+  await expect(ld).not.toContainText('견적 담당')
   await expect(ld.locator('.st').last()).toHaveText('안 보냄')
   await expect(comm.locator('tr', { hasText: 'total liability' })).toContainText('책임 한도 없음')
   await expect(comm.locator('tr', { hasText: 'witnessed' }).locator('.st').last()).toHaveText('협조 요청 없음')
@@ -65,4 +68,45 @@ test('비용 조건이 없는 검토', async ({ page, request }) => {
   const comm = page.locator('#comm')
   await expect(comm.getByText('찾은 비용 조건이 없습니다')).toBeVisible()
   await expect(comm.getByRole('button', { name: /내려받기|보내기|전달/ })).toHaveCount(0)
+})
+
+test('상업 조건 원문 펼치기', async ({ page, request }) => {
+  const run = await deviationRun(request, `상업 조건 펼치기 ${Date.now()}`)
+  await page.route(`**/api/runs/${run.run_id}/cost-conditions`, async (route) => {
+    const res = await route.fetch()
+    await route.fulfill({ response: res, json: { ...(await res.json()), conditions: CONDITIONS } })
+  })
+  await page.goto(`/#/reviews/${run.run_id}`)
+  await page.getByRole('tab', { name: '상업 조건' }).click()
+  const comm = page.locator('#comm')
+  const toggle = comm.locator('table.cmt').getByRole('button', { name: '지체상금', exact: true })
+  await expect(toggle).toHaveAttribute('aria-expanded', 'false')
+  await toggle.click()
+  await expect(toggle).toHaveAttribute('aria-expanded', 'true')
+  const full = comm.locator('tr.cmopen')
+  await expect(full.locator('.cmfull')).toContainText('per week of delay')
+  await expect(full.locator('mark')).toHaveText('0.5 %')
+  await expect(full.locator('.cmlocs')).toContainText('synthetic_judgment.docx')
+  await comm.locator('tr.cmrow', { hasText: '지체상금' }).click()           // 줄을 다시 누르면 접힘
+  await expect(comm.locator('tr.cmopen')).toHaveCount(0)
+  await page.unrouteAll({ behavior: 'ignoreErrors' })
+})
+
+test('같은 상업 영향 묶기', async ({ page, request }) => {
+  const run = await deviationRun(request, `상업 영향 묶기 ${Date.now()}`)
+  const loss = (n: number) => ({ kind: 'LOSS', loss_calc_id: 800000 + n, item_id: null, judgment_id: null, product_code: null,
+    total_usd: null, is_assumed: false, text: null, locations: [{ ...LOC, line_start: 7000 + n, line_end: 7000 + n }] })
+  await page.route(`**/api/runs/${run.run_id}/cost-conditions`, async (route) => {
+    const res = await route.fetch()
+    const body = await res.json()
+    await route.fulfill({ response: res, json: { ...body, impacts: [loss(1), loss(2), loss(3), ...body.impacts] } })
+  })
+  await page.goto(`/#/reviews/${run.run_id}`)
+  await page.getByRole('tab', { name: '상업 조건' }).click()
+  const rows = page.locator('#comm tr', { hasText: '손실 환산 가산액' })
+  await expect(rows).toHaveCount(1)
+  await expect(rows).toContainText('같은 조건 3곳')
+  await expect(rows.locator('td.loc')).toContainText('외 2곳')
+  await expect(rows.getByRole('button', { name: '손실 환산 →' })).toBeVisible()
+  await page.unrouteAll({ behavior: 'ignoreErrors' })
 })

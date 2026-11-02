@@ -406,6 +406,27 @@ textarea.fi{height:auto;padding:8px 10px}
 .cmrp{display:flex;gap:6px;margin-top:8px;padding:8px 10px;border-radius:6px;background:#ECFDF3;color:#05603A;font-size:var(--fs-xs);line-height:1.5}
 .cmrp .ms{font-size:15px}
 .cmsel{font-size:var(--fs-sm);color:#667085}
+/* update-comm-tab-layout: 두 표 같은 네 칸·고정 폭, 값 먼저 + 원문 한 줄, 줄 눌러 펼치기 */
+.cmsub{margin-left:8px;font-size:var(--fs-xs);font-weight:400;color:var(--c-text-3)}
+.cmfix{table-layout:fixed;width:100%}
+.cmfix col.c-k{width:150px}
+.cmfix col.c-w{width:240px}
+.cmfix col.c-s{width:120px}
+.cmfix td{vertical-align:top}
+.cmfix td.loc{color:var(--c-text-3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cmmore{color:var(--c-muted)}
+.cmk{font-weight:600;color:var(--c-text)}
+.cmtg{all:unset;display:inline-flex;align-items:center;gap:2px;cursor:pointer;font-weight:600;color:var(--c-text)}
+.cmtg .ms{font-size:18px;color:var(--c-text-3)}
+.cmtg:focus-visible{outline:2px solid var(--c-link);outline-offset:2px}
+.cmrow{cursor:pointer}
+.cmrow:hover td,.cmrow.on td,.cmopen td{background:var(--c-bg-hover)}
+.cmv{font-weight:600;color:var(--c-text)}
+.cm1{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cmsm{margin-top:2px;font-size:var(--fs-xs);color:var(--c-muted)}
+.cmst{text-align:right}
+.cmfull{font-size:var(--fs-sm);line-height:1.6;color:var(--c-text)}
+.cmlocs{margin:6px 0 2px;padding-left:18px;font-size:var(--fs-xs);color:var(--c-text-3)}
 .cmfoot{margin:10px 0 0;font-size:var(--fs-xs);color:#667085}
 .cmfoot a{color:#0569A0;font-weight:600;text-decoration:none}
 .apw{width:min(760px,100%);max-height:100%;background:#fff;border-radius:10px;box-shadow:0 24px 48px rgba(16,24,40,.24);display:flex;flex-direction:column;overflow:hidden}
