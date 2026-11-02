@@ -290,7 +290,7 @@ def _prepare(conn, path: Path, dicts: PipelineDicts, llm: LLM | None, report: Re
         ai_types, with_examples = _ask_types(conn, llm, report, digest, candidates,
                                              unclassified, proc.hint)
     return _Prepared(sections, tables, candidates, tags, ai_types, with_examples,
-                     _stats(candidates, tags, ai_types), asked, rules)
+                     _stats(candidates, tags, ai_types, tables), asked, rules)
 
 
 def _tag(dicts: PipelineDicts, candidates: list[Candidate]) -> tuple[dict[int, list], list[int]]:
@@ -320,14 +320,16 @@ def _ask_types(conn, llm: LLM, report: Report, digest: str, candidates: list[Can
     return dict(zip(lines, codes, strict=True)), sum(1 for e in examples if e)
 
 
-def _stats(candidates: list[Candidate], tags: dict[int, list], ai_types: dict[int, str]) -> Stats:
+def _stats(candidates: list[Candidate], tags: dict[int, list], ai_types: dict[int, str],
+           tables: list[LogicalTable]) -> Stats:
     kept = [c for c in candidates if c.req_kind != "DESCRIPTION"]
     return Stats(
         table_cells=sum(1 for c in kept if c.source_kind == "TABLE_CELL"),
         requirements=sum(1 for c in kept if c.req_kind == "REQUIREMENT"),
         tests=sum(1 for i in tags if any(t.type_code == "TEST" for t in tags[i])
                   or ai_types.get(i) == "TEST"),
-        marks=sum(1 for c in kept if c.supplier_mark is not None))
+        marks=sum(1 for c in kept if c.supplier_mark is not None),
+        table_rows=sum(len(t.rows) for t in tables))
 
 
 def _redo(conn, dicts: PipelineDicts, llm: LLM, report: Report, digest: str, prep: _Prepared,
@@ -366,7 +368,7 @@ def _redo(conn, dicts: PipelineDicts, llm: LLM, report: Report, digest: str, pre
         lines = len(unknown)
     else:
         return 0
-    prep.stats = _stats(candidates, prep.tags, prep.ai_types)
+    prep.stats = _stats(candidates, prep.tags, prep.ai_types, prep.tables)
     return lines
 
 

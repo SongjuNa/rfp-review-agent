@@ -64,7 +64,7 @@ export function locationText(loc: Location): string {
 }
 export const DOC_KIND_NAMES: Record<string, string> = {
   BID_FORM: '입찰 양식', REQUIREMENT_SPEC: '요구 사양서', PURCHASE_SPEC: '구매 사양서', TEST_SPEC: '시험 사양서',
-  SUPPLIER_SPEC: '공급사 사양', UNKNOWN: '종류 모름',
+  SUPPLIER_SPEC: '공급사 사양', BOQ: '물량표', UNKNOWN: '종류 모름',
 }
 /** 제품군 (product_master.family) */
 export const FAMILY_NAMES: Record<string, string> = {

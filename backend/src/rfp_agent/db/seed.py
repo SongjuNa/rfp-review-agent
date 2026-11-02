@@ -269,7 +269,7 @@ def seed_type_rules(conn: psycopg.Connection, rows: list[dict[str, str]], report
     report.counts["type_rule"] = len(rows)
 
 
-DOC_KINDS = {"BID_FORM", "REQUIREMENT_SPEC", "PURCHASE_SPEC", "TEST_SPEC", "SUPPLIER_SPEC"}
+DOC_KINDS = {"BID_FORM", "REQUIREMENT_SPEC", "PURCHASE_SPEC", "TEST_SPEC", "SUPPLIER_SPEC", "BOQ"}
 
 
 def seed_doc_kind_rules(conn: psycopg.Connection, rows: list[dict[str, str]],
