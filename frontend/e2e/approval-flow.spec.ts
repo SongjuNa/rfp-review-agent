@@ -20,7 +20,7 @@ test('결재 상신 창', async ({ page, request }) => {
   await expect(page.locator('.wop')).toContainText(COMMENT)
   // 결정 전 상신 취소 → 바로 검토 상세 판정 탭으로 돌아간다
   await page.getByRole('button', { name: '상신 취소' }).click()
-  await expect(page.locator('.toast')).toContainText('상신을 취소했습니다.')
+  await expect(page.locator('.uit')).toContainText('상신을 취소했습니다.')
   await expect(page.getByRole('button', { name: '결재 상신' })).toBeEnabled()
 })
 
@@ -41,7 +41,7 @@ test('승인 화면', async ({ page, request }) => {
   await expect(reject).toBeDisabled()                                                    // 반려에는 의견이 필요하다
   await page.getByLabel('결재 의견').fill('일탈 사유를 보완할 것')
   await reject.click()
-  await expect(page.locator('main .idl').first()).toContainText('반려됨')
+  await expect(page.locator('.ttl1')).toContainText('반려됨')                              // 제목 옆 단계 (v4.96)
 })
 
 test('엔지니어·승인자의 내 할 일', async ({ page, request }) => {
