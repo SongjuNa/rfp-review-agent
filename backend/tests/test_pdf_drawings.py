@@ -124,3 +124,78 @@ def test_rotated_text(db, tmp_path):
     reqs, figures = processed(db, path)
     assert figures == ["돌아간 글자 13자"]
     assert any(r[0] == CABLE for r in reqs)
+
+
+# ── update-pdf-drawing-guards: 도면 쪽·돌아간 글자·그림 OCR을 좁힘 ──
+SHOP = [
+    "3.4 SHOP DRAWINGS",
+    "The Contractor shall submit shop drawings showing the drawing no., revision and scale.",
+    "The rated current of the GIS shall be 3150 A.",
+    "The rated short-time withstand current shall be 40 kA for 3 s.",
+    "All drawings shall be approved by the Owner before manufacture.",
+]
+ITALIC = "The enclosure shall be painted RAL 7032."
+OVERLAY = "The switchgear shall be rated 145 kV and tested at the factory."
+
+
+def shop_pdf(path: Path) -> Path:
+    """도면 낱말이 든 사양 본문 (표제란 없음)"""
+    c = canvas.Canvas(str(path), pagesize=A4)
+    c.setFont("Helvetica", 10)
+    for n, text in enumerate(SHOP + BODY[:8]):
+        c.drawString(60, H - 70 - 24 * n, text)
+    c.showPage()
+    c.save()
+    return path
+
+
+def italic_pdf(path: Path) -> Path:
+    """가로 문장 + 옆으로 기울여 그린 문장 (Word가 기울임꼴 없는 글꼴을 기울이는 방식)"""
+    c = canvas.Canvas(str(path), pagesize=A4)
+    body(c)
+    t = c.beginText()
+    t.setFont("Helvetica", 10)
+    t.setTextTransform(1, 0, 0.2, 1, 60, 200)
+    t.textOut(ITALIC)
+    c.drawText(t)
+    c.showPage()
+    c.save()
+    return path
+
+
+def overlay_pdf(path: Path) -> Path:
+    """그림 위에 글자층 문장이 겹친 쪽 (스캔 위에 글자를 깐 PDF)"""
+    c = canvas.Canvas(str(path), pagesize=A4)
+    body(c)
+    c.drawImage(ImageReader(picture([OVERLAY])), 60, H - 420, 470, 120)
+    c.setFont("Helvetica", 10)
+    c.drawString(70, H - 360, OVERLAY)
+    c.showPage()
+    c.save()
+    return path
+
+
+def test_prose_with_drawing_words(db, tmp_path):
+    """Scenario: 도면 낱말이 든 사양 본문"""
+    reqs, figures = processed(db, shop_pdf(tmp_path / "shop.pdf"))
+    assert figures == []
+    texts = [r[0] for r in reqs]
+    assert all(s in texts for s in SHOP[1:])
+
+
+def test_italic_sentence(db, tmp_path):
+    """Scenario: 기울임꼴 문장"""
+    reqs, figures = processed(db, italic_pdf(tmp_path / "italic.pdf"))
+    assert not any(f.startswith("돌아간 글자") for f in figures)
+    assert ITALIC in [r[0] for r in reqs]
+
+
+@pytest.mark.skipif(ocr.engine_version() is None, reason="Tesseract 없음")
+def test_figure_with_text_layer(db, tmp_path):
+    """Scenario: 글자층이 깔린 그림"""
+    path = overlay_pdf(tmp_path / "overlay.pdf")
+    blocks = read_blocks(path)
+    assert sum(b.has_figure for b in blocks) == 1 and not any(b.ocr for b in blocks)
+    reqs, figures = processed(db, path)
+    assert len(figures) == 1
+    assert [r[0] for r in reqs].count(OVERLAY) == 1

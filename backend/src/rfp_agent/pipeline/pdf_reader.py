@@ -8,6 +8,7 @@
 엔진이 없는 스캔 PDF나 열 수 없는 PDF는 블록 0개(판독 불가).
 """
 
+import math
 import re
 from collections import Counter
 from pathlib import Path
@@ -36,14 +37,39 @@ DRAWING_NO = re.compile(r"\b(?:DRAWING|DWG)[\s._]*NO\b", re.IGNORECASE)
 SCALE = re.compile(r"\bSCALE\b", re.IGNORECASE)
 TITLE = re.compile(r"^\s*TITLE\b", re.IGNORECASE)
 NOTE = re.compile(r"^\s*NOTES?\b", re.IGNORECASE)     # 도면 주기 줄은 한 줄씩 단락
+# 표제란 라벨 줄: 짧고, 문장으로 끝나지 않고, 요구 낱말이 없음 (update-pdf-drawing-guards)
+LABEL_MAX = 30
+OBLIGATION = re.compile(r"\b(?:shall|must)\b", re.IGNORECASE)
+PROSE_LINES = 2                 # shall·must 줄이 이만큼 있으면 사양 본문 쪽 (도면 쪽 아님)
+NUMBER = re.compile(DRAWING_NO.pattern + r"\.?\s*:?\s*([A-Z0-9][\w./-]*)", re.IGNORECASE)
+ROTATED_DEG = 30                # 이 각도를 넘게 돈 글자만 뺀다 (기울임꼴은 읽음)
+FIGURE_TEXT_CHARS = 50          # 그림 영역 안 글자층이 이만큼이면 OCR 안 함 [제안]
 
 
 def _straight(obj: dict) -> bool:
-    """가로 글자인가 (글자 행렬의 b·c가 0). 글자가 아닌 개체는 그대로 둔다."""
+    """가로로 읽을 글자인가. 가로 성분 a가 0 이하(세로·뒤집힘)이거나 30°를 넘게 돈 글자만 아니다.
+
+    c만 있는 기울이기(기울임꼴을 기울여 그린 글자)는 가로 글자다. 글자가 아닌 개체는 그대로 둔다.
+    """
     if obj.get("object_type") != "char":
         return True
-    m = obj.get("matrix") or (1, 0, 0, 1, 0, 0)
-    return abs(m[1]) < 1e-6 and abs(m[2]) < 1e-6
+    a, b = (obj.get("matrix") or (1, 0, 0, 1, 0, 0))[:2]
+    return a > 0 and abs(math.degrees(math.atan2(b, a))) <= ROTATED_DEG
+
+
+def _label(text: str) -> bool:
+    """표제란 라벨 줄: 30자 이하, "."로 끝나지 않고 shall·must가 없음"""
+    t = text.strip()
+    return len(t) <= LABEL_MAX and not t.endswith(".") and not OBLIGATION.search(t)
+
+
+def _drawing_page(tables, lines: list[dict]) -> bool:
+    """표제란 증거(표 칸이나 라벨 줄의 DRAWING NO·SCALE)가 있고 요구 문장 줄이 적은 쪽"""
+    if sum(1 for ln in lines if OBLIGATION.search(ln["text"])) >= PROSE_LINES:
+        return False
+    marks = [c for t in tables for row in t.extract() for c in row if c]
+    marks += [ln["text"] for ln in lines if _label(ln["text"])]
+    return any(DRAWING_NO.search(m) for m in marks) and any(SCALE.search(m) for m in marks)
 
 
 def _inside(line: dict, boxes: list[tuple]) -> bool:
@@ -161,6 +187,14 @@ def _page_figures(page) -> list[tuple]:
     return out
 
 
+def _text_inside(page, box: tuple) -> int:
+    """그림 영역 안(글자 가운데 점 기준)의 글자층 글자 수 (빈칸 뺌)"""
+    x0, top, x1, bottom = box
+    return sum(1 for ch in page.chars if ch["text"].strip()
+               and x0 <= (ch["x0"] + ch["x1"]) / 2 <= x1
+               and top <= (ch["top"] + ch["bottom"]) / 2 <= bottom)
+
+
 def _drawing_caption(tables, lines: list[dict]) -> str:
     """도면 쪽 그림 설명 "도면 <번호> · <제목>". 표제란 칸에서, 없으면 글자 줄에서 찾는다."""
     number = title = None
@@ -174,7 +208,7 @@ def _drawing_caption(tables, lines: list[dict]) -> str:
                     title = title or cells[1]
     if number is None:
         for ln in lines:
-            if m := re.search(DRAWING_NO.pattern + r"\.?\s*:?\s*(\S+)", ln["text"], re.IGNORECASE):
+            if _label(ln["text"]) and (m := NUMBER.search(ln["text"])):
                 number = m.group(1)
                 break
     return " · ".join(["도면" + (f" {number}" if number else "")] + ([title] if title else []))
@@ -267,14 +301,15 @@ def read_blocks(path: Path) -> list[Block]:
             figures: list[tuple] = []                   # (위치, 설명, 그림 속 OCR 줄)
             if not lines and not tables:
                 lines = _ocr_page(page)                 # 스캔한 쪽 (add-ocr)
-            elif DRAWING_NO.search(text := " ".join(ln["text"] for ln in lines)) \
-                    and SCALE.search(text):
+            elif _drawing_page(tables, lines):
                 # 도면 쪽: 라벨·치수·표제란은 읽지 않고 주기 줄만 한 줄씩
                 figures.append((0, _drawing_caption(tables, lines), []))
                 lines = [{**ln, "own": True} for ln in lines if NOTE.match(ln["text"])]
                 tables = []
             else:
-                figures += [(box[1], None, _ocr_region(page, box)) for box in _page_figures(page)]
+                # 글자층이 깔린 그림은 이미 읽은 글자라 OCR하지 않는다 (위치만 남김)
+                figures += [(box[1], None, [] if _text_inside(flat, box) >= FIGURE_TEXT_CHARS
+                             else _ocr_region(page, box)) for box in _page_figures(page)]
             if rotated:
                 figures.append((page.height, f"돌아간 글자 {rotated}자", []))
             boxes = [t.bbox for t in tables]
