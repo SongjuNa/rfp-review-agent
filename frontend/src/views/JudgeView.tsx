@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { api, type CompareRule, type Judgment, type Location, type RunDocument } from '../api'
 import { PastDecisionRow } from '../components/PastDecisionRow'
 import { TypeFix } from '../components/TypeFix'
+import { CheckCalc } from '../components/CheckCalc'
 import { CHECK_NAMES, checkLine, checksByRequirement } from '../components/checks'
 import { dueText, isoDay, reviewTitle, stamp } from '../components/format'
 import { filterParams, filterQuery, pageOf, parseFilter, type JudgeFilter } from '../components/judgeFilter'
@@ -232,6 +233,7 @@ function Detail({ runId, stage, j, docs, pos, total, onPrev, onNext, editing, se
             <dl className="basis">
               {basis.map(([k, v]) => <div key={k}><dt>{k}</dt><dd>{v}</dd></div>)}
             </dl>
+            {check && <CheckCalc key={check.check_id} check={check} />}
             <TypeFix runId={runId} requirementId={j.requirement_id} current={j.type_code ?? null} />
 
             <div className="lbl">판정 출처</div>

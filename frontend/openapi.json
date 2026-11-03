@@ -4216,6 +4216,67 @@
         }
       }
     },
+    "/api/engineering/peak-check": {
+      "get": {
+        "summary": "Peak Check",
+        "description": "검산 확인 (add-check-calculator): 판정 상세에서 값을 바꿔 보는 참고 계산. DB 안 씀.",
+        "operationId": "peak_check_api_engineering_peak_check_get",
+        "parameters": [
+          {
+            "name": "ik_ka",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "title": "Ik Ka"
+            }
+          },
+          {
+            "name": "frequency_hz",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "title": "Frequency Hz"
+            }
+          },
+          {
+            "name": "peak_ka",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "title": "Peak Ka"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PeakCheck"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/businesses": {
       "get": {
         "tags": [
@@ -11933,6 +11994,75 @@
         ],
         "title": "PastDecision",
         "description": "다른 검토에서 사람이 확정·수정한 같은 요구·같은 제품 판정 (add-review-memory). 힌트일 뿐."
+      },
+      "PeakCheck": {
+        "properties": {
+          "rule_code": {
+            "type": "string",
+            "title": "Rule Code"
+          },
+          "factor": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Factor"
+          },
+          "expected_ka": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expected Ka"
+          },
+          "allowed_ka": {
+            "items": {
+              "type": "number"
+            },
+            "type": "array",
+            "title": "Allowed Ka"
+          },
+          "result": {
+            "type": "string",
+            "enum": [
+              "PASS",
+              "VIOLATION",
+              "NEEDS_REVIEW"
+            ],
+            "title": "Result"
+          },
+          "reason_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason Code"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "rule_code",
+          "factor",
+          "expected_ka",
+          "allowed_ka",
+          "result",
+          "reason_code"
+        ],
+        "title": "PeakCheck",
+        "description": "검산 확인 (add-check-calculator). 분석 검산과 같은 규칙, 저장 안 함.\n\n확인 필요면 계산값이 비어 있다."
       },
       "Product": {
         "properties": {

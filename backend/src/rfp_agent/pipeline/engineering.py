@@ -51,6 +51,30 @@ def matches(peak: float, expected: float, factor: float) -> bool:
     return any(abs(peak - a) < TOLERANCE for a in allowed)
 
 
+def allowed_values(expected: float, factor: float) -> list[float]:
+    """같다고 보는 최대 순간 전류: 계산값, 정수 반올림, 50 Hz면 규격 표준값(R10)."""
+    out = [expected, math.floor(expected + 0.5)]
+    if factor == FACTORS["50"]:
+        out.append(r10(expected))
+    return sorted(set(out))
+
+
+def peak_check(ik_ka: float, frequency_hz: float, peak_ka: float) -> dict:
+    """검산 확인 (add-check-calculator): 사람이 넣은 값으로 분석 검산과 같은 규칙을 적용한다.
+
+    저장하지 않고 판정을 바꾸지 않는다. 주파수가 50·60이 아니면 확인 필요.
+    """
+    factor = FACTORS.get(f"{float(frequency_hz):g}")
+    if factor is None:
+        return {"rule_code": RULE_CODE, "factor": None, "expected_ka": None, "allowed_ka": [],
+                "result": "NEEDS_REVIEW", "reason_code": "NO_FACTOR"}
+    expected = round(ik_ka * factor, 2)
+    ok = matches(peak_ka, expected, factor)
+    return {"rule_code": RULE_CODE, "factor": factor, "expected_ka": expected,
+            "allowed_ka": allowed_values(expected, factor),
+            "result": "PASS" if ok else "VIOLATION", "reason_code": None}
+
+
 def _numeric(values: list[dict], keys: tuple[str, ...]) -> list[dict]:
     return [v for v in values if v["item_key"] in keys and v["num_value"] is not None
             and v["flag"] != "RANGE"]

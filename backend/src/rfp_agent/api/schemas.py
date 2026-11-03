@@ -1425,3 +1425,16 @@ class AssistantAnswer(Out):
     dropped: int
     steps: list[AssistantStep]
     note: str | None
+
+
+class PeakCheck(Out):
+    """검산 확인 (add-check-calculator). 분석 검산과 같은 규칙, 저장 안 함.
+
+    확인 필요면 계산값이 비어 있다.
+    """
+    rule_code: str
+    factor: float | None
+    expected_ka: float | None
+    allowed_ka: list[float]
+    result: Literal["PASS", "VIOLATION", "NEEDS_REVIEW"]
+    reason_code: str | None
