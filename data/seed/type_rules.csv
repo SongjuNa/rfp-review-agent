@@ -38,3 +38,7 @@ T-COST-19,(?i)\b(witness(ed|ing)?)\b|입회,COST,REGEX,25
 T-COST-20,(?i)\b(supervision of (installation|erection|commissioning)|site supervision)\b|설치\s?감독,COST,REGEX,25
 T-COST-21,(?i)\btraining\b|교육\s?훈련,COST,REGEX,25
 T-COST-22,(?i)\b(free of charge|at no (additional|extra) cost|at the Contractor'?s (cost|expense))\b|무상,COST,REGEX,25
+T-STD-02,(?i)\b(?:IEC|IEEE|ANSI|NEMA|UL)(?:/(?:IEC|IEEE|ANSI|NEMA|UL))*\s+standards?\b,STANDARD_CERT,REGEX,65
+T-COST-23,(?i)\b(unit prices?|price basis|commercial proposal|price validity)\b|(?<![가-힣])단가,COST,REGEX,25
+T-QUAL-05,(?i)\bmanufacturer(?:'s)? authori[sz]ation\b|\bproduction facility\b|\bafter-sales\b,MAKER_QUAL,REGEX,20
+T-TECH-04,(?i)\b(?:gas )?leakage\b|\bpartial discharge\b|누설,TECH_PERF,REGEX,50
