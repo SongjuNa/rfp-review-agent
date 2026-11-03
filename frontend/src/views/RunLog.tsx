@@ -1,5 +1,5 @@
 import { Fragment, useState } from 'react'
-import { api, type RunLogItem } from '../api'
+import { api, type AiUsageRow, type RunLogItem } from '../api'
 import { AiModeLine } from '../components/AiMode'
 import './detail.css'
 import { stamp } from '../components/format'
@@ -65,6 +65,64 @@ function Flow({ runId }: { runId: number }) {
   )
 }
 
+const DAYS = [7, 30, 90] as const
+
+/** AI 사용량 (update-run-log-ai-usage): 분석과 분석 밖 AI 호출을 날짜·기능별로. 합계는 응답 값 (CR-01), 비용은 팀 가정 (CR-06) */
+function AiUsageBox() {
+  const [days, setDays] = useState<number>(30)
+  const [feature, setFeature] = useState<string | null>(null)
+  const usage = useLoad(() => api.aiUsage(days), [days])
+  const items = [...(usage.data?.items ?? [])].sort((a, b) => b.day.localeCompare(a.day) || a.feature.localeCompare(b.feature))
+  const kinds = [...new Map(items.map((i) => [i.feature, i.feature_name])).entries()]
+  const shown = feature ? items.filter((i) => i.feature === feature) : items
+  const total = usage.data?.total_cost_krw
+  const pick = (d: number) => { setDays(d); setFeature(null) }
+  const toks = (i: AiUsageRow) => `${num(i.input_tokens)} / ${num(i.output_tokens)} / ${num(i.thinking_tokens)}`
+  return (
+    <section className="aiu" aria-labelledby="aiuh">
+      <div className="aiu-h">
+        <h2 id="aiuh">AI 사용량</h2>
+        <div className="seg" role="group" aria-label="AI 사용량 기간">
+          {DAYS.map((d) => <button key={d} type="button" className={days === d ? 'on' : ''} aria-pressed={days === d} onClick={() => pick(d)}>{d}일</button>)}
+        </div>
+        {usage.data && <p className="aiu-sum" data-testid="ai-usage-sum">
+          호출 <b>{num(usage.data.total_calls)}회</b> · 추정 비용 <b>{total == null ? '단가 모름' : `${num(total)}원`}</b>
+          {total != null && <span className="tag" title="모델 단가를 팀이 정한 값으로 어림했습니다 (1$ = 1,500원)">팀 가정</span>}</p>}
+      </div>
+      <p className="aiu-n">분석과 검토 도우미·협조 요청 확인할 점·비교 제품 바꾸기·확정 뒤 다시 쓰기처럼 분석 밖에서 부른 AI를 함께 셉니다. 실제 청구 금액은 Google 결제 화면에서 확인합니다.</p>
+      {usage.error && <p className="c-red" role="alert">{usage.error} <button type="button" className="lnk" onClick={usage.reload}>다시 불러오기</button></p>}
+      {!usage.data && !usage.error && <p className="dimv">불러오는 중…</p>}
+      {usage.data && items.length === 0 && <p className="dimv aiu-empty">이 기간에 AI를 쓴 기록이 없습니다.</p>}
+      {items.length > 0 && <>
+        <div className="fbar" role="group" aria-label="AI 사용 기능">
+          <button type="button" className={'chip' + (feature === null ? ' on' : '')} aria-pressed={feature === null} onClick={() => setFeature(null)}>전체 <span className="n">{items.length}</span></button>
+          {kinds.map(([k, name]) => (
+            <button key={k} type="button" className={'chip' + (feature === k ? ' on' : '')} aria-pressed={feature === k}
+              onClick={() => setFeature(k)}>{name} <span className="n">{items.filter((i) => i.feature === k).length}</span></button>
+          ))}
+        </div>
+        <div className="tw">
+          <table className="tbl aiu-t">
+            <thead><tr><th>날짜</th><th>기능</th><th>모델</th><th style={{ textAlign: 'right' }}>호출</th>
+              <th style={{ textAlign: 'right' }} title="입력 / 출력 / 생각">토큰 (입력 / 출력 / 생각)</th><th style={{ textAlign: 'right' }}>추정 비용</th></tr></thead>
+            <tbody>
+              {shown.map((i) => (
+                <tr key={`${i.day}-${i.feature}-${i.model ?? ''}`}>
+                  <td>{i.day}</td><td>{i.feature_name}</td><td>{i.model ?? '—'}</td>
+                  <td style={{ textAlign: 'right' }}>{num(i.calls)}{i.retries > 0 && <div className="en c-ora">재시도 {i.retries}</div>}</td>
+                  <td style={{ textAlign: 'right' }}>{toks(i)}</td>
+                  <td style={{ textAlign: 'right' }}>{i.estimated_cost_krw == null ? <span className="dimv">단가 모름</span> : `${num(i.estimated_cost_krw)}원`}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        {feature && <p className="en" style={{ marginTop: 6 }}>거른 줄 호출 {num(shown.reduce((n, i) => n + i.calls, 0))}회</p>}
+      </>}
+    </section>
+  )
+}
+
 export function RunLog() {
   usePageCss('Products')
   const log = useLoad(() => api.runLog(), [])
@@ -77,8 +135,9 @@ export function RunLog() {
 
   return (
     <main className="main">
-      <div className="idl"><span>review_run · run_step_time</span><span>최근 실행 {rows.length}건</span><span>처리 중 AI 사용량만 셉니다 (확정·수정 뒤 문장 다시 쓰기는 빼고)</span><AiModeLine as="span" /></div>
+      <div className="idl"><span>review_run · run_step_time</span><span>최근 실행 {rows.length}건</span><span>아래 실행 표는 분석 중 AI만 셉니다 (분석 밖 사용량은 AI 사용량 상자)</span><AiModeLine as="span" /></div>
       <div className="ttl"><h1>실행 기록</h1></div>
+      <AiUsageBox />
       <div className="kpis">
         <div className="kpi"><div className="l">실행</div><b>{log.data ? rows.length : '—'}</b><div className="s">기록 있는 실행 {rows.filter((r) => !noLog(r)).length}건</div></div>
         <div className="kpi"><div className="l">평균 걸린 시간</div><b>{avg === null ? '—' : secs(avg)}</b><div className="s">끝난 실행 {done.length}건</div></div>
