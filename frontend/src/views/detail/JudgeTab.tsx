@@ -64,6 +64,9 @@ export function JudgeTab({ run, tick, onChanged }: { run: RunSummary; tick: numb
   const checkOf = checksByRequirement(checks.data ?? [])
   const violations = (checks.data ?? []).filter((x) => x.result === 'VIOLATION').length
   const unsure = (checks.data ?? []).filter((x) => x.result === 'NEEDS_REVIEW').length
+  // 검산 하나는 단시간 전류·최대 순간 전류 두 항목에 표시하므로 꼬리표 붙은 항목 수를 따로 센다 (update-check-banner-rows)
+  const marked = (r: string) => [...checkOf.values()].filter((c) => c.result === r).length
+  const chkPart = (label: string, n: number, r: string) => `${label} ${n}건(표시한 항목 ${marked(r)}개)`
   const canEdit = run.stage === 'ENGINEER_REVIEW' && user?.role === 'ENGINEER'
 
   const list = rows.data?.items ?? []
@@ -148,8 +151,8 @@ export function JudgeTab({ run, tick, onChanged }: { run: RunSummary; tick: numb
       </div>
       {(violations > 0 || unsure > 0) && (
         <p className="chkn"><span className="ms" aria-hidden="true">calculate</span>
-          <span>공학 검산 {[violations ? `위반 ${violations}건` : '', unsure ? `확인 필요 ${unsure}건` : ''].filter(Boolean).join(' · ')}
-            <span className="en" style={{ display: 'inline', marginLeft: 6 }}>{CHECK_RULE}. 표에 표시한 항목을 눌러 계산식을 보세요.</span></span></p>
+          <span>공학 검산 {[violations ? chkPart('위반', violations, 'VIOLATION') : '', unsure ? chkPart('확인 필요', unsure, 'NEEDS_REVIEW') : ''].filter(Boolean).join(' · ')}
+            <span className="en" style={{ display: 'inline', marginLeft: 6 }}>{CHECK_RULE}. 검산 하나는 단시간 전류와 최대 순간 전류 두 항목에 표시합니다. 표시한 항목을 눌러 계산식을 보세요.</span></span></p>
       )}
       <div className="work">
         <div style={{ minWidth: 0 }}>
