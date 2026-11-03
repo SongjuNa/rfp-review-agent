@@ -117,7 +117,7 @@ test('문서 종류 규칙 탭', async ({ page }) => {
   // 명세 review-workspace "판정 규칙 화면" (change update-doc-kind-rules)
   await page.goto('/#/rules')
   const tabs = page.getByRole('tablist', { name: '규칙 종류' })
-  await tabs.getByRole('tab', { name: /문서 종류\s*6/ }).click()     // 물량표(BOQ) 줄 포함 (add-boq-processor)
+  await tabs.getByRole('tab', { name: /문서 종류\s*7/ }).click()     // 물량표(BOQ)·합성 RFP 줄 포함 (add-boq-processor, add-synthetic-risk-rfp)
   await expect(page.locator('thead')).toContainText('파일 이름에서 찾는 표현')
   await page.getByLabel('규칙 검색').fill('bidding')
   const rows = page.locator('tbody tr')
