@@ -5,6 +5,7 @@ import { stamp } from './format'
 import { useLoad } from './useLoad'
 import { useSession } from '../shell/useSession'
 import { useToast } from '../ui'
+import { PackagePreview } from './PackagePreview'
 
 // 인계 패키지 내려받기·영업에 넘기기 (add-submission-package). 검토 상세 제출본 탭(SCR-08-8)과
 // 사업 상세 인계 패키지 창(SCR-05 v4.96)이 같이 쓴다 (update-home-projects).
@@ -20,6 +21,7 @@ export function PackageActions({ runId, label }: { runId: number; label?: React.
   const [busy, setBusy] = useState<'dl' | 'send' | null>(null)
   const [note, setNote] = useState<{ ok: boolean; text: string } | null>(null)
   const [pct, setPct] = useState<number | null>(null)
+  const [preview, setPreview] = useState(false)          // 영업 인계 패키지 미리 보기 (add-package-preview)
   const timer = useRef<number | undefined>(undefined)
   const toast = useToast()
   useEffect(() => () => { clearInterval(timer.current) }, [])
@@ -58,6 +60,8 @@ export function PackageActions({ runId, label }: { runId: number; label?: React.
           {last && (last.mail_error
             ? <span className="c-red"> {stamp(last.sent_at)} 보내지 못함({last.mail_error === '주소 없음' ? '영업 주소 없음' : '발송 실패'})</span>
             : <span> {stamp(last.sent_at)} 영업 담당({last.mail_to})에게 보냄 · {last.sent_by_name}</span>)}</span>
+        <button type="button" className="bo" onClick={() => setPreview(true)}>
+          <span className="ms" aria-hidden="true" style={{ fontSize: 'var(--ic-s)' }}>visibility</span>미리 보기</button>
         <button type="button" className="bo" onClick={download} disabled={busy !== null}>
           <span className="ms" aria-hidden="true" style={{ fontSize: 'var(--ic-s)' }}>download</span>{busy === 'dl' ? '만드는 중…' : '인계 패키지 내려받기'}</button>
         {user?.role === 'ENGINEER' && (
@@ -73,6 +77,7 @@ export function PackageActions({ runId, label }: { runId: number; label?: React.
           <p><b>{stageText(pct)}</b> · {pct} %<span className="en"> · 어림한 진행입니다. 다 만들면 바로 내려받습니다.</span></p>
         </div>
       )}
+      {preview && <PackagePreview runId={runId} onClose={() => setPreview(false)} />}
       {note && <p role={note.ok ? 'status' : 'alert'} className={note.ok ? '' : 'c-red'} style={{ margin: '8px 0 0', fontSize: 'var(--fs-sm)' }}>{note.text}</p>}
     </>
   )

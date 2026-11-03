@@ -82,3 +82,47 @@ test('인계 패키지 만드는 동안 진행 표시', async ({ page, request }
   await expect(page.locator('.uisnk')).toContainText('zip 를 내려받았습니다')
   await page.unrouteAll({ behavior: 'ignoreErrors' })
 })
+
+// 명세 review-workspace "인계 패키지 미리 보기" (change add-package-preview)
+async function approvedRun(request: import('@playwright/test').APIRequestContext, name: string) {
+  const run = await deviationRun(request, `${name} ${Date.now()}`)
+  const url = `/api/runs/${run.run_id}`
+  expect((await request.post(`${url}/finish-review`, { data: { approver_id: APPROVER, comment: COMMENT, actor_id: ENGINEER } })).status()).toBe(200)
+  expect((await request.post(`${url}/approval`, { data: { decision: 'APPROVED', comment: '승인', actor_id: APPROVER } })).status()).toBe(200)
+  return run
+}
+
+test('인계 패키지 미리 보기', async ({ page, request }) => {
+  const run = await approvedRun(request, '미리 보기')
+  await as(page, ENGINEER)
+  await page.goto(`/#/reviews/${run.run_id}`)
+  await openTab(page, '제출본')
+  await page.locator('#subm .subpk').getByRole('button', { name: '미리 보기' }).click()
+  const dlg = page.getByRole('dialog', { name: '영업 인계 패키지' })
+  await expect(dlg).toContainText(run.review_no)
+  const kpi = dlg.getByRole('list', { name: '인계 패키지 숫자' }).getByRole('listitem')
+  await expect(kpi).toHaveCount(6)
+  await expect(kpi.locator('span')).toHaveText(['준수', '일탈', '질의', '확인 필요', '팀 가정', '견적 조건'])
+  await expect(kpi.nth(1).locator('b')).toHaveText(String(run.deviations))
+  await expect(dlg).toContainText('결재: 기본 승인자')
+  await expect(dlg).toContainText('금액은 비워 두었습니다')
+  await expect(dlg.getByTestId('cover-card').first()).toContainText('준수')
+  await expect(dlg.getByRole('button', { name: '인계 패키지 내려받기' })).toBeVisible()
+  await dlg.getByRole('button', { name: '닫기', exact: true }).last().click()
+  await expect(dlg).toHaveCount(0)
+})
+
+test('미리 보기 탭 바꾸기', async ({ page, request }) => {
+  const run = await approvedRun(request, '미리 보기 탭')
+  const tbe = await (await request.get(`/api/runs/${run.run_id}/tbe?include=all&lang=ko&base=v1`)).json() as { rows: unknown[] }
+  await as(page, ENGINEER)
+  await page.goto(`/#/reviews/${run.run_id}`)
+  await openTab(page, '제출본')
+  await page.locator('#subm .subpk').getByRole('button', { name: '미리 보기' }).click()
+  const dlg = page.getByRole('dialog', { name: '영업 인계 패키지' })
+  const tab = dlg.getByRole('tab', { name: /TBE 준수표/ })
+  await expect(tab.locator('.n')).toHaveText(String(tbe.rows.length))
+  await tab.click()
+  await expect(tab).toHaveAttribute('aria-selected', 'true')
+  await expect(dlg.locator('table.pkv-t tbody tr')).toHaveCount(Math.min(10, tbe.rows.length))
+})
