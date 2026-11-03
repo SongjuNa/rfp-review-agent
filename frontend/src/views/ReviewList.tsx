@@ -223,6 +223,9 @@ export function ReviewList() {
           onClick={() => { const s = { ...draft, stage: 'APPROVAL' }; setDraft(s); apply(s) }}>
           결재 대기<b>{count('APPROVAL')}</b></button>
         <span>분석 실패<b className="c-red">{count('FAILED')}</b></span>
+        {/* 할 일이 아닌 단계: 칸 합이 목록 수와 맞게 (update-list-summary-rest) */}
+        <span className="sumrest sumsep" title="결재가 승인되어 더 할 일이 없는 검토">결재 완료<b>{count('APPROVED')}</b></span>
+        {count('PROCESSING') > 0 && <span className="sumrest" title="문서를 분석하고 있는 검토">분석 중<b>{count('PROCESSING')}</b></span>}
       </div>
 
       <section className="sec">

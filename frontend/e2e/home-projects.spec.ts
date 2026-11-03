@@ -246,3 +246,22 @@ test('사업 상세에서 미리 보기', async ({ page }) => {
   await expect(dlg.getByRole('tab', { name: /영업 할 일/ })).toBeVisible()
   await page.unrouteAll({ behavior: 'ignoreErrors' })
 })
+
+// 명세 review-workspace "검토 목록 요약 줄 결재 완료·분석 중" (change update-list-summary-rest)
+test('요약 줄 결재 완료·분석 중', async ({ page }) => {
+  await mock(page, [
+    run(9601, '확인 1'), run(9602, '확인 2'),
+    run(9603, '결재 중', { stage: 'APPROVAL', approver_id: 2 }),
+    run(9604, '완료 1', { stage: 'APPROVED' }), run(9605, '완료 2', { stage: 'APPROVED' }),
+    run(9606, '분석', { stage: 'PROCESSING', step: 'documents' }),
+  ])
+  await page.goto('/#/reviews')
+  const line = page.locator('.sumline')
+  const num = (label: string) => line.locator('span, button', { hasText: label }).locator('b')
+  await expect(num('내가 처리할 건')).toHaveText('2')
+  await expect(num('결재 대기')).toHaveText('1')
+  await expect(num('결재 완료')).toHaveText('2')
+  await expect(num('분석 중')).toHaveText('1')
+  await expect(page.locator('.sech h2')).toContainText('6')
+  await expect(line.locator('.sumrest', { hasText: '결재 완료' })).toHaveAttribute('title', /결재가 승인/)
+})
