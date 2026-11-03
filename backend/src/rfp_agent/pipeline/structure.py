@@ -55,6 +55,12 @@ class Section:
     line_offset: int = 0        # 단락 안 몇 번째 줄에서 시작하는지 (줄바꿈 뒤 제목)
 
 
+# 공급사 답안의 준수 표시 머리 ("C: Complied D: Deviation E: Exclusion"). PDF는 옆 칸 글자가
+# 사이에 끼어 "C: ELECTRIC DISTRIBUTION Complied"로 읽히기도 해 낱말 몇 개는 건너뛴다
+# (update-pdf-tables)
+MARK_LEGEND = re.compile(r"\bC:\s*(?:\S+\s+){0,4}?Complied")
+
+
 def heading_of(text: str) -> tuple[str, str, str] | None:
     """번호가 붙은 짧은 단락(또는 단락 첫 줄)이면 (모양, 번호, 제목).
 
