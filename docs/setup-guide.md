@@ -169,6 +169,19 @@ docker compose exec backend rfp-db seed-products
 
 `-v`를 붙이면 창고(DB) 안의 검토 결과가 **모두 지워집니다.** 꼭 필요할 때만 쓰세요.
 
+### 시연용 깨끗한 DB 따로 만들기
+
+쓰던 DB는 그대로 두고, 시연에 쓸 DB(`rfp_demo`)를 새로 만들어 채웁니다. 먼저 합성 RFP 파일 28을 만들어 둡니다(2-3).
+
+```bash
+cd backend
+uv run python ../generate_risk_rfp.py && uv run python ../generate_switch_rfp.py
+RFP_AI_MODE=off DATABASE_URL=postgresql://rfp:rfp@localhost:5433/rfp_demo uv run rfp-db demo-setup --create
+RFP_AI_MODE=off DATABASE_URL=postgresql://rfp:rfp@localhost:5433/rfp_demo uv run uvicorn rfp_agent.api.main:app --port 8000
+```
+
+그다음 화면(`cd frontend && npm run dev`)을 열면 검토 목록에 시연 검토 하나와 정답지 두 개가 있습니다. 이미 검토가 있는 DB에서는 이 명령이 아무것도 바꾸지 않고 멈춥니다.
+
 ---
 
 ## 5. 방법 B: 직접 실행하기 (코드를 고치는 사람용)

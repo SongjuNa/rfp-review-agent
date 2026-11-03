@@ -78,6 +78,7 @@ TEST_DATABASE_URL=postgresql://rfp:rfp@localhost:5433/rfp_test uv run pytest
 | `rfp-db seed-products` | 제품표 적재 (`data/seed/products/product_master.csv`, 손실값 `trf_spec.csv`는 있으면). 파일에 없는 이전 제품이 남아 있으면 알려 줌 |
 | `rfp-db seed-products --replace` | 제품표 바꾸기. 이전 제품·제품군과 **검토 실행 결과를 모두 지우고** 파일 내용만 넣음 (되돌릴 수 없음) |
 | `rfp-db setup` | 위 세 개를 차례로 |
+| `rfp-db demo-setup [--create] [--file 파일]` | 검토가 없는 DB에 시연 준비: 위 세 개 + 합성 RFP 28 정답지 2개 + 사업 "시연 사업"의 파일 28 검토 1건(담당자 확인까지). `--create`는 `DATABASE_URL`의 DB가 없으면 만듦. 검토가 있는 DB는 거절(지우지 않음) |
 
 스키마를 바꿀 때는 기존 파일을 고치지 말고 다음 번호의 SQL 파일을 추가합니다.
 

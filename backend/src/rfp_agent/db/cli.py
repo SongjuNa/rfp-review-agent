@@ -1,9 +1,11 @@
 """DB 명령: rfp-db migrate | seed-rules [--reset-edits] | seed-products [--replace] | setup
 | demo-businesses --business 사업명 a.docx [b.docx ...] (시연용 사업, add-project-status)
 | load-answer-key 정답지.csv --name 이름 [--human] [--kind REQ --doc 문서] (정답지)
-| make-answer-key 공급사답안.docx --name 이름 (요구사항 정답지, add-requirement-answer-key)"""
+| make-answer-key 공급사답안.docx --name 이름 (요구사항 정답지, add-requirement-answer-key)
+| demo-setup [--create] [--file 파일] (빈 DB에 시연 준비, add-demo-setup)"""
 
 import argparse
+import re
 import sys
 from datetime import timedelta
 from pathlib import Path
@@ -112,11 +114,71 @@ def make_answer_key(path: Path, name: str) -> None:
     print(f"[요구사항 정답지] {name} (코드 자동, 사람 확인 전): 조항 {report.rows}줄")
 
 
+DEMO_FILE = "RFP_Product_Master_Evaluative_EN_With_Product_Switch.docx"
+DEMO_KEYS = [("synthetic_rfp28_req.csv", "합성 RFP 28 요구사항", "REQ"),
+             ("synthetic_rfp28_type.csv", "합성 RFP 28 유형", "TYPE")]
+AI_MODE_TEXT = {"GEMINI": "Gemini(외부로 보냄, 요금)", "LOCAL": "사내 모델",
+                "OFF": "AI 끔 — 규칙만"}
+
+
+def _create_database(url: str) -> None:
+    """DATABASE_URL의 DB가 없으면 같은 서버에 만든다. 있으면 그대로."""
+    import psycopg
+    from psycopg import sql
+
+    head, _, name = url.rpartition("/")
+    name = name.split("?")[0]
+    if not re.fullmatch(r"[A-Za-z0-9_]+", name):
+        sys.exit(f"DB 이름은 영문·숫자·밑줄만 씁니다: {name}")
+    with psycopg.connect(f"{head}/postgres", autocommit=True) as admin:
+        if admin.execute("SELECT 1 FROM pg_database WHERE datname = %s", (name,)).fetchone():
+            print(f"[시연 준비] DB {name} 있음")
+            return
+        admin.execute(sql.SQL("CREATE DATABASE {}").format(sql.Identifier(name)))
+        print(f"[시연 준비] DB {name} 만듦")
+
+
+def _run_count(conn) -> int:
+    """검토 수. 표가 아직 없는 새 DB는 0."""
+    if conn.execute("SELECT to_regclass('public.review_run')").fetchone()[0] is None:
+        return 0
+    return conn.execute("SELECT count(*) FROM review_run").fetchone()[0]
+
+
+def demo_setup(create: bool, file: Path | None) -> None:
+    """빈 DB에 시연 데이터를 한 번에 준비한다. 검토가 있는 DB는 거절하고 지우지 않는다."""
+    from rfp_agent.llm.client import ai_mode
+
+    settings = get_settings()
+    path = file or settings.docx_dir / DEMO_FILE
+    if create:
+        _create_database(settings.database_url)
+    with connect() as conn:
+        if (n := _run_count(conn)) > 0:
+            sys.exit(f"검토가 {n}건 있는 DB입니다. 시연 준비는 검토가 없는 DB에서만 합니다"
+                     " (지우지 않습니다). 새 DB 이름으로 --create 하세요.")
+    if not path.exists():
+        sys.exit(f"시연 파일이 없습니다: {path}\n"
+                 "  cd backend && uv run python ../generate_risk_rfp.py && "
+                 "uv run python ../generate_switch_rfp.py")
+    print(f"[시연 준비] AI 방식: {AI_MODE_TEXT[ai_mode(settings)]}")
+    with connect() as conn:
+        applied = migrate(conn, settings.migrations_dir)
+        print(f"[마이그레이션] 적용 {len(applied)}건")
+        print_report("규칙 사전", seed_rules(conn, settings.seed_dir))
+        run_products(conn)
+    for csv_name, name, kind in DEMO_KEYS:
+        load_answer_key(settings.seed_dir / "answer_keys" / csv_name, name, False, kind,
+                        DEMO_FILE.removesuffix(".docx") if kind == "REQ" else None)
+    demo_businesses([["시연 사업", str(path)]], "Demo Grid Co.", 14)
+    print("[시연 준비] 끝. 이 DB로 백엔드를 띄우면 검토 목록에 시연 검토가 하나 보입니다.")
+
+
 def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(prog="rfp-db")
     parser.add_argument("command", choices=["migrate", "seed-rules", "seed-products", "setup",
                                             "demo-businesses", "load-answer-key",
-                                            "make-answer-key", "fill-due"])
+                                            "make-answer-key", "fill-due", "demo-setup"])
     parser.add_argument("path", nargs="?",
                         help="load-answer-key: 정답지 CSV / make-answer-key: 공급사 답안 docx")
     parser.add_argument("--name", help="load-answer-key: 정답지 이름 (같은 이름이면 줄을 바꿈)")
@@ -133,6 +195,9 @@ def main(argv: list[str] | None = None) -> None:
                              "fill-due: 시작일부터 채울 마감까지 날 수")
     parser.add_argument("--replace", action="store_true",
                         help="이전 제품과 검토 실행 결과를 지우고 파일 내용만 넣음")
+    parser.add_argument("--create", action="store_true",
+                        help="demo-setup: DATABASE_URL의 DB가 없으면 만듦")
+    parser.add_argument("--file", help="demo-setup: 시연 파일 (기본: 합성 RFP 파일 28)")
     parser.add_argument("--reset-edits", action="store_true",
                         help="화면에서 고친 규칙을 버리고 사전 파일 내용만 넣음 (이력은 남음)")
     args = parser.parse_args(argv)
@@ -141,6 +206,9 @@ def main(argv: list[str] | None = None) -> None:
         if not args.business or any(len(g) < 2 for g in args.business):
             parser.error("--business 사업명 a.docx [b.docx ...] 가 필요합니다")
         demo_businesses(args.business, args.customer, args.due_in)
+        return
+    if args.command == "demo-setup":
+        demo_setup(args.create, Path(args.file) if args.file else None)
         return
     if args.command == "fill-due":
         fill_due(args.due_in)
