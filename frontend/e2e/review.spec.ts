@@ -29,7 +29,7 @@ test('파일 1을 올려 판정·손실 환산까지', async ({ page }) => {
   await page.getByLabel('제출 마감일').fill('2026-12-31')
   await page.getByRole('button', { name: /다음/ }).click()
   await page.getByRole('button', { name: /등록하고 분석 시작/ }).click()
-  const reviewNo = (await page.getByRole('status').textContent())!.match(/RV-\d{4}-\d{3}/)![0]
+  const reviewNo = (await page.getByRole('status').filter({ hasText: /RV-\d{4}-\d{3}/ }).textContent())!.match(/RV-\d{4}-\d{3}/)![0]
   await page.goto('/#/reviews')
   await page.getByRole('button', { name: '팀 전체' }).click()
   await page.locator('tr', { hasText: reviewNo }).getByRole('link').first().click()

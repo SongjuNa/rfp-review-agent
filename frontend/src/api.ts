@@ -123,12 +123,28 @@ export const api = {
   /** 사람이 정한 문서 분류(choices)는 파일 이름마다 */
   startLibrary: (files: string[], info: StartInfo = {}, choices: Record<string, DocumentChoice> = {}) =>
     call<RunSummary>('/runs/library', json('POST', { files, ...filled(info), choices })),
-  upload: (files: File[], info: StartInfo = {}, choices: Record<string, DocumentChoice> = {}) => {
+  /** onProgress가 있으면 보낸 바이트를 알린다 (update-register-progress, fetch는 업로드 진행을 주지 않아 XMLHttpRequest) */
+  upload: (files: File[], info: StartInfo = {}, choices: Record<string, DocumentChoice> = {},
+    onProgress?: (sent: number, total: number) => void) => {
     const form = new FormData()
     files.forEach((f) => form.append('files', f))
     Object.entries(filled(info)).forEach(([k, v]) => form.append(k, String(v)))
     if (Object.keys(choices).length) form.append('choices', JSON.stringify(choices))
-    return call<RunSummary>('/runs', { method: 'POST', body: form })
+    if (!onProgress) return call<RunSummary>('/runs', { method: 'POST', body: form })
+    return new Promise<RunSummary>((resolve, reject) => {
+      const xhr = new XMLHttpRequest()
+      xhr.open('POST', '/api/runs')
+      xhr.upload.onprogress = (e) => { if (e.lengthComputable) onProgress(e.loaded, e.total) }
+      xhr.onerror = () => reject(new Error('서버에 연결하지 못했습니다'))
+      xhr.onload = () => {
+        let body: unknown = null
+        try { body = JSON.parse(xhr.responseText) } catch { /* 본문이 JSON이 아니면 상태 코드만 */ }
+        if (xhr.status >= 200 && xhr.status < 300) return resolve(body as RunSummary)
+        const detail = (body as { detail?: unknown } | null)?.detail
+        reject(new Error(typeof detail === 'string' ? detail : `API ${xhr.status}`))   // send()와 같은 오류 문장
+      }
+      xhr.send(form)
+    })
   },
   /** 분석 전 분류 추천 (규칙만, 저장 안 함) */
   previewLibrary: (files: string[]) => call<DocumentPreview[]>('/runs/library/preview', json('POST', { files })),

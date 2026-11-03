@@ -17,7 +17,8 @@ test('PDF로 검토 등록', async ({ page, request }) => {
   await page.getByLabel('제출 마감일').fill(isoAfter(10))
   await page.getByRole('button', { name: /다음/ }).click()
   await page.getByRole('button', { name: /등록하고 분석 시작/ }).click()
-  const reviewNo = (await page.getByRole('status').textContent())!.match(/RV-\d{4}-\d{3}/)![0]
+  const done = page.getByRole('status').filter({ hasText: /RV-\d{4}-\d{3}/ })   // 등록 진행 줄도 status라 검토 번호 줄을 기다린다
+  const reviewNo = (await done.textContent())!.match(/RV-\d{4}-\d{3}/)![0]
   const runs = await (await request.get('/api/runs?limit=50')).json() as { run_id: number; review_no: string }[]
   const run = runs.find((r) => r.review_no === reviewNo)!
   await expect.poll(async () => (await (await request.get(`/api/runs/${run.run_id}`)).json()).stage,
