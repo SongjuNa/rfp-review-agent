@@ -61,7 +61,7 @@ export function LogTab({ run, tick, onChanged }: { run: RunSummary; tick: number
           <tr key="system">
             <td style={{ width: 92, whiteSpace: 'nowrap', color: 'var(--c-muted)' }}>{stamp(run.finished_at!)}</td>
             <td style={{ width: 96, whiteSpace: 'nowrap' }}>시스템</td>
-            <td>판정 {run.judgments}줄 생성</td>
+            <td>판정 {run.judgments}건 생성</td>
           </tr>
         ))}
       </tbody></table>

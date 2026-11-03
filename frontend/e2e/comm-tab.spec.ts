@@ -38,7 +38,7 @@ test('상업 조건 탭 열기', async ({ page, request }) => {
   await expect(ld.locator('td.loc')).toHaveAttribute('title', /synthetic_judgment\.docx/)
   await expect(comm.locator('.cmh').first()).toContainText('견적 담당 확인')
   await expect(ld).not.toContainText('견적 담당')
-  await expect(ld.locator('.st').last()).toHaveText('안 보냄')
+  await expect(ld.locator('.st').last()).toHaveText('미발송')
   await expect(comm.locator('tr', { hasText: 'total liability' })).toContainText('책임 한도 없음')
   await expect(comm.locator('tr', { hasText: 'witnessed' }).locator('.st').last()).toHaveText('협조 요청 없음')
   await expect(comm.locator('tr', { hasText: '일탈 가격 영향' }).first()).toBeVisible()      // 실제 일탈 후보

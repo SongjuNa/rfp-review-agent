@@ -99,7 +99,7 @@ export function ProductView({ code }: { code: string }) {
                         <div className="en" style={{ margin: 0 }}>{x.state === 'assume' ? p.comparison_values_source ?? '팀 가정' : p.source_doc}</div></td></tr>
                   })}</tbody>
                 </table>
-                <div className="pnote">판정에 쓰인 판정 {p.used}줄 · 검토 {p.used_runs}건. 값이 없는 칸은 판정에서 "확인 필요"가 됩니다.</div>
+                <div className="pnote">판정 {p.used}건 · 검토 {p.used_runs}건에 사용됨. 값이 없는 칸은 판정에서 "확인 필요"가 됩니다.</div>
               </>}
               {tab === 'phys' && (
                 <table className="tbl"><thead><tr><th>항목</th><th>값</th><th>근거</th></tr></thead>

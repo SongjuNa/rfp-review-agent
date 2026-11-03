@@ -13,10 +13,10 @@ import { useToast } from '../ui'
 
 // 처리 단계(pipeline/run.py)를 목업처럼 다섯 묶음으로 보인다
 const GROUPS: { label: string; steps: string[]; note: (r: RunSummary) => string }[] = [
-  { label: '문서 읽기', steps: ['created', 'documents', 'pairs'], note: (r) => `문서 ${r.documents}개 · 요구사항 ${r.requirements}줄` },
+  { label: '문서 읽기', steps: ['created', 'documents', 'pairs'], note: (r) => `문서 ${r.documents}개 · 요구사항 ${r.requirements}건` },
   { label: '위험 조건 찾기', steps: ['risks'], note: (r) => `위험 조건 ${r.risks}건` },
-  { label: '제품과 비교·판정', steps: ['judge', 'meaning', 'check', 'warranty', 'loss'], note: (r) => `판정 ${r.judgments}줄` },
-  { label: '일탈·질의 목록', steps: ['outputs'], note: (r) => `목록 ${r.output_items}줄` },
+  { label: '제품과 비교·판정', steps: ['judge', 'meaning', 'check', 'warranty', 'loss'], note: (r) => `판정 ${r.judgments}건` },
+  { label: '일탈·질의 목록', steps: ['outputs'], note: (r) => `목록 ${r.output_items}건` },
   { label: '입찰 영향 정리', steps: ['proposals', 'assign'], note: (r) => `제안 포인트 ${r.proposals}건` },
 ]
 const ICONS: Record<string, string> = { done: 'check', fail: 'priority_high', wait: 'more_horiz' }
@@ -60,8 +60,8 @@ export function FailView({ run, approver, onChanged }: { run: RunSummary; approv
   const other = others.data?.[0]
   const stats: [string, number][] = [['일탈 후보', run.deviation_candidates], ['판정', run.judgments], ['위험 조건', run.risks]]
   const have = run.judgments
-    ? `판정 ${run.judgments}줄은 이미 만들어져 있습니다. 멈춘 단계 뒤의 결과는 아직 없습니다.`
-    : run.requirements ? `요구사항 ${run.requirements}줄을 뽑았지만 판정은 아직 없습니다.` : '아직 볼 수 있는 결과가 없습니다.'
+    ? `판정 ${run.judgments}건은 이미 만들어져 있습니다. 멈춘 단계 뒤의 결과는 아직 없습니다.`
+    : run.requirements ? `요구사항 ${run.requirements}건을 추출했지만 판정은 아직 없습니다.` : '아직 볼 수 있는 결과가 없습니다.'
   const tech: [string, string][] = [
     ['작업 번호', `${run.review_no} (실행 ${run.run_id})`], ['멈춘 단계', run.failed_step ?? '—'],
     ['발생', stamp(failedAt)], ['모델', run.llm_model ?? 'AI 미사용'], ['오류', run.error_message ?? '—'],

@@ -104,7 +104,7 @@ test('회신 기한 지남', async ({ page }) => {
   await expect(rows(page).first().locator('.rpl.od')).toContainText(/회신 기한 \d\d-\d\d 지남/)
   // 요약 줄 상태를 누르면 그 상태만
   await page.getByRole('button', { name: '초기화' }).click()
-  await page.locator('.sumline').getByRole('button', { name: /회신 받음/ }).click()
+  await page.locator('.sumline').getByRole('button', { name: /회신 완료/ }).click()
   await expect(rows(page)).toHaveCount(1)
   await expect(rows(page).locator('.rpl.ok')).toContainText('회신')
 })

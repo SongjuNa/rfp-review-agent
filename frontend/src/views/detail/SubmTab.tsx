@@ -40,7 +40,7 @@ export function SubmTab({ run }: { run: RunSummary }) {
                 <td style={{ fontWeight: 700 }}>v1</td>
                 <td>{a.decided_at ? stamp(a.decided_at) : '—'}</td>
                 <td>{a.approver ?? '—'}</td>
-                <td>{run.judgments}줄</td>
+                <td>{run.judgments}건</td>
                 <td>일탈 {c?.deviations ?? '—'} · 질의 {c?.queries ?? '—'}</td>
                 <td title="일탈 목록·질의서 초안(있는 것만), TBE 준수표, 데이터시트">{files === null ? '—' : `${files}개`}</td>
                 <td><span className="st c-green">현재 제출본</span></td>

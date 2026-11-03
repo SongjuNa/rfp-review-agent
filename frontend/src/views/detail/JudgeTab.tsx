@@ -159,7 +159,7 @@ export function JudgeTab({ run, tick, onChanged }: { run: RunSummary; tick: numb
         )}
         <span style={{ flex: '1 1 0' }} />
         <label className="sr" htmlFor="jq">판정 검색</label>
-        <label className="unc"><input type="checkbox" checked={onlyUnc} onChange={() => reset(() => setOnlyUnc(!onlyUnc))} />확정 안 한 줄만</label>
+        <label className="unc"><input type="checkbox" checked={onlyUnc} onChange={() => reset(() => setOnlyUnc(!onlyUnc))} />미확정만</label>
         <input className="fi" id="jq" value={text} onChange={(e) => { setText(e.target.value); setPage(1); setCur(null) }}
           placeholder="항목명, 영문, 원문 문장" style={{ width: 200 }} />
         <label className="sr" htmlFor="jtype">유형</label>
@@ -171,18 +171,18 @@ export function JudgeTab({ run, tick, onChanged }: { run: RunSummary; tick: numb
       {(violations > 0 || unsure > 0) && (
         <p className="chkn"><span className="ms" aria-hidden="true">calculate</span>
           <span>공학 검산 {[violations ? `위반 ${violations}건` : '', unsure ? `확인 필요 ${unsure}건` : ''].filter(Boolean).join(' · ')}
-            <span className="en" style={{ display: 'inline', marginLeft: 6 }}>{CHECK_RULE}. 표에 표시한 줄을 눌러 계산식을 보세요.</span></span></p>
+            <span className="en" style={{ display: 'inline', marginLeft: 6 }}>{CHECK_RULE}. 표에 표시한 항목을 눌러 계산식을 보세요.</span></span></p>
       )}
       <div className={'work' + (curRow ? ' open' : '')}>
         <div style={{ minWidth: 0 }}>
           {canEdit && selIds.length > 0 && (
-            <div className="bulk"><b>{selIds.length}줄 선택</b><span className="en" style={{ margin: 0 }}>{selSum}</span><span style={{ flex: '1 1 0' }} />
+            <div className="bulk"><b>{selIds.length}건 선택</b><span className="en" style={{ margin: 0 }}>{selSum}</span><span style={{ flex: '1 1 0' }} />
               <button type="button" className="bo" onClick={() => setSel({})}>선택 해제</button>
               <button type="button" className="bp" disabled={busy} onClick={() => confirmIds(selIds)}><span className="ms" aria-hidden="true" style={{ fontSize: 'var(--ic-s)' }}>done_all</span>제안대로 확정</button></div>
           )}
           <div className="tw">
             <table className="tbl">
-              <thead><tr><th style={{ width: 34 }}><input type="checkbox" className="jck" checked={allSel} onChange={toggleAll} disabled={!canEdit} aria-label="보이는 줄 모두 선택" /></th><th style={{ width: 92 }}>판정</th><th>항목</th><th>요구값</th><th>제품값 · 보증값</th><th>원문 위치</th></tr></thead>
+              <thead><tr><th style={{ width: 34 }}><input type="checkbox" className="jck" checked={allSel} onChange={toggleAll} disabled={!canEdit} aria-label="표시된 항목 모두 선택" /></th><th style={{ width: 92 }}>판정</th><th>항목</th><th>요구값</th><th>제품값 · 보증값</th><th>원문 위치</th></tr></thead>
               <tbody>
                 {list.map((j) => {
                   const p = prodCell(j, wOf(j))
@@ -215,11 +215,11 @@ export function JudgeTab({ run, tick, onChanged }: { run: RunSummary; tick: numb
             </table>
           </div>
           {rows.data && list.length === 0 && (
-            <p style={{ margin: 0, padding: '16px 10px', color: 'var(--c-muted)' }}>조건에 맞는 줄이 없습니다.{' '}
+            <p style={{ margin: 0, padding: '16px 10px', color: 'var(--c-muted)' }}>조건에 맞는 판정이 없습니다.{' '}
               <button type="button" className="lnk" onClick={clearFilter}>필터 지우기</button></p>
           )}
           {total > 0 && <Pager total={total} page={page} size={size} shown={list.length} onPage={setPage} onSize={(s) => { setSize(s); setPage(1) }} />}
-          <div className="tfoot"><span>{list.length}줄 표시 · 전체 판정 {c?.total ?? 0}줄</span><span>판정 순서: 일탈 후보 → 질의 후보 → 확인 필요 → 보증값 작성 → 준수</span></div>
+          <div className="tfoot"><span>{list.length}건 표시 · 전체 판정 {c?.total ?? 0}건</span><span>판정 순서: 일탈 후보 → 질의 후보 → 확인 필요 → 보증값 작성 → 준수</span></div>
           {error && <p className="aphint" role="alert">{error}</p>}
         </div>
 
@@ -311,7 +311,7 @@ function Panel({ runId, j, w, check, items, log, docs, canEdit, edK, edWhy, edHi
         )}
         {draft && <OutputEditor key={`${draft.item_id}-${draft.text_draft}-${draft.status}`} runId={runId} item={draft} id="draft" canEdit={canEdit} onDone={onDone} onSaved={onSaved} />}
         <div style={{ borderTop: '1px solid #DCE3EC', paddingTop: 14 }}>
-          <div className="lbl">판정 바꾸기</div>
+          <div className="lbl">판정 변경</div>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             <label className="sr" htmlFor="newk">새 판정</label>
             <select className="fi" id="newk" value={edK || j.result} disabled={!canEdit} onChange={(e) => setEdK(e.target.value)}>

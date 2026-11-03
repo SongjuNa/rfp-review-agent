@@ -15,7 +15,7 @@ export function PastDecisionRow({ j }: { j: Judgment }) {
         {p.decided_by ? ` · ${p.decided_by}` : ''}{p.decided_at ? ` · ${stamp(p.decided_at)}` : ''}</span>
       {p.reason && <div className="en">사유: {p.reason}</div>}
       <div className="en">{p.match === 'MEANING'
-        ? '글자는 다르지만 요구값·제품이 같고 요구 문장의 뜻이 아주 가까운 줄을 사람이 본 판정입니다. 참고만 하고 판정은 바꾸지 않습니다.'
+        ? '문구는 다르나 요구값·제품이 같고 의미가 매우 유사한 요구사항에 대한 과거 확정 판정입니다. 참고만 하고 판정은 바꾸지 않습니다.'
         : '같은 요구·같은 제품을 사람이 본 판정입니다. 참고만 하고 판정은 바꾸지 않습니다.'}</div></td></tr>
   )
 }

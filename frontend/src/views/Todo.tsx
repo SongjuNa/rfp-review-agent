@@ -24,7 +24,7 @@ const DEPTS = [['COST', '견적 담당'], ['QUALITY', '품질 담당'], ['SALES'
 type Dept = typeof DEPTS[number][0]
 type St = 'unsent' | 'wait' | 'late' | 'done'
 const ST: Record<St, [string, string]> = {
-  unsent: ['안 보냄', 'c-grey'], wait: ['회신 대기', 'c-blue'], late: ['24시간 넘게 회신 없음', 'c-ora'], done: ['회신 받음', 'c-green'],
+  unsent: ['미발송', 'c-grey'], wait: ['회신 대기', 'c-blue'], late: ['24시간 넘게 회신 없음', 'c-ora'], done: ['회신 완료', 'c-green'],
 }
 const DAY = 86_400_000
 
@@ -71,7 +71,7 @@ function defaultDept(user: User | null): Dept {
 /** 검색 영역 조건. 회신: wait 회신 대기(기한 안), over 회신 기한 지남, done 회신 받음 */
 type Filter = { pj: string; rv: string; rp: '' | 'wait' | 'over' | 'done'; by: string; q: string }
 const NO_FILTER: Filter = { pj: '', rv: '', rp: '', by: '', q: '' }
-const RP_LABEL = { wait: '회신 대기', over: '회신 기한 지남', done: '회신 받음' } as const
+const RP_LABEL = { wait: '회신 대기', over: '회신 기한 지남', done: '회신 완료' } as const
 const SIZES = [5, 10, 20]
 
 /** 회신 상태 (안 보냄은 없음) */
@@ -90,7 +90,7 @@ function hm(d: Date): string {
 function replyLine(a: Assignment, now: number): [string, string] | null {
   const rp = rpOf(a, now)
   const due = dueOf(a)
-  if (rp === 'done') return ['rpl ok', a.replied_at ? `회신 ${hm(new Date(a.replied_at))}` : '회신 받음']
+  if (rp === 'done') return ['rpl ok', a.replied_at ? `회신 ${hm(new Date(a.replied_at))}` : '회신 완료']
   if (rp === 'over' && due) return ['rpl od', `회신 기한 ${md(due)} 지남`]
   if (rp === 'wait' && due) return ['rpl wt', `회신 기한 ${md(due)}`]
   return null
@@ -247,7 +247,7 @@ export function Todo() {
         <label className="ff w">RFP 검토<select className="fi" value={draft.rv} onChange={(e) => setDraft({ ...draft, rv: e.target.value })}>
           <option value="">전체</option>{runs.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select></label>
         <label className="ff">회신<select className="fi" value={draft.rp} onChange={(e) => setDraft({ ...draft, rp: e.target.value as Filter['rp'] })}>
-          <option value="">전체</option><option value="wait">회신 대기</option><option value="over">회신 기한 지남</option><option value="done">회신 받음</option></select></label>
+          <option value="">전체</option><option value="wait">회신 대기</option><option value="over">회신 기한 지남</option><option value="done">회신 완료</option></select></label>
         <label className="ff">수신자<select className="fi" value={draft.by} onChange={(e) => setDraft({ ...draft, by: e.target.value })}>
           <option value="">전체</option>{tos.map((x) => <option key={x} value={x}>{x}</option>)}</select></label>
         <div className="fbar2"><input className="fi" type="search" placeholder="요청 제목, 내용, 원문 위치, 수신자로 찾기 (예: 지체상금, Type Test)"
@@ -315,7 +315,7 @@ export function Todo() {
                     <span className="rg-bar" aria-hidden="true"><i style={{ width: `${Math.round((done / items.length) * 100)}%` }} /></span>
                     <span>회신 <b>{done}</b> / {items.length}</span>
                     {over > 0 && <span className="rg-od">기한 지남 {over}</span>}
-                    {done === items.length && <span className="rg-ok">협조 끝남</span>}
+                    {done === items.length && <span className="rg-ok">협조 완료</span>}
                   </div>
                   <button type="button" className="bo" onClick={() => setWriting(true)}>
                     <span className="ms" aria-hidden="true" style={{ fontSize: 'var(--ic-s)' }}>add</span>이 검토에 요청</button>
@@ -368,18 +368,18 @@ function Detail({ a, now, dept, user, sending, onSend, onClose, onChanged }: {
   const done = a.status === 'DONE'
   const engineer = user?.role === 'ENGINEER'
   const fail = failTag(a)
-  const steps: { k: string; t: string; cls: string }[] = [{ k: '만듦', t: stamp(a.sent_at), cls: 'done' }]
-  if (a.mail_sent_at) steps.push({ k: '메일 보냄', t: `${stamp(a.mail_sent_at)} · ${a.sent_by_name ?? '시스템'} → ${a.mail_to ?? ''}`, cls: 'done' })
+  const steps: { k: string; t: string; cls: string }[] = [{ k: '생성', t: stamp(a.sent_at), cls: 'done' }]
+  if (a.mail_sent_at) steps.push({ k: '메일 발송', t: `${stamp(a.mail_sent_at)} · ${a.sent_by_name ?? '시스템'} → ${a.mail_to ?? ''}`, cls: 'done' })
   else steps.push(fail ? { k: fail, t: a.mail_error ?? '', cls: 'warn' } : { k: '메일 보내기 전', t: '판정을 확정하면 보냅니다', cls: 'wait' })
-  if (st === 'late') steps.push({ k: '24시간 넘게 회신 없음', t: '다시 연락 필요', cls: 'warn' })
-  if (done) steps.push({ k: '회신 받음', t: `${a.replied_at ? `${stamp(a.replied_at)} · ` : ''}${a.replied_by_name ?? ''}`, cls: 'done' })
+  if (st === 'late') steps.push({ k: '24시간 넘게 회신 없음', t: '재요청 필요', cls: 'warn' })
+  if (done) steps.push({ k: '회신 완료', t: `${a.replied_at ? `${stamp(a.replied_at)} · ` : ''}${a.replied_by_name ?? ''}`, cls: 'done' })
   else if (a.mail_sent_at) steps.push({ k: '회신 대기', t: due ? `기한 ${md(due)}` : '', cls: 'wait' })
 
   const set = (status: 'DOING' | 'DONE') => {
     setBusy(true)
     setError(null)
     api.setTaskStatus(a.assignment_id, status, user!.user_id, status === 'DONE' ? note : undefined)
-      .then(() => onChanged(status === 'DONE' ? '회신 받음으로 표시했습니다' : '회신 받음 표시를 되돌렸습니다'), (e: Error) => setError(e.message))
+      .then(() => onChanged(status === 'DONE' ? '회신 완료로 처리했습니다' : '회신 완료를 취소했습니다'), (e: Error) => setError(e.message))
       .finally(() => setBusy(false))
   }
 
@@ -411,7 +411,7 @@ function Detail({ a, now, dept, user, sending, onSend, onClose, onChanged }: {
             {!done && a.mail_sent_at && (engineer
               ? <label className="fl">회신 요지 (한 줄)<input className="fi" value={note} onChange={(e) => setNote(e.target.value)}
                   placeholder="예: 성적서 3종 11-05까지 보냄" maxLength={200} /></label>
-              : <p className="cwn">아직 회신 받음으로 표시되지 않았습니다. 회신 기한 {due ? md(due) : '—'}</p>)}
+              : <p className="cwn">아직 회신 완료로 처리되지 않았습니다. 회신 기한 {due ? md(due) : '—'}</p>)}
           </section>
           <aside className="cwr">
             <dl className="basis">
@@ -434,8 +434,8 @@ function Detail({ a, now, dept, user, sending, onSend, onClose, onChanged }: {
           {engineer && a.status === 'DOING' && <button type="button" className="bo" disabled={sending} onClick={() => onSend(a, true)}>
             <span className="ms" aria-hidden="true" style={{ fontSize: 'var(--ic-s)' }}>notifications_active</span>재요청</button>}
           {engineer && a.status === 'DOING' && <button type="button" className="bp" disabled={busy} onClick={() => set('DONE')}>
-            <span className="ms" aria-hidden="true" style={{ fontSize: 'var(--ic-s)' }}>mark_email_read</span>회신 받음 표시</button>}
-          {engineer && done && <button type="button" className="bo" disabled={busy} onClick={() => set('DOING')}>회신 받음 되돌리기</button>}
+            <span className="ms" aria-hidden="true" style={{ fontSize: 'var(--ic-s)' }}>mark_email_read</span>회신 완료 처리</button>}
+          {engineer && done && <button type="button" className="bo" disabled={busy} onClick={() => set('DOING')}>회신 완료 취소</button>}
         </div>
       </div>
     </div>
