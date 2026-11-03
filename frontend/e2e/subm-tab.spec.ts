@@ -46,10 +46,39 @@ test('인계 패키지 영업에 넘기기', async ({ page, request }) => {
   await box.getByRole('button', { name: '인계 패키지 내려받기' }).click()
   // 헤드리스 Chromium은 blob 내려받기의 한글 파일 이름을 "download"로 줄 때가 있어, 이름은 알림으로 확인한다
   expect(readFileSync(await (await dl).path()).subarray(0, 2).toString()).toBe('PK')
-  await expect(page.locator('#subm').getByRole('status')).toContainText(`인계패키지_${run.review_no}.zip 를 내려받았습니다.`)
+  await expect(page.locator('.uisnk')).toContainText(`인계패키지_${run.review_no}.zip 를 내려받았습니다.`)   // 동작 결과 알림 (update-package-progress)
   await box.getByRole('button', { name: '영업에 넘기기' }).click()
   if (await salesMailUnavailable(page, '인계 패키지를 보냈습니다')) return
   await expect(page.locator('#subm').getByRole('status')).toContainText('인계 패키지를 보냈습니다')
   await expect(box).toContainText('에게 보냄')
   await expect(box.getByRole('button', { name: '다시 넘기기' })).toBeVisible()
+})
+
+// 명세 review-workspace "인계 패키지 만드는 동안 진행 표시" (change update-package-progress)
+test('인계 패키지 만드는 동안 진행 표시', async ({ page, request }) => {
+  const run = await deviationRun(request, `패키지 진행 ${Date.now()}`)
+  const url = `/api/runs/${run.run_id}`
+  expect((await request.post(`${url}/finish-review`, { data: { approver_id: APPROVER, comment: COMMENT, actor_id: ENGINEER } })).status()).toBe(200)
+  expect((await request.post(`${url}/approval`, { data: { decision: 'APPROVED', comment: '승인', actor_id: APPROVER } })).status()).toBe(200)
+  // 큰 검토처럼 서버가 늦게 답하게 한다 (응답은 실제 zip)
+  await page.route(`**/api/runs/${run.run_id}/package`, async (route) => {
+    const res = await route.fetch()
+    await new Promise((ok) => setTimeout(ok, 2500))
+    await route.fulfill({ response: res })
+  })
+  await as(page, ENGINEER)
+  await page.goto(`/#/reviews/${run.run_id}`)
+  await openTab(page, '제출본')
+  const box = page.locator('#subm')
+  const dl = page.waitForEvent('download')
+  await box.getByRole('button', { name: '인계 패키지 내려받기' }).click()
+  const bar = box.getByRole('progressbar', { name: '인계 패키지 만드는 중' })
+  await expect(bar).toBeVisible()
+  await expect(box.locator('.pkprog')).toContainText('어림한 진행입니다')
+  await expect(box.locator('.pkprog')).toContainText(/Word 만드는 중|엑셀 만드는 중|zip으로 묶는 중/)
+  expect(Number(await bar.getAttribute('aria-valuenow'))).toBeLessThanOrEqual(90)
+  await dl
+  await expect(bar).toHaveCount(0)
+  await expect(page.locator('.uisnk')).toContainText('zip 를 내려받았습니다')
+  await page.unrouteAll({ behavior: 'ignoreErrors' })
 })
