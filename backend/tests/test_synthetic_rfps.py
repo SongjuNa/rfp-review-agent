@@ -93,10 +93,10 @@ def load_keys(db) -> tuple[int, int]:
 
 @pytest.mark.skipif(not FILE_28.exists(), reason="파일 28 없음 — generate_switch_rfp.py로 만든다")
 def test_synthetic_answer_key_score(db):
-    """Scenario: 합성 RFP 정답지 채점 — K1 65/65, K2 65/67, K3 30/30, K10 4/4, K13 38/42."""
+    """Scenario: 합성 RFP 정답지 채점 — K1 65/65, K2 65/67, K3 30/30, K10 4/4, K13 42/42."""
     run_id = processed(db, FILE_28)
     req_key, type_key = load_keys(db)
     got = {m["code"]: (m["num"], m["den"])
            for m in evaluation.metrics(db, [run_id], type_key, req_key)["items"]}
     assert {k: got[k] for k in ("K1", "K2", "K3", "K10", "K13")} == {
-        "K1": (65, 65), "K2": (65, 67), "K3": (30, 30), "K10": (4, 4), "K13": (38, 42)}
+        "K1": (65, 65), "K2": (65, 67), "K3": (30, 30), "K10": (4, 4), "K13": (42, 42)}
