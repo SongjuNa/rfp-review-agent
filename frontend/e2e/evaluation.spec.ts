@@ -74,3 +74,39 @@ test('요구사항 정답지로 채점', async ({ page }) => {
   expect(sent).toMatchObject({ run_ids: [41], req_key_id: 7 })
   await expect(page.locator('[data-code="K1"]')).toContainText('66.5 %')
 })
+
+test('검토 골라 채점하기', async ({ page }) => {
+  // 명세 review-workspace "정답지 탭 검토 고르기" (update-eval-run-pick). 검토 목록·채점 응답은 page.route로 정한다.
+  const now = '2026-11-03T03:00:00Z'
+  const runRow = (n: number, name: string) => ({ run_id: n, review_no: `RV-2026-${String(n).padStart(3, '0')}`, review_name: name,
+    stage: 'ENGINEER_REVIEW', reviewed: 3, reviewer: '엔지니어', last_reviewed_at: now })
+  await page.route('**/api/eval/keys', (route) => route.fulfill({ json: [] }))
+  await page.route('**/api/eval/runs', (route) => route.fulfill({ json: [runRow(901, '변전 A'), runRow(902, '변전 B'), runRow(903, '배전 C')] }))
+  let sent: Record<string, unknown> = {}
+  const score = { score_id: 1, run_ids: [902], key_id: null, key_name: null, key_made_by: null, req_key_id: null, req_key_name: null, req_key_made_by: null,
+    metrics: { items: [], types: null, requirements: null, not_measured: [] }, note: null, code_version: null, scored_by: 1, scored_by_name: '엔지니어', scored_at: now }
+  await page.route('**/api/eval/scores', (route) => {
+    if (route.request().method() === 'POST') { sent = route.request().postDataJSON(); return route.fulfill({ json: score }) }
+    return route.fulfill({ json: [] })
+  })
+  await as(page, ENGINEER)
+  await page.goto('/#/eval')
+  await page.getByRole('tab', { name: '정답지' }).click()
+  const count = page.getByTestId('eval-picked')
+  const rows = page.locator('label.gt-tr.ev-row', { hasText: 'RV-2026-9' })
+  await expect(count).toHaveText('검토 3건 고름')                  // 처음엔 판정 줄이 있는 검토 모두
+  await page.getByRole('button', { name: '모두 해제' }).click()
+  await expect(count).toHaveText('검토 0건 고름')
+  await expect(page.getByRole('button', { name: '지금 채점하기' })).toBeDisabled()
+  await page.getByLabel('검토 찾기').fill('rv-2026-902')
+  await expect(rows).toHaveCount(1)
+  await expect(rows).toContainText('변전 B')
+  await page.getByRole('button', { name: '모두 고르기' }).click()
+  await expect(count).toHaveText('검토 1건 고름 · 보이는 검토 1건')
+  await page.getByLabel('검토 찾기').fill('')
+  await expect(rows).toHaveCount(3)
+  await expect(rows.locator('input:checked')).toHaveCount(1)
+  await page.getByRole('button', { name: '지금 채점하기' }).click()
+  await expect(page.getByRole('status')).toContainText('검토 1건')
+  expect(sent).toMatchObject({ run_ids: [902] })
+})

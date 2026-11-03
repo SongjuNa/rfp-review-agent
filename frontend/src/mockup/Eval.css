@@ -493,3 +493,7 @@ body,.app,.wk,.ws,.layout,.main{background:#fff}
 .lg-tr{display:grid;grid-template-columns:70px 110px minmax(0,1fr) 140px 100px;gap:14px;align-items:center;padding:11px 16px}
 .up{color:#067647;font-weight:600}.down{color:#B42318;font-weight:600}.same{color:#98A2B3}
 .ttl .bp[disabled]{opacity:.6;cursor:default}
+
+/* 검토 고르기 (update-eval-run-pick) */
+.ev-pick{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:0 0 10px}
+.ev-pick .ev-picked{margin-left:auto}
