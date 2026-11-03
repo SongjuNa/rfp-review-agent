@@ -333,7 +333,6 @@ export function Todo() {
         {list.data !== null && rows.length === 0 && <div className="emp">
           <div>{anyF ? '조건에 맞는 요청이 없습니다.'
             : view === 'rfp' ? '협조 요청이 없습니다.' : '이 담당에게 요청 항목이 없습니다.'}</div>
-          {anyF && <button type="button" className="bo" onClick={reset}>조건 지우기</button>}
         </div>}
       </section>
       {picked && <Detail a={picked} now={now} dept={DEPTS.find(([k]) => k === picked.assignee_role)?.[1] ?? label} user={user}
