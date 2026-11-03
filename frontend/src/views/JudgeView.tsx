@@ -175,7 +175,7 @@ function Detail({ runId, stage, j, docs, pos, total, onPrev, onNext, editing, se
       .then(() => { toast.show(sent ? '질의 보냄으로 표시했습니다.' : '질의 보냄 표시를 되돌렸습니다.'); onChanged() }, (e: Error) => setError(e.message))
       .finally(() => setBusy(false))
   }
-  const found = req.data ? (req.data.extracted_by === 'AI' ? 'AI가 찾음' : '코드 규칙으로 찾음') : null
+  const found = req.data ? ({ AI: 'AI가 찾음', OCR: '그림 속 글자(OCR)에서 찾음 · 사람 확인 필요' } as Record<string, string>)[req.data.extracted_by] ?? '코드 규칙으로 찾음' : null
   const confidence = req.data?.confidence != null ? `신뢰도 ${Number(req.data.confidence).toFixed(2)}` : null
 
   return (

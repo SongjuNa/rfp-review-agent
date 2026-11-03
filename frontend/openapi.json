@@ -1,17 +1,17 @@
 {
   "openapi": "3.1.0",
   "info": {
-    "title": "RFP ê¸°ìˆ  ê²€í†  ì§€ì› API",
+    "title": "RFP ±â¼ú °ËÅä Áö¿ø API",
     "version": "0.2.0"
   },
   "paths": {
     "/api/users": {
       "get": {
         "tags": [
-          "ê²€í†  ì‹¤í–‰"
+          "°ËÅä ½ÇÇà"
         ],
         "summary": "Users",
-        "description": "ë¡œê·¸ì¸(ë²”ìœ„ ë°–) ì „ê¹Œì§€ í™”ë©´ì—ì„œ ê³ ë¥´ëŠ” ì‚¬ìš©ì ëª©ë¡.",
+        "description": "·Î±×ÀÎ(¹üÀ§ ¹Û) Àü±îÁö È­¸é¿¡¼­ °í¸£´Â »ç¿ëÀÚ ¸ñ·Ï.",
         "operationId": "users_api_users_get",
         "responses": {
           "200": {
@@ -34,7 +34,7 @@
     "/api/runs": {
       "get": {
         "tags": [
-          "ê²€í†  ì‹¤í–‰"
+          "°ËÅä ½ÇÇà"
         ],
         "summary": "Runs",
         "operationId": "runs_api_runs_get",
@@ -80,10 +80,10 @@
       },
       "post": {
         "tags": [
-          "ê²€í†  ì‹¤í–‰"
+          "°ËÅä ½ÇÇà"
         ],
         "summary": "Run Upload",
-        "description": "ì˜¬ë¦° docxë¡œ ê²€í† ë¥¼ ì‹œì‘í•œë‹¤. ê²€í†  ì •ë³´ ì¹¸ì€ ëª¨ë‘ ê³ ë¥¼ ìˆ˜ ìˆë‹¤.\n\níŒŒì¼ì€ ë‚´ìš© í•´ì‹œ í´ë”ì— ì €ì¥í•´ ê°™ì€ íŒŒì¼ì´ë©´ ë‹¤ì‹œ ì²˜ë¦¬í•˜ì§€ ì•ŠëŠ”ë‹¤.\nchoicesëŠ” ë“±ë¡ í™”ë©´ì—ì„œ ì‚¬ëŒì´ ì •í•œ ë¶„ë¥˜ JSON ({íŒŒì¼ ì´ë¦„: {bundle, doc_kind}}).\nbusiness_id(ì§„í–‰ ì¤‘ì¸ ì‚¬ì—…ì— ì¶”ê°€)ë‚˜ new_business_name(ìƒˆ ì‚¬ì—… ë§Œë“¤ê¸°)ìœ¼ë¡œ ì‚¬ì—…ì— ì‡ëŠ”ë‹¤.",
+        "description": "¿Ã¸° docx·Î °ËÅä¸¦ ½ÃÀÛÇÑ´Ù. °ËÅä Á¤º¸ Ä­Àº ¸ğµÎ °í¸¦ ¼ö ÀÖ´Ù.\n\nÆÄÀÏÀº ³»¿ë ÇØ½Ã Æú´õ¿¡ ÀúÀåÇØ °°Àº ÆÄÀÏÀÌ¸é ´Ù½Ã Ã³¸®ÇÏÁö ¾Ê´Â´Ù.\nchoices´Â µî·Ï È­¸é¿¡¼­ »ç¶÷ÀÌ Á¤ÇÑ ºĞ·ù JSON ({ÆÄÀÏ ÀÌ¸§: {bundle, doc_kind}}).\nbusiness_id(ÁøÇà ÁßÀÎ »ç¾÷¿¡ Ãß°¡)³ª new_business_name(»õ »ç¾÷ ¸¸µé±â)À¸·Î »ç¾÷¿¡ ÀÕ´Â´Ù.",
         "operationId": "run_upload_api_runs_post",
         "requestBody": {
           "required": true,
@@ -122,10 +122,10 @@
     "/api/run-log": {
       "get": {
         "tags": [
-          "ê²€í†  ì‹¤í–‰"
+          "°ËÅä ½ÇÇà"
         ],
         "summary": "Get Run Log",
-        "description": "ì‹¤í–‰ ê¸°ë¡: ê²€í† ë§ˆë‹¤ ê±¸ë¦° ì‹œê°„Â·ë‹¨ê³„ë³„ ì‹œê°„Â·AI ì‚¬ìš©ëŸ‰Â·ì¶”ì • ë¹„ìš© (add-run-log).",
+        "description": "½ÇÇà ±â·Ï: °ËÅä¸¶´Ù °É¸° ½Ã°£¡¤´Ü°èº° ½Ã°£¡¤AI »ç¿ë·®¡¤ÃßÁ¤ ºñ¿ë (add-run-log).",
         "operationId": "get_run_log_api_run_log_get",
         "parameters": [
           {
@@ -171,10 +171,10 @@
     "/api/runs/{run_id}/flow": {
       "get": {
         "tags": [
-          "ê²€í†  ì‹¤í–‰"
+          "°ËÅä ½ÇÇà"
         ],
         "summary": "Run Flow",
-        "description": "íë¦„ ê¸°ë¡: ë‹¨ê³„ë§ˆë‹¤ ê±¸ë¦° ì‹œê°„Â·ë°”ë€ ê±´ìˆ˜Â·ì‚¬ëŒ ë™ì‘Â·ë©ˆì¶˜ ìë¦¬ (add-flow-history, ì½ê¸° ì „ìš©).",
+        "description": "Èå¸§ ±â·Ï: ´Ü°è¸¶´Ù °É¸° ½Ã°£¡¤¹Ù²ï °Ç¼ö¡¤»ç¶÷ µ¿ÀÛ¡¤¸ØÃá ÀÚ¸® (add-flow-history, ÀĞ±â Àü¿ë).",
         "operationId": "run_flow_api_runs__run_id__flow_get",
         "parameters": [
           {
@@ -214,10 +214,10 @@
     "/api/requirements/{requirement_id}": {
       "get": {
         "tags": [
-          "ê²€í†  ì‹¤í–‰"
+          "°ËÅä ½ÇÇà"
         ],
         "summary": "Requirement",
-        "description": "ìš”êµ¬ì‚¬í•­ ì›ë¬¸. run_idë¥¼ ì£¼ë©´ ê·¸ ì‹¤í–‰ì˜ ë¬¸ì„œ ìœ„ì¹˜ë§Œ ë‚¸ë‹¤.",
+        "description": "¿ä±¸»çÇ× ¿ø¹®. run_id¸¦ ÁÖ¸é ±× ½ÇÇàÀÇ ¹®¼­ À§Ä¡¸¸ ³½´Ù.",
         "operationId": "requirement_api_requirements__requirement_id__get",
         "parameters": [
           {
@@ -273,10 +273,10 @@
     "/api/library": {
       "get": {
         "tags": [
-          "ê²€í†  ì‹¤í–‰"
+          "°ËÅä ½ÇÇà"
         ],
         "summary": "Library",
-        "description": "ì„œë²„ì— ë¯¸ë¦¬ ë‘” RFP ì›ë¬¸(data/private/rfp_docx) ëª©ë¡.",
+        "description": "¼­¹ö¿¡ ¹Ì¸® µĞ RFP ¿ø¹®(data/private/rfp_docx) ¸ñ·Ï.",
         "operationId": "library_api_library_get",
         "responses": {
           "200": {
@@ -299,10 +299,10 @@
     "/api/runs/library/preview": {
       "post": {
         "tags": [
-          "ê²€í†  ì‹¤í–‰"
+          "°ËÅä ½ÇÇà"
         ],
         "summary": "Library Preview",
-        "description": "ì„œë²„ì— ë‘” RFPì˜ ë¶„ì„ ì „ ë¶„ë¥˜ ì¶”ì²œ. ê·œì¹™ë§Œ ì“°ê³  ì €ì¥í•˜ì§€ ì•ŠëŠ”ë‹¤.",
+        "description": "¼­¹ö¿¡ µĞ RFPÀÇ ºĞ¼® Àü ºĞ·ù ÃßÃµ. ±ÔÄ¢¸¸ ¾²°í ÀúÀåÇÏÁö ¾Ê´Â´Ù.",
         "operationId": "library_preview_api_runs_library_preview_post",
         "requestBody": {
           "content": {
@@ -345,10 +345,10 @@
     "/api/runs/preview": {
       "post": {
         "tags": [
-          "ê²€í†  ì‹¤í–‰"
+          "°ËÅä ½ÇÇà"
         ],
         "summary": "Upload Preview",
-        "description": "ì˜¬ë¦° docxì˜ ë¶„ì„ ì „ ë¶„ë¥˜ ì¶”ì²œ. ê·œì¹™ë§Œ ì“°ê³  DBì— ì €ì¥í•˜ì§€ ì•ŠëŠ”ë‹¤.",
+        "description": "¿Ã¸° docxÀÇ ºĞ¼® Àü ºĞ·ù ÃßÃµ. ±ÔÄ¢¸¸ ¾²°í DB¿¡ ÀúÀåÇÏÁö ¾Ê´Â´Ù.",
         "operationId": "upload_preview_api_runs_preview_post",
         "requestBody": {
           "content": {
@@ -391,7 +391,7 @@
     "/api/runs/library": {
       "post": {
         "tags": [
-          "ê²€í†  ì‹¤í–‰"
+          "°ËÅä ½ÇÇà"
         ],
         "summary": "Run Library",
         "operationId": "run_library_api_runs_library_post",
@@ -432,7 +432,7 @@
     "/api/runs/{run_id}": {
       "get": {
         "tags": [
-          "ê²€í†  ì‹¤í–‰"
+          "°ËÅä ½ÇÇà"
         ],
         "summary": "Run Status",
         "operationId": "run_status_api_runs__run_id__get",
@@ -474,10 +474,10 @@
     "/api/runs/{run_id}/info": {
       "put": {
         "tags": [
-          "ê²€í†  ì‹¤í–‰"
+          "°ËÅä ½ÇÇà"
         ],
         "summary": "Update Info",
-        "description": "ê²€í†  ì •ë³´ë¥¼ ê³ ì¹œë‹¤. ë‹¨ê³„ì™€ ê´€ê³„ì—†ì´ ê³ ì¹  ìˆ˜ ìˆê³  ë°”ë€ ì¹¸ì€ ì´ë ¥ì— ë‚¨ëŠ”ë‹¤.",
+        "description": "°ËÅä Á¤º¸¸¦ °íÄ£´Ù. ´Ü°è¿Í °ü°è¾øÀÌ °íÄ¥ ¼ö ÀÖ°í ¹Ù²ï Ä­Àº ÀÌ·Â¿¡ ³²´Â´Ù.",
         "operationId": "update_info_api_runs__run_id__info_put",
         "parameters": [
           {
@@ -527,7 +527,7 @@
     "/api/runs/{run_id}/documents": {
       "get": {
         "tags": [
-          "ê²€í†  ì‹¤í–‰"
+          "°ËÅä ½ÇÇà"
         ],
         "summary": "Run Documents",
         "operationId": "run_documents_api_runs__run_id__documents_get",
@@ -571,10 +571,10 @@
       },
       "post": {
         "tags": [
-          "ê²€í†  ì‹¤í–‰"
+          "°ËÅä ½ÇÇà"
         ],
         "summary": "Add Documents",
-        "description": "ë¶„ì„ì„ ë§ˆì¹œ ê²€í† (ë‹´ë‹¹ì í™•ì¸ ë‹¨ê³„)ì— ì •ì •ë³¸Â·ì¶”ê°€ ë¬¸ì„œë¥¼ ë”í•´ ê°™ì€ ê²€í† ë¥¼ ë‹¤ì‹œ ë¶„ì„í•œë‹¤.\n\nì²˜ë¦¬í•œ ë¬¸ì„œëŠ” ë‹¤ì‹œ ì“°ê³ , ê°™ì€ ì¤„ì˜ í™•ì •Â·ìˆ˜ì •Â·ë°˜ë ¤ëŠ” ì´ì–´ë°›ëŠ”ë‹¤ (FR-01 â‘¤, FR-10 â‘¤).\nchoicesëŠ” ë”í•˜ëŠ” íŒŒì¼ì˜ ë¶„ë¥˜ JSON ({íŒŒì¼ ì´ë¦„: {bundle, doc_kind}}).",
+        "description": "ºĞ¼®À» ¸¶Ä£ °ËÅä(´ã´çÀÚ È®ÀÎ ´Ü°è)¿¡ Á¤Á¤º»¡¤Ãß°¡ ¹®¼­¸¦ ´õÇØ °°Àº °ËÅä¸¦ ´Ù½Ã ºĞ¼®ÇÑ´Ù.\n\nÃ³¸®ÇÑ ¹®¼­´Â ´Ù½Ã ¾²°í, °°Àº ÁÙÀÇ È®Á¤¡¤¼öÁ¤¡¤¹İ·Á´Â ÀÌ¾î¹Ş´Â´Ù (FR-01 ¨ë, FR-10 ¨ë).\nchoices´Â ´õÇÏ´Â ÆÄÀÏÀÇ ºĞ·ù JSON ({ÆÄÀÏ ÀÌ¸§: {bundle, doc_kind}}).",
         "operationId": "add_documents_api_runs__run_id__documents_post",
         "parameters": [
           {
@@ -624,10 +624,10 @@
     "/api/runs/{run_id}/documents/{file_no}/lines": {
       "get": {
         "tags": [
-          "ê²€í†  ì‹¤í–‰"
+          "°ËÅä ½ÇÇà"
         ],
         "summary": "Document Lines",
-        "description": "ì›ë¬¸ ì¤„ ë²”ìœ„ (ìµœëŒ€ 40ì¤„). ë¶„ì„ ë•Œì™€ ê°™ì€ ì¤„ ë²ˆí˜¸ (íŒì • ìƒì„¸ í™”ë©´, add-judgment-view).",
+        "description": "¿ø¹® ÁÙ ¹üÀ§ (ÃÖ´ë 40ÁÙ). ºĞ¼® ¶§¿Í °°Àº ÁÙ ¹øÈ£ (ÆÇÁ¤ »ó¼¼ È­¸é, add-judgment-view).",
         "operationId": "document_lines_api_runs__run_id__documents__file_no__lines_get",
         "parameters": [
           {
@@ -694,7 +694,7 @@
     "/api/runs/{run_id}/pairs": {
       "get": {
         "tags": [
-          "ê²€í†  ì‹¤í–‰"
+          "°ËÅä ½ÇÇà"
         ],
         "summary": "Run Pairs",
         "operationId": "run_pairs_api_runs__run_id__pairs_get",
@@ -740,7 +740,7 @@
     "/api/runs/{run_id}/requirements": {
       "get": {
         "tags": [
-          "ê²€í†  ì‹¤í–‰"
+          "°ËÅä ½ÇÇà"
         ],
         "summary": "Run Requirements",
         "operationId": "run_requirements_api_runs__run_id__requirements_get",
@@ -839,7 +839,7 @@
     "/api/runs/{run_id}/risks": {
       "get": {
         "tags": [
-          "ê²€í†  ì‹¤í–‰"
+          "°ËÅä ½ÇÇà"
         ],
         "summary": "Run Risks",
         "operationId": "run_risks_api_runs__run_id__risks_get",
@@ -885,10 +885,10 @@
     "/api/runs/{run_id}/judgments": {
       "get": {
         "tags": [
-          "ê²€í†  ì‹¤í–‰"
+          "°ËÅä ½ÇÇà"
         ],
         "summary": "Run Judgments",
-        "description": "íŒì • ëª©ë¡. order=priorityë©´ ì¼íƒˆ â†’ ì§ˆì˜ â†’ í™•ì¸ í•„ìš” â†’ ì‘ì„± í•„ìš” â†’ ì¤€ìˆ˜ ìˆœì„œ.\npast=differsë©´ ì§€ë‚œ ì‚¬ëŒ íŒì •ê³¼ ë‹¤ë¥¸ ì¤„ë§Œ (add-review-memory).\nrevisedë©´ ë§ˆì§€ë§‰ ë¬¸ì„œ ì¶”ê°€ ê°œì •ì—ì„œ ë°”ë€Œê±°ë‚˜ ì¶”ê°€ëœ ì¤„ë§Œ (add-revision-notice).",
+        "description": "ÆÇÁ¤ ¸ñ·Ï. order=priority¸é ÀÏÅ» ¡æ ÁúÀÇ ¡æ È®ÀÎ ÇÊ¿ä ¡æ ÀÛ¼º ÇÊ¿ä ¡æ ÁØ¼ö ¼ø¼­.\npast=differs¸é Áö³­ »ç¶÷ ÆÇÁ¤°ú ´Ù¸¥ ÁÙ¸¸ (add-review-memory).\nrevised¸é ¸¶Áö¸· ¹®¼­ Ãß°¡ °³Á¤¿¡¼­ ¹Ù²î°Å³ª Ãß°¡µÈ ÁÙ¸¸ (add-revision-notice).",
         "operationId": "run_judgments_api_runs__run_id__judgments_get",
         "parameters": [
           {
@@ -1071,10 +1071,10 @@
     "/api/runs/{run_id}/summary": {
       "get": {
         "tags": [
-          "ê²€í†  ì‹¤í–‰"
+          "°ËÅä ½ÇÇà"
         ],
         "summary": "Run Summary Text",
-        "description": "ê²€í†  ìƒì„¸ ìš”ì•½ ìƒì ë¬¸ì¥ (add-screen-summary). ì½”ë“œê°€ í‹€ì— ì±„ìš´ë‹¤, AI ì—†ìŒ.",
+        "description": "°ËÅä »ó¼¼ ¿ä¾à »óÀÚ ¹®Àå (add-screen-summary). ÄÚµå°¡ Æ²¿¡ Ã¤¿î´Ù, AI ¾øÀ½.",
         "operationId": "run_summary_text_api_runs__run_id__summary_get",
         "parameters": [
           {
@@ -1114,10 +1114,10 @@
     "/api/home/summary": {
       "get": {
         "tags": [
-          "ê²€í†  ì‹¤í–‰"
+          "°ËÅä ½ÇÇà"
         ],
         "summary": "Home Summary Text",
-        "description": "í™ˆ ìš”ì•½ ìƒì ë¬¸ì¥ (add-screen-summary). ë‚´ ì°¨ë¡€ ìˆ˜ëŠ” í™ˆ \"ë‚´ê°€ ì²˜ë¦¬í•  ê±´\"ê³¼ ê°™ë‹¤.",
+        "description": "È¨ ¿ä¾à »óÀÚ ¹®Àå (add-screen-summary). ³» Â÷·Ê ¼ö´Â È¨ \"³»°¡ Ã³¸®ÇÒ °Ç\"°ú °°´Ù.",
         "operationId": "home_summary_text_api_home_summary_get",
         "parameters": [
           {
@@ -1164,10 +1164,10 @@
     "/api/runs/{run_id}/judgment-counts": {
       "get": {
         "tags": [
-          "ê²€í†  ì‹¤í–‰"
+          "°ËÅä ½ÇÇà"
         ],
         "summary": "Judgment Counts",
-        "description": "íŒì • ì¹© ê±´ìˆ˜ (íŒì • ê°’ë§ˆë‹¤, í™•ì • ì•ˆ í•œ ìˆ˜, ê·¸ì¤‘ ì¤€ìˆ˜).",
+        "description": "ÆÇÁ¤ Ä¨ °Ç¼ö (ÆÇÁ¤ °ª¸¶´Ù, È®Á¤ ¾È ÇÑ ¼ö, ±×Áß ÁØ¼ö).",
         "operationId": "judgment_counts_api_runs__run_id__judgment_counts_get",
         "parameters": [
           {
@@ -1207,7 +1207,7 @@
     "/api/runs/{run_id}/equipment": {
       "get": {
         "tags": [
-          "ê²€í†  ì‹¤í–‰"
+          "°ËÅä ½ÇÇà"
         ],
         "summary": "Run Equipment",
         "operationId": "run_equipment_api_runs__run_id__equipment_get",
@@ -1253,10 +1253,10 @@
     "/api/runs/{run_id}/equipment/{group}/product": {
       "put": {
         "tags": [
-          "ê²€í†  ì‹¤í–‰"
+          "°ËÅä ½ÇÇà"
         ],
         "summary": "Choose Product",
-        "description": "ì„¤ë¹„ ë¬¶ìŒì˜ ë¹„êµ ì œí’ˆì„ ë°”ê¾¸ê³  ê·¸ ë¬¶ìŒì„ ë‹¤ì‹œ íŒì •í•œë‹¤.\n\nì´ì „ íŒì •ì€ ì§€ìš°ì§€ ì•Šê³  í˜„ì¬ê°€ ì•„ë‹˜ìœ¼ë¡œ ë‚¨ê¸´ë‹¤.",
+        "description": "¼³ºñ ¹­À½ÀÇ ºñ±³ Á¦Ç°À» ¹Ù²Ù°í ±× ¹­À½À» ´Ù½Ã ÆÇÁ¤ÇÑ´Ù.\n\nÀÌÀü ÆÇÁ¤Àº Áö¿ìÁö ¾Ê°í ÇöÀç°¡ ¾Æ´ÔÀ¸·Î ³²±ä´Ù.",
         "operationId": "choose_product_api_runs__run_id__equipment__group__product_put",
         "parameters": [
           {
@@ -1315,7 +1315,7 @@
     "/api/runs/{run_id}/warranty": {
       "get": {
         "tags": [
-          "ê²€í†  ì‹¤í–‰"
+          "°ËÅä ½ÇÇà"
         ],
         "summary": "Run Warranty",
         "operationId": "run_warranty_api_runs__run_id__warranty_get",
@@ -1398,7 +1398,7 @@
     "/api/runs/{run_id}/losses": {
       "get": {
         "tags": [
-          "ê²€í†  ì‹¤í–‰"
+          "°ËÅä ½ÇÇà"
         ],
         "summary": "Run Losses",
         "operationId": "run_losses_api_runs__run_id__losses_get",
@@ -1444,10 +1444,10 @@
     "/api/runs/{run_id}/losses/{loss_calc_id}": {
       "put": {
         "tags": [
-          "ê²€í†  ì‹¤í–‰"
+          "°ËÅä ½ÇÇà"
         ],
         "summary": "Update Loss",
-        "description": "ì—”ì§€ë‹ˆì–´ê°€ ì†ì‹¤ê°’ì„ ë„£ìœ¼ë©´ ë‹¤ì‹œ ê³„ì‚°í•œë‹¤. ì§ì ‘ ë„£ì€ ê°’ì€ íŒ€ ê°€ì •ìœ¼ë¡œ í‘œì‹œëœë‹¤.",
+        "description": "¿£Áö´Ï¾î°¡ ¼Õ½Ç°ªÀ» ³ÖÀ¸¸é ´Ù½Ã °è»êÇÑ´Ù. Á÷Á¢ ³ÖÀº °ªÀº ÆÀ °¡Á¤À¸·Î Ç¥½ÃµÈ´Ù.",
         "operationId": "update_loss_api_runs__run_id__losses__loss_calc_id__put",
         "parameters": [
           {
@@ -1506,10 +1506,10 @@
     "/api/runs/{run_id}/cost-conditions": {
       "get": {
         "tags": [
-          "ê²€í†  ì‹¤í–‰"
+          "°ËÅä ½ÇÇà"
         ],
         "summary": "Run Cost Conditions",
-        "description": "ìƒì—… ì¡°ê±´ íƒ­ (FR-16): ë¹„ìš© ì¡°ê±´ ìš”ì•½ê³¼ ê¸°ìˆ  íŒë‹¨ì—ì„œ ìƒê¸´ ìƒì—… ì˜í–¥. ê¸ˆì•¡ ê³„ì‚° ì—†ìŒ.",
+        "description": "»ó¾÷ Á¶°Ç ÅÇ (FR-16): ºñ¿ë Á¶°Ç ¿ä¾à°ú ±â¼ú ÆÇ´Ü¿¡¼­ »ı±ä »ó¾÷ ¿µÇâ. ±İ¾× °è»ê ¾øÀ½.",
         "operationId": "run_cost_conditions_api_runs__run_id__cost_conditions_get",
         "parameters": [
           {
@@ -1549,7 +1549,7 @@
     "/api/runs/{run_id}/outputs": {
       "get": {
         "tags": [
-          "ê²€í†  ì‹¤í–‰"
+          "°ËÅä ½ÇÇà"
         ],
         "summary": "Run Outputs",
         "operationId": "run_outputs_api_runs__run_id__outputs_get",
@@ -1611,10 +1611,10 @@
     "/api/runs/{run_id}/outputs/export": {
       "get": {
         "tags": [
-          "ê²€í†  ì‹¤í–‰"
+          "°ËÅä ½ÇÇà"
         ],
         "summary": "Export Outputs",
-        "description": "ì¼íƒˆ ëª©ë¡Â·ì§ˆì˜ì„œ ì´ˆì•ˆ Word íŒŒì¼ (SCR-08-11). í•­ëª©ì´ ì—†ìœ¼ë©´ íŒŒì¼ì„ ë§Œë“¤ì§€ ì•ŠëŠ”ë‹¤.",
+        "description": "ÀÏÅ» ¸ñ·Ï¡¤ÁúÀÇ¼­ ÃÊ¾È Word ÆÄÀÏ (SCR-08-11). Ç×¸ñÀÌ ¾øÀ¸¸é ÆÄÀÏÀ» ¸¸µéÁö ¾Ê´Â´Ù.",
         "operationId": "export_outputs_api_runs__run_id__outputs_export_get",
         "parameters": [
           {
@@ -1639,7 +1639,7 @@
         ],
         "responses": {
           "200": {
-            "description": "íŒŒì¼",
+            "description": "ÆÄÀÏ",
             "content": {
               "application/vnd.openxmlformats-officedocument.wordprocessingml.document": {
                 "schema": {
@@ -1665,10 +1665,10 @@
     "/api/runs/{run_id}/tbe": {
       "get": {
         "tags": [
-          "ê²€í†  ì‹¤í–‰"
+          "°ËÅä ½ÇÇà"
         ],
         "summary": "Get Tbe",
-        "description": "TBE ì¤€ìˆ˜í‘œ ë¯¸ë¦¬ë³´ê¸° (SCR-09). ì—‘ì…€ê³¼ ê°™ì€ ì¤„.",
+        "description": "TBE ÁØ¼öÇ¥ ¹Ì¸®º¸±â (SCR-09). ¿¢¼¿°ú °°Àº ÁÙ.",
         "operationId": "get_tbe_api_runs__run_id__tbe_get",
         "parameters": [
           {
@@ -1741,10 +1741,10 @@
     "/api/runs/{run_id}/tbe/export": {
       "get": {
         "tags": [
-          "ê²€í†  ì‹¤í–‰"
+          "°ËÅä ½ÇÇà"
         ],
         "summary": "Export Tbe",
-        "description": "TBE ì¤€ìˆ˜í‘œ ì—‘ì…€ íŒŒì¼. X-Row-Count = ì¤„ ìˆ˜.",
+        "description": "TBE ÁØ¼öÇ¥ ¿¢¼¿ ÆÄÀÏ. X-Row-Count = ÁÙ ¼ö.",
         "operationId": "export_tbe_api_runs__run_id__tbe_export_get",
         "parameters": [
           {
@@ -1792,7 +1792,7 @@
         ],
         "responses": {
           "200": {
-            "description": "íŒŒì¼",
+            "description": "ÆÄÀÏ",
             "content": {
               "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {
                 "schema": {
@@ -1818,10 +1818,10 @@
     "/api/runs/{run_id}/datasheets": {
       "get": {
         "tags": [
-          "ê²€í†  ì‹¤í–‰"
+          "°ËÅä ½ÇÇà"
         ],
         "summary": "Get Datasheets",
-        "description": "íŒì •ì´ ìˆëŠ” ê³ ê° í‘œ(ë°ì´í„°ì‹œíŠ¸) ëª©ë¡ (SCR-10).",
+        "description": "ÆÇÁ¤ÀÌ ÀÖ´Â °í°´ Ç¥(µ¥ÀÌÅÍ½ÃÆ®) ¸ñ·Ï (SCR-10).",
         "operationId": "get_datasheets_api_runs__run_id__datasheets_get",
         "parameters": [
           {
@@ -1865,10 +1865,10 @@
     "/api/runs/{run_id}/datasheet": {
       "get": {
         "tags": [
-          "ê²€í†  ì‹¤í–‰"
+          "°ËÅä ½ÇÇà"
         ],
         "summary": "Get Datasheet",
-        "description": "ë°ì´í„°ì‹œíŠ¸ í•œ ì¥ ë¯¸ë¦¬ë³´ê¸°. ì—‘ì…€ê³¼ ê°™ì€ ì¤„.",
+        "description": "µ¥ÀÌÅÍ½ÃÆ® ÇÑ Àå ¹Ì¸®º¸±â. ¿¢¼¿°ú °°Àº ÁÙ.",
         "operationId": "get_datasheet_api_runs__run_id__datasheet_get",
         "parameters": [
           {
@@ -1917,10 +1917,10 @@
     "/api/runs/{run_id}/datasheet/export": {
       "get": {
         "tags": [
-          "ê²€í†  ì‹¤í–‰"
+          "°ËÅä ½ÇÇà"
         ],
         "summary": "Export Datasheet",
-        "description": "ë°ì´í„°ì‹œíŠ¸ ì—‘ì…€ íŒŒì¼. X-Row-Count = ì¤„ ìˆ˜.",
+        "description": "µ¥ÀÌÅÍ½ÃÆ® ¿¢¼¿ ÆÄÀÏ. X-Row-Count = ÁÙ ¼ö.",
         "operationId": "export_datasheet_api_runs__run_id__datasheet_export_get",
         "parameters": [
           {
@@ -1944,7 +1944,7 @@
         ],
         "responses": {
           "200": {
-            "description": "íŒŒì¼",
+            "description": "ÆÄÀÏ",
             "content": {
               "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {
                 "schema": {
@@ -1970,7 +1970,7 @@
     "/api/runs/{run_id}/submission-check": {
       "get": {
         "tags": [
-          "ê²€í†  ì‹¤í–‰"
+          "°ËÅä ½ÇÇà"
         ],
         "summary": "Get Submission Check",
         "operationId": "get_submission_check_api_runs__run_id__submission_check_get",
@@ -2010,7 +2010,7 @@
       },
       "post": {
         "tags": [
-          "ê²€í†  ì‹¤í–‰"
+          "°ËÅä ½ÇÇà"
         ],
         "summary": "Run Submission Check",
         "operationId": "run_submission_check_api_runs__run_id__submission_check_post",
@@ -2052,7 +2052,7 @@
     "/api/runs/{run_id}/checks": {
       "get": {
         "tags": [
-          "ê²€í†  ì‹¤í–‰"
+          "°ËÅä ½ÇÇà"
         ],
         "summary": "Run Checks",
         "operationId": "run_checks_api_runs__run_id__checks_get",
@@ -2098,7 +2098,7 @@
     "/api/runs/{run_id}/proposals": {
       "get": {
         "tags": [
-          "ê²€í†  ì‹¤í–‰"
+          "°ËÅä ½ÇÇà"
         ],
         "summary": "Run Proposals",
         "operationId": "run_proposals_api_runs__run_id__proposals_get",
@@ -2144,10 +2144,10 @@
     "/api/runs/{run_id}/actions": {
       "post": {
         "tags": [
-          "ê²€í†  ì‹¤í–‰"
+          "°ËÅä ½ÇÇà"
         ],
         "summary": "Act",
-        "description": "í›„ë³´ í•˜ë‚˜ë¥¼ í™•ì •Â·ìˆ˜ì •Â·ë°˜ë ¤(ì œì•ˆ í¬ì¸íŠ¸ëŠ” ì±„íƒÂ·ë²„ë¦¼Â·ìˆ˜ì •)í•˜ê³  ì´ë ¥ì„ ë‚¨ê¸´ë‹¤.",
+        "description": "ÈÄº¸ ÇÏ³ª¸¦ È®Á¤¡¤¼öÁ¤¡¤¹İ·Á(Á¦¾È Æ÷ÀÎÆ®´Â Ã¤ÅÃ¡¤¹ö¸²¡¤¼öÁ¤)ÇÏ°í ÀÌ·ÂÀ» ³²±ä´Ù.",
         "operationId": "act_api_runs__run_id__actions_post",
         "parameters": [
           {
@@ -2197,10 +2197,10 @@
     "/api/runs/{run_id}/requirements/{requirement_id}/type": {
       "post": {
         "tags": [
-          "ê²€í†  ì‹¤í–‰"
+          "°ËÅä ½ÇÇà"
         ],
         "summary": "Edit Type",
-        "description": "ì‚¬ëŒì´ ìš”êµ¬ì‚¬í•­ì˜ ì£¼ ìœ í˜•ì„ ê³ ì¹œë‹¤ (add-type-examples). ì—”ì§€ë‹ˆì–´Â·ìŠ¹ì¸ìë§Œ.",
+        "description": "»ç¶÷ÀÌ ¿ä±¸»çÇ×ÀÇ ÁÖ À¯ÇüÀ» °íÄ£´Ù (add-type-examples). ¿£Áö´Ï¾î¡¤½ÂÀÎÀÚ¸¸.",
         "operationId": "edit_type_api_runs__run_id__requirements__requirement_id__type_post",
         "parameters": [
           {
@@ -2259,10 +2259,10 @@
     "/api/runs/{run_id}/actions/bulk": {
       "post": {
         "tags": [
-          "ê²€í†  ì‹¤í–‰"
+          "°ËÅä ½ÇÇà"
         ],
         "summary": "Act Bulk",
-        "description": "ì—¬ëŸ¬ íŒì •ì„ í•œ ë²ˆì— ì œì•ˆëŒ€ë¡œ í™•ì •í•œë‹¤ (ìˆ˜ì •Â·ë°˜ë ¤ëŠ” í•œ ì¤„ì”©).",
+        "description": "¿©·¯ ÆÇÁ¤À» ÇÑ ¹ø¿¡ Á¦¾È´ë·Î È®Á¤ÇÑ´Ù (¼öÁ¤¡¤¹İ·Á´Â ÇÑ ÁÙ¾¿).",
         "operationId": "act_bulk_api_runs__run_id__actions_bulk_post",
         "parameters": [
           {
@@ -2312,7 +2312,7 @@
     "/api/runs/{run_id}/history": {
       "get": {
         "tags": [
-          "ê²€í†  ì‹¤í–‰"
+          "°ËÅä ½ÇÇà"
         ],
         "summary": "History",
         "operationId": "history_api_runs__run_id__history_get",
@@ -2390,10 +2390,10 @@
     "/api/runs/{run_id}/finish-review": {
       "post": {
         "tags": [
-          "ê²€í†  ì‹¤í–‰"
+          "°ËÅä ½ÇÇà"
         ],
         "summary": "Finish Review",
-        "description": "ê²°ì¬ ìƒì‹ . ê²°ì¬ìì™€ ìƒì‹  ì˜ê²¬ì„ ë°›ì•„ ìŠ¹ì¸ ëŒ€ê¸°ë¡œ ë‘”ë‹¤ (ê±¸ë¦° ê¸°ì¤€ì´ ì—†ì–´ë„).",
+        "description": "°áÀç »ó½Å. °áÀçÀÚ¿Í »ó½Å ÀÇ°ßÀ» ¹Ş¾Æ ½ÂÀÎ ´ë±â·Î µĞ´Ù (°É¸° ±âÁØÀÌ ¾ø¾îµµ).",
         "operationId": "finish_review_api_runs__run_id__finish_review_post",
         "parameters": [
           {
@@ -2443,10 +2443,10 @@
     "/api/runs/{run_id}/withdraw": {
       "post": {
         "tags": [
-          "ê²€í†  ì‹¤í–‰"
+          "°ËÅä ½ÇÇà"
         ],
         "summary": "Withdraw",
-        "description": "ê²°ì • ì „ì¸ ìƒì‹ ì„ ì·¨ì†Œí•˜ê³  ë‹´ë‹¹ì í™•ì¸ìœ¼ë¡œ ë˜ëŒë¦°ë‹¤.",
+        "description": "°áÁ¤ ÀüÀÎ »ó½ÅÀ» Ãë¼ÒÇÏ°í ´ã´çÀÚ È®ÀÎÀ¸·Î µÇµ¹¸°´Ù.",
         "operationId": "withdraw_api_runs__run_id__withdraw_post",
         "parameters": [
           {
@@ -2496,10 +2496,10 @@
     "/api/runs/{run_id}/cancel": {
       "post": {
         "tags": [
-          "ê²€í†  ì‹¤í–‰"
+          "°ËÅä ½ÇÇà"
         ],
         "summary": "Cancel Run",
-        "description": "ì²˜ë¦¬ ì¤‘ì¸ ê²€í† ë¥¼ ì·¨ì†Œí•œë‹¤. ì²˜ë¦¬ëŠ” ë‹¤ìŒ ì§„í–‰ ê¸°ë¡ ë•Œ ë©ˆì¶”ê³  ì²˜ë¦¬ ì‹¤íŒ¨ê°€ ëœë‹¤.",
+        "description": "Ã³¸® ÁßÀÎ °ËÅä¸¦ Ãë¼ÒÇÑ´Ù. Ã³¸®´Â ´ÙÀ½ ÁøÇà ±â·Ï ¶§ ¸ØÃß°í Ã³¸® ½ÇÆĞ°¡ µÈ´Ù.",
         "operationId": "cancel_run_api_runs__run_id__cancel_post",
         "parameters": [
           {
@@ -2549,10 +2549,10 @@
     "/api/runs/{run_id}/retry": {
       "post": {
         "tags": [
-          "ê²€í†  ì‹¤í–‰"
+          "°ËÅä ½ÇÇà"
         ],
         "summary": "Retry Run",
-        "description": "ì‹¤íŒ¨Â·ì·¨ì†Œí•œ ê²€í† ë¥¼ ê°™ì€ íŒŒì¼Â·ë¶„ë¥˜ë¡œ ë‹¤ì‹œ ì²˜ë¦¬í•œë‹¤. ì²˜ë¦¬í•œ ë¬¸ì„œëŠ” ë‹¤ì‹œ ì“´ë‹¤.",
+        "description": "½ÇÆĞ¡¤Ãë¼ÒÇÑ °ËÅä¸¦ °°Àº ÆÄÀÏ¡¤ºĞ·ù·Î ´Ù½Ã Ã³¸®ÇÑ´Ù. Ã³¸®ÇÑ ¹®¼­´Â ´Ù½Ã ¾´´Ù.",
         "operationId": "retry_run_api_runs__run_id__retry_post",
         "parameters": [
           {
@@ -2602,10 +2602,10 @@
     "/api/runs/{run_id}/rewind": {
       "post": {
         "tags": [
-          "ê²€í†  ì‹¤í–‰"
+          "°ËÅä ½ÇÇà"
         ],
         "summary": "Rewind",
-        "description": "ë‹´ë‹¹ì í™•ì¸ ë‹¨ê³„ì˜ ê²€í† ë¥¼ ê³ ë¥¸ ì²˜ë¦¬ ë‹¨ê³„ë¶€í„° ë‹¤ì‹œ ì²˜ë¦¬í•œë‹¤ (add-step-rewind, C2).\n\nê°™ì€ ì¤„ì˜ ì‚¬ëŒ í™•ì •Â·ìˆ˜ì •Â·ë°˜ë ¤ì™€ ìœ„í—˜ ì¡°ê±´ í™•ì¸ì€ ì´ì–´ë°›ëŠ”ë‹¤ (CR-08, FR-10 â‘¤).",
+        "description": "´ã´çÀÚ È®ÀÎ ´Ü°èÀÇ °ËÅä¸¦ °í¸¥ Ã³¸® ´Ü°èºÎÅÍ ´Ù½Ã Ã³¸®ÇÑ´Ù (add-step-rewind, C2).\n\n°°Àº ÁÙÀÇ »ç¶÷ È®Á¤¡¤¼öÁ¤¡¤¹İ·Á¿Í À§Çè Á¶°Ç È®ÀÎÀº ÀÌ¾î¹Ş´Â´Ù (CR-08, FR-10 ¨ë).",
         "operationId": "rewind_api_runs__run_id__rewind_post",
         "parameters": [
           {
@@ -2655,10 +2655,10 @@
     "/api/runs/{run_id}/compare": {
       "get": {
         "tags": [
-          "ê²€í†  ì‹¤í–‰"
+          "°ËÅä ½ÇÇà"
         ],
         "summary": "Compare Targets",
-        "description": "ì§€ë‚œ RFP ë¹„êµ ëŒ€ìƒ: ê³ ê°ì‚¬ ê¸€ìê°€ ê°™ì€ ì²˜ë¦¬ë¥¼ ë§ˆì¹œ ë‹¤ë¥¸ ê²€í†  (SCR-08-7).",
+        "description": "Áö³­ RFP ºñ±³ ´ë»ó: °í°´»ç ±ÛÀÚ°¡ °°Àº Ã³¸®¸¦ ¸¶Ä£ ´Ù¸¥ °ËÅä (SCR-08-7).",
         "operationId": "compare_targets_api_runs__run_id__compare_get",
         "parameters": [
           {
@@ -2698,10 +2698,10 @@
     "/api/runs/{run_id}/compare/{other_id}": {
       "get": {
         "tags": [
-          "ê²€í†  ì‹¤í–‰"
+          "°ËÅä ½ÇÇà"
         ],
         "summary": "Compare Runs",
-        "description": "ì´ë²ˆ ê²€í† ì™€ ì§€ë‚œ ê²€í† ì˜ ë‹¬ë¼ì§„ ìš”êµ¬(ê°’ ë°”ë€œÂ·ìƒˆë¡œ ìƒê¹€Â·ì‚¬ë¼ì§)ì™€ íŒì • ë³€í™”.",
+        "description": "ÀÌ¹ø °ËÅä¿Í Áö³­ °ËÅäÀÇ ´Ş¶óÁø ¿ä±¸(°ª ¹Ù²ñ¡¤»õ·Î »ı±è¡¤»ç¶óÁü)¿Í ÆÇÁ¤ º¯È­.",
         "operationId": "compare_runs_api_runs__run_id__compare__other_id__get",
         "parameters": [
           {
@@ -2750,7 +2750,7 @@
     "/api/runs/{run_id}/approval": {
       "get": {
         "tags": [
-          "ê²€í†  ì‹¤í–‰"
+          "°ËÅä ½ÇÇà"
         ],
         "summary": "Get Approval",
         "operationId": "get_approval_api_runs__run_id__approval_get",
@@ -2790,7 +2790,7 @@
       },
       "post": {
         "tags": [
-          "ê²€í†  ì‹¤í–‰"
+          "°ËÅä ½ÇÇà"
         ],
         "summary": "Decide",
         "operationId": "decide_api_runs__run_id__approval_post",
@@ -2842,10 +2842,10 @@
     "/api/runs/{run_id}/read-checks": {
       "get": {
         "tags": [
-          "ê²€í†  ì‹¤í–‰"
+          "°ËÅä ½ÇÇà"
         ],
         "summary": "Run Read Checks",
-        "description": "ë¬¸ì„œ ì½ê¸° ì ê²€: ì‹œìŠ¤í…œì´ ì œëŒ€ë¡œ ì½ì§€ ëª»í•œ ê³³ê³¼ ì‚¬ëŒì´ í™•ì¸í•œ ê¸°ë¡ (SCR-08-2).",
+        "description": "¹®¼­ ÀĞ±â Á¡°Ë: ½Ã½ºÅÛÀÌ Á¦´ë·Î ÀĞÁö ¸øÇÑ °÷°ú »ç¶÷ÀÌ È®ÀÎÇÑ ±â·Ï (SCR-08-2).",
         "operationId": "run_read_checks_api_runs__run_id__read_checks_get",
         "parameters": [
           {
@@ -2889,7 +2889,7 @@
     "/api/runs/{run_id}/read-checks/{key}": {
       "post": {
         "tags": [
-          "ê²€í†  ì‹¤í–‰"
+          "°ËÅä ½ÇÇà"
         ],
         "summary": "Check Read",
         "operationId": "check_read_api_runs__run_id__read_checks__key__post",
@@ -2948,7 +2948,7 @@
       },
       "delete": {
         "tags": [
-          "ê²€í†  ì‹¤í–‰"
+          "°ËÅä ½ÇÇà"
         ],
         "summary": "Uncheck Read",
         "operationId": "uncheck_read_api_runs__run_id__read_checks__key__delete",
@@ -3015,7 +3015,7 @@
     "/api/runs/{run_id}/reopen": {
       "post": {
         "tags": [
-          "ê²€í†  ì‹¤í–‰"
+          "°ËÅä ½ÇÇà"
         ],
         "summary": "Reopen",
         "operationId": "reopen_api_runs__run_id__reopen_post",
@@ -3067,10 +3067,10 @@
     "/api/runs/{run_id}/deliverables": {
       "get": {
         "tags": [
-          "ê²€í†  ì‹¤í–‰"
+          "°ËÅä ½ÇÇà"
         ],
         "summary": "Deliverables",
-        "description": "ì „ë‹¬ ëŒ€ìƒ: ë¹¼ì§€ ì•Šì€ ëª©ë¡, í™•ì •í•œ ë³´ì¦ê°’, ì±„íƒí•œ ì œì•ˆ í¬ì¸íŠ¸ë§Œ (AR-08).",
+        "description": "Àü´Ş ´ë»ó: »©Áö ¾ÊÀº ¸ñ·Ï, È®Á¤ÇÑ º¸Áõ°ª, Ã¤ÅÃÇÑ Á¦¾È Æ÷ÀÎÆ®¸¸ (AR-08).",
         "operationId": "deliverables_api_runs__run_id__deliverables_get",
         "parameters": [
           {
@@ -3110,10 +3110,10 @@
     "/api/tasks": {
       "get": {
         "tags": [
-          "ê²€í†  ì‹¤í–‰"
+          "°ËÅä ½ÇÇà"
         ],
         "summary": "My Tasks",
-        "description": "ê³ ë¥¸ ì‚¬ìš©ìì˜ \"ë‚´ í•  ì¼\": ì—”ì§€ë‹ˆì–´Â·ìŠ¹ì¸ìëŠ” ë©ˆì¶˜ ê²€í† , ë‹´ë‹¹ìëŠ” ë°›ì€ í•  ì¼ (FR-11).",
+        "description": "°í¸¥ »ç¿ëÀÚÀÇ \"³» ÇÒ ÀÏ\": ¿£Áö´Ï¾î¡¤½ÂÀÎÀÚ´Â ¸ØÃá °ËÅä, ´ã´çÀÚ´Â ¹ŞÀº ÇÒ ÀÏ (FR-11).",
         "operationId": "my_tasks_api_tasks_get",
         "parameters": [
           {
@@ -3153,7 +3153,7 @@
     "/api/runs/{run_id}/assignments": {
       "get": {
         "tags": [
-          "ê²€í†  ì‹¤í–‰"
+          "°ËÅä ½ÇÇà"
         ],
         "summary": "Run Assignments",
         "operationId": "run_assignments_api_runs__run_id__assignments_get",
@@ -3208,10 +3208,10 @@
     "/api/assignments": {
       "get": {
         "tags": [
-          "ê²€í†  ì‹¤í–‰"
+          "°ËÅä ½ÇÇà"
         ],
         "summary": "Role Assignments",
-        "description": "í˜‘ì¡° ìš”ì²­ í˜„í™© (SCR-13): í•œ ìˆ˜ì‹  ë¶€ì„œ(ì—†ìœ¼ë©´ ì„¸ ë¶€ì„œ)ì— ë³´ë‚¸ ìš”ì²­ì„ ëª¨ë“  ê²€í† ì—ì„œ ëª¨ì€ë‹¤.",
+        "description": "ÇùÁ¶ ¿äÃ» ÇöÈ² (SCR-13): ÇÑ ¼ö½Å ºÎ¼­(¾øÀ¸¸é ¼¼ ºÎ¼­)¿¡ º¸³½ ¿äÃ»À» ¸ğµç °ËÅä¿¡¼­ ¸ğÀº´Ù.",
         "operationId": "role_assignments_api_assignments_get",
         "parameters": [
           {
@@ -3263,10 +3263,10 @@
     "/api/assignments/export": {
       "post": {
         "tags": [
-          "ê²€í†  ì‹¤í–‰"
+          "°ËÅä ½ÇÇà"
         ],
         "summary": "Export Assignments",
-        "description": "í™”ë©´ì´ ê±°ë¥¸ í˜‘ì¡° ìš”ì²­ì„ ì—‘ì…€ë¡œ (SCR-13 ë‚´ë³´ë‚´ê¸°). X-Row-Count = ì¤„ ìˆ˜.",
+        "description": "È­¸éÀÌ °Å¸¥ ÇùÁ¶ ¿äÃ»À» ¿¢¼¿·Î (SCR-13 ³»º¸³»±â). X-Row-Count = ÁÙ ¼ö.",
         "operationId": "export_assignments_api_assignments_export_post",
         "requestBody": {
           "content": {
@@ -3280,7 +3280,7 @@
         },
         "responses": {
           "200": {
-            "description": "íŒŒì¼",
+            "description": "ÆÄÀÏ",
             "content": {
               "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {
                 "schema": {
@@ -3306,10 +3306,10 @@
     "/api/assignments/{assignment_id}": {
       "put": {
         "tags": [
-          "ê²€í†  ì‹¤í–‰"
+          "°ËÅä ½ÇÇà"
         ],
         "summary": "Update Assignment",
-        "description": "ì—”ì§€ë‹ˆì–´ê°€ íšŒì‹  ë°›ìŒì„ ê¸°ë¡í•˜ê±°ë‚˜ ë˜ëŒë¦°ë‹¤ (ë©”ì¼ ë³´ëƒ„ â†” íšŒì‹  ë°›ìŒ).",
+        "description": "¿£Áö´Ï¾î°¡ È¸½Å ¹ŞÀ½À» ±â·ÏÇÏ°Å³ª µÇµ¹¸°´Ù (¸ŞÀÏ º¸³¿ ¡ê È¸½Å ¹ŞÀ½).",
         "operationId": "update_assignment_api_assignments__assignment_id__put",
         "parameters": [
           {
@@ -3359,10 +3359,10 @@
     "/api/runs/{run_id}/assignments/send": {
       "post": {
         "tags": [
-          "ê²€í†  ì‹¤í–‰"
+          "°ËÅä ½ÇÇà"
         ],
         "summary": "Send Assignments",
-        "description": "ì—”ì§€ë‹ˆì–´ê°€ ê³ ë¥¸ ìš”ì²­ì„ ë¶€ì„œ ì£¼ì†Œë¡œ ë³´ë‚¸ë‹¤ (íŒì • ì—†ëŠ” ìš”ì²­, ì‹¤íŒ¨Â·ì£¼ì†Œ ì—†ìŒ ë‹¤ì‹œ ë³´ë‚´ê¸°).",
+        "description": "¿£Áö´Ï¾î°¡ °í¸¥ ¿äÃ»À» ºÎ¼­ ÁÖ¼Ò·Î º¸³½´Ù (ÆÇÁ¤ ¾ø´Â ¿äÃ», ½ÇÆĞ¡¤ÁÖ¼Ò ¾øÀ½ ´Ù½Ã º¸³»±â).",
         "operationId": "send_assignments_api_runs__run_id__assignments_send_post",
         "parameters": [
           {
@@ -3412,10 +3412,10 @@
     "/api/runs/{run_id}/datasheet/handoff": {
       "post": {
         "tags": [
-          "ê²€í†  ì‹¤í–‰"
+          "°ËÅä ½ÇÇà"
         ],
         "summary": "Handoff Datasheet",
-        "description": "ë°ì´í„°ì‹œíŠ¸ í•œ ì¥ì„ ì˜ì—… ì£¼ì†Œë¡œ ë³´ë‚¸ë‹¤. í›„ë³´ ì¹¸ì´ ë‚¨ìœ¼ë©´ 409.",
+        "description": "µ¥ÀÌÅÍ½ÃÆ® ÇÑ ÀåÀ» ¿µ¾÷ ÁÖ¼Ò·Î º¸³½´Ù. ÈÄº¸ Ä­ÀÌ ³²À¸¸é 409.",
         "operationId": "handoff_datasheet_api_runs__run_id__datasheet_handoff_post",
         "parameters": [
           {
@@ -3465,10 +3465,10 @@
     "/api/runs/{run_id}/package": {
       "get": {
         "tags": [
-          "ê²€í†  ì‹¤í–‰"
+          "°ËÅä ½ÇÇà"
         ],
         "summary": "Download Package",
-        "description": "ì¸ê³„ íŒ¨í‚¤ì§€ zip (ê²°ì¬ ìŠ¹ì¸ ë’¤). ìŠ¹ì¸ ì „ì´ë©´ 409.",
+        "description": "ÀÎ°è ÆĞÅ°Áö zip (°áÀç ½ÂÀÎ µÚ). ½ÂÀÎ ÀüÀÌ¸é 409.",
         "operationId": "download_package_api_runs__run_id__package_get",
         "parameters": [
           {
@@ -3483,7 +3483,7 @@
         ],
         "responses": {
           "200": {
-            "description": "íŒŒì¼",
+            "description": "ÆÄÀÏ",
             "content": {
               "application/zip": {
                 "schema": {
@@ -3509,10 +3509,10 @@
     "/api/runs/{run_id}/package/handoff": {
       "post": {
         "tags": [
-          "ê²€í†  ì‹¤í–‰"
+          "°ËÅä ½ÇÇà"
         ],
         "summary": "Handoff Package",
-        "description": "ì¸ê³„ íŒ¨í‚¤ì§€ë¥¼ ì˜ì—… ì£¼ì†Œë¡œ ë³´ë‚¸ë‹¤.",
+        "description": "ÀÎ°è ÆĞÅ°Áö¸¦ ¿µ¾÷ ÁÖ¼Ò·Î º¸³½´Ù.",
         "operationId": "handoff_package_api_runs__run_id__package_handoff_post",
         "parameters": [
           {
@@ -3562,10 +3562,10 @@
     "/api/runs/{run_id}/handoffs": {
       "get": {
         "tags": [
-          "ê²€í†  ì‹¤í–‰"
+          "°ËÅä ½ÇÇà"
         ],
         "summary": "List Handoffs",
-        "description": "ì˜ì—…ì— ë„˜ê¸´ ê¸°ë¡, ìµœê·¼ ê²ƒë¶€í„°.",
+        "description": "¿µ¾÷¿¡ ³Ñ±ä ±â·Ï, ÃÖ±Ù °ÍºÎÅÍ.",
         "operationId": "list_handoffs_api_runs__run_id__handoffs_get",
         "parameters": [
           {
@@ -3609,7 +3609,7 @@
     "/api/products": {
       "get": {
         "summary": "Products",
-        "description": "ì œí’ˆ ëª©ë¡: ì œí’ˆêµ° ê±°ë¥´ê¸°, ì½”ë“œÂ·ì´ë¦„ ê²€ìƒ‰. ë¹ˆ ì¹¸ ìˆ˜Â·íŒ€ ê°€ì •Â·íŒì •ì— ì“°ì¸ ìˆ˜ë¥¼ í•¨ê»˜ ë‚¸ë‹¤.",
+        "description": "Á¦Ç° ¸ñ·Ï: Á¦Ç°±º °Å¸£±â, ÄÚµå¡¤ÀÌ¸§ °Ë»ö. ºó Ä­ ¼ö¡¤ÆÀ °¡Á¤¡¤ÆÇÁ¤¿¡ ¾²ÀÎ ¼ö¸¦ ÇÔ²² ³½´Ù.",
         "operationId": "products_api_products_get",
         "parameters": [
           {
@@ -3707,7 +3707,7 @@
     "/api/products/families": {
       "get": {
         "summary": "Product Families",
-        "description": "ì œí’ˆêµ° íƒ­ê³¼ ìœ„ ìš”ì•½ ì¹¸.",
+        "description": "Á¦Ç°±º ÅÇ°ú À§ ¿ä¾à Ä­.",
         "operationId": "product_families_api_products_families_get",
         "responses": {
           "200": {
@@ -3730,7 +3730,7 @@
     "/api/products/export": {
       "get": {
         "summary": "Export Products",
-        "description": "ì œí’ˆí‘œ ì—‘ì…€ (SCR-16 ë‚´ë³´ë‚´ê¸°). ëª©ë¡ê³¼ ê°™ì€ ê±°ë¥´ê¸°. X-Row-Count = ì œí’ˆ ìˆ˜.",
+        "description": "Á¦Ç°Ç¥ ¿¢¼¿ (SCR-16 ³»º¸³»±â). ¸ñ·Ï°ú °°Àº °Å¸£±â. X-Row-Count = Á¦Ç° ¼ö.",
         "operationId": "export_products_api_products_export_get",
         "parameters": [
           {
@@ -3778,7 +3778,7 @@
         ],
         "responses": {
           "200": {
-            "description": "ì—‘ì…€ íŒŒì¼",
+            "description": "¿¢¼¿ ÆÄÀÏ",
             "content": {
               "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {
                 "schema": {
@@ -3804,7 +3804,7 @@
     "/api/products/{code}": {
       "get": {
         "summary": "Product",
-        "description": "ì œí’ˆ í•˜ë‚˜: ì „ì²´ ì¹¸, íŒì •ì— ì“°ì¸ ê³³, ì œì•ˆ í¬ì¸íŠ¸, ê°™ì€ ì œí’ˆêµ° í˜„ì¥ ì´ë ¥.",
+        "description": "Á¦Ç° ÇÏ³ª: ÀüÃ¼ Ä­, ÆÇÁ¤¿¡ ¾²ÀÎ °÷, Á¦¾È Æ÷ÀÎÆ®, °°Àº Á¦Ç°±º ÇöÀå ÀÌ·Â.",
         "operationId": "product_api_products__code__get",
         "parameters": [
           {
@@ -3910,7 +3910,7 @@
     "/api/rules/doc-kinds": {
       "get": {
         "summary": "Doc Kind Rules",
-        "description": "ë¬¸ì„œ ì¢…ë¥˜ ê·œì¹™ ì‚¬ì „ (ìˆœì„œëŒ€ë¡œ).",
+        "description": "¹®¼­ Á¾·ù ±ÔÄ¢ »çÀü (¼ø¼­´ë·Î).",
         "operationId": "doc_kind_rules_api_rules_doc_kinds_get",
         "responses": {
           "200": {
@@ -3933,7 +3933,7 @@
     "/api/rules/edits": {
       "get": {
         "summary": "Rule Edits",
-        "description": "ê·œì¹™ ê³ ì¹¨ ì´ë ¥, ìƒˆê²ƒë¶€í„°. ë²„ë¦° ê³ ì¹¨ë„ í•¨ê»˜ ë‚¸ë‹¤.",
+        "description": "±ÔÄ¢ °íÄ§ ÀÌ·Â, »õ°ÍºÎÅÍ. ¹ö¸° °íÄ§µµ ÇÔ²² ³½´Ù.",
         "operationId": "rule_edits_api_rules_edits_get",
         "parameters": [
           {
@@ -3990,7 +3990,7 @@
     "/api/rules/{dictionary}": {
       "post": {
         "summary": "Add Rule",
-        "description": "ê·œì¹™ í•œ ì¤„ ì¶”ê°€ (ì—”ì§€ë‹ˆì–´Â·ìŠ¹ì¸ì). ì§€ìš´ ê°™ì€ í‚¤ ì¤„ì´ ìˆìœ¼ë©´ ë˜ì‚´ë¦°ë‹¤.",
+        "description": "±ÔÄ¢ ÇÑ ÁÙ Ãß°¡ (¿£Áö´Ï¾î¡¤½ÂÀÎÀÚ). Áö¿î °°Àº Å° ÁÙÀÌ ÀÖÀ¸¸é µÇ»ì¸°´Ù.",
         "operationId": "add_rule_api_rules__dictionary__post",
         "parameters": [
           {
@@ -4108,7 +4108,7 @@
       },
       "delete": {
         "summary": "Delete Rule",
-        "description": "ê·œì¹™ í•œ ì¤„ ì‚­ì œ. ì§€ë‚œ ê²°ê³¼ê°€ ê°€ë¦¬í‚¤ëŠ” ì‚¬ì „ì€ ë„ê³ , ì“°ì´ëŠ” í‘œì¤€ í•­ëª©ì€ ë§‰ëŠ”ë‹¤.",
+        "description": "±ÔÄ¢ ÇÑ ÁÙ »èÁ¦. Áö³­ °á°ú°¡ °¡¸®Å°´Â »çÀüÀº ²ô°í, ¾²ÀÌ´Â Ç¥ÁØ Ç×¸ñÀº ¸·´Â´Ù.",
         "operationId": "delete_rule_api_rules__dictionary___row_id__delete",
         "parameters": [
           {
@@ -4173,10 +4173,10 @@
     "/api/businesses": {
       "get": {
         "tags": [
-          "ì‚¬ì—… í˜„í™©"
+          "»ç¾÷ ÇöÈ²"
         ],
         "summary": "Businesses",
-        "description": "ì‚¬ì—… ëª©ë¡ê³¼ ìš”ì•½. scope=mineì´ë©´ user_idê°€ ê´€ì—¬í•œ ì‚¬ì—…ë§Œ (ë‚´ ì‚¬ì—…).",
+        "description": "»ç¾÷ ¸ñ·Ï°ú ¿ä¾à. scope=mineÀÌ¸é user_id°¡ °ü¿©ÇÑ »ç¾÷¸¸ (³» »ç¾÷).",
         "operationId": "businesses_api_businesses_get",
         "parameters": [
           {
@@ -4235,7 +4235,7 @@
       },
       "post": {
         "tags": [
-          "ì‚¬ì—… í˜„í™©"
+          "»ç¾÷ ÇöÈ²"
         ],
         "summary": "Create Business",
         "operationId": "create_business_api_businesses_post",
@@ -4276,7 +4276,7 @@
     "/api/businesses/{business_id}": {
       "get": {
         "tags": [
-          "ì‚¬ì—… í˜„í™©"
+          "»ç¾÷ ÇöÈ²"
         ],
         "summary": "Business Detail",
         "operationId": "business_detail_api_businesses__business_id__get",
@@ -4332,10 +4332,10 @@
       },
       "put": {
         "tags": [
-          "ì‚¬ì—… í˜„í™©"
+          "»ç¾÷ ÇöÈ²"
         ],
         "summary": "Update Business",
-        "description": "ì‚¬ì—… ì •ë³´ë¥¼ ê³ ì¹œë‹¤. ë°”ë€ ì¹¸ì€ ì‚¬ì—… ì´ë ¥ì— ë‚¨ê³ , ì‚¬ì—…ëª…ì€ ì—°ê²° ê²€í† ì—ë„ ë§ì¶˜ë‹¤.",
+        "description": "»ç¾÷ Á¤º¸¸¦ °íÄ£´Ù. ¹Ù²ï Ä­Àº »ç¾÷ ÀÌ·Â¿¡ ³²°í, »ç¾÷¸íÀº ¿¬°á °ËÅä¿¡µµ ¸ÂÃá´Ù.",
         "operationId": "update_business_api_businesses__business_id__put",
         "parameters": [
           {
@@ -4385,10 +4385,10 @@
     "/api/businesses/{business_id}/submitted": {
       "post": {
         "tags": [
-          "ì‚¬ì—… í˜„í™©"
+          "»ç¾÷ ÇöÈ²"
         ],
         "summary": "Mark Submitted",
-        "description": "ì œì¶œ ì™„ë£Œ í‘œì‹œ. ì—°ê²° ê²€í† ê°€ ëª¨ë‘ ìŠ¹ì¸ë˜ì–´ì•¼ í•œë‹¤ (ì•„ë‹ˆë©´ 409).",
+        "description": "Á¦Ãâ ¿Ï·á Ç¥½Ã. ¿¬°á °ËÅä°¡ ¸ğµÎ ½ÂÀÎµÇ¾î¾ß ÇÑ´Ù (¾Æ´Ï¸é 409).",
         "operationId": "mark_submitted_api_businesses__business_id__submitted_post",
         "parameters": [
           {
@@ -4436,7 +4436,7 @@
       },
       "delete": {
         "tags": [
-          "ì‚¬ì—… í˜„í™©"
+          "»ç¾÷ ÇöÈ²"
         ],
         "summary": "Unmark Submitted",
         "operationId": "unmark_submitted_api_businesses__business_id__submitted_delete",
@@ -4494,7 +4494,7 @@
     "/api/businesses/{business_id}/history": {
       "get": {
         "tags": [
-          "ì‚¬ì—… í˜„í™©"
+          "»ç¾÷ ÇöÈ²"
         ],
         "summary": "Business History",
         "operationId": "business_history_api_businesses__business_id__history_get",
@@ -4540,10 +4540,10 @@
     "/api/runs/{run_id}/business": {
       "put": {
         "tags": [
-          "ì‚¬ì—… í˜„í™©"
+          "»ç¾÷ ÇöÈ²"
         ],
         "summary": "Link Run",
-        "description": "ê²€í† ë¥¼ ì‚¬ì—…ì— ì—°ê²°í•˜ê±°ë‚˜ í•´ì œí•œë‹¤. ê²€í†  ì´ë ¥ì— ë‚¨ê³ , FR-06 ë¹„êµ ë²”ìœ„ëŠ” ë°”ë€Œì§€ ì•ŠëŠ”ë‹¤.",
+        "description": "°ËÅä¸¦ »ç¾÷¿¡ ¿¬°áÇÏ°Å³ª ÇØÁ¦ÇÑ´Ù. °ËÅä ÀÌ·Â¿¡ ³²°í, FR-06 ºñ±³ ¹üÀ§´Â ¹Ù²îÁö ¾Ê´Â´Ù.",
         "operationId": "link_run_api_runs__run_id__business_put",
         "parameters": [
           {
@@ -4593,7 +4593,7 @@
     "/api/eval/keys": {
       "get": {
         "tags": [
-          "ì •ë‹µì§€Â·ì±„ì "
+          "Á¤´äÁö¡¤Ã¤Á¡"
         ],
         "summary": "Keys",
         "operationId": "keys_api_eval_keys_get",
@@ -4618,7 +4618,7 @@
     "/api/eval/runs": {
       "get": {
         "tags": [
-          "ì •ë‹µì§€Â·ì±„ì "
+          "Á¤´äÁö¡¤Ã¤Á¡"
         ],
         "summary": "Runs",
         "operationId": "runs_api_eval_runs_get",
@@ -4643,7 +4643,7 @@
     "/api/eval/scores": {
       "get": {
         "tags": [
-          "ì •ë‹µì§€Â·ì±„ì "
+          "Á¤´äÁö¡¤Ã¤Á¡"
         ],
         "summary": "Scores",
         "operationId": "scores_api_eval_scores_get",
@@ -4666,7 +4666,7 @@
       },
       "post": {
         "tags": [
-          "ì •ë‹µì§€Â·ì±„ì "
+          "Á¤´äÁö¡¤Ã¤Á¡"
         ],
         "summary": "Score",
         "operationId": "score_api_eval_scores_post",
@@ -4707,7 +4707,7 @@
     "/api/runs/{run_id}/rule-suggestions": {
       "get": {
         "tags": [
-          "ì‚¬ì „ ì¶”ê°€ ì œì•ˆ"
+          "»çÀü Ãß°¡ Á¦¾È"
         ],
         "summary": "Run Suggestions",
         "operationId": "run_suggestions_api_runs__run_id__rule_suggestions_get",
@@ -4751,7 +4751,7 @@
       },
       "post": {
         "tags": [
-          "ì‚¬ì „ ì¶”ê°€ ì œì•ˆ"
+          "»çÀü Ãß°¡ Á¦¾È"
         ],
         "summary": "Suggest",
         "operationId": "suggest_api_runs__run_id__rule_suggestions_post",
@@ -4803,7 +4803,7 @@
     "/api/rule-suggestions": {
       "get": {
         "tags": [
-          "ì‚¬ì „ ì¶”ê°€ ì œì•ˆ"
+          "»çÀü Ãß°¡ Á¦¾È"
         ],
         "summary": "Suggestions",
         "operationId": "suggestions_api_rule_suggestions_get",
@@ -4861,7 +4861,7 @@
     "/api/rule-suggestions/{suggestion_id}/accept": {
       "post": {
         "tags": [
-          "ì‚¬ì „ ì¶”ê°€ ì œì•ˆ"
+          "»çÀü Ãß°¡ Á¦¾È"
         ],
         "summary": "Accept",
         "operationId": "accept_api_rule_suggestions__suggestion_id__accept_post",
@@ -4913,7 +4913,7 @@
     "/api/rule-suggestions/{suggestion_id}/decline": {
       "post": {
         "tags": [
-          "ì‚¬ì „ ì¶”ê°€ ì œì•ˆ"
+          "»çÀü Ãß°¡ Á¦¾È"
         ],
         "summary": "Decline",
         "operationId": "decline_api_rule_suggestions__suggestion_id__decline_post",
@@ -4965,7 +4965,7 @@
     "/api/runs/{run_id}/meaning-candidates": {
       "get": {
         "tags": [
-          "ì‚¬ì „ ì¶”ê°€ ì œì•ˆ"
+          "»çÀü Ãß°¡ Á¦¾È"
         ],
         "summary": "Risk Meaning",
         "operationId": "risk_meaning_api_runs__run_id__meaning_candidates_get",
@@ -5007,7 +5007,7 @@
     "/api/item-candidates": {
       "get": {
         "tags": [
-          "ì‚¬ì „ ì¶”ê°€ ì œì•ˆ"
+          "»çÀü Ãß°¡ Á¦¾È"
         ],
         "summary": "Item Candidates",
         "operationId": "item_candidates_api_item_candidates_get",
@@ -5032,7 +5032,7 @@
     "/api/item-candidates/{candidate_id}/accept": {
       "post": {
         "tags": [
-          "ì‚¬ì „ ì¶”ê°€ ì œì•ˆ"
+          "»çÀü Ãß°¡ Á¦¾È"
         ],
         "summary": "Accept Item",
         "operationId": "accept_item_api_item_candidates__candidate_id__accept_post",
@@ -5084,7 +5084,7 @@
     "/api/item-candidates/{candidate_id}/hide": {
       "post": {
         "tags": [
-          "ì‚¬ì „ ì¶”ê°€ ì œì•ˆ"
+          "»çÀü Ãß°¡ Á¦¾È"
         ],
         "summary": "Hide Item",
         "operationId": "hide_item_api_item_candidates__candidate_id__hide_post",
@@ -5129,7 +5129,7 @@
     "/api/runs/{run_id}/assistant": {
       "post": {
         "tags": [
-          "ê²€í†  ë„ìš°ë¯¸"
+          "°ËÅä µµ¿ì¹Ì"
         ],
         "summary": "Ask",
         "operationId": "ask_api_runs__run_id__assistant_post",
@@ -5337,7 +5337,7 @@
           "submission_check"
         ],
         "title": "ActionResult",
-        "description": "í™•ì •Â·ìˆ˜ì •Â·ë°˜ë ¤ í•˜ë‚˜. ë°”ë€Œê¸° ì „Â·í›„ ì¤„ì€ ëŒ€ìƒ í‘œë§ˆë‹¤ ì¹¸ì´ ë‹¬ë¼ ììœ  í˜•ì‹ì´ë‹¤."
+        "description": "È®Á¤¡¤¼öÁ¤¡¤¹İ·Á ÇÏ³ª. ¹Ù²î±â Àü¡¤ÈÄ ÁÙÀº ´ë»ó Ç¥¸¶´Ù Ä­ÀÌ ´Ş¶ó ÀÚÀ¯ Çü½ÄÀÌ´Ù."
       },
       "Actor": {
         "properties": {
@@ -5443,7 +5443,7 @@
           "ambiguous"
         ],
         "title": "AnswerKey",
-        "description": "ì •ë‹µì§€. TYPE = ìœ í˜• ì •ë‹µì§€, REQ = ìš”êµ¬ì‚¬í•­ ì •ë‹µì§€(add-requirement-answer-key).\n\nmade_byê°€ CLAUDE_DRAFT(Claude ì´ˆì•ˆ)Â·AUTO(ì½”ë“œ ìë™)ë©´ ì‚¬ëŒ í™•ì¸ ì „."
+        "description": "Á¤´äÁö. TYPE = À¯Çü Á¤´äÁö, REQ = ¿ä±¸»çÇ× Á¤´äÁö(add-requirement-answer-key).\n\nmade_by°¡ CLAUDE_DRAFT(Claude ÃÊ¾È)¡¤AUTO(ÄÚµå ÀÚµ¿)¸é »ç¶÷ È®ÀÎ Àü."
       },
       "Approval": {
         "properties": {
@@ -6183,7 +6183,7 @@
           "note"
         ],
         "title": "AssistantAnswer",
-        "description": "ê²€í†  ë„ìš°ë¯¸ ë‹µ (add-review-assistant, FR-17). mode SEARCH = AI ì—†ì´ ê¸€ìë¡œ ì°¾ìŒ."
+        "description": "°ËÅä µµ¿ì¹Ì ´ä (add-review-assistant, FR-17). mode SEARCH = AI ¾øÀÌ ±ÛÀÚ·Î Ã£À½."
       },
       "AssistantEvidence": {
         "properties": {
@@ -6305,7 +6305,7 @@
           "locations"
         ],
         "title": "AssistantEvidence",
-        "description": "ê²€í†  ë„ìš°ë¯¸ ê·¼ê±° ì¤„: ìš”êµ¬ì‚¬í•­(Râ€¦) ë˜ëŠ” íŒì •(Jâ€¦). ì›ë¬¸ ìœ„ì¹˜ í•„ìˆ˜ (CR-02)."
+        "description": "°ËÅä µµ¿ì¹Ì ±Ù°Å ÁÙ: ¿ä±¸»çÇ×(R¡¦) ¶Ç´Â ÆÇÁ¤(J¡¦). ¿ø¹® À§Ä¡ ÇÊ¼ö (CR-02)."
       },
       "AssistantSentence": {
         "properties": {
@@ -6328,7 +6328,7 @@
           "evidence_ids"
         ],
         "title": "AssistantSentence",
-        "description": "AIê°€ ì“´ ë‹µ ë¬¸ì¥. ê·¼ê±° ë²ˆí˜¸ëŠ” ì½”ë“œê°€ ëŒ€ì¡°í–ˆë‹¤ (CR-07)."
+        "description": "AI°¡ ¾´ ´ä ¹®Àå. ±Ù°Å ¹øÈ£´Â ÄÚµå°¡ ´ëÁ¶Çß´Ù (CR-07)."
       },
       "AssistantStep": {
         "properties": {
@@ -6401,7 +6401,7 @@
           "found"
         ],
         "title": "AssistantStep",
-        "description": "ì°¾ì€ ê²½ë¡œ í•œ ë‹¨ê³„: ë„êµ¬ì™€ ì¸ì, ì°¾ì€ ì¤„ ìˆ˜."
+        "description": "Ã£Àº °æ·Î ÇÑ ´Ü°è: µµ±¸¿Í ÀÎÀÚ, Ã£Àº ÁÙ ¼ö."
       },
       "Body_add_documents_api_runs__run_id__documents_post": {
         "properties": {
@@ -6679,7 +6679,7 @@
           "reason"
         ],
         "title": "BulkSkipped",
-        "description": "í•œêº¼ë²ˆì— í™•ì •ì—ì„œ ëº€ ì¤„ (update-bulk-confirm-guard). í•œ ì¤„ì”© í™•ì¸í•´ í™•ì •í•œë‹¤."
+        "description": "ÇÑ²¨¹ø¿¡ È®Á¤¿¡¼­ »« ÁÙ (update-bulk-confirm-guard). ÇÑ ÁÙ¾¿ È®ÀÎÇØ È®Á¤ÇÑ´Ù."
       },
       "BusinessDetail": {
         "properties": {
@@ -7102,7 +7102,7 @@
         },
         "type": "object",
         "title": "BusinessInfo",
-        "description": "ì‚¬ì—… ì •ë³´. ë³´ë‚¸ ì¹¸ë§Œ ë°”ê¾¸ê³  ë¹ˆ ë¬¸ìì—´ì€ ë¹„ìš°ê¸°ë¡œ ë³¸ë‹¤. ì‚¬ì—…ëª…ì€ ë¹„ìš¸ ìˆ˜ ì—†ë‹¤."
+        "description": "»ç¾÷ Á¤º¸. º¸³½ Ä­¸¸ ¹Ù²Ù°í ºó ¹®ÀÚ¿­Àº ºñ¿ì±â·Î º»´Ù. »ç¾÷¸íÀº ºñ¿ï ¼ö ¾ø´Ù."
       },
       "BusinessList": {
         "properties": {
@@ -7526,7 +7526,7 @@
           "state"
         ],
         "title": "BusinessRange",
-        "description": "ì‚¬ì—…ì— ì—°ê²°ëœ ê²€í†  í•˜ë‚˜ (ì„¤ë¹„ ë²”ìœ„). ìƒíƒœëŠ” ì €ì¥í•˜ì§€ ì•Šê³  ê³„ì‚°í•œë‹¤."
+        "description": "»ç¾÷¿¡ ¿¬°áµÈ °ËÅä ÇÏ³ª (¼³ºñ ¹üÀ§). »óÅÂ´Â ÀúÀåÇÏÁö ¾Ê°í °è»êÇÑ´Ù."
       },
       "BusinessSummary": {
         "properties": {
@@ -7655,7 +7655,7 @@
           "locations"
         ],
         "title": "CommercialImpact",
-        "description": "ê¸°ìˆ  íŒë‹¨ì—ì„œ ìƒê¸´ ìƒì—… ì˜í–¥: ì†ì‹¤ í™˜ì‚° ê°€ì‚°ì•¡(LOSS), ì¼íƒˆ í›„ë³´ ê°€ê²© ì˜í–¥ í™•ì¸(DEVIATION)."
+        "description": "±â¼ú ÆÇ´Ü¿¡¼­ »ı±ä »ó¾÷ ¿µÇâ: ¼Õ½Ç È¯»ê °¡»ê¾×(LOSS), ÀÏÅ» ÈÄº¸ °¡°İ ¿µÇâ È®ÀÎ(DEVIATION)."
       },
       "CompareRow": {
         "properties": {
@@ -7974,7 +7974,7 @@
           "products"
         ],
         "title": "CompareTarget",
-        "description": "ì§€ë‚œ RFP ë¹„êµ ëŒ€ìƒ: ê°™ì€ ê³ ê°ì‚¬ì˜ ì²˜ë¦¬ë¥¼ ë§ˆì¹œ ë‹¤ë¥¸ ê²€í†  (add-past-compare)."
+        "description": "Áö³­ RFP ºñ±³ ´ë»ó: °°Àº °í°´»çÀÇ Ã³¸®¸¦ ¸¶Ä£ ´Ù¸¥ °ËÅä (add-past-compare)."
       },
       "CompareTargets": {
         "properties": {
@@ -8165,7 +8165,7 @@
           "locations"
         ],
         "title": "CostCondition",
-        "description": "ë¹„ìš© ì¡°ê±´ í•œ ì¤„ (FR-16). ê°™ì€ ì¡°ê±´ì´ ë°˜ë³µë˜ë©´ í•œ ì¤„ë¡œ ë¬¶ëŠ”ë‹¤. ëª¨ë“  ì¤„ì€ í›„ë³´ë‹¤ (CR-08)."
+        "description": "ºñ¿ë Á¶°Ç ÇÑ ÁÙ (FR-16). °°Àº Á¶°ÇÀÌ ¹İº¹µÇ¸é ÇÑ ÁÙ·Î ¹­´Â´Ù. ¸ğµç ÁÙÀº ÈÄº¸´Ù (CR-08)."
       },
       "CostSummary": {
         "properties": {
@@ -8828,7 +8828,7 @@
           "used"
         ],
         "title": "DocKindRule",
-        "description": "ë¬¸ì„œ ì¢…ë¥˜ ê·œì¹™ í•œ ì¤„. usedëŠ” ê·¸ ì¢…ë¥˜ë¡œ ê·œì¹™ì´ ë¶„ë¥˜í•œ ë¬¸ì„œ ìˆ˜."
+        "description": "¹®¼­ Á¾·ù ±ÔÄ¢ ÇÑ ÁÙ. used´Â ±× Á¾·ù·Î ±ÔÄ¢ÀÌ ºĞ·ùÇÑ ¹®¼­ ¼ö."
       },
       "DocumentChoice": {
         "properties": {
@@ -8872,7 +8872,7 @@
         },
         "type": "object",
         "title": "DocumentChoice",
-        "description": "ë“±ë¡ í™”ë©´ì—ì„œ ì‚¬ëŒì´ ì •í•œ ë¬¸ì„œ ë¶„ë¥˜. ë¹„ìš´ ì¹¸ì€ ê·œì¹™ ê²°ê³¼ë¥¼ ì“´ë‹¤."
+        "description": "µî·Ï È­¸é¿¡¼­ »ç¶÷ÀÌ Á¤ÇÑ ¹®¼­ ºĞ·ù. ºñ¿î Ä­Àº ±ÔÄ¢ °á°ú¸¦ ¾´´Ù."
       },
       "DocumentLines": {
         "properties": {
@@ -8915,7 +8915,7 @@
           "lines"
         ],
         "title": "DocumentLines",
-        "description": "ì›ë¬¸ ì¤„ ë²”ìœ„ (add-judgment-view). partialì´ë©´ íŒŒì¼ì´ ì—†ì–´ DBì— ë‚¨ì€ ì¤„ë§Œ ì™”ë‹¤."
+        "description": "¿ø¹® ÁÙ ¹üÀ§ (add-judgment-view). partialÀÌ¸é ÆÄÀÏÀÌ ¾ø¾î DB¿¡ ³²Àº ÁÙ¸¸ ¿Ô´Ù."
       },
       "DocumentPair": {
         "properties": {
@@ -9055,7 +9055,7 @@
           "reason"
         ],
         "title": "DocumentPreview",
-        "description": "ë¶„ì„ ì „ ë¶„ë¥˜ ì¶”ì²œ (ì €ì¥í•˜ì§€ ì•ŠìŒ). ë¬¶ìŒÂ·íŒì • ëŒ€ìƒì€ ì½”ë“œ ê·œì¹™ì˜ ì¶”ì²œì´ë‹¤."
+        "description": "ºĞ¼® Àü ºĞ·ù ÃßÃµ (ÀúÀåÇÏÁö ¾ÊÀ½). ¹­À½¡¤ÆÇÁ¤ ´ë»óÀº ÄÚµå ±ÔÄ¢ÀÇ ÃßÃµÀÌ´Ù."
       },
       "EngineeringCheck": {
         "properties": {
@@ -9414,7 +9414,7 @@
           "note"
         ],
         "title": "EvalMetric",
-        "description": "ì§€í‘œ í•˜ë‚˜. ê°’ì´ ì—†ìœ¼ë©´(ë¶„ëª¨ 0) null. ëª©í‘œê°€ ì—†ìœ¼ë©´ passedëŠ” null."
+        "description": "ÁöÇ¥ ÇÏ³ª. °ªÀÌ ¾øÀ¸¸é(ºĞ¸ğ 0) null. ¸ñÇ¥°¡ ¾øÀ¸¸é passed´Â null."
       },
       "EvalMetrics": {
         "properties": {
@@ -9539,7 +9539,7 @@
           "risk_found"
         ],
         "title": "EvalRequirementDetail",
-        "description": "ìš”êµ¬ì‚¬í•­ ì •ë‹µì§€ ì±„ì ì˜ ìì„¸í•œ ìˆ˜ (K1Â·K2Â·K3Â·K10)."
+        "description": "¿ä±¸»çÇ× Á¤´äÁö Ã¤Á¡ÀÇ ÀÚ¼¼ÇÑ ¼ö (K1¡¤K2¡¤K3¡¤K10)."
       },
       "EvalRun": {
         "properties": {
@@ -9614,7 +9614,7 @@
           "last_reviewed_at"
         ],
         "title": "EvalRun",
-        "description": "ì±„ì ì— ë„£ì„ ìˆ˜ ìˆëŠ” ê²€í†  (ì‚¬ëŒì´ í™•ì •Â·ìˆ˜ì •í•œ íŒì • ì¤„ì´ ìˆìŒ)."
+        "description": "Ã¤Á¡¿¡ ³ÖÀ» ¼ö ÀÖ´Â °ËÅä (»ç¶÷ÀÌ È®Á¤¡¤¼öÁ¤ÇÑ ÆÇÁ¤ ÁÙÀÌ ÀÖÀ½)."
       },
       "EvalScore": {
         "properties": {
@@ -9777,7 +9777,7 @@
           "scored_at"
         ],
         "title": "EvalScore",
-        "description": "ì±„ì  ê¸°ë¡ í•œ ì¤„."
+        "description": "Ã¤Á¡ ±â·Ï ÇÑ ÁÙ."
       },
       "EvalTypeDetail": {
         "properties": {
@@ -9963,7 +9963,7 @@
           "after"
         ],
         "title": "FlowChange",
-        "description": "íë¦„ ê¸°ë¡ í•œ ë‹¨ê³„ì—ì„œ ë°”ë€ ê±´ìˆ˜ (add-flow-history). beforeê°€ ì—†ìœ¼ë©´ ê·¸ ë‹¨ê³„ì—ì„œ ì²˜ìŒ ìƒê¹€."
+        "description": "Èå¸§ ±â·Ï ÇÑ ´Ü°è¿¡¼­ ¹Ù²ï °Ç¼ö (add-flow-history). before°¡ ¾øÀ¸¸é ±× ´Ü°è¿¡¼­ Ã³À½ »ı±è."
       },
       "FlowStep": {
         "properties": {
@@ -10009,7 +10009,7 @@
           "action"
         ],
         "title": "FlowStep",
-        "description": "íë¦„ ê¸°ë¡ì˜ ë‹¨ê³„ í•˜ë‚˜ (add-flow-history, C2). ì‹œê°„ì€ íë¦„ ì €ì¥ ì‹œê° ê¸°ì¤€."
+        "description": "Èå¸§ ±â·ÏÀÇ ´Ü°è ÇÏ³ª (add-flow-history, C2). ½Ã°£Àº Èå¸§ ÀúÀå ½Ã°¢ ±âÁØ."
       },
       "HTTPValidationError": {
         "properties": {
@@ -10114,7 +10114,7 @@
           "files"
         ],
         "title": "HandoffResult",
-        "description": "ì˜ì—… ì¸ê³„ ê²°ê³¼ (add-submission-package). ì£¼ì†Œ ì—†ìŒÂ·ë°œì†¡ ì‹¤íŒ¨ë„ 200, errorë¥¼ ì±„ìš´ë‹¤."
+        "description": "¿µ¾÷ ÀÎ°è °á°ú (add-submission-package). ÁÖ¼Ò ¾øÀ½¡¤¹ß¼Û ½ÇÆĞµµ 200, error¸¦ Ã¤¿î´Ù."
       },
       "Health": {
         "properties": {
@@ -10889,7 +10889,7 @@
           "line_end"
         ],
         "title": "Location",
-        "description": "ì›ë¬¸ ìœ„ì¹˜: íŒŒì¼ ë²ˆí˜¸ + ì ˆ ë˜ëŠ” í‘œ + í–‰ (CR-02). ì ˆÂ·í‘œÂ·í•­ëª©Â·í–‰ì€ ìˆëŠ” ê²ƒë§Œ ìˆë‹¤."
+        "description": "¿ø¹® À§Ä¡: ÆÄÀÏ ¹øÈ£ + Àı ¶Ç´Â Ç¥ + Çà (CR-02). Àı¡¤Ç¥¡¤Ç×¸ñ¡¤ÇàÀº ÀÖ´Â °Í¸¸ ÀÖ´Ù."
       },
       "LogEntry": {
         "properties": {
@@ -11212,7 +11212,7 @@
           "aux"
         ],
         "title": "LossAmounts",
-        "description": "ì¢…ë¥˜ë³„ ê°€ì‚°ì•¡ (ë‹¨ê°€ Ã— ì†ì‹¤ê°’). ì†ì‹¤ê°’ì´ ì—†ìœ¼ë©´ null."
+        "description": "Á¾·ùº° °¡»ê¾× (´Ü°¡ ¡¿ ¼Õ½Ç°ª). ¼Õ½Ç°ªÀÌ ¾øÀ¸¸é null."
       },
       "LossResult": {
         "properties": {
@@ -11261,7 +11261,7 @@
           "is_assumed"
         ],
         "title": "LossResult",
-        "description": "ì†ì‹¤ê°’ì„ ë„£ê³  ë‹¤ì‹œ ê³„ì‚°í•œ ê²°ê³¼. ì‚¬ëŒì´ ë„£ì€ ê°’ì´ë¼ í•­ìƒ íŒ€ ê°€ì • (CR-06)."
+        "description": "¼Õ½Ç°ªÀ» ³Ö°í ´Ù½Ã °è»êÇÑ °á°ú. »ç¶÷ÀÌ ³ÖÀº °ªÀÌ¶ó Ç×»ó ÆÀ °¡Á¤ (CR-06)."
       },
       "LossValues": {
         "properties": {
@@ -11412,7 +11412,7 @@
           "locations"
         ],
         "title": "MeaningCandidate",
-        "description": "ëœ»ìœ¼ë¡œ ì°¾ì€ í›„ë³´ (add-meaning-search). RISK_SENTENCE = ì‚¬ì „ ì¶”ê°€ í›„ë³´(B5),\nITEM_LINK = í•­ëª© ì—°ê²° í›„ë³´(B3). í›„ë³´ì¼ ë¿ íŒì •Â·ìœ„í—˜ ì¡°ê±´ì´ ì•„ë‹ˆë‹¤."
+        "description": "¶æÀ¸·Î Ã£Àº ÈÄº¸ (add-meaning-search). RISK_SENTENCE = »çÀü Ãß°¡ ÈÄº¸(B5),\nITEM_LINK = Ç×¸ñ ¿¬°á ÈÄº¸(B3). ÈÄº¸ÀÏ »Ó ÆÇÁ¤¡¤À§Çè Á¶°ÇÀÌ ¾Æ´Ï´Ù."
       },
       "MyTasks": {
         "properties": {
@@ -11763,7 +11763,7 @@
           "same"
         ],
         "title": "PastDecision",
-        "description": "ë‹¤ë¥¸ ê²€í† ì—ì„œ ì‚¬ëŒì´ í™•ì •Â·ìˆ˜ì •í•œ ê°™ì€ ìš”êµ¬Â·ê°™ì€ ì œí’ˆ íŒì • (add-review-memory). íŒíŠ¸ì¼ ë¿."
+        "description": "´Ù¸¥ °ËÅä¿¡¼­ »ç¶÷ÀÌ È®Á¤¡¤¼öÁ¤ÇÑ °°Àº ¿ä±¸¡¤°°Àº Á¦Ç° ÆÇÁ¤ (add-review-memory). ÈùÆ®ÀÏ »Ó."
       },
       "Product": {
         "properties": {
@@ -12165,7 +12165,7 @@
           "empty_count"
         ],
         "title": "Product",
-        "description": "ì œí’ˆí‘œ í•œ ì¤„ (add-reference-views). ë¹ˆ ì¹¸ì€ null ê·¸ëŒ€ë¡œ (CR-04)."
+        "description": "Á¦Ç°Ç¥ ÇÑ ÁÙ (add-reference-views). ºó Ä­Àº null ±×´ë·Î (CR-04)."
       },
       "ProductChoice": {
         "properties": {
@@ -12613,7 +12613,7 @@
           "field_history"
         ],
         "title": "ProductDetail",
-        "description": "ì œí’ˆ í•˜ë‚˜. ì œí’ˆí‘œì˜ ëª¨ë“  ì¹¸ì´ í•¨ê»˜ ì˜¤ê³ , ì¹¸ ì´ë¦„ì€ ì œí’ˆí‘œ CSVë¥¼ ë”°ë¥¸ë‹¤."
+        "description": "Á¦Ç° ÇÏ³ª. Á¦Ç°Ç¥ÀÇ ¸ğµç Ä­ÀÌ ÇÔ²² ¿À°í, Ä­ ÀÌ¸§Àº Á¦Ç°Ç¥ CSV¸¦ µû¸¥´Ù."
       },
       "ProductFamily": {
         "properties": {
@@ -12743,7 +12743,7 @@
           "assignment_count"
         ],
         "title": "ProductSwitch",
-        "description": "ë¹„êµ ì œí’ˆ ë°”ê¾¸ê¸° ë’¤ ë‹¤ì‹œ ë§Œë“  ì¤„ ìˆ˜."
+        "description": "ºñ±³ Á¦Ç° ¹Ù²Ù±â µÚ ´Ù½Ã ¸¸µç ÁÙ ¼ö."
       },
       "ProductUse": {
         "properties": {
@@ -13092,7 +13092,7 @@
           "checked_at"
         ],
         "title": "ReadCheck",
-        "description": "ë¬¸ì„œ ì½ê¸° ì ê²€ ì¤„ (SCR-08-2). kind: í‘œÂ·ê·¸ë¦¼Â·ë‹¨ìœ„Â·ìœ„ì¹˜."
+        "description": "¹®¼­ ÀĞ±â Á¡°Ë ÁÙ (SCR-08-2). kind: Ç¥¡¤±×¸²¡¤´ÜÀ§¡¤À§Ä¡."
       },
       "ReqValue": {
         "properties": {
@@ -13287,7 +13287,8 @@
             "type": "string",
             "enum": [
               "RULE",
-              "AI"
+              "AI",
+              "OCR"
             ],
             "title": "Extracted By"
           },
@@ -13381,7 +13382,7 @@
           "values"
         ],
         "title": "Requirement",
-        "description": "ìš”êµ¬ì‚¬í•­. ëª©ë¡(ë¬¸ì„œ ì½ê¸° ì ê²€)ì€ ì›ë¬¸ ìœ„ì¹˜ê°€ ì—†ëŠ” ì¤„ë„ ë³´ì—¬ ì¤€ë‹¤."
+        "description": "¿ä±¸»çÇ×. ¸ñ·Ï(¹®¼­ ÀĞ±â Á¡°Ë)Àº ¿ø¹® À§Ä¡°¡ ¾ø´Â ÁÙµµ º¸¿© ÁØ´Ù."
       },
       "ReviewCard": {
         "properties": {
@@ -13840,7 +13841,7 @@
         },
         "type": "object",
         "title": "ReviewInfo",
-        "description": "ê²€í†  ì •ë³´. ë³´ë‚¸ ì¹¸ë§Œ ë°”ê¾¸ê³  ë¹ˆ ë¬¸ìì—´ì€ ë¹„ìš°ê¸°ë¡œ ë³¸ë‹¤ (add-review-info)."
+        "description": "°ËÅä Á¤º¸. º¸³½ Ä­¸¸ ¹Ù²Ù°í ºó ¹®ÀÚ¿­Àº ºñ¿ì±â·Î º»´Ù (add-review-info)."
       },
       "ReviewRatio": {
         "properties": {
@@ -13913,7 +13914,7 @@
           "removed"
         ],
         "title": "Revision",
-        "description": "ë¬¸ì„œ ì¶”ê°€ë¡œ ë‹¤ì‹œ ë¶„ì„í•œ ê²°ê³¼ (add-revision-notice).\n\nì¤„ ìˆ˜ëŠ” ê°™ì€ ì¤„(ìš”êµ¬ê°’Â·ë¹„êµ ì œí’ˆÂ·ë¹„êµ ê·œì¹™) ê¸°ì¤€."
+        "description": "¹®¼­ Ãß°¡·Î ´Ù½Ã ºĞ¼®ÇÑ °á°ú (add-revision-notice).\n\nÁÙ ¼ö´Â °°Àº ÁÙ(¿ä±¸°ª¡¤ºñ±³ Á¦Ç°¡¤ºñ±³ ±ÔÄ¢) ±âÁØ."
       },
       "Rewind": {
         "properties": {
@@ -13943,7 +13944,7 @@
           "reason"
         ],
         "title": "Rewind",
-        "description": "ë‹¨ê³„ë¶€í„° ë‹¤ì‹œ ì²˜ë¦¬ (add-step-rewind): ì²˜ë¦¬ ë‹¨ê³„ ì´ë¦„ê³¼ ì‚¬ìœ ."
+        "description": "´Ü°èºÎÅÍ ´Ù½Ã Ã³¸® (add-step-rewind): Ã³¸® ´Ü°è ÀÌ¸§°ú »çÀ¯."
       },
       "Risk": {
         "properties": {
@@ -14143,7 +14144,7 @@
           "items"
         ],
         "title": "RiskMeaning",
-        "description": "ìœ„í—˜ ì¡°ê±´ íƒ­ ì‚¬ì „ ì¶”ê°€ í›„ë³´.\n\nstatus: DONE / NO_AI(ì–¸ì–´ ëª¨ë¸ ì—†ìŒ) / SKIPPED(ì‹¤íŒ¨) / null(ì˜ˆì „ ê²€í† )."
+        "description": "À§Çè Á¶°Ç ÅÇ »çÀü Ãß°¡ ÈÄº¸.\n\nstatus: DONE / NO_AI(¾ğ¾î ¸ğµ¨ ¾øÀ½) / SKIPPED(½ÇÆĞ) / null(¿¹Àü °ËÅä)."
       },
       "RiskMember": {
         "properties": {
@@ -14219,7 +14220,7 @@
           "value"
         ],
         "title": "RuleChange",
-        "description": "ê·œì¹™ ì¶”ê°€Â·ìˆ˜ì •. value ì¹¸ì€ ì‚¬ì „ë§ˆë‹¤ ë‹¤ë¥´ë‹¤ (pipeline/rule_edit.py). ì‚¬ìœ ëŠ” ê¼­ ì ëŠ”ë‹¤."
+        "description": "±ÔÄ¢ Ãß°¡¡¤¼öÁ¤. value Ä­Àº »çÀü¸¶´Ù ´Ù¸£´Ù (pipeline/rule_edit.py). »çÀ¯´Â ²À Àû´Â´Ù."
       },
       "RuleEdit": {
         "properties": {
@@ -14334,7 +14335,7 @@
           "discarded_at"
         ],
         "title": "RuleEdit",
-        "description": "ê·œì¹™ ê³ ì¹¨ ì´ë ¥ í•œ ì¤„ (add-rule-editing).\n\nrow_keyëŠ” ê³ ì¹˜ê¸° ì „(ì¶”ê°€ëŠ” ì¶”ê°€í•œ) ì¤„ í‚¤, after_keyëŠ” ê³ ì¹œ ë’¤ í‚¤."
+        "description": "±ÔÄ¢ °íÄ§ ÀÌ·Â ÇÑ ÁÙ (add-rule-editing).\n\nrow_key´Â °íÄ¡±â Àü(Ãß°¡´Â Ãß°¡ÇÑ) ÁÙ Å°, after_key´Â °íÄ£ µÚ Å°."
       },
       "RuleRemoval": {
         "properties": {
@@ -14505,7 +14506,7 @@
           "locations"
         ],
         "title": "RuleSuggestion",
-        "description": "ìœ„í—˜ í‘œí˜„ ì‚¬ì „ì— ì¶”ê°€ ì œì•ˆ (add-rule-suggestion). ìœ„ì¹˜ëŠ” í‘œí˜„ì´ ë‚˜ì˜¨ ì²« ë¬¸ì¥."
+        "description": "À§Çè Ç¥Çö »çÀü¿¡ Ãß°¡ Á¦¾È (add-rule-suggestion). À§Ä¡´Â Ç¥ÇöÀÌ ³ª¿Â Ã¹ ¹®Àå."
       },
       "RunBusiness": {
         "properties": {
@@ -14723,7 +14724,7 @@
           "steps"
         ],
         "title": "RunFlow",
-        "description": "ê²€í†  í•˜ë‚˜ì˜ íë¦„ ê¸°ë¡ (add-flow-history). ì½ê¸° ì „ìš©."
+        "description": "°ËÅä ÇÏ³ªÀÇ Èå¸§ ±â·Ï (add-flow-history). ÀĞ±â Àü¿ë."
       },
       "RunListItem": {
         "properties": {
@@ -15386,7 +15387,7 @@
           "steps"
         ],
         "title": "RunLogItem",
-        "description": "ì‹¤í–‰ ê¸°ë¡ í•œ ì¤„ (add-run-log, NFR-09). ë¹„ìš©ì€ ëª¨ë¸ ë‹¨ê°€(íŒ€ ê°€ì •)ë¡œ ì–´ë¦¼í•œ ê°’."
+        "description": "½ÇÇà ±â·Ï ÇÑ ÁÙ (add-run-log, NFR-09). ºñ¿ëÀº ¸ğµ¨ ´Ü°¡(ÆÀ °¡Á¤)·Î ¾î¸²ÇÑ °ª."
       },
       "RunStepTime": {
         "properties": {
@@ -15418,7 +15419,7 @@
           "seconds"
         ],
         "title": "RunStepTime",
-        "description": "ì‹¤í–‰ ê¸°ë¡ì˜ ë‹¨ê³„ í•˜ë‚˜ (add-run-log). ëë‚˜ì§€ ì•Šì€ ë‹¨ê³„ëŠ” secondsê°€ null."
+        "description": "½ÇÇà ±â·ÏÀÇ ´Ü°è ÇÏ³ª (add-run-log). ³¡³ªÁö ¾ÊÀº ´Ü°è´Â seconds°¡ null."
       },
       "RunSummary": {
         "properties": {
@@ -15911,7 +15912,7 @@
           "made_at"
         ],
         "title": "ScreenSummary",
-        "description": "ìš”ì•½ ìƒì ë¬¸ì¥ (add-screen-summary, ê²°ì • Q1).\n\nì½”ë“œê°€ í‹€ì— ì±„ìš´ ë¬¸ì¥, ê°™ì€ ë°ì´í„°ë©´ ê°™ì€ ë¬¸ì¥."
+        "description": "¿ä¾à »óÀÚ ¹®Àå (add-screen-summary, °áÁ¤ Q1).\n\nÄÚµå°¡ Æ²¿¡ Ã¤¿î ¹®Àå, °°Àº µ¥ÀÌÅÍ¸é °°Àº ¹®Àå."
       },
       "SendRequests": {
         "properties": {
@@ -16081,7 +16082,7 @@
           "file_count"
         ],
         "title": "StepDetail",
-        "description": "ë¬¸ì„œ ì½ê¸° ë‹¨ê³„ ì•ˆì˜ ì„¸ë¶€ ì§„í–‰ (ì²˜ë¦¬ ìƒíƒœ í™”ë©´). AI ì¼ë§Œ ì¤„ ìˆ˜ê°€ ìˆë‹¤."
+        "description": "¹®¼­ ÀĞ±â ´Ü°è ¾ÈÀÇ ¼¼ºÎ ÁøÇà (Ã³¸® »óÅÂ È­¸é). AI ÀÏ¸¸ ÁÙ ¼ö°¡ ÀÖ´Ù."
       },
       "SubmissionCheck": {
         "properties": {
@@ -16281,7 +16282,7 @@
           "href"
         ],
         "title": "SummaryPart",
-        "description": "ìš”ì•½ ë¬¸ì¥ ì¡°ê° (add-screen-summary).\n\nlinkë©´ hrefëŠ” í™”ë©´ ì£¼ì†Œ(#ëŠ” í™”ë©´ì´ ë¶™ì„), strongì€ ê°•ì¡°."
+        "description": "¿ä¾à ¹®Àå Á¶°¢ (add-screen-summary).\n\nlink¸é href´Â È­¸é ÁÖ¼Ò(#´Â È­¸éÀÌ ºÙÀÓ), strongÀº °­Á¶."
       },
       "TaskStatus": {
         "properties": {
@@ -16563,7 +16564,7 @@
           "after"
         ],
         "title": "TypeEditResult",
-        "description": "ì‚¬ëŒ ìœ í˜• ê³ ì¹˜ê¸° ê²°ê³¼ (add-type-examples). NONEì€ ë¯¸ë¶„ë¥˜."
+        "description": "»ç¶÷ À¯Çü °íÄ¡±â °á°ú (add-type-examples). NONEÀº ¹ÌºĞ·ù."
       },
       "TypeTag": {
         "properties": {

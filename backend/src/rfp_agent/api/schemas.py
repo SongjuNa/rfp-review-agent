@@ -258,7 +258,7 @@ class Requirement(Out):
     source_kind: str
     req_kind: str
     text_raw: str
-    extracted_by: Literal["RULE", "AI"]
+    extracted_by: Literal["RULE", "AI", "OCR"]      # OCR: 그림 속 글자에서 뽑은 줄 (add-ocr)
     confidence: float | None
     is_assumed: bool
     rule_id: str | None
