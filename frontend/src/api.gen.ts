@@ -835,6 +835,7 @@ export type Location = {
   item_no: string | null
   line_start: number | null
   line_end: number | null
+  page?: number | null
 }
 
 export type LogEntry = {

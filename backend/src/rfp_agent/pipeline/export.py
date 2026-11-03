@@ -22,7 +22,8 @@ def location_text(loc: dict, names: dict[int, str]) -> str:
         where = loc["table_name"] + (f" {loc['item_no']}번" if loc["item_no"] else "")
     else:
         where = f"{loc['section_no'] or ''} {loc['section_title'] or ''}".strip()
-    parts = [names.get(loc["file_no"], f"파일 {loc['file_no']}"), where,
+    parts = [names.get(loc["file_no"], f"파일 {loc['file_no']}"),
+             f"{loc['page']}쪽" if loc.get("page") else "", where,     # PDF 쪽
              f"{loc['line_start']}행" if loc["line_start"] else ""]
     return " · ".join(p for p in parts if p)
 

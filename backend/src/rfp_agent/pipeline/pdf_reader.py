@@ -243,7 +243,7 @@ def _mark_rows(blocks: list[Block]) -> list[Block]:
         cells = [mark, text]
         out.append(Block(seq=0, kind="R", text=" | ".join(cells), line_no=b.line_no,
                          line_count=lines, table_no=table_no, row_no=row_no, cells=cells,
-                         raw_cells=list(cells)))
+                         raw_cells=list(cells), page=b.page))
         row_no += 1
         i += 1
     for n, b in enumerate(out):
@@ -286,7 +286,8 @@ def read_blocks(path: Path) -> list[Block]:
 
         blocks: list[Block] = []
         table_no = -1
-        for page, tables, lines, figures in pages:
+        for page_no, (page, tables, lines, figures) in enumerate(pages, start=1):
+            first = len(blocks)
             items = [(ln["top"], "P", ln) for ln in lines
                      if _edge_key(ln, page.height) not in repeated]
             items += [(t.bbox[1], "T", t) for t in tables]
@@ -307,4 +308,32 @@ def read_blocks(path: Path) -> list[Block]:
                 table_no += 1
                 _add_table(blocks, obj.extract(), table_no)
             _add_paragraphs(blocks, pending, gap)
+            for b in blocks[first:]:
+                b.page = page_no
     return _mark_rows(blocks)
+
+
+def page_starts(blocks: list[Block]) -> list[int] | None:
+    """쪽마다 첫 줄 번호 (add-pdf-page-location). 블록 없는 쪽은 다음 쪽 첫 줄과 같다.
+
+    줄 번호 → 쪽은 시작 줄이 그 줄 이하인 가장 큰 쪽 (DB 함수 line_page, page_of).
+    """
+    pages = [b.page for b in blocks if b.page]
+    if not pages:
+        return None
+    first = {}
+    for b in blocks:
+        if b.page and b.page not in first:
+            first[b.page] = b.line_no
+    out, nxt = [], blocks[-1].last_line + 1
+    for p in range(max(pages), 0, -1):
+        nxt = first.get(p, nxt)
+        out.append(nxt)
+    return out[::-1]
+
+
+def page_of(starts: list[int] | None, line: int | None) -> int | None:
+    """줄 번호가 있는 쪽 (DB 함수 line_page와 같은 규칙)"""
+    if not starts or line is None:
+        return None
+    return max((n for n, s in enumerate(starts, start=1) if s <= line), default=None)

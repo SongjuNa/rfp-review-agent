@@ -37,6 +37,7 @@ class Location(Out):
     item_no: str | None
     line_start: int | None
     line_end: int | None
+    page: int | None = None         # PDF 쪽 번호 (add-pdf-page-location). docx는 없음
 
 
 # 근거 응답의 원문 위치: 하나 이상

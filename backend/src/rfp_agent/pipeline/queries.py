@@ -88,7 +88,8 @@ def run_documents(conn: psycopg.Connection, run_id: int) -> list[dict]:
 
 LOCATIONS = """
     SELECT rl.requirement_id, d.file_no, s.section_no, s.title AS section_title,
-           t.table_name, tr.item_no, l.line_start, l.line_end
+           t.table_name, tr.item_no, l.line_start, l.line_end,
+           line_page(d.page_starts, l.line_start) AS page          -- PDF 쪽 (add-pdf-page-location)
     FROM requirement_location rl
     JOIN source_location l USING (location_id)
     JOIN document d ON d.document_id = l.document_id

@@ -9,6 +9,7 @@ import re
 import psycopg
 from psycopg.rows import dict_row
 
+from rfp_agent.pipeline.pdf_reader import page_of
 from rfp_agent.pipeline.review import ReviewError, _user_role, default_user, log, require_stage
 
 KINDS = ("표", "그림", "단위", "위치")
@@ -35,6 +36,8 @@ def _section(no: str | None, title: str | None) -> str | None:
 
 def _row(key: str, kind: str, what: str, doc: dict, loc: str, line: int | None, problem: str,
          todo: str) -> dict:
+    page = page_of(doc.get("page_starts"), line)                 # PDF 쪽 (add-pdf-page-location)
+    loc = _join(f"{page}쪽" if page else None, loc)
     return {"key": key, "kind": kind, "what": what, "document_id": doc["document_id"],
             "file_name": doc["file_name"], "loc": loc, "line": line, "problem": problem,
             "todo": todo}
@@ -42,7 +45,8 @@ def _row(key: str, kind: str, what: str, doc: dict, loc: str, line: int | None, 
 
 def _documents(cur, run_id: int) -> dict[int, dict]:
     rows = cur.execute(
-        """SELECT d.document_id, d.file_no, d.file_name, d.readable FROM run_document rd
+        """SELECT d.document_id, d.file_no, d.file_name, d.readable, d.page_starts
+           FROM run_document rd
            JOIN document d USING (document_id) WHERE rd.run_id = %s ORDER BY d.file_no""",
         (run_id,)).fetchall()
     return {r["document_id"]: r for r in rows}
