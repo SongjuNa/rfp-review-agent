@@ -198,7 +198,7 @@ export function JudgeTab({ run, tick, onChanged }: { run: RunSummary; tick: numb
                         {(j.review_status === 'CONFIRMED' || j.review_status === 'EDITED') && <div className="cfm"><span className="ms" aria-hidden="true">check</span>확정</div>}
                         {j.past_decision && <div className={'en past' + (j.past_decision.same ? '' : ' c-ora')} title={`${j.past_decision.review_no}에서 사람이 ${RESULT_NAMES[j.past_decision.result]}(으)로 확정`}>
                           {j.past_decision.same ? `지난 확정 ${RESULT_NAMES[j.past_decision.result]}` : '지난 확정과 다름'}
-                          {j.past_decision.match === 'MEANING' && j.past_decision.score != null && ` · 뜻 비슷 ${j.past_decision.score.toFixed(2)}`}</div>}
+                          {j.past_decision.match === 'MEANING' && j.past_decision.score != null && ` · 유사도 ${j.past_decision.score.toFixed(2)}`}</div>}
                       </td>
                       <td style={{ minWidth: 180 }}><span style={{ fontWeight: 600 }}>{itemName(j)}</span>
                         {checkOf.get(j.requirement_id) && checkOf.get(j.requirement_id)!.result !== 'PASS' && (
@@ -288,7 +288,7 @@ function Panel({ runId, j, w, check, items, log, docs, canEdit, edK, edWhy, edHi
         <div>
           <div className="lbl">판정 출처</div>
           <table className="pv"><tbody>
-            <tr><th>시스템 제안</th><td><span className={`st ${RESULT_TONES[sug]}`}>{RESULT_NAMES[sug]}</span><span className="pvs">코드 규칙</span></td></tr>
+            <tr><th>시스템 제안</th><td><span className={`st ${RESULT_TONES[sug]}`}>{RESULT_NAMES[sug]}</span><span className="pvs">규칙 기반</span></td></tr>
             <tr><th>담당자 확정</th><td>{conf
               ? <><span className={`st ${RESULT_TONES[j.result]}`}>{RESULT_NAMES[j.result]}</span><span className="pvs">{conf.actor} · {stamp(conf.acted_at)}</span></>
               : <span className="pend" title="확정하지 않으면 시스템 제안 그대로 상신됩니다">아직 확정 안 함</span>}</td></tr>
@@ -297,7 +297,7 @@ function Panel({ runId, j, w, check, items, log, docs, canEdit, edK, edWhy, edHi
         </div>
         {j.result === 'WARRANTY_TO_FILL' && w && (
           <div>
-            <label className="lbl" htmlFor="wval" style={{ display: 'block' }}>보증값 (comply는 쓸 수 없음)</label>
+            <label className="lbl" htmlFor="wval" style={{ display: 'block' }}>보증값 ("Comply"는 입력할 수 없음)</label>
             {w.candidate_value
               ? <div style={{ fontWeight: 600 }}>{prodCell(j, w).val} <span className="en" style={{ display: 'inline', marginLeft: 6 }}>출처 {prodCell(j, w).sub}</span></div>
               : canEdit && (

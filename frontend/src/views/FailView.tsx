@@ -23,7 +23,7 @@ const ICONS: Record<string, string> = { done: 'check', fail: 'priority_high', wa
 // 계속하는 방법: 목업 opts의 이름과 설명. retry만 실제, 나머지는 예시
 const OPTIONS: [string, string, string][] = [
   ['retry', '다시 시도', '같은 파일·분류로 다시 처리합니다. 이미 읽은 문서는 다시 쓰므로 멈춘 곳부터 이어서 처리하는 것과 같습니다.'],
-  ['code', '코드 규칙만으로 계속', '남은 부분은 언어 모델 없이 코드 규칙으로만 처리합니다. 문맥을 봐야 하는 위험은 놓칠 수 있습니다.'],
+  ['code', '규칙 기반으로 계속', '남은 부분은 AI 없이 규칙으로만 처리합니다. 문맥을 봐야 하는 위험은 놓칠 수 있습니다.'],
   ['skip', '남은 부분은 직접 확인', '남은 부분을 "확인 필요"로 두고 검토를 엽니다. 결재 요청 사유에 올라갑니다.'],
   ['report', '시스템 담당자에게 알리기', '오른쪽 문의용 정보를 담아 IT 지원 요청을 보냅니다. 검토는 멈춘 상태로 둡니다.'],
 ]
@@ -64,7 +64,7 @@ export function FailView({ run, approver, onChanged }: { run: RunSummary; approv
     : run.requirements ? `요구사항 ${run.requirements}줄을 뽑았지만 판정은 아직 없습니다.` : '아직 볼 수 있는 결과가 없습니다.'
   const tech: [string, string][] = [
     ['작업 번호', `${run.review_no} (실행 ${run.run_id})`], ['멈춘 단계', run.failed_step ?? '—'],
-    ['발생', stamp(failedAt)], ['모델', run.llm_model ?? '언어 모델 없음'], ['오류', run.error_message ?? '—'],
+    ['발생', stamp(failedAt)], ['모델', run.llm_model ?? 'AI 미사용'], ['오류', run.error_message ?? '—'],
   ]
   const copy = () => {
     navigator.clipboard?.writeText([run.review_no, ...tech.map(([k, v]) => `${k}: ${v}`)].join('\n')).catch(() => undefined)
@@ -110,7 +110,7 @@ export function FailView({ run, approver, onChanged }: { run: RunSummary; approv
               <button type="button" className="bp" disabled={busy || (pick === 'retry' && !run.retryable)} onClick={go}
                 title={pick === 'retry' && !run.retryable ? '이 검토는 다시 돌릴 파일 정보가 없습니다. 검토를 다시 등록해 주세요.' : undefined}>
                 {busy ? '다시 시작하는 중…' : OPTIONS.find(([k]) => k === pick)?.[1]}</button></div>
-            {pick === 'retry' && !run.retryable && <p className="fhave">이 검토는 다시 돌릴 파일 정보가 없습니다(다시 시도 기능 전에 등록). 검토를 다시 등록해 주세요.</p>}
+            {pick === 'retry' && !run.retryable && <p className="fhave">이 검토는 다시 돌릴 파일 정보가 없습니다. 검토를 다시 등록해 주세요.</p>}
           </section>
         </div>
 

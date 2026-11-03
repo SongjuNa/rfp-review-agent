@@ -174,7 +174,7 @@ export function Home() {
             <div className="facts">
               {retryBtn(failed, 'bp')}
               <a className="bo sm" href={href(`/reviews/${failed.run_id}`)}>오류 내용 보기</a>
-              <span title="코드 규칙만으로 계속하는 기능은 아직 없습니다"><button type="button" className="bo sm" disabled>코드 규칙만으로 계속</button></span>
+              <span title="준비 중인 기능입니다"><button type="button" className="bo sm" disabled>규칙 기반으로 계속</button></span>
             </div>
             {retryError?.id === failed.run_id && <p className="c-red" style={{ margin: '6px 0 0' }}>{retryError.text}</p>}
           </div>

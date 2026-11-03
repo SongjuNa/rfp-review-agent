@@ -159,7 +159,7 @@ const SUM_STAGE: Record<Exclude<Sum, 'mine'>, string> = { approval: 'APPROVAL', 
 const SUM_NAMES: Record<Sum, string> = { mine: '내가 처리할 건', approval: '결재 대기', failed: '분석 실패', approved: '결재 완료', processing: '분석 중' }
 const toSum = (v: string | null): Sum | null => (v && v in SUM_NAMES ? (v as Sum) : null)
 
-const MY_TURN_TIP = '담당자 확인·반려됨·분석 실패인 내 검토와 내가 결재할 결재 대기 (홈과 같은 수)'
+const MY_TURN_TIP = '담당자 확인·반려됨·분석 실패인 내 검토와 내가 결재할 결재 대기'
 
 export function ReviewList() {
   const { user, users } = useSession()

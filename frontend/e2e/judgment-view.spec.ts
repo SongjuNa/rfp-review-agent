@@ -148,8 +148,8 @@ test('찾은 방법과 신뢰도', async ({ page }) => {
   await mock(page)
   await page.goto(`/#/reviews/${ID}/judgments/502`)
   const pv = page.locator('.pv')
-  await expect(pv).toContainText('찾은 방법AI가 찾음신뢰도 0.82')
-  await expect(pv).toContainText('시스템 제안일탈 후보코드 규칙')
+  await expect(pv).toContainText('찾은 방법AI 추출신뢰도 0.82')
+  await expect(pv).toContainText('시스템 제안일탈 후보규칙 기반')
   await expect(pv).toContainText('아직 확정 안 함')
 })
 
