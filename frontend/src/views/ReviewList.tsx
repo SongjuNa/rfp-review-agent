@@ -6,7 +6,7 @@ import { myTurn } from '../components/myWork'
 import { Pager } from '../components/Pager'
 import { useLoad, useRepeat } from '../components/useLoad'
 import { progress, STALL_MS, stepLine } from '../components/progress'
-import { currentPath, href } from '../shell/router'
+import { currentPath, href, navigate, pathQuery, useHashPath } from '../shell/router'
 import { useSession } from '../shell/useSession'
 import './detail.css'
 
@@ -153,6 +153,12 @@ function SortHead({ k, label, sort, onSort, num: isNum }: {
   )
 }
 
+// 요약 줄 칸 거르기 (update-list-summary-filter): 주소 `?sum=`에 남겨 뒤로 가기로 풀린다
+type Sum = 'mine' | 'approval' | 'failed' | 'approved' | 'processing'
+const SUM_STAGE: Record<Exclude<Sum, 'mine'>, string> = { approval: 'APPROVAL', failed: 'FAILED', approved: 'APPROVED', processing: 'PROCESSING' }
+const SUM_NAMES: Record<Sum, string> = { mine: '내가 처리할 건', approval: '결재 대기', failed: '분석 실패', approved: '결재 완료', processing: '분석 중' }
+const toSum = (v: string | null): Sum | null => (v && v in SUM_NAMES ? (v as Sum) : null)
+
 const MY_TURN_TIP = '담당자 확인·반려됨·분석 실패인 내 검토와 내가 결재할 결재 대기 (홈과 같은 수)'
 
 export function ReviewList() {
@@ -173,6 +179,7 @@ export function ReviewList() {
   const [size, setSize] = useState(10)
   const me = user?.user_id ?? null
   const all = runs.data ?? []
+  const sum = toSum(pathQuery(useHashPath()).get('sum'))
   const submitted = scope === 'submitted'
   // 내가 올린 결재: 머리글에서 고른 사용자가 가장 최근에 상신한 검토 (취소한 상신은 빠짐)
   const owned = all.filter((r) => scope === 'all' || (submitted ? r.requested_by_id === me && me !== null
@@ -181,8 +188,10 @@ export function ReviewList() {
   const key = { started: (r: RunListItem) => r.started_at, requirements: (r: RunListItem) => r.requirements,
     dev: (r: RunListItem) => r.deviation_candidates }[sort.key]
   const dir = sort.dir === 'asc' ? 1 : -1
-  const base = owned
-    .filter((r) => !from || r.started_at.slice(0, 10) >= isoDay(from))
+  // 요약 칸으로 거르면 칸 숫자와 같은 목록에서 시작한다 (칸은 기간을 보지 않는다)
+  const pool = sum === 'mine' ? all.filter(myTurn(user)) : sum ? owned.filter((r) => r.stage === SUM_STAGE[sum]) : owned
+  const base = pool
+    .filter((r) => !!sum || !from || r.started_at.slice(0, 10) >= isoDay(from))
     .filter((r) => search.stage === 'all' || r.stage === search.stage)
     .filter((r) => !search.has || r[search.has] > 0)
     .filter((r) => matches(r, search.field, search.q.trim()))
@@ -200,6 +209,13 @@ export function ReviewList() {
   const engineers = users.filter((u) => u.role === 'ENGINEER' && u.user_id !== me)
   const other = typeof scope === 'number' ? users.find((u) => u.user_id === scope) : null
   const apply = (s: Search) => { setSearch(s); setPage(1) }
+  const pick = (k: Sum) => { setPage(1); navigate(sum === k ? '/reviews' : `/reviews?sum=${k}`) }
+  /** 요약 칸 단추: 누르면 거르고, 다시 누르면 푼다 */
+  const cell = (k: Sum, n: number, tone: string, extra = '', tip?: string) => (
+    <button type="button" className={`sumlink ${extra}${sum === k ? ' on' : ''}`} aria-pressed={sum === k}
+      title={(tip ? tip + ' · ' : '') + (sum === k ? '다시 누르면 모두 보기' : '누르면 이 검토만 보입니다')} onClick={() => pick(k)}>
+      {SUM_NAMES[k]}<b className={tone}>{n}</b></button>
+  )
   const onSort = (k: SortKey) => setSort({ key: k, dir: sort.key === k && sort.dir === 'desc' ? 'asc' : 'desc' })
   return (
     <main className="main">
@@ -218,15 +234,18 @@ export function ReviewList() {
       </div>
 
       <div className="sumline">
-        <span title={MY_TURN_TIP}>내가 처리할 건<b className="c-blue">{myCount}</b></span>
-        <button type="button" className="sumlink" title="누르면 결재 대기만 보입니다"
-          onClick={() => { const s = { ...draft, stage: 'APPROVAL' }; setDraft(s); apply(s) }}>
-          결재 대기<b>{count('APPROVAL')}</b></button>
-        <span>분석 실패<b className="c-red">{count('FAILED')}</b></span>
+        {cell('mine', myCount, 'c-blue', '', MY_TURN_TIP)}
+        {cell('approval', count('APPROVAL'), '')}
+        {cell('failed', count('FAILED'), 'c-red')}
         {/* 할 일이 아닌 단계: 칸 합이 목록 수와 맞게 (update-list-summary-rest) */}
-        <span className="sumrest sumsep" title="결재가 승인되어 더 할 일이 없는 검토">결재 완료<b>{count('APPROVED')}</b></span>
-        {count('PROCESSING') > 0 && <span className="sumrest" title="문서를 분석하고 있는 검토">분석 중<b>{count('PROCESSING')}</b></span>}
+        {cell('approved', count('APPROVED'), '', 'sumrest sumsep', '결재가 승인되어 더 할 일이 없는 검토')}
+        {(count('PROCESSING') > 0 || sum === 'processing') && cell('processing', count('PROCESSING'), '', 'sumrest', '문서를 분석하고 있는 검토')}
       </div>
+      {sum && (
+        <div className="sumbar" role="status"><span className="ms" aria-hidden="true">filter_alt</span>
+          <span><b>{SUM_NAMES[sum]} {rows.length}건</b>만 보는 중</span>
+          <button type="button" className="lnk" onClick={() => { setPage(1); navigate('/reviews') }}>모두 보기</button></div>
+      )}
 
       <section className="sec">
         <div className="sech">

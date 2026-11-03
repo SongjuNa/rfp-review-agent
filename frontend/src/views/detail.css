@@ -102,3 +102,9 @@
 .sumline .sumrest{color:var(--c-muted)}
 .sumline .sumrest b{color:var(--c-text-3)}
 .sumline .sumsep{padding-left:var(--s-4);border-left:1px solid var(--c-line)}
+
+/* 검토 목록 요약 칸 거르기 (update-list-summary-filter) */
+.sumline .sumlink.on{color:var(--c-navy);font-weight:600;text-decoration:underline;text-underline-offset:4px}
+.sumbar{display:flex;align-items:center;gap:8px;margin-top:12px;padding:8px 14px;border-radius:var(--r-lg);background:var(--c-blue-bg);font-size:var(--t-sm);color:var(--c-text-2)}
+.sumbar .ms{font-size:18px;color:var(--c-link)}
+.sumbar .lnk{margin-left:auto;border:0;background:none;color:var(--c-link);font:inherit;font-weight:600;cursor:pointer;padding:0}
