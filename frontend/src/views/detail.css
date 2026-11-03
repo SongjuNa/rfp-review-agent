@@ -97,3 +97,8 @@
 .aiu-n{margin:6px 0 0;font-size:var(--t-xs);color:var(--c-muted)}
 .aiu-empty{margin:12px 0 2px}
 .aiu .fbar{padding:10px 0 8px}
+
+/* 검토 목록 요약 줄의 할 일 아닌 칸 (update-list-summary-rest) */
+.sumline .sumrest{color:var(--c-muted)}
+.sumline .sumrest b{color:var(--c-text-3)}
+.sumline .sumsep{padding-left:var(--s-4);border-left:1px solid var(--c-line)}
