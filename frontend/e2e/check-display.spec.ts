@@ -31,9 +31,11 @@ test('검산 위반 줄', async ({ page, request }) => {
   const id = await checkRun(request)
   await page.goto(`/#/reviews/${id}`)
   await page.getByRole('combobox', { name: '한 페이지에 보일 개수' }).selectOption('50')
-  await expect(page.locator('#judge .chkn')).toContainText('공학 검산 위반 1건 · 확인 필요 1건')
+  await expect(page.locator('#judge .chkn')).toContainText('공학 검산 위반 1건(표시한 항목 2개) · 확인 필요 1건(표시한 항목 2개)')
   const bad = page.locator('#judge table.tbl tbody tr', { has: page.locator('.tag.chk.bad') })
-  await expect(bad.first()).toContainText('Rated')
+  await expect(bad).toHaveCount(2)                          // 검산 하나 = 차단 전류 줄 + 최대 순간 전류 줄 (update-check-banner-rows)
+  await expect(bad.filter({ hasText: 'Rated short-circuit breaking current' })).toHaveCount(1)
+  await expect(bad.filter({ hasText: 'Rated peak withstand current' })).toHaveCount(1)
   await expect(peakRow(page, 'TS-145-DS').locator('.tag.chk.warn')).toHaveText('검산 확인 필요')
 })
 
