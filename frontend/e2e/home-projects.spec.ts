@@ -225,3 +225,24 @@ test('목록 내가 처리할 건은 홈과 같은 수', async ({ page }) => {
   await page.getByRole('group', { name: '담당 범위' }).getByRole('button', { name: '팀 전체' }).click()
   await expect(cell.locator('b')).toHaveText('2')
 })
+
+// 명세 review-workspace "인계 패키지 미리 보기" — 사업 상세에서 미리 보기 (change add-package-preview)
+test('사업 상세에서 미리 보기', async ({ page }) => {
+  await mock(page, [], { business: detail('APPROVED') })
+  // 미리 보기 창이 부르는 것만 이 검토 값으로 돌려준다 (나중에 건 route가 먼저)
+  await page.route(/\/api\/runs\/9550(\/(tbe|cost-conditions|approval))?(\?.*)?$/, (r) => {
+    const p = new URL(r.request().url()).pathname
+    if (p.endsWith('/tbe')) return r.fulfill({ json: { file_name: '', review_no: 'RV-TEST-9550', project_name: null, review_name: null, rows: [],
+      counts: { rows: 0, comply: 0, deviation: 0, query: 0, review: 0, candidates: 0, no_location: 0 } } })
+    if (p.endsWith('/cost-conditions')) return r.fulfill({ json: { conditions: [], impacts: [] } })
+    if (p.endsWith('/approval')) return r.fulfill({ json: { stage: 'APPROVED', approval: null, reasons: [], preview: null, review_ratio: null, submission_check: null, read_unchecked: 0 } })
+    return r.fulfill({ json: run(9550, '115 kV GIS', { stage: 'APPROVED' }) })
+  })
+  await page.goto('/#/projects/PJ-2026-005')
+  await page.getByRole('button', { name: '인계 패키지 보기' }).click()
+  await page.getByRole('dialog', { name: '인계 패키지' }).getByRole('button', { name: '미리 보기' }).click()
+  const dlg = page.getByRole('dialog', { name: '영업 인계 패키지' })
+  await expect(dlg).toContainText('RV-TEST-9550')
+  await expect(dlg.getByRole('tab', { name: /영업 할 일/ })).toBeVisible()
+  await page.unrouteAll({ behavior: 'ignoreErrors' })
+})
