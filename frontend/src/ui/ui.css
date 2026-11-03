@@ -61,3 +61,9 @@ body:has(.ftb) .uisnk{bottom:88px}
 .uib:focus-visible{outline:2px solid var(--c-link);outline-offset:2px}
 .uib .ms{font-size:16px;color:var(--c-text-3)}
 .uib .uib-v{font-weight:400;color:var(--c-muted)}
+
+/* 인계 패키지 만드는 동안 진행 (update-package-progress). 막대는 공통 .anbar */
+.pkprog{margin:8px 0 0}
+.pkprog .anbar{height:6px;margin-top:0}
+.pkprog p{margin:6px 0 0;font-size:var(--t-sm);color:var(--c-text-3)}
+.pkprog b{color:var(--c-text);font-weight:600}

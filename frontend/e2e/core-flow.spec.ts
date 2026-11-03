@@ -74,7 +74,7 @@ test('RFP 한 건 처음부터 끝까지', async ({ page, request }) => {
   const dl = page.waitForEvent('download')
   await page.locator('#subm .subpk').getByRole('button', { name: '인계 패키지 내려받기' }).click()
   expect(readFileSync(await (await dl).path()).subarray(0, 2).toString()).toBe('PK')
-  await expect(page.locator('#subm').getByRole('status')).toContainText(`인계패키지_${reviewNo}.zip 를 내려받았습니다.`)
+  await expect(page.locator('.uisnk')).toContainText(`인계패키지_${reviewNo}.zip 를 내려받았습니다.`)
 
 
   // 이력 (SCR-08-9)에 판정 확정이 남는다
