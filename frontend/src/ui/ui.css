@@ -105,3 +105,12 @@ body:has(.ftb) .uisnk{bottom:88px}
 .anbar.ind i{position:absolute;width:30%;animation:anInd 1.2s ease-in-out infinite}
 @keyframes anInd{from{left:-30%}to{left:100%}}
 @media (prefers-reduced-motion: reduce){.anbar.ind i{animation:none;left:0;width:100%;opacity:.5}}
+
+/* 판정 줄 말풍선 (update-judge-tab-preview): 원문 위치·문장만, 보기만 */
+.jtip{position:fixed;z-index:var(--z-toast);max-width:520px;box-sizing:border-box;padding:var(--s-2) var(--s-3);border:1px solid var(--c-line);border-radius:var(--r-lg);background:var(--c-white);box-shadow:var(--sh-pop);font-size:var(--t-sm);color:var(--c-text);pointer-events:none}
+.jtip.up{transform:translateY(-100%)}
+.jtip-l{font-size:var(--t-xs);color:var(--c-muted)}
+.jtip p{margin:4px 0 0;line-height:1.55;display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}
+.jtip mark{background:var(--c-orange-bg);color:inherit;padding:0 2px;border-radius:2px}
+.jtip-f{margin-top:4px;font-size:var(--t-xs);color:var(--c-link)}
+#judge table.tbl tbody tr:focus-visible{outline:2px solid var(--c-link);outline-offset:-2px}

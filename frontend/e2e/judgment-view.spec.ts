@@ -17,7 +17,7 @@ function judgment(id: number, result: string, name: string, extra: Record<string
   }
 }
 
-async function mock(page: Page, stage = 'ENGINEER_REVIEW') {
+async function mock(page: Page, stage = 'ENGINEER_REVIEW', withWarranty = false) {
   const now = new Date().toISOString()
   const list: J[] = [
     judgment(501, 'DEVIATION_CANDIDATE', '주 모선 정격 전류', {
@@ -29,7 +29,12 @@ async function mock(page: Page, stage = 'ENGINEER_REVIEW') {
     }),
     judgment(502, 'DEVIATION_CANDIDATE', '모선 연결 정격 전류'),
     judgment(503, 'COMPLY', '정격 주파수', { req_value_raw: '50', unit_raw: 'Hz', product_value_raw: '50', product_value_unit: 'Hz', item_key: 'rated_frequency' }),
+    ...(withWarranty ? [judgment(504, 'WARRANTY_TO_FILL', '부분 방전', { req_value_raw: 'Bidder to state', unit_raw: 'pC', product_value_raw: null, item_key: 'partial_discharge' })] : []),
   ]
+  // 보증값 후보 (update-judge-tab-preview: 판정 상세 보증값 입력). 값이 들어오면 그 값을 돌려준다
+  const wc = { candidate_id: 77, judgment_id: 504, requirement_id: 604, equipment_group: '230 kV GIS', item_key: 'partial_discharge', item_name: '부분 방전',
+    item_name_raw: null, candidate_value: null as string | null, candidate_unit: 'pC', source_kind: null as string | null, product_code: null, pm_column: null, fixed_key: null,
+    status: 'EMPTY_REVIEW', reason_code: null, is_assumed: false, locations: [] }
   const posts: unknown[] = []
   const run = {
     run_id: ID, review_no: 'RV-TEST-JV', review_name: '115·230 kV GIS', project_name: 'Thai Binh 변전소', customer_name: '고객사 가', country: '베트남',
@@ -72,8 +77,11 @@ async function mock(page: Page, stage = 'ENGINEER_REVIEW') {
       posts.push(body)
       const j = list.find((x) => x.judgment_id === body.target_id)
       if (j && body.action === 'CONFIRM') j.review_status = 'CONFIRMED'
+      const w = body as { target?: string; value?: { value?: string } }
+      if (w.target === 'warranty_candidate' && w.value?.value) { wc.candidate_value = w.value.value; wc.source_kind = 'ENGINEER' }
       return r.fulfill({ json: { ok: true } })
     }
+    if (path === `/api/runs/${ID}/warranty`) return r.fulfill({ json: withWarranty ? [wc] : [], headers: { 'X-Total-Count': withWarranty ? '1' : '0' } })
     if (path in json) return r.fulfill({ json: json[path] })
     return r.fulfill({ json: [] })
   })
@@ -110,7 +118,6 @@ test('이전·다음과 목록으로', async ({ page }) => {
   await page.keyboard.press('Escape')
   await expect(page).toHaveURL(new RegExp(`#/reviews/${ID}\\?f=DEVIATION_CANDIDATE&cur=502$`))
   await expect(page.locator('.fbar .chip', { hasText: '일탈 후보' })).toHaveAttribute('aria-pressed', 'true')
-  await expect(page.getByRole('complementary', { name: '원문과 판정' }).locator('h3')).toHaveText('모선 연결 정격 전류')
   await expect(page.locator('#judge tr.cur')).toContainText('모선 연결 정격 전류')
 })
 
@@ -186,4 +193,40 @@ test('사유 필수', async ({ page }) => {
   await page.keyboard.press('Escape')
   await expect(dlg).toHaveCount(0)
   await expect(page.locator('.mdh .st')).toHaveText('일탈 후보')
+})
+
+// 명세 review-workspace "판정 탭 원문 말풍선"·"판정 상세 보증값 입력" (change update-judge-tab-preview)
+test('줄에 마우스를 올려 원문 보기', async ({ page }) => {
+  await mock(page)
+  await page.goto(`/#/reviews/${ID}`)
+  await expect(page.getByRole('complementary', { name: '원문과 판정' })).toHaveCount(0)   // 오른쪽 패널 없음
+  const row = page.locator('#judge .tw tbody tr').first()
+  await row.hover()
+  const tip = page.getByRole('tooltip')
+  await expect(tip).toContainText('synthetic.docx')                                   // 원문 위치
+  await expect(tip).toContainText('The rated normal current shall be 4000 A.')
+  await expect(tip.locator('mark')).toHaveText('4000')
+  await page.mouse.move(5, 5)
+  await expect(tip).toHaveCount(0)
+})
+
+test('키보드로 판정 상세 열기', async ({ page }) => {
+  await mock(page)
+  await page.goto(`/#/reviews/${ID}`)
+  const row = page.locator('#judge .tw tbody tr').first()
+  await row.focus()
+  await expect(page.getByRole('tooltip')).toBeVisible()
+  await page.keyboard.press('Enter')
+  await expect(page).toHaveURL(new RegExp(`#/reviews/${ID}/judgments/501`))
+})
+
+test('판정 상세에서 보증값 넣기', async ({ page }) => {
+  const posts = await mock(page, 'ENGINEER_REVIEW', true)
+  await page.goto(`/#/reviews/${ID}/judgments/504`)
+  await page.getByLabel('보증값', { exact: true }).fill('5')
+  await page.getByLabel('보증값 근거').fill('시험 성적서 p.3')
+  await page.getByRole('button', { name: '입력' }).click()
+  await expect(page.locator('.uisnk')).toContainText('보증값을 입력했습니다')
+  expect(posts).toContainEqual(expect.objectContaining({ target: 'warranty_candidate', target_id: 77, action: 'EDIT', value: { value: '5' }, reason: '시험 성적서 p.3' }))
+  await expect(page.locator('.jv')).toContainText('5 pC')
 })

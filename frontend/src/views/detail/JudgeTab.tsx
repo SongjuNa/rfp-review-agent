@@ -1,23 +1,21 @@
-import { useEffect, useState } from 'react'
-import { api, type EngineeringCheck, type Judgment, type LogEntry, type OutputItem, type RunDocument, type RunSummary, type Warranty } from '../../api'
+import { useEffect, useRef, useState } from 'react'
+import { api, type Judgment, type RunDocument, type RunSummary } from '../../api'
 import { Pager } from '../../components/Pager'
 import { bulkMessage } from '../../components/bulk'
-import { PastDecisionRow } from '../../components/PastDecisionRow'
-import { CHECK_NAMES, CHECK_RULE, CHECK_TONES, checkLine, checksByRequirement } from '../../components/checks'
+import { CHECK_RULE, checksByRequirement } from '../../components/checks'
 import { dueText, isoDay, stamp } from '../../components/format'
-import { confirmedBy, compareText, itemName, locShort, markSplit, prodCell, reqText, suggested, itemFor } from '../../components/judgment'
+import { itemName, locShort, markSplit, prodCell, reqText } from '../../components/judgment'
 import { RESULT_DOTS, RESULT_NAMES, RESULT_ORDER, RESULT_TONES, TYPE_NAMES } from '../../components/labels'
 import { useLoad } from '../../components/useLoad'
 import { currentPath, navigate, pathQuery } from '../../shell/router'
 import { useSession } from '../../shell/useSession'
 import { filterQuery, parseFilter } from '../../components/judgeFilter'
-import { OutputEditor } from './OutputEditor'
 import { RevisionBar } from './RevisionBar'
 import { useToast } from '../../ui'
 
 // SCR-08-1 판정 탭 (목업 v4.57 Detail #judge). docs/screens/SCR-08-1-판정.md
-// 판정 칩·거르기·판정 순서 표, 줄을 누르면 판정 상세 화면(add-judgment-view), 오른쪽 패널은 돌아온 줄. 고른 줄·준수 모두를 한꺼번에 제안대로 확정 (add-bulk-confirm).
-// 공학 검산(FR-12) 위반·확인 필요 줄 표시와 패널 "공학 검산" 칸 (update-check-display).
+// 판정 칩·거르기·판정 순서 표, 줄을 누르면 판정 상세 화면(add-judgment-view), 줄에 마우스를 올리면 원문 말풍선(update-judge-tab-preview). 고른 줄·준수 모두를 한꺼번에 제안대로 확정 (add-bulk-confirm).
+// 공학 검산(FR-12) 위반·확인 필요 줄 표시 (update-check-display). 계산식은 판정 상세 화면.
 
 
 /** 검색어는 멈춘 뒤 0.3초 있다 보낸다 */
@@ -49,25 +47,18 @@ export function JudgeTab({ run, tick, onChanged }: { run: RunSummary; tick: numb
   const [page, setPage] = useState(init.page)
   const [size, setSize] = useState(init.size)
   const [cur, setCur] = useState<number | null>(init.cur)
-  const [edK, setEdK] = useState('')
-  const [edWhy, setEdWhy] = useState('')
-  const [edHint, setEdHint] = useState(false)
-  const [wVal, setWVal] = useState('')
-  const [wWhy, setWWhy] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [sel, setSel] = useState<Record<number, string>>({})   // 고른 판정 id → 판정 (쪽을 넘겨도 남는다)
   const toast = useToast()
   const [busy, setBusy] = useState(false)
-  const [applying, setApplying] = useState(false)
-  const [panelError, setPanelError] = useState<string | null>(null)
+  const [tip, setTip] = useState<{ j: Judgment; top: number; left: number; below: boolean } | null>(null)   // 줄 말풍선
+  const tipTimer = useRef<number | undefined>(undefined)
   const filters = { result: f === 'all' ? undefined : f, unconfirmed: onlyUnc, q, type_code: type || undefined, past: onlyPast ? 'differs' as const : undefined, revised: onlyRev || undefined }
   const key = JSON.stringify(filters)
   const counts = useLoad(() => api.judgmentCounts(id), [id, tick])
   const rows = useLoad(() => api.judgmentPage(id, { ...filters, order: 'priority', offset: (page - 1) * size, limit: size }),
     [id, key, page, size, tick])
   const warranty = useLoad(() => api.warranty(id, { limit: 500 }), [id, tick])
-  const items = useLoad(() => api.outputs(id), [id, tick])
-  const log = useLoad(() => api.history(id), [id, tick])
   const docs = useLoad(() => api.documents(id), [id])
   const checks = useLoad(() => api.checks(id), [id, tick])
   const checkOf = checksByRequirement(checks.data ?? [])
@@ -77,7 +68,7 @@ export function JudgeTab({ run, tick, onChanged }: { run: RunSummary; tick: numb
 
   const list = rows.data?.items ?? []
   const total = rows.data?.total ?? 0
-  const curRow = list.find((r) => r.judgment_id === cur) ?? (cur === null ? list[0] : undefined)
+  const curRow = list.find((r) => r.judgment_id === cur)          // 판정 상세에서 돌아온 줄을 강조한다
   const wOf = (j: Judgment) => warranty.data?.find((w) => w.judgment_id === j.judgment_id)
   const c = counts.data
   const n = (r: string) => c?.by_result[r] ?? 0
@@ -89,22 +80,14 @@ export function JudgeTab({ run, tick, onChanged }: { run: RunSummary; tick: numb
   const open = (j: Judgment) => navigate(`/reviews/${id}/judgments/${j.judgment_id}${filterQuery({ f, unc: onlyUnc, q: text, type, past: onlyPast, rev: onlyRev, page, size })}`)
   const done = () => { onChanged() }
   const say = (m: string) => toast.done(m)
-  const act = (body: Parameters<typeof api.act>[1]) => api.act(id, { ...body, actor_id: user!.user_id }).then(done)
-  const go = (d: number) => {
-    const i = list.findIndex((r) => r.judgment_id === (curRow?.judgment_id ?? -1)) + d
-    if (list[i]) { setCur(list[i].judgment_id); setEdK(''); setEdWhy(''); setEdHint(false); setPanelError(null) }
+  // 줄 말풍선 (update-judge-tab-preview): 줄 아래(공간이 없으면 위)에 원문 위치·문장. 고치는 일은 판정 상세 화면
+  const showTip = (j: Judgment, el: HTMLElement) => {
+    const rc = el.getBoundingClientRect()
+    const below = rc.bottom + 140 < window.innerHeight
+    setTip({ j, top: below ? rc.bottom + 4 : rc.top - 4, left: Math.min(rc.left + 120, window.innerWidth - 540), below })
   }
-  const apply = () => {
-    if (!curRow || !edK) return
-    if (!edWhy.trim()) { setEdHint(true); return }
-    setPanelError(null)
-    setApplying(true)
-    const was = curRow.result
-    act({ target: 'judgment', target_id: curRow.judgment_id, action: 'EDIT', value: { result: edK }, reason: edWhy.trim() })
-      .then(() => { say(`판정을 바꿨습니다: ${RESULT_NAMES[was]} → ${RESULT_NAMES[edK]}`); setEdK(''); setEdWhy('') },
-        (e: Error) => setPanelError(e.message))
-      .finally(() => setApplying(false))
-  }
+  const hideTip = () => { clearTimeout(tipTimer.current); setTip(null) }
+  useEffect(() => () => clearTimeout(tipTimer.current), [])
   const selIds = Object.keys(sel).map(Number)
   const selSum = RESULT_ORDER.map((r) => [r, Object.values(sel).filter((v) => v === r).length] as const)
     .filter(([, k]) => k).map(([r, k]) => `${RESULT_NAMES[r]} ${k}`).join(' · ')
@@ -134,11 +117,6 @@ export function JudgeTab({ run, tick, onChanged }: { run: RunSummary; tick: numb
     } finally {
       setBusy(false)
     }
-  }
-  const saveW = (candidateId: number) => {
-    setError(null)
-    act({ target: 'warranty_candidate', target_id: candidateId, action: 'EDIT', value: { value: wVal.trim() }, reason: wWhy.trim() })
-      .then(() => { setWVal(''); setWWhy('') }, (e: Error) => setError(e.message))
   }
 
   return (
@@ -173,7 +151,7 @@ export function JudgeTab({ run, tick, onChanged }: { run: RunSummary; tick: numb
           <span>공학 검산 {[violations ? `위반 ${violations}건` : '', unsure ? `확인 필요 ${unsure}건` : ''].filter(Boolean).join(' · ')}
             <span className="en" style={{ display: 'inline', marginLeft: 6 }}>{CHECK_RULE}. 표에 표시한 항목을 눌러 계산식을 보세요.</span></span></p>
       )}
-      <div className={'work' + (curRow ? ' open' : '')}>
+      <div className="work">
         <div style={{ minWidth: 0 }}>
           {canEdit && selIds.length > 0 && (
             <div className="bulk"><b>{selIds.length}건 선택</b><span className="en" style={{ margin: 0 }}>{selSum}</span><span style={{ flex: '1 1 0' }} />
@@ -187,7 +165,11 @@ export function JudgeTab({ run, tick, onChanged }: { run: RunSummary; tick: numb
                 {list.map((j) => {
                   const p = prodCell(j, wOf(j))
                   return (
-                    <tr key={j.judgment_id} className={curRow?.judgment_id === j.judgment_id ? 'cur' : ''} onClick={() => open(j)}>
+                    <tr key={j.judgment_id} className={curRow?.judgment_id === j.judgment_id ? 'cur' : ''} onClick={() => open(j)}
+                      tabIndex={0} aria-describedby={tip?.j.judgment_id === j.judgment_id ? 'jtip' : undefined}
+                      onKeyDown={(e) => { if (e.key === 'Enter' && e.target === e.currentTarget) open(j) }}
+                      onMouseEnter={(e) => { const el = e.currentTarget; clearTimeout(tipTimer.current); tipTimer.current = window.setTimeout(() => showTip(j, el), 400) }}
+                      onMouseLeave={hideTip} onFocus={(e) => showTip(j, e.currentTarget)} onBlur={hideTip}>
                       <td onClick={(e) => e.stopPropagation()}><input type="checkbox" className="jck" checked={!!sel[j.judgment_id]} onChange={() => toggle(j)}
                         disabled={!canEdit} aria-label={`${itemName(j)} 선택`} /></td>
                       <td><span className={`st ${RESULT_TONES[j.result]}`}>{RESULT_NAMES[j.result]}</span>
@@ -223,112 +205,25 @@ export function JudgeTab({ run, tick, onChanged }: { run: RunSummary; tick: numb
           {error && <p className="aphint" role="alert">{error}</p>}
         </div>
 
-        {curRow && (
-          <Panel runId={id} j={curRow} w={wOf(curRow)} check={checkOf.get(curRow.requirement_id)} items={items.data ?? []} log={log.data ?? []} docs={docs.data ?? []} canEdit={canEdit}
-            edK={edK} edWhy={edWhy} edHint={edHint} wVal={wVal} wWhy={wWhy}
-            setEdK={setEdK} setEdWhy={(v) => { setEdWhy(v); setEdHint(false) }} setWVal={setWVal} setWWhy={setWWhy}
-            onPrev={() => go(-1)} onNext={() => go(1)} onClose={() => setCur(-1)} onApply={apply} applying={applying} error={panelError} onSaveW={saveW} onDone={done} onSaved={say} />
-        )}
       </div>
-
+      {tip && <RowTip runId={id} tip={tip} docs={docs.data ?? []} />}
     </section>
   )
 }
 
-type PanelProps = {
-  runId: number; j: Judgment; w?: Warranty; check?: EngineeringCheck; items: OutputItem[]; log: LogEntry[]; docs: RunDocument[]; canEdit: boolean
-  edK: string; edWhy: string; edHint: boolean; wVal: string; wWhy: string
-  setEdK: (v: string) => void; setEdWhy: (v: string) => void; setWVal: (v: string) => void; setWWhy: (v: string) => void
-  onPrev: () => void; onNext: () => void; onClose: () => void; onApply: () => void; applying: boolean; error: string | null
-  onSaveW: (candidateId: number) => void
-  onDone: () => void; onSaved: (message: string) => void
-}
-
-/** 오른쪽 패널: 원문, 판정 근거, 판정 출처, 보증값, 목록 문장, 판정 바꾸기 */
-function Panel({ runId, j, w, check, items, log, docs, canEdit, edK, edWhy, edHint, wVal, wWhy, setEdK, setEdWhy, setWVal, setWWhy,
-  onPrev, onNext, onClose, onApply, applying, error, onSaveW, onDone, onSaved }: PanelProps) {
+/** 판정 줄 말풍선: 원문 위치와 원문 문장(요구값 강조). 표 줄이면 표 이름·항목·요구값. 보기만 한다 */
+function RowTip({ runId, tip, docs }: { runId: number; tip: { j: Judgment; top: number; left: number; below: boolean }; docs: RunDocument[] }) {
+  const { j } = tip
   const req = useLoad(() => api.requirement(j.requirement_id, runId), [j.requirement_id, runId])
+  const loc = j.locations[0]
   const [a, m, b] = markSplit(req.data?.text_raw ?? '', j.req_value_raw)
-  const sug = suggested(j, log)
-  const conf = j.review_status === 'CONFIRMED' || j.review_status === 'EDITED' ? confirmedBy(j, log) : null
-  const draft = itemFor(items, j)
-  const doc = docs.find((d) => d.file_no === j.locations[0]?.file_no)
   return (
-    <aside className="panel" aria-label="원문과 판정">
-      <div className="ph">
-        <div style={{ flex: '1 1 auto', minWidth: 0 }}><div className="en" style={{ margin: '0 0 2px' }}>{locShort(j, docs)}</div><h3>{itemName(j)}</h3></div>
-        <button type="button" className="ib" aria-label="이전 줄" onClick={onPrev}><span className="ms" aria-hidden="true">keyboard_arrow_up</span></button>
-        <button type="button" className="ib" aria-label="다음 줄" onClick={onNext}><span className="ms" aria-hidden="true">keyboard_arrow_down</span></button>
-        <button type="button" className="ib" aria-label="원문 창 닫기" onClick={onClose}><span className="ms" aria-hidden="true">close</span></button>
-      </div>
-      <div className="pb">
-        <div>
-          <div className="lbl">원문 ({doc?.file_name ?? `파일 ${j.locations[0]?.file_no ?? ''}`})</div>
-          <div className="src">
-            {j.locations[0]?.table_name ? (
-              <table><tbody>
-                <tr className="h"><td>No.</td><td>Description</td><td>Unit</td><td>Employer's Req.</td></tr>
-                <tr><td>{j.locations[0].item_no}</td><td>{j.item_name_raw}</td><td>{j.unit_raw}</td><td><mark>{j.req_value_raw}</mark></td></tr>
-              </tbody></table>
-            ) : <span>{a}{m && <mark>{m}</mark>}{b}</span>}
-          </div>
-        </div>
-        <div>
-          <div className="lbl">판정 근거</div>
-          <div><span className={`st ${RESULT_TONES[j.result]}`}>{RESULT_NAMES[j.result]}</span> <span style={{ marginLeft: 6 }}>{compareText(j, w)}</span></div>
-          <div className="en" style={{ marginTop: 2 }}>{j.reason_text}</div>
-        </div>
-        {check && (
-          <div>
-            <div className="lbl">공학 검산</div>
-            <div><span className={CHECK_TONES[check.result]}>{CHECK_NAMES[check.result]}</span> <span style={{ marginLeft: 6 }}>{checkLine(check)}</span></div>
-            <div className="en" style={{ marginTop: 2 }}>{check.rule_code} · {CHECK_RULE}</div>
-          </div>
-        )}
-        <div>
-          <div className="lbl">판정 출처</div>
-          <table className="pv"><tbody>
-            <tr><th>시스템 제안</th><td><span className={`st ${RESULT_TONES[sug]}`}>{RESULT_NAMES[sug]}</span><span className="pvs">규칙 기반</span></td></tr>
-            <tr><th>담당자 확정</th><td>{conf
-              ? <><span className={`st ${RESULT_TONES[j.result]}`}>{RESULT_NAMES[j.result]}</span><span className="pvs">{conf.actor} · {stamp(conf.acted_at)}</span></>
-              : <span className="pend" title="확정하지 않으면 시스템 제안 그대로 상신됩니다">아직 확정 안 함</span>}</td></tr>
-            <PastDecisionRow j={j} />
-          </tbody></table>
-        </div>
-        {j.result === 'WARRANTY_TO_FILL' && w && (
-          <div>
-            <label className="lbl" htmlFor="wval" style={{ display: 'block' }}>보증값 ("Comply"는 입력할 수 없음)</label>
-            {w.candidate_value
-              ? <div style={{ fontWeight: 600 }}>{prodCell(j, w).val} <span className="en" style={{ display: 'inline', marginLeft: 6 }}>출처 {prodCell(j, w).sub}</span></div>
-              : canEdit && (
-                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                  <input className="fi" id="wval" value={wVal} onChange={(e) => setWVal(e.target.value)} placeholder="근거 있는 값만 입력" style={{ flex: '1 1 120px' }} />
-                  <input className="fi" aria-label="보증값 근거" value={wWhy} onChange={(e) => setWWhy(e.target.value)} placeholder="근거 (이력에 남음)" style={{ flex: '1 1 120px' }} />
-                  <button type="button" className="bo" disabled={!wVal.trim() || !wWhy.trim()} onClick={() => onSaveW(w.candidate_id)}>넣기</button>
-                </div>
-              )}
-          </div>
-        )}
-        {draft && <OutputEditor key={`${draft.item_id}-${draft.text_draft}-${draft.status}`} runId={runId} item={draft} id="draft" canEdit={canEdit} onDone={onDone} onSaved={onSaved} />}
-        <div style={{ borderTop: '1px solid #DCE3EC', paddingTop: 14 }}>
-          <div className="lbl">판정 변경</div>
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            <label className="sr" htmlFor="newk">새 판정</label>
-            <select className="fi" id="newk" value={edK || j.result} disabled={!canEdit} onChange={(e) => setEdK(e.target.value)}>
-              {RESULT_ORDER.map((r) => <option key={r} value={r}>{RESULT_NAMES[r]}</option>)}
-            </select>
-            <label className="sr" htmlFor="why">바꾸는 사유</label>
-            <input className="fi" id="why" value={edWhy} disabled={!canEdit} onChange={(e) => setEdWhy(e.target.value)}
-              placeholder="사유 (이력에 남음)" style={{ flex: '1 1 140px' }} />
-            <button type="button" className="bp" onClick={onApply} disabled={!canEdit || applying || !edK || edK === j.result || !edWhy.trim()}>
-              {applying ? '적용 중…' : '적용'}</button>
-          </div>
-          {edHint && <div className="en" style={{ marginTop: 4 }}>판정을 바꾸려면 사유를 적어 주세요.</div>}
-          {applying && <div className="en" style={{ marginTop: 4 }}>판정을 바꾸고 일탈·질의 목록을 다시 만드는 중입니다…</div>}
-          {error && <p className="aphint" role="alert">{error}</p>}
-          {!canEdit && <div className="en" style={{ marginTop: 4 }}>담당자 확인 단계에서 엔지니어만 바꿀 수 있습니다.</div>}
-        </div>
-      </div>
-    </aside>
+    <div id="jtip" role="tooltip" className={'jtip' + (tip.below ? '' : ' up')} style={{ top: tip.top, left: tip.left }}>
+      <div className="jtip-l">{locShort(j, docs)}</div>
+      {loc?.table_name
+        ? <p>{loc.table_name}{loc.item_no ? ` ${loc.item_no}번` : ''} · {j.item_name_raw ?? itemName(j)} · <mark>{j.req_value_raw ?? '—'}</mark>{j.unit_raw ? ` ${j.unit_raw}` : ''}</p>
+        : <p>{req.data ? <>{a}{m && <mark>{m}</mark>}{b}</> : '원문 불러오는 중…'}</p>}
+      <div className="jtip-f">누르면 판정 상세</div>
+    </div>
   )
 }

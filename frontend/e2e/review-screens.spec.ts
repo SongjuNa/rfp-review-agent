@@ -60,9 +60,8 @@ test('줄을 눌러 원문 보기', async ({ page, request }) => {
   await expect(dialog.locator('.pv')).toContainText('시스템 제안질의 후보')
   await expect(dialog.locator('.pv')).toContainText('아직 확정 안 함')
   await page.keyboard.press('Escape')
-  const panel = page.getByRole('complementary', { name: '원문과 판정' })
-  await expect(panel).toContainText('synthetic_judgment.docx · ')                   // 원문 위치 (파일 이름)
-  await expect(panel.locator('.pv')).toContainText('아직 확정 안 함')
+  await expect(page.getByRole('complementary', { name: '원문과 판정' })).toHaveCount(0)   // 오른쪽 패널 없음 (update-judge-tab-preview)
+  await expect(page.locator('#judge tr.cur')).toHaveCount(1)                        // 보던 줄 강조
 })
 
 test('사유 없이 판정 바꾸기', async ({ page, request }) => {
@@ -72,13 +71,14 @@ test('사유 없이 판정 바꾸기', async ({ page, request }) => {
   await page.locator('.fbar .chip', { hasText: '확인 필요' }).click()
   const first = page.locator('#judge .tw tbody tr').first()
   await first.click()
-  await backFromJudgment(page)
-  const panel = page.getByRole('complementary', { name: '원문과 판정' })
+  await page.locator('.jv').getByRole('button', { name: '판정 변경' }).click()       // 판정 상세 화면의 판정 변경 창
+  const panel = page.getByRole('dialog', { name: '판정 변경' })
   await panel.getByLabel('새 판정').selectOption('QUERY_CANDIDATE')
   const apply = panel.getByRole('button', { name: '적용' })
-  await expect(apply).toBeDisabled()
   await panel.getByLabel('바꾸는 사유').fill('발주처에 확인할 값')
   await apply.click()
+  await expect(panel).toHaveCount(0)
+  await backFromJudgment(page)
   await page.locator('.fbar .chip', { hasText: '질의 후보' }).click()
   await expect(page.locator('#judge .tw tbody tr', { hasText: '바꿈' }).first()).toBeVisible()
   await page.locator('#judge .tw tbody tr', { hasText: '바꿈' }).first().click()

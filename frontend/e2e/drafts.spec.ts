@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { expect, test } from '@playwright/test'
-import { as, deviationRun, ENGINEER, exportItem, backFromJudgment } from './helpers'
+import { as, deviationRun, ENGINEER, exportItem } from './helpers'
 
 // 명세 review-workspace "목록 초안 내려받기와 문장 고치기"의 Scenario (change update-review-screens).
 
@@ -24,9 +24,8 @@ test('사유 적어 문장 고치기', async ({ page }) => {
   await page.goto(`/#/reviews/${run.run_id}`)
   await page.locator('.fbar .chip', { hasText: '질의 후보' }).click()
   await page.locator('#judge .tw tbody tr').first().click()
-  await backFromJudgment(page)
-  const panel = page.getByRole('complementary', { name: '원문과 판정' })
-  const draft = panel.locator('#draft')
+  const panel = page.locator('.jv')                                   // 판정 상세 화면 (update-judge-tab-preview: 판정 탭 패널 없앰)
+  const draft = panel.locator('#mdDraft')
   await expect(draft).toBeEditable()
   await draft.fill('수정한 질의 문장입니다. 적용 값을 회신해 주십시오.')
   const save = panel.getByRole('button', { name: '문장 저장' })
@@ -34,6 +33,6 @@ test('사유 적어 문장 고치기', async ({ page }) => {
   await panel.getByLabel('고친 사유').fill('발주처 표현에 맞춤')
   await save.click()
   await expect(page.locator('.uisnk')).toContainText('정상적으로 사유가 등록되었습니다.')
-  await expect(panel.locator('label[for="draft"] .st')).toHaveText('확정')
+  await expect(panel.locator('label[for="mdDraft"] .st')).toHaveText('확정')
   await expect(draft).toHaveValue('수정한 질의 문장입니다. 적용 값을 회신해 주십시오.')
 })
