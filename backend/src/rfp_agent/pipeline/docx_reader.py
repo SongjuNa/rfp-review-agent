@@ -37,6 +37,7 @@ class Block:
     raw_cells: list[str] = field(default_factory=list)      # 병합 칸 반복 포함 (txt와 같은 모양)
     has_figure: bool = False        # 그림 개체(w:drawing, w:pict)가 든 단락
     ocr: bool = False               # 그림·스캔 쪽에서 OCR로 읽은 단락 (add-ocr)
+    caption: str | None = None      # 읽는 쪽이 정한 그림 설명 (PDF 도면 쪽, update-pdf-drawings)
 
     @property
     def last_line(self) -> int:
@@ -124,6 +125,9 @@ def find_figures(blocks: list[Block]) -> list[tuple[Block, str | None]]:
     out = []
     for i, b in enumerate(blocks):
         if not b.has_figure:
+            continue
+        if b.caption:
+            out.append((b, b.caption))
             continue
         after = i + 1
         while after < len(blocks) and blocks[after].ocr:    # 그림 속 글자(OCR) 단락은 건너뜀
