@@ -128,6 +128,8 @@ function Detail({ runId, stage, j, docs, pos, total, onPrev, onNext, editing, se
   const [occ, setOcc] = useState(0)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [wVal, setWVal] = useState('')      // 보증값 직접 입력 (update-judge-tab-preview, 판정 탭 패널에서 옮김)
+  const [wWhy, setWWhy] = useState('')
   const req = useLoad(() => api.requirement(j.requirement_id, runId), [j.requirement_id, runId])
   const log = useLoad(() => api.history(runId), [runId, j.review_status, j.result])
   const outputs = useLoad(() => api.outputs(runId), [runId, j.review_status, j.result])
@@ -147,6 +149,12 @@ function Detail({ runId, stage, j, docs, pos, total, onPrev, onNext, editing, se
   const rule = ruleFor(rules.data ?? [], j, loc)
   const lock = lockReason(stage, user?.role)
   const isQuery = j.result === 'QUERY_CANDIDATE'
+  const saveW = () => {
+    if (!w || !user) return
+    setError(null)
+    api.act(runId, { target: 'warranty_candidate', target_id: w.candidate_id, action: 'EDIT', value: { value: wVal.trim() }, reason: wWhy.trim(), actor_id: user.user_id })
+      .then(() => { setWVal(''); setWWhy(''); warranty.reload(); toast.done('보증값을 입력했습니다.'); onChanged() }, (e: Error) => setError(e.message))
+  }
 
   const assumed = j.is_assumed || Boolean(product.data?.comparison_values_assumed)
   const source = j.result === 'WARRANTY_TO_FILL' ? p.sub
@@ -250,7 +258,15 @@ function Detail({ runId, stage, j, docs, pos, total, onPrev, onNext, editing, se
               <div style={{ marginTop: 'var(--s-4)' }}>
                 <div className="lbl">보증값</div>
                 <div><b className={p.cls}>{p.val}</b> <span className="en" style={{ display: 'inline', marginLeft: 6 }}>{p.sub}</span></div>
-                <a className="lnk" href={href(`/reviews/${runId}/datasheet`)}>데이터시트에서 쓰기</a>
+                {w && !w.candidate_value && !lock && (
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', margin: '6px 0' }}>
+                    <label className="sr" htmlFor="mdwval">보증값</label>
+                    <input className="fi" id="mdwval" value={wVal} onChange={(e) => setWVal(e.target.value)} placeholder='근거 있는 값만 입력 ("Comply"는 입력할 수 없음)' style={{ flex: '1 1 160px' }} />
+                    <input className="fi" aria-label="보증값 근거" value={wWhy} onChange={(e) => setWWhy(e.target.value)} placeholder="근거 (이력에 남음)" style={{ flex: '1 1 140px' }} />
+                    <Button onClick={saveW} disabledReason={!wVal.trim() || !wWhy.trim() ? '보증값과 근거를 넣어 주세요' : undefined}>입력</Button>
+                  </div>
+                )}
+                <a className="lnk" href={href(`/reviews/${runId}/datasheet`)}>데이터시트에서 입력</a>
               </div>
             )}
             {draft && <div style={{ marginTop: 18 }}><OutputEditor key={`${draft.item_id}-${draft.text_draft}-${draft.status}`} runId={runId} item={draft} id="mdDraft"
