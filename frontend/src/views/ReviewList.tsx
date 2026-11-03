@@ -2,6 +2,7 @@ import { useCallback, useState } from 'react'
 import { api, type RunListItem } from '../api'
 import { dday, dueText, filesText, isoDay, num, scopeName, stamp } from '../components/format'
 import { STAGE_NAMES, STAGE_TONES, STEP_NAMES } from '../components/labels'
+import { myTurn } from '../components/myWork'
 import { Pager } from '../components/Pager'
 import { useLoad, useRepeat } from '../components/useLoad'
 import { progress, STALL_MS, stepLine } from '../components/progress'
@@ -152,6 +153,8 @@ function SortHead({ k, label, sort, onSort, num: isNum }: {
   )
 }
 
+const MY_TURN_TIP = '담당자 확인·반려됨·분석 실패인 내 검토와 내가 결재할 결재 대기 (홈과 같은 수)'
+
 export function ReviewList() {
   const { user, users } = useSession()
   const runs = useLoad(() => api.runs(), [])
@@ -191,8 +194,9 @@ export function ReviewList() {
   const pages = Math.max(1, Math.ceil(rows.length / size))
   const cur = Math.min(page, pages)
   const shown = rows.slice((cur - 1) * size, cur * size)
-  const count = (stage: string, mineOnly = false) =>
-    owned.filter((r) => r.stage === stage && (!mineOnly || r.engineer_id === me)).length
+  const count = (stage: string) => owned.filter((r) => r.stage === stage).length
+  // 홈 "내가 처리할 건"과 같은 규칙·같은 목록 (update-list-my-turn). 담당 범위·기간 거름과 상관없다
+  const myCount = all.filter(myTurn(user)).length
   const engineers = users.filter((u) => u.role === 'ENGINEER' && u.user_id !== me)
   const other = typeof scope === 'number' ? users.find((u) => u.user_id === scope) : null
   const apply = (s: Search) => { setSearch(s); setPage(1) }
@@ -214,7 +218,7 @@ export function ReviewList() {
       </div>
 
       <div className="sumline">
-        <span>내가 처리할 건<b className="c-blue">{count('ENGINEER_REVIEW', true)}</b></span>
+        <span title={MY_TURN_TIP}>내가 처리할 건<b className="c-blue">{myCount}</b></span>
         <button type="button" className="sumlink" title="누르면 결재 대기만 보입니다"
           onClick={() => { const s = { ...draft, stage: 'APPROVAL' }; setDraft(s); apply(s) }}>
           결재 대기<b>{count('APPROVAL')}</b></button>

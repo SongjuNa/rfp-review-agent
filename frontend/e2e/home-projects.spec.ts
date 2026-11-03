@@ -207,3 +207,21 @@ test('승인 전 잠김', async ({ page }) => {
   await expect(btn).toBeDisabled()
   await expect(btn).toHaveAccessibleDescription('결재가 승인된 검토가 없습니다')
 })
+
+// 명세 review-workspace "검토 목록 내가 처리할 건"의 Scenario (change update-list-my-turn)
+test('목록 내가 처리할 건은 홈과 같은 수', async ({ page }) => {
+  await mock(page, [
+    run(9501, '담당자 확인'),
+    run(9502, '반려됨', { stage: 'REJECTED' }),
+    run(9503, '남의 검토', { engineer_id: 7 }),
+    run(9504, '승인 끝', { stage: 'APPROVED' }),
+  ])
+  await page.goto('/#/')
+  await expect(page.locator('.qsum button', { hasText: '내가 처리할 건' }).locator('b')).toHaveText('2')
+  await page.goto('/#/reviews')
+  const cell = page.locator('.sumline span', { hasText: '내가 처리할 건' })
+  await expect(cell.locator('b')).toHaveText('2')
+  await expect(cell).toHaveAttribute('title', /반려됨/)
+  await page.getByRole('group', { name: '담당 범위' }).getByRole('button', { name: '팀 전체' }).click()
+  await expect(cell.locator('b')).toHaveText('2')
+})
