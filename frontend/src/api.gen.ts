@@ -1146,7 +1146,7 @@ export type Requirement = {
   source_kind: string
   req_kind: string
   text_raw: string
-  extracted_by: 'RULE' | 'AI'
+  extracted_by: 'RULE' | 'AI' | 'OCR'
   confidence: number | null
   is_assumed: boolean
   rule_id: string | null

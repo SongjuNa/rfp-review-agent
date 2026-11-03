@@ -13586,7 +13586,8 @@
             "type": "string",
             "enum": [
               "RULE",
-              "AI"
+              "AI",
+              "OCR"
             ],
             "title": "Extracted By"
           },

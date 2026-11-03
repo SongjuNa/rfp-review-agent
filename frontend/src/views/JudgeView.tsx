@@ -184,7 +184,7 @@ function Detail({ runId, stage, j, docs, pos, total, onPrev, onNext, editing, se
       .then(() => { toast.done(sent ? '질의 보냄으로 표시했습니다.' : '질의 보냄 표시를 되돌렸습니다.'); onChanged() }, (e: Error) => setError(e.message))
       .finally(() => setBusy(false))
   }
-  const found = req.data ? (req.data.extracted_by === 'AI' ? 'AI 추출' : '규칙 추출') : null
+  const found = req.data ? ({ AI: 'AI 추출', OCR: 'OCR 추출 · 사람 확인 필요' } as Record<string, string>)[req.data.extracted_by] ?? '규칙 추출' : null
   const confidence = req.data?.confidence != null ? `신뢰도 ${Number(req.data.confidence).toFixed(2)}` : null
 
   return (

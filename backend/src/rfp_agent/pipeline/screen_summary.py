@@ -15,6 +15,7 @@ from psycopg.rows import dict_row
 from rfp_agent.pipeline import datasheet, queries
 from rfp_agent.pipeline.numbers import josa
 from rfp_agent.pipeline.review import assignments_for
+from rfp_agent.pipeline.tbe import with_unit
 
 MAX_SENTENCES = 4
 HOME_LIMIT = 200                       # 홈 화면이 부르는 검토 목록 수와 같다 (api.runs 기본 200)
@@ -111,10 +112,9 @@ def _decider(conn: psycopg.Connection, run_id: int) -> str | None:
 
 
 def _compare(j: dict) -> str:
-    """'(요구 4000 A · 제품 3150 A)'. 단위는 원문 그대로(CR-10), 없는 값은 뺀다."""
-    def val(v, unit):
-        return " ".join(x for x in (v, unit) if x) if v else None
-    req, prod = val(j["req"], j["req_unit"]), val(j["prod"], j["prod_unit"])
+    """'(요구 4000 A · 제품 3150 A)'. 단위는 원문 그대로(CR-10), 원문에 단위가 이미 있으면
+    다시 붙이지 않는다(tbe.with_unit, 화면 withUnit과 같게). 없는 값은 뺀다."""
+    req, prod = with_unit(j["req"], j["req_unit"]), with_unit(j["prod"], j["prod_unit"])
     inner = " · ".join(x for x in (req and f"요구 {req}", prod and f"제품 {prod}") if x)
     return f"({inner})" if inner else ""
 

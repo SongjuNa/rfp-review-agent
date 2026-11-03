@@ -122,3 +122,13 @@ def test_health_ocr(monkeypatch):
     monkeypatch.setattr(ocr, "available", lambda: False)
     body = client.get("/api/health").json()
     assert (body["ocr_available"], body["ocr_engine"]) == (False, None)
+
+def test_api_allows_ocr_requirement():
+    """OCR로 뽑은 요구사항(extracted_by = OCR)도 API 응답 모양에 맞는다.
+
+    11-03 E-039 문서에서 응답 오류가 났던 경우.
+    """
+    from typing import get_args
+
+    from rfp_agent.api.schemas import Requirement
+    assert "OCR" in get_args(Requirement.model_fields["extracted_by"].annotation)

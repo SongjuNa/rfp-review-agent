@@ -151,3 +151,13 @@ def test_home_department_user(db, spec):
     assert text(out[1]) == (f"회신하지 않은 품질 협조 요청이 {n}건입니다. "
                             "협조 요청에서 확인해 주세요.")
     assert {"t": "협조 요청", "kind": "link", "href": "/todo"} in out[1]
+
+
+def test_compare_unit_not_doubled():
+    """제품값 원문에 단위가 이미 있으면 다시 붙이지 않는다 ("3150 A A" 방지)."""
+    from rfp_agent.pipeline.screen_summary import _compare
+    j = {"req": "4,000", "req_unit": "A", "prod": "3150 A", "prod_unit": "A"}
+    assert _compare(j) == "(요구 4,000 A · 제품 3150 A)"
+    j = {"req": "<0.5", "req_unit": "%", "prod": "0.5 %", "prod_unit": "%"}
+    assert _compare(j) == "(요구 <0.5 % · 제품 0.5 %)"
+    assert _compare({"req": None, "req_unit": None, "prod": None, "prod_unit": None}) == ""
