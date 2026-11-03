@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { expect, test, type APIRequestContext } from '@playwright/test'
-import { as, deviationRun, ENGINEER, openTab } from './helpers'
+import { as, deviationRun, dueIn, ENGINEER, openTab } from './helpers'
 
 // 명세 review-workspace "지난 RFP 비교 탭"의 Scenario (change add-past-compare).
 // 같은 고객사로 합성 데이터시트(지난 입찰)와 다음 입찰 데이터시트(e2e/fixtures/next_datasheet.docx,
@@ -10,7 +10,7 @@ async function upload(request: APIRequestContext, file: string, customer: string
   const res = await request.post('/api/runs', {
     multipart: {
       files: { name: file, mimeType: 'application/octet-stream', buffer: readFileSync(new URL(`./fixtures/${file}`, import.meta.url)) },
-      review_name: `지난 비교 ${file}`, customer_name: customer, actor_id: String(ENGINEER),
+      review_name: `지난 비교 ${file}`, customer_name: customer, actor_id: String(ENGINEER), due_date: dueIn(),
       choices: JSON.stringify({ [file]: { bundle: 'A' } }),
     },
   })
@@ -40,7 +40,7 @@ test('같은 고객사 지난 검토와 비교', async ({ page, request }) => {
   await expect(cmp.getByRole('button', { name: /새로 생김/ })).toHaveAttribute('aria-pressed', 'true')
   await expect(rows).toHaveCount(1)
   await expect(rows).toContainText('125 kA')
-  await expect(cmp.locator('.cmfoot')).toHaveText(/같은 요구 \d+줄은 값과 판정이 지난번과 같아 숨겼습니다\./)
+  await expect(cmp.locator('.cmfoot')).toHaveText(/같은 요구 \d+건은 값과 판정이 지난번과 같아 숨겼습니다\./)
 })
 
 test('고객사 없음 안내', async ({ page, request }) => {

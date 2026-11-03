@@ -19,7 +19,7 @@ test('RFP 한 건 처음부터 끝까지', async ({ page, request }) => {
   // 1. 검토 등록 (SCR-07): 올리고, 분류 추천을 보고, 검토 정보를 적고 시작
   await as(page, ENGINEER)
   await page.goto('/#/register')
-  await page.getByLabel('docx 올리기').setInputFiles(fileURLToPath(DOCX))
+  await page.getByLabel('파일 올리기').setInputFiles(fileURLToPath(DOCX))
   const doc = page.locator('tr', { hasText: 'synthetic_judgment.docx' })
   await expect(doc).toBeVisible()
   test.skip(await page.getByText(/판정 대상.*없/).first().isVisible(), '합성 데이터시트가 문서 목록(묶음 A)에 없습니다')
@@ -44,7 +44,7 @@ test('RFP 한 건 처음부터 끝까지', async ({ page, request }) => {
   await page.locator('#judge table tbody tr').first().click()
   await expect(page.locator('.jv .mdpos')).toBeVisible()
   await page.getByRole('button', { name: '제안대로 확정' }).click()
-  await expect(page.locator('.uitw')).toContainText('판정을 제안대로 확정했습니다.')
+  await expect(page.locator('.uisnk')).toContainText('판정을 제안대로 확정했습니다.')
   await page.keyboard.press('Escape')
   await expect(page.locator('#judge')).toBeVisible()
 
@@ -74,7 +74,7 @@ test('RFP 한 건 처음부터 끝까지', async ({ page, request }) => {
   const dl = page.waitForEvent('download')
   await page.locator('#subm .subpk').getByRole('button', { name: '인계 패키지 내려받기' }).click()
   expect(readFileSync(await (await dl).path()).subarray(0, 2).toString()).toBe('PK')
-  await expect(page.locator('#subm').getByRole('status')).toContainText(`인계패키지_${reviewNo}.zip 를 내려받았습니다.`)
+  await expect(page.locator('.uisnk')).toContainText(`인계패키지_${reviewNo}.zip 를 내려받았습니다.`)
 
 
   // 이력 (SCR-08-9)에 판정 확정이 남는다

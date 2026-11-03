@@ -82,14 +82,14 @@ function card(r: RunListItem, col: Col, pending: Map<number, Pending>): { lines:
   switch (r.stage) {
     case 'PROCESSING': return { lines: [`${STEP_NAMES[r.step ?? ''] ?? '처리'} ${progress(r)} %`, '처리 중'], note: '', tone: '' }
     case 'FAILED': return { lines: [`${STEP_NAMES[r.failed_step ?? ''] ?? '처리'}에서 멈춤`], note: '분석 실패', tone: 'red' }
-    case 'REJECTED': return { lines: [`요구사항 ${r.requirements}줄`, found], note: '반려됨 · 다시 확인', tone: 'red' }
+    case 'REJECTED': return { lines: [`요구사항 ${r.requirements}건`, found], note: '반려됨 · 다시 확인', tone: 'red' }
     case 'APPROVAL': return { lines: [found, '결재자 확인 중'], note: '', tone: '' }
     case 'APPROVED': return { lines: ['제출본 v1 확정', r.finished_at ? `처리 ${stamp(r.finished_at)}` : ''].filter(Boolean), note: '', tone: '' }
   }
   if (col === 'co' && p) {
-    return { lines: [`요구사항 ${r.requirements}줄`, `협조 미확인 ${p.n}건`], note: p.late ? '24시간 넘게 미확인' : '', tone: 'ora' }
+    return { lines: [`요구사항 ${r.requirements}건`, `협조 미확인 ${p.n}건`], note: p.late ? '24시간 넘게 미확인' : '', tone: 'ora' }
   }
-  return { lines: [`요구사항 ${r.requirements}줄`, found], note: '', tone: '' }
+  return { lines: [`요구사항 ${r.requirements}건`, found], note: '', tone: '' }
 }
 
 export function Home() {
@@ -131,7 +131,7 @@ export function Home() {
     setRetrying(r.run_id)
     setRetryError(null)
     api.retryRun(r.run_id, user?.user_id ?? null).then(() => {
-      toast.show('다시 분석을 시작했습니다', 'success', { href: href(`/reviews/${r.run_id}`), label: '검토 열기' })
+      toast.done('다시 분석을 시작했습니다', { href: href(`/reviews/${r.run_id}`), label: '검토 열기' })
       runs.reload()
     }, (e: Error) => setRetryError({ id: r.run_id, text: e.message })).finally(() => setRetrying(null))
   }
@@ -174,7 +174,7 @@ export function Home() {
             <div className="facts">
               {retryBtn(failed, 'bp')}
               <a className="bo sm" href={href(`/reviews/${failed.run_id}`)}>오류 내용 보기</a>
-              <span title="코드 규칙만으로 계속하는 기능은 아직 없습니다"><button type="button" className="bo sm" disabled>코드 규칙만으로 계속</button></span>
+              <span title="준비 중인 기능입니다"><button type="button" className="bo sm" disabled>규칙 기반으로 계속</button></span>
             </div>
             {retryError?.id === failed.run_id && <p className="c-red" style={{ margin: '6px 0 0' }}>{retryError.text}</p>}
           </div>
@@ -296,7 +296,7 @@ function TodayList({ list, loaded, engineer, retryBtn, retryError, onMore }: {
     if (r.stage === 'REJECTED') parts.push('반려됨')
     if (r.due_date) { const sb = before(r.due_date, 2); parts.push(`상신 권장 ${dueText(sb)} (${dday(sb).text})`) } else parts.push('마감 없음')
     const n = review.get(r.run_id)
-    if (n !== undefined) parts.push(`확인 필요 ${n}줄`)
+    if (n !== undefined) parts.push(`확인 필요 ${n}건`)
     parts.push(`일탈 후보 ${r.deviation_candidates}`)
     return { text: parts.join(' · '), red: false }
   }
@@ -431,7 +431,7 @@ function Changes({ runs, now }: { runs: RunListItem[]; now: number }) {
               <span className="tx"><b>{r.review_no} {reviewTitle(r)} · {TITLE[kind]}</b>
                 <span>{kind === 'fail' ? `${STEP_NAMES[r.failed_step ?? ''] ?? '처리'} 단계`
                   : kind === 'add' ? `${r.revision!.files.join(', ')} · ${revisionText(r.revision!)}`
-                    : `요구사항 ${r.requirements}줄 · 일탈 후보 ${r.deviation_candidates}`} · {stamp(at)}</span></span>
+                    : `요구사항 ${r.requirements}건 · 일탈 후보 ${r.deviation_candidates}`} · {stamp(at)}</span></span>
               <span className="ac"><a className="bo sm" href={href(`/reviews/${r.run_id}${kind === 'add' ? '?rev=1' : ''}`)} aria-label={`${r.review_no} 가기`}>{kind === 'fail' ? '오류 내용 보기' : kind === 'add' ? '바뀐 줄 보기' : '가기'}</a></span>
             </li>
           ))}

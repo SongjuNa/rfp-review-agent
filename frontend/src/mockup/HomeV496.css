@@ -48,7 +48,8 @@
 .tc-c.we{background-color:#FAFAFA}
 .tc-now{position:absolute;left:-1px;right:0;height:2px;background:#C4314B;z-index:3}
 .tc-now::before{content:"";position:absolute;left:-4px;top:-3px;width:8px;height:8px;border-radius:50%;background:#C4314B}
-.tc-e{position:absolute;box-sizing:border-box;border-radius:4px;padding:3px 6px 3px 8px;font-size:11px;line-height:1.35;text-decoration:none;overflow:hidden;display:flex;flex-direction:column;border-left:4px solid;z-index:2}
+/* 칸 폭 안에서만 그리고, 긴 문서명은 .nm·.what의 … 로 자른다 (옆 칸을 덮지 않게) */
+.tc-e{position:absolute;left:2px;right:2px;min-width:0;box-sizing:border-box;border-radius:4px;padding:3px 6px 3px 8px;font-size:11px;line-height:1.35;text-decoration:none;overflow:hidden;display:flex;flex-direction:column;border-left:4px solid;z-index:2}
 .tc-e .nm{font-weight:600;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .tc-e .what{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--n3)}
 .tc-e.me{background:var(--tb2);border-color:var(--tb);color:var(--n1)}

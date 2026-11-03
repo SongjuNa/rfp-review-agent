@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react'
 import { api, type Assignment, type User } from '../api'
 import { Pager } from '../components/Pager'
 import { saveFile } from '../components/download'
-import { Button } from '../ui'
+import { Button, useToast } from '../ui'
 import { stamp } from '../components/format'
 import { locShort } from '../components/judgment'
 import { POINT_KIND_NAMES } from '../components/labels'
@@ -24,7 +24,7 @@ const DEPTS = [['COST', '견적 담당'], ['QUALITY', '품질 담당'], ['SALES'
 type Dept = typeof DEPTS[number][0]
 type St = 'unsent' | 'wait' | 'late' | 'done'
 const ST: Record<St, [string, string]> = {
-  unsent: ['안 보냄', 'c-grey'], wait: ['회신 대기', 'c-blue'], late: ['24시간 넘게 회신 없음', 'c-ora'], done: ['회신 받음', 'c-green'],
+  unsent: ['미발송', 'c-grey'], wait: ['회신 대기', 'c-blue'], late: ['24시간 넘게 회신 없음', 'c-ora'], done: ['회신 완료', 'c-green'],
 }
 const DAY = 86_400_000
 
@@ -71,7 +71,7 @@ function defaultDept(user: User | null): Dept {
 /** 검색 영역 조건. 회신: wait 회신 대기(기한 안), over 회신 기한 지남, done 회신 받음 */
 type Filter = { pj: string; rv: string; rp: '' | 'wait' | 'over' | 'done'; by: string; q: string }
 const NO_FILTER: Filter = { pj: '', rv: '', rp: '', by: '', q: '' }
-const RP_LABEL = { wait: '회신 대기', over: '회신 기한 지남', done: '회신 받음' } as const
+const RP_LABEL = { wait: '회신 대기', over: '회신 기한 지남', done: '회신 완료' } as const
 const SIZES = [5, 10, 20]
 
 /** 회신 상태 (안 보냄은 없음) */
@@ -90,7 +90,7 @@ function hm(d: Date): string {
 function replyLine(a: Assignment, now: number): [string, string] | null {
   const rp = rpOf(a, now)
   const due = dueOf(a)
-  if (rp === 'done') return ['rpl ok', a.replied_at ? `회신 ${hm(new Date(a.replied_at))}` : '회신 받음']
+  if (rp === 'done') return ['rpl ok', a.replied_at ? `회신 ${hm(new Date(a.replied_at))}` : '회신 완료']
   if (rp === 'over' && due) return ['rpl od', `회신 기한 ${md(due)} 지남`]
   if (rp === 'wait' && due) return ['rpl wt', `회신 기한 ${md(due)}`]
   return null
@@ -131,9 +131,10 @@ export function Todo() {
   const dept = chosen ?? defaultDept(user)          // 고르기 전에는 담당자 자기 부서, 그 밖에는 견적 담당
   const [page, setPage] = useState(1)
   const [size, setSize] = useState(5)
+  const [rsize, setRsize] = useState(10)                   // RFP별 쪽 크기 (update-todo-rfp-paging)
   const [open, setOpen] = useState<number | null>(null)
   const [writing, setWriting] = useState(false)
-  const [toast, setToast] = useState('')
+  const toast = useToast()
   const [draft, setDraft] = useState<Filter>(NO_FILTER)      // 검색 영역에 고르는 중인 조건
   const [applied, setApplied] = useState<Filter>(NO_FILTER)  // 검색을 눌러 걸린 조건
   const [sum, setSum] = useState<St | null>(null)           // 요약 줄로 거른 상태
@@ -141,11 +142,6 @@ export function Todo() {
   const [closed, setClosed] = useState<number[]>([])        // RFP별에서 접은 검토
   const [exporting, setExporting] = useState(false)
   const list = useLoad(() => api.assignments(), [])        // 세 부서 요청을 한 번에 받아 화면에서 거른다
-  useEffect(() => {
-    if (!toast) return
-    const timer = setTimeout(() => setToast(''), 3000)
-    return () => clearTimeout(timer)
-  }, [toast])
 
   const [now, setNow] = useState(() => Date.now())   // 화면을 연 시각 기준으로 24시간·회신 기한을 센다
   const engineer = user?.role === 'ENGINEER'        // 보내기·재요청·회신 기록은 엔지니어만 (견적·품질·영업은 읽기만)
@@ -154,9 +150,9 @@ export function Todo() {
     if (!user) return
     setSending(a.assignment_id)
     api.sendRequests(a.run_id, [a.assignment_id], user.user_id, resend)
-      .then((r) => setToast(r.sent ? resend ? '다시 보냈습니다' : `${address(a)}(으)로 메일을 보냈습니다`
-        : r.no_address ? '부서 주소가 설정되지 않아 보내지 않았습니다' : '메일을 보내지 못했습니다. 잠시 뒤 다시 보내 주세요'),
-      (e: Error) => setToast(e.message))
+      .then((r) => r.sent ? toast.done(resend ? '다시 보냈습니다' : `${address(a)}(으)로 메일을 보냈습니다`)
+        : toast.show(r.no_address ? '부서 주소가 설정되지 않아 보내지 않았습니다' : '메일을 보내지 못했습니다. 잠시 뒤 다시 보내 주세요', 'error'),
+      (e: Error) => toast.show(e.message, 'error'))
       .finally(() => { setSending(null); setNow(Date.now()); list.reload() })
   }
   const all = list.data ?? []
@@ -166,9 +162,14 @@ export function Todo() {
   const found = base.filter((a) => passes(a, applied, now))
   const rows = sum ? found.filter((a) => stOf(a, now) === sum) : found
   const count = (k: St) => found.filter((a) => stOf(a, now) === k).length
-  const pages = Math.max(1, Math.ceil(rows.length / size))
+  // RFP별: 검토마다 묶음 (첫 요청 순서 = 최근 검토 먼저). 쪽은 묶음 순서로 늘어놓은 요청 줄로 자른다
+  const groups = [...rows.reduce((m, a) => m.set(a.run_id, [...(m.get(a.run_id) ?? []), a]), new Map<number, Assignment[]>()).entries()]
+  const listed = view === 'rfp' ? groups.flatMap(([, items]) => items) : rows
+  const per = view === 'rfp' ? rsize : size
+  const pages = Math.max(1, Math.ceil(listed.length / per))
   const cur = Math.min(page, pages)
-  const shown = rows.slice((cur - 1) * size, cur * size)
+  const shown = listed.slice((cur - 1) * per, cur * per)
+  const pageGroups = [...shown.reduce((m, a) => m.set(a.run_id, [...(m.get(a.run_id) ?? []), a]), new Map<number, Assignment[]>()).entries()]
   const label = view === 'rfp' ? '전체 담당' : DEPTS.find(([k]) => k === dept)![1]
   const picked = all.find((a) => a.assignment_id === open) ?? null
   const anyF = JSON.stringify(applied) !== JSON.stringify(NO_FILTER) || sum !== null
@@ -195,7 +196,7 @@ export function Todo() {
     if (exporting || !rows.length) return
     setExporting(true)
     api.exportAssignments(view === 'rfp' ? null : dept, rows.map((a) => a.assignment_id))
-      .then(({ name, blob }) => { saveFile(name, blob); setToast(`${name}를 만들었습니다.`) }, (e: Error) => setToast(e.message))
+      .then(({ name, blob }) => { saveFile(name, blob); toast.done(`${name}를 만들었습니다.`) }, (e: Error) => toast.show(e.message, 'error'))
       .finally(() => setExporting(false))
   }
 
@@ -226,9 +227,6 @@ export function Todo() {
     )
   }
 
-  // RFP별: 검토마다 묶음 (첫 요청 순서 = 최근 검토 먼저)
-  const groups = [...rows.reduce((m, a) => m.set(a.run_id, [...(m.get(a.run_id) ?? []), a]), new Map<number, Assignment[]>()).entries()]
-
   return (
     <main className="main">
       <nav className="pgtabs" aria-label="수신 부서" style={view === 'rfp' ? { opacity: 0.5 } : undefined}>
@@ -249,7 +247,7 @@ export function Todo() {
         <label className="ff w">RFP 검토<select className="fi" value={draft.rv} onChange={(e) => setDraft({ ...draft, rv: e.target.value })}>
           <option value="">전체</option>{runs.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select></label>
         <label className="ff">회신<select className="fi" value={draft.rp} onChange={(e) => setDraft({ ...draft, rp: e.target.value as Filter['rp'] })}>
-          <option value="">전체</option><option value="wait">회신 대기</option><option value="over">회신 기한 지남</option><option value="done">회신 받음</option></select></label>
+          <option value="">전체</option><option value="wait">회신 대기</option><option value="over">회신 기한 지남</option><option value="done">회신 완료</option></select></label>
         <label className="ff">수신자<select className="fi" value={draft.by} onChange={(e) => setDraft({ ...draft, by: e.target.value })}>
           <option value="">전체</option>{tos.map((x) => <option key={x} value={x}>{x}</option>)}</select></label>
         <div className="fbar2"><input className="fi" type="search" placeholder="요청 제목, 내용, 원문 위치, 수신자로 찾기 (예: 지체상금, Type Test)"
@@ -293,7 +291,8 @@ export function Todo() {
             onSize={(n) => { setSize(n); setPage(1) }} />}
         </div>}
         {view === 'rfp' && rows.length > 0 && <div className="rgs">
-          {groups.map(([runId, items]) => {
+          {pageGroups.map(([runId, onPage]) => {
+            const items = groups.find(([id]) => id === runId)![1]   // 머리 숫자는 그 검토의 거른 요청 전체
             const a = items[0]
             const isOpen = !closed.includes(runId)
             const done = items.filter((x) => x.status === 'DONE').length
@@ -316,18 +315,20 @@ export function Todo() {
                     <span className="rg-bar" aria-hidden="true"><i style={{ width: `${Math.round((done / items.length) * 100)}%` }} /></span>
                     <span>회신 <b>{done}</b> / {items.length}</span>
                     {over > 0 && <span className="rg-od">기한 지남 {over}</span>}
-                    {done === items.length && <span className="rg-ok">협조 끝남</span>}
+                    {done === items.length && <span className="rg-ok">협조 완료</span>}
                   </div>
                   <button type="button" className="bo" onClick={() => setWriting(true)}>
                     <span className="ms" aria-hidden="true" style={{ fontSize: 'var(--ic-s)' }}>add</span>이 검토에 요청</button>
                 </div>
                 {isOpen && <div className="tw"><table className="tbl">
                   <thead><tr><th style={{ width: 150 }}>상태</th><th style={{ width: '42%' }}>요구사항</th><th>담당</th><th>보낸 주소</th><th>보낸 일시</th><th /></tr></thead>
-                  <tbody>{items.map((x) => cells(x, true))}</tbody>
+                  <tbody>{onPage.map((x) => cells(x, true))}</tbody>
                 </table></div>}
               </section>
             )
           })}
+          <Pager total={listed.length} page={cur} size={rsize} shown={shown.length} onPage={setPage} sizes={SIZES}
+            onSize={(n) => { setRsize(n); setPage(1) }} />
         </div>}
         {list.data !== null && rows.length === 0 && <div className="emp">
           <div>{anyF ? '조건에 맞는 요청이 없습니다.'
@@ -337,10 +338,9 @@ export function Todo() {
       </section>
       {picked && <Detail a={picked} now={now} dept={DEPTS.find(([k]) => k === picked.assignee_role)?.[1] ?? label} user={user}
         sending={sending !== null} onSend={send} onClose={() => setOpen(null)}
-        onChanged={(msg) => { setToast(msg); list.reload() }} />}
+        onChanged={(msg) => { toast.done(msg); list.reload() }} />}
       {writing && <NewRequest dept={dept} rows={all.filter(inTab)} users={users} onClose={() => setWriting(false)}
-        onSent={() => { setWriting(false); setToast('예시 화면이라 보내지 않았습니다.') }} />}
-      {toast && <div className="toast" role="status"><span className="ms" aria-hidden="true">check_circle</span>{toast}</div>}
+        onSent={() => { setWriting(false); toast.done('예시 화면이라 보내지 않았습니다.') }} />}
     </main>
   )
 }
@@ -368,18 +368,18 @@ function Detail({ a, now, dept, user, sending, onSend, onClose, onChanged }: {
   const done = a.status === 'DONE'
   const engineer = user?.role === 'ENGINEER'
   const fail = failTag(a)
-  const steps: { k: string; t: string; cls: string }[] = [{ k: '만듦', t: stamp(a.sent_at), cls: 'done' }]
-  if (a.mail_sent_at) steps.push({ k: '메일 보냄', t: `${stamp(a.mail_sent_at)} · ${a.sent_by_name ?? '시스템'} → ${a.mail_to ?? ''}`, cls: 'done' })
+  const steps: { k: string; t: string; cls: string }[] = [{ k: '생성', t: stamp(a.sent_at), cls: 'done' }]
+  if (a.mail_sent_at) steps.push({ k: '메일 발송', t: `${stamp(a.mail_sent_at)} · ${a.sent_by_name ?? '시스템'} → ${a.mail_to ?? ''}`, cls: 'done' })
   else steps.push(fail ? { k: fail, t: a.mail_error ?? '', cls: 'warn' } : { k: '메일 보내기 전', t: '판정을 확정하면 보냅니다', cls: 'wait' })
-  if (st === 'late') steps.push({ k: '24시간 넘게 회신 없음', t: '다시 연락 필요', cls: 'warn' })
-  if (done) steps.push({ k: '회신 받음', t: `${a.replied_at ? `${stamp(a.replied_at)} · ` : ''}${a.replied_by_name ?? ''}`, cls: 'done' })
+  if (st === 'late') steps.push({ k: '24시간 넘게 회신 없음', t: '재요청 필요', cls: 'warn' })
+  if (done) steps.push({ k: '회신 완료', t: `${a.replied_at ? `${stamp(a.replied_at)} · ` : ''}${a.replied_by_name ?? ''}`, cls: 'done' })
   else if (a.mail_sent_at) steps.push({ k: '회신 대기', t: due ? `기한 ${md(due)}` : '', cls: 'wait' })
 
   const set = (status: 'DOING' | 'DONE') => {
     setBusy(true)
     setError(null)
     api.setTaskStatus(a.assignment_id, status, user!.user_id, status === 'DONE' ? note : undefined)
-      .then(() => onChanged(status === 'DONE' ? '회신 받음으로 표시했습니다' : '회신 받음 표시를 되돌렸습니다'), (e: Error) => setError(e.message))
+      .then(() => onChanged(status === 'DONE' ? '회신 완료로 처리했습니다' : '회신 완료를 취소했습니다'), (e: Error) => setError(e.message))
       .finally(() => setBusy(false))
   }
 
@@ -411,7 +411,7 @@ function Detail({ a, now, dept, user, sending, onSend, onClose, onChanged }: {
             {!done && a.mail_sent_at && (engineer
               ? <label className="fl">회신 요지 (한 줄)<input className="fi" value={note} onChange={(e) => setNote(e.target.value)}
                   placeholder="예: 성적서 3종 11-05까지 보냄" maxLength={200} /></label>
-              : <p className="cwn">아직 회신 받음으로 표시되지 않았습니다. 회신 기한 {due ? md(due) : '—'}</p>)}
+              : <p className="cwn">아직 회신 완료로 처리되지 않았습니다. 회신 기한 {due ? md(due) : '—'}</p>)}
           </section>
           <aside className="cwr">
             <dl className="basis">
@@ -434,8 +434,8 @@ function Detail({ a, now, dept, user, sending, onSend, onClose, onChanged }: {
           {engineer && a.status === 'DOING' && <button type="button" className="bo" disabled={sending} onClick={() => onSend(a, true)}>
             <span className="ms" aria-hidden="true" style={{ fontSize: 'var(--ic-s)' }}>notifications_active</span>재요청</button>}
           {engineer && a.status === 'DOING' && <button type="button" className="bp" disabled={busy} onClick={() => set('DONE')}>
-            <span className="ms" aria-hidden="true" style={{ fontSize: 'var(--ic-s)' }}>mark_email_read</span>회신 받음 표시</button>}
-          {engineer && done && <button type="button" className="bo" disabled={busy} onClick={() => set('DOING')}>회신 받음 되돌리기</button>}
+            <span className="ms" aria-hidden="true" style={{ fontSize: 'var(--ic-s)' }}>mark_email_read</span>회신 완료 처리</button>}
+          {engineer && done && <button type="button" className="bo" disabled={busy} onClick={() => set('DOING')}>회신 완료 취소</button>}
         </div>
       </div>
     </div>

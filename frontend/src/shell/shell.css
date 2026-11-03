@@ -29,4 +29,10 @@
 .anbar{height:4px;border-radius:2px;background:var(--c-bar);margin-top:6px;overflow:hidden}
 .anbar i{display:block;height:100%;background:var(--c-navy);border-radius:2px;transition:width .4s}
 .ani.warn .anbar i{background:var(--c-orange-mid)}
+/* 검토 목록 줄 진행 (목업 v4.96 목록 줄 진행 막대) */
+.lprog{min-width:120px;max-width:220px;margin-top:6px}
+.lprog .anbar{height:3px;margin-top:0}
+.lprog-t{margin-top:5px;font-size:var(--t-xs);line-height:1.3;color:var(--c-text-3);white-space:nowrap}
+.lprog.warn .anbar i{background:var(--c-orange-mid)}
+.lprog.warn .lprog-t{color:var(--c-orange)}
 .anf{padding:10px 16px 6px;border-top:1px solid var(--c-line-soft);font-size:var(--t-xs);color:var(--c-muted)}

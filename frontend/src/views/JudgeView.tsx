@@ -156,7 +156,7 @@ function Detail({ runId, stage, j, docs, pos, total, onPrev, onNext, editing, se
     <a className="rl" href={href(`/rules?q=${encodeURIComponent(j.item_key ?? '')}`)}>판정 규칙 보기<span className="ms" aria-hidden="true" style={{ fontSize: 14, verticalAlign: -2 }}>arrow_forward</span></a></>])
   basis.push(['적용 규칙', j.reason_text ?? '—'], ['비교', compareText(j, w)])
   if (j.locations.length > 1) basis.push(['같은 요구', `${j.locations.length}곳에서 같은 요구 (${reqText(j)})`])
-  basis.push(['제품값 출처', <>{source}{assumed && <span className="st c-ora" style={{ marginLeft: 6 }} title="제품표 팀 합성 비교값 (CR-06)">팀 가정</span>}</>])
+  basis.push(['제품값 출처', <>{source}{assumed && <span className="st c-ora" style={{ marginLeft: 6 }} title="제품 자료에 값이 없어 팀이 정한 비교값입니다">팀 가정</span>}</>])
   if (j.type_name) basis.push(['유형', j.type_name])
   if (check) basis.push(['공학 검산', `${CHECK_NAMES[check.result]} · ${checkLine(check)}`])
 
@@ -164,7 +164,7 @@ function Detail({ runId, stage, j, docs, pos, total, onPrev, onNext, editing, se
     setBusy(true)
     setError(null)
     api.act(runId, { target: 'judgment', target_id: j.judgment_id, action: 'CONFIRM', actor_id: user!.user_id })
-      .then(() => { toast.show('판정을 제안대로 확정했습니다.'); onConfirmed() }, (e: Error) => setError(e.message))
+      .then(() => { toast.done('판정을 제안대로 확정했습니다.'); onConfirmed() }, (e: Error) => setError(e.message))
       .finally(() => setBusy(false))
   }
   // 질의 보냄 표시·되돌리기 (add-query-sent). 판정 결과는 바뀌지 않는다
@@ -172,10 +172,10 @@ function Detail({ runId, stage, j, docs, pos, total, onPrev, onNext, editing, se
     setBusy(true)
     setError(null)
     api.act(runId, { target: 'judgment', target_id: j.judgment_id, action: sent ? 'QUERY_SENT' : 'QUERY_UNSENT', actor_id: user!.user_id })
-      .then(() => { toast.show(sent ? '질의 보냄으로 표시했습니다.' : '질의 보냄 표시를 되돌렸습니다.'); onChanged() }, (e: Error) => setError(e.message))
+      .then(() => { toast.done(sent ? '질의 보냄으로 표시했습니다.' : '질의 보냄 표시를 되돌렸습니다.'); onChanged() }, (e: Error) => setError(e.message))
       .finally(() => setBusy(false))
   }
-  const found = req.data ? ({ AI: 'AI가 찾음', OCR: '그림 속 글자(OCR)에서 찾음 · 사람 확인 필요' } as Record<string, string>)[req.data.extracted_by] ?? '코드 규칙으로 찾음' : null
+  const found = req.data ? ({ AI: 'AI 추출', OCR: 'OCR 추출 · 사람 확인 필요' } as Record<string, string>)[req.data.extracted_by] ?? '규칙 추출' : null
   const confidence = req.data?.confidence != null ? `신뢰도 ${Number(req.data.confidence).toFixed(2)}` : null
 
   return (
@@ -228,7 +228,7 @@ function Detail({ runId, stage, j, docs, pos, total, onPrev, onNext, editing, se
 
             <div className="lbl">판정 출처</div>
             <table className="pv"><tbody>
-              <tr><th>시스템 제안</th><td><span className={`st ${RESULT_TONES[sug]}`}>{RESULT_NAMES[sug]}</span><span className="pvs">코드 규칙</span></td></tr>
+              <tr><th>시스템 제안</th><td><span className={`st ${RESULT_TONES[sug]}`}>{RESULT_NAMES[sug]}</span><span className="pvs">규칙 기반</span></td></tr>
               <tr><th>찾은 방법</th><td>{found ?? '—'}{confidence && <span className="pvs">{confidence}</span>}
                 {req.data?.is_assumed && <span className="st c-ora" style={{ marginLeft: 6 }}>팀 가정</span>}</td></tr>
               <tr><th>담당자 확정</th><td>{conf
@@ -254,18 +254,18 @@ function Detail({ runId, stage, j, docs, pos, total, onPrev, onNext, editing, se
               </div>
             )}
             {draft && <div style={{ marginTop: 18 }}><OutputEditor key={`${draft.item_id}-${draft.text_draft}-${draft.status}`} runId={runId} item={draft} id="mdDraft"
-              canEdit={!lock} onDone={() => { outputs.reload(); onChanged() }} onSaved={(m) => toast.show(m)} /></div>}
+              canEdit={!lock} onDone={() => { outputs.reload(); onChanged() }} onSaved={(m) => toast.done(m)} /></div>}
           </section>
         </div>
         <div className="mdf">
           <span className="mdf-n">↑↓ 이전·다음 판정 · Esc 목록으로</span>
           {error && <span className="c-red" role="alert">{error}</span>}
-          <Button onClick={() => setEditing(true)} disabledReason={lock}>판정 바꾸기</Button>
+          <Button onClick={() => setEditing(true)} disabledReason={lock}>판정 변경</Button>
           <Button kind="primary" onClick={confirm} busy={busy} disabledReason={lock ?? (conf ? '이미 확정한 판정입니다' : null)}>{conf ? '확정함' : '제안대로 확정'}</Button>
         </div>
       </div>
       {editing && <EditDialog runId={runId} j={j} onClose={() => setEditing(false)}
-        onDone={(was, now) => { setEditing(false); toast.show(`판정을 바꿨습니다: ${RESULT_NAMES[was]} → ${RESULT_NAMES[now]}`); onChanged() }} />}
+        onDone={(was, now) => { setEditing(false); toast.done(`판정을 바꿨습니다: ${RESULT_NAMES[was]} → ${RESULT_NAMES[now]}`); onChanged() }} />}
     </div>
   )
 }
@@ -297,7 +297,7 @@ function SourceLines({ runId, loc, needle }: { runId: number; loc: Location; nee
         const [a, m, b] = hit ? markSplit(l.text, needle) : [l.text, '', '']
         return <div key={l.line_no} className={hit ? 'pl hitl' : 'pl'}><span className="lno">{l.line_no}</span><span className="ltx">{a}{m && <mark>{m}</mark>}{b}</span></div>
       })}
-      {lines.data.partial && <p className="en" role="note">원문 파일이 없어 저장된 줄만 보입니다.</p>}
+      {lines.data.partial && <p className="en" role="note">원문 파일이 없어 추출된 문장만 표시합니다.</p>}
     </>
   )
 }
@@ -318,7 +318,7 @@ function EditDialog({ runId, j, onClose, onDone }: { runId: number; j: Judgment;
       .finally(() => setBusy(false))
   }
   return (
-    <Modal title="판정 바꾸기" onClose={onClose} footer={<>
+    <Modal title="판정 변경" onClose={onClose} footer={<>
       <Button onClick={onClose}>닫기</Button>
       <Button kind="primary" onClick={apply} busy={busy} disabledReason={k === j.result ? '지금 판정과 같습니다' : null}>{busy ? '적용 중…' : '적용'}</Button>
     </>}>

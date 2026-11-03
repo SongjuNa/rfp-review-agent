@@ -33,14 +33,14 @@ test('판정 칩으로 거르기', async ({ page, request }) => {
   const rows = page.locator('#judge .tw tbody tr')
   await expect(rows).toHaveCount(n)
   await expect(rows.locator('td:nth-child(2) .st')).toHaveText(Array(n).fill('질의 후보'))
-  await expect(page.locator('.tfoot')).toContainText(`${n}줄 표시`)
+  await expect(page.locator('.tfoot')).toContainText(`${n}건 표시`)
 })
 
 test('거른 결과가 없음', async ({ page, request }) => {
   const run = await deviationRun(request, `없음 ${Date.now()}`)
   await page.goto(`/#/reviews/${run.run_id}`)
   await page.getByPlaceholder('항목명, 영문, 원문 문장').fill('없는검색어zz')
-  await expect(page.getByText('조건에 맞는 줄이 없습니다.')).toBeVisible()
+  await expect(page.getByText('조건에 맞는 판정이 없습니다.')).toBeVisible()
   await page.getByRole('button', { name: '필터 지우기' }).click()
   await expect(page.locator('#judge .tw tbody tr').first()).toBeVisible()
 })

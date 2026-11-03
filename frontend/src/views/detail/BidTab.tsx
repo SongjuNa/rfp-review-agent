@@ -97,21 +97,21 @@ function Point({ runId, p, where, canEdit, lock, acted, onDone }: {
         </div>
         {dropping
           ? <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginTop: 6 }}>
-              <input className="fi" aria-label="버리는 사유" placeholder="버리는 사유" value={why} autoFocus onChange={(e) => setWhy(e.target.value)} style={{ flex: 1, height: 32 }} />
-              <button type="button" className="bp" disabled={busy || !why.trim()} onClick={() => act('DISCARD')}>버리기</button>
+              <input className="fi" aria-label="제외 사유" placeholder="제외 사유" value={why} autoFocus onChange={(e) => setWhy(e.target.value)} style={{ flex: 1, height: 32 }} />
+              <button type="button" className="bp" disabled={busy || !why.trim()} onClick={() => act('DISCARD')}>제외하기</button>
               <button type="button" className="bo" onClick={() => { setDropping(false); setWhy('') }}>취소</button>
             </div>
           : <div className="pt-acts" title={lock}>
               <button type="button" className="bp" disabled={!canEdit || busy || adopted} onClick={() => act('ADOPT')}>
                 <span className="ms" aria-hidden="true">check</span>{adopted ? '채택함' : '채택'}</button>
               <button type="button" className="bo" disabled={!canEdit || busy || p.status === 'DISCARDED'} onClick={() => setDropping(true)}>
-                <span className="ms" aria-hidden="true">close</span>버림</button>
+                <span className="ms" aria-hidden="true">close</span>제외</button>
             </div>}
         {acted && <p className={`pt-note ${acted.action === 'ADOPT' ? 'ok' : ''}`} role="status">
           <span className="ms" aria-hidden="true">{acted.action === 'ADOPT' ? 'check_circle' : 'do_not_disturb_on'}</span>
           {acted.action === 'ADOPT'
             ? `채택했습니다. ${POINT_TO[p.point_kind] ?? '영업 담당'}에게 협조 요청으로 전달합니다.`
-            : `버렸습니다. 사유: ${acted.reason}`}</p>}
+            : `제외했습니다. 사유: ${acted.reason}`}</p>}
         {error && <p className="aphint" role="alert">{error}</p>}
       </div>
     </div>

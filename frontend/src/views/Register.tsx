@@ -72,6 +72,23 @@ function Field({ label, req, hint, children }: { label: string; req?: boolean; h
   )
 }
 
+const mb = (n: number) => (n / 1_048_576).toFixed(1)
+
+/** 등록하는 동안 진행 막대: 올리는 중이면 실제 바이트, 다 올렸거나 서버 파일이면 끝을 모르는 막대 */
+function RegProgress({ sent }: { sent: { done: number; total: number } | null }) {
+  const uploading = sent !== null && sent.done < sent.total
+  const pct = sent && sent.total ? Math.round((sent.done / sent.total) * 100) : 0
+  return (
+    <div className="regprog" role="status" aria-live="polite">
+      <div className={'anbar' + (uploading ? '' : ' ind')} role="progressbar" aria-label="검토 등록 진행"
+        aria-valuemin={0} aria-valuemax={100} aria-valuenow={uploading ? pct : undefined}>
+        <i style={uploading ? { width: `${pct}%` } : undefined} /></div>
+      <p>{uploading ? <><b>파일 올리는 중</b> · {mb(sent!.done)} / {mb(sent!.total)} MB · {pct} %</>
+        : <b>문서를 확인하고 검토를 만드는 중…</b>}</p>
+    </div>
+  )
+}
+
 export function Register({ businessId = null }: { businessId?: number | null }) {
   usePageCss('Register')
   const { user, users } = useSession()
@@ -91,6 +108,8 @@ export function Register({ businessId = null }: { businessId?: number | null }) 
   const [info, setInfo] = useState<Info>(EMPTY)
   const [engineer, setEngineer] = useState<number | ''>('')
   const [busy, setBusy] = useState(false)
+  // 등록 진행 (update-register-progress): 올린 바이트 / 전체, null이면 서버가 검토를 만드는 중(끝을 모름)
+  const [sent, setSent] = useState<{ done: number; total: number } | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [done, setDone] = useState<RunSummary | null>(null)
   const [previews, setPreviews] = useState<Record<string, DocumentPreview | 'loading' | 'error'>>({})
@@ -169,8 +188,10 @@ export function Register({ businessId = null }: { businessId?: number | null }) 
       const pv = previews[p.name]
       if (typeof pv === 'object') choices[p.name] = chosen[p.name] ?? { doc_kind: pv.doc_kind, bundle: pv.bundle }
     })
-    const call = fromServer ? api.startLibrary(ok.map((p) => p.name), start, choices) : api.upload(ok.map((p) => p.file!), start, choices)
-    call.then(setDone, (e: Error) => setError(e.message)).finally(() => setBusy(false))
+    setSent(null)
+    const call = fromServer ? api.startLibrary(ok.map((p) => p.name), start, choices)
+      : api.upload(ok.map((p) => p.file!), start, choices, (done, total) => setSent({ done, total }))
+    call.then(setDone, (e: Error) => setError(e.message)).finally(() => { setBusy(false); setSent(null) })
   }
 
   if (done) {
@@ -212,8 +233,8 @@ export function Register({ businessId = null }: { businessId?: number | null }) 
           <p className="sub2">입찰 안내서, 기술 명세서, 가격표를 함께 올리면 정보를 더 많이 채울 수 있습니다.</p>
           <label className="drop2" onDragOver={(e) => e.preventDefault()} onDrop={onDrop}>
             <span className="ms" aria-hidden="true">upload_file</span><b>docx·PDF 파일을 끌어다 놓거나 눌러서 고르기</b>
-            <span>여러 개 가능 · 스캔한 문서의 글자는 읽지 않음</span>
-            <input type="file" multiple accept=".docx,.pdf" aria-label="docx 올리기"
+            <span>여러 개 가능 · docx·PDF, 스캔 문서는 글자 인식(OCR)으로 읽음</span>
+            <input type="file" multiple accept=".docx,.pdf" aria-label="파일 올리기"
               onChange={(e) => { addFiles(e.target.files); e.target.value = '' }} />
           </label>
           {(library.data?.length ?? 0) > 0 && (
@@ -314,6 +335,7 @@ export function Register({ businessId = null }: { businessId?: number | null }) 
         </div>
       )}
 
+      {busy && <RegProgress sent={sent} />}
       <div className="foot2">
         <span className={msgCls} role={error ? 'alert' : undefined}>{msg}</span>
         {step > 1 && <button type="button" className="bo" onClick={() => setStep(step - 1)}>이전</button>}

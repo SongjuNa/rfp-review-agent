@@ -25,3 +25,5 @@ file_no,file_key,bundle,language,project_key,note
 24,RFP_Product_Master_Evaluat,B,en,,Product-master based evaluative RFP
 25,RFP_Product_Master_Evaluative_EN_With_Deviation,B,en,,"Product-master based evaluative RFP + Appendix B deviation-candidate requirements (파일 24와 다른 문서)"
 26,RFP_Product_Master_Evaluative_EN_With_Collaboration,B,en,,"파일 25 + 8장 견적·품질·영업 협조 요청 항목 (시험용)"
+27,RFP_Product_Master_Evaluative_EN_With_Risk,B,en,,"파일 26 + 9장 위험 조항(포괄 조항·범위 모호·비용 전가·가스 누설률 값 불일치) (시연용, add-synthetic-risk-rfp)"
+28,RFP_Product_Master_Evaluative_EN_With_Product_Switch,B,en,,"파일 27 + 4.3 24 kV 차단기 데이터시트(비교 제품 후보 5개, 바꿔 보기 시연용, update-synthetic-product-switch)"

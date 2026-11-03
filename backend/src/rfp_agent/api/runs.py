@@ -4,6 +4,8 @@
 
 import hashlib
 import re
+from collections.abc import Iterator
+from contextlib import contextmanager
 from datetime import date
 from pathlib import Path
 from typing import Literal
@@ -14,6 +16,7 @@ from pydantic import BaseModel, Field, TypeAdapter, ValidationError
 
 from rfp_agent.api.schemas import (
     ActionResult,
+    AiUsage,
     ApprovalScreen,
     Assignment,
     AssignmentStatus,
@@ -64,6 +67,7 @@ from rfp_agent.config import get_settings
 from rfp_agent.db.connection import connect
 from rfp_agent.llm.client import make_llm
 from rfp_agent.pipeline import (
+    ai_usage,
     assignment_export,
     business,
     datasheet,
@@ -218,6 +222,14 @@ class Decision(BaseModel):
     actor_id: int | None = None
 
 
+@contextmanager
+def _ai(conn, feature: str, run_id: int) -> Iterator:
+    """분석 밖 요청의 실행 문맥. AI를 불렀으면 사용량을 남긴다 (add-ai-usage-log)."""
+    ctx = make_context(conn)
+    with ai_usage.tracked(conn, feature, run_id, ctx.llm):
+        yield ctx
+
+
 def _review(call):
     """확인·승인 동작의 오류를 HTTP 응답으로 바꾼다."""
     try:
@@ -248,6 +260,7 @@ def _start(paths: list[Path], background: BackgroundTasks, info: dict,
             raise HTTPException(400, NO_JUDGE_TARGET)
         # 검토 정보·사업 칸이 틀리면 실행을 만들기 전에 막는다
         _review(lambda: review_info.clean(info))
+        _review(lambda: review_info.require_due(info))
         _review(lambda: review_info.check_engineer(conn, info.get("engineer_id") or None))
         _review(lambda: business.check_start(conn, business_id, new_business_name))
         run_id = start_run(conn, actor_id)
@@ -284,6 +297,13 @@ def get_run_log(limit: int = Query(200, le=500)) -> list[RunLogItem]:
     """실행 기록: 검토마다 걸린 시간·단계별 시간·AI 사용량·추정 비용 (add-run-log)."""
     with connect() as conn:
         return run_log.run_log(conn, limit)
+
+
+@router.get("/ai-usage")
+def get_ai_usage(days: int = Query(30, ge=1, le=366)) -> AiUsage:
+    """최근 days일의 날짜·기능별 AI 사용량과 추정 비용. 분석 실행 포함 (add-ai-usage-log)."""
+    with connect() as conn:
+        return ai_usage.summary(conn, days)
 
 
 @router.get("/runs/{run_id}/flow")
@@ -523,7 +543,8 @@ def choose_product(run_id: int, group: str, body: ProductChoice) -> ProductSwitc
         before = conn.execute("SELECT product_code FROM run_product_choice WHERE run_id = %s "
                               "AND equipment_group = %s", (run_id, group)).fetchone()
         try:
-            counts = switch_product(make_context(conn), run_id, group, body.product_code)
+            with _ai(conn, "PRODUCT_SWITCH", run_id) as ctx:
+                counts = switch_product(ctx, run_id, group, body.product_code)
         except KeyError as exc:
             raise HTTPException(400, f"없는 제품: {body.product_code}") from exc
         review.log(conn, run_id, "run_product_choice", run_id, "EDIT",
@@ -566,7 +587,8 @@ def update_loss(run_id: int, loss_calc_id: int, body: LossValues) -> LossResult:
         review.log(conn, run_id, "loss_calc", loss_calc_id, "EDIT", before,
                    review.row(conn, "loss_calc", loss_calc_id, run_id), "손실값 고치기",
                    review.default_user(conn, "ENGINEER"))
-        build_proposals(conn, run_id, make_context(conn).llm)
+        with _ai(conn, "LOSS_EDIT", run_id) as ctx:
+            build_proposals(conn, run_id, ctx.llm)
         build_assignments(conn, run_id)
         conn.commit()
         return result
@@ -701,8 +723,8 @@ def run_proposals(run_id: int) -> list[Proposal]:
 @router.post("/runs/{run_id}/actions")
 def act(run_id: int, body: Action) -> ActionResult:
     """후보 하나를 확정·수정·반려(제안 포인트는 채택·버림·수정)하고 이력을 남긴다."""
-    with connect() as conn:
-        return _review(lambda: review.act(make_context(conn), run_id, body.target,
+    with connect() as conn, _ai(conn, "REVIEW_ACTION", run_id) as ctx:
+        return _review(lambda: review.act(ctx, run_id, body.target,
                                           body.target_id, body.action, body.value,
                                           body.reason, body.actor_id))
 
@@ -722,9 +744,8 @@ def act_bulk(run_id: int, body: BulkAction) -> BulkResult:
     """여러 판정을 한 번에 제안대로 확정한다 (수정·반려는 한 줄씩)."""
     if body.target != "judgment" or body.action != "CONFIRM":
         raise HTTPException(400, "한꺼번에는 판정 확정만 할 수 있습니다.")
-    with connect() as conn:
-        return _review(lambda: review.bulk_confirm(make_context(conn), run_id, body.ids,
-                                                   body.actor_id))
+    with connect() as conn, _ai(conn, "BULK_CONFIRM", run_id) as ctx:
+        return _review(lambda: review.bulk_confirm(ctx, run_id, body.ids, body.actor_id))
 
 
 @router.get("/runs/{run_id}/history")
@@ -928,8 +949,10 @@ def send_assignments(run_id: int, body: SendRequests) -> SendResult:
         conn.execute("UPDATE assignment SET mail_error = NULL WHERE run_id = %s "
                      "AND assignment_id = ANY(%s) AND mail_sent_at IS NULL",
                      (run_id, body.assignment_ids))
-        return send_requests(conn, run_id, body.assignment_ids, actor_id,
-                             make_llm(get_settings()), resend=body.resend)
+        llm = make_llm(get_settings())
+        with ai_usage.tracked(conn, "HANDOFF_ASK", run_id, llm):
+            return send_requests(conn, run_id, body.assignment_ids, actor_id, llm,
+                                 resend=body.resend)
 
 
 # ── 영업 인계 (add-submission-package, FR-11 확장) ──────────────

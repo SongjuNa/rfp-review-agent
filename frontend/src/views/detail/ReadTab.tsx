@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { api, type ReadCheck, type RunSummary } from '../../api'
 import { stamp } from '../../components/format'
 import { useLoad } from '../../components/useLoad'
+import { usePage } from '../../components/usePage'
 import { useSession } from '../../shell/useSession'
 
 // SCR-08-2 문서 읽기 점검 탭 (목업 v4.57 Detail #read). docs/screens/SCR-08-2-문서읽기점검.md
@@ -22,6 +23,7 @@ export function ReadTab({ run, tick, onChanged }: { run: RunSummary; tick: numbe
   const rows = checks.data ?? []
   const left = rows.filter((r) => !r.checked_at).length
   const note = KINDS.map((k) => `${k} ${rows.filter((r) => r.kind === k).length}`).join(' · ')
+  const { shown, pager } = usePage(rows)
 
   const toggle = (r: ReadCheck, on: boolean) => {
     setBusy(r.key)
@@ -50,7 +52,7 @@ export function ReadTab({ run, tick, onChanged }: { run: RunSummary; tick: numbe
       )}
       {rows.length > 0 && (
         <table className="mini rdt"><tbody>
-          {rows.map((r) => (
+          {shown.map((r) => (
             <tr key={r.key} className={r.checked_at ? 'done' : undefined}>
               <td style={{ width: 120 }}><span className="rdk"><span className="ms" aria-hidden="true">{ICONS[r.kind]}</span>{r.kind}</span><div className="en">{r.what}</div></td>
               <td>
@@ -70,6 +72,7 @@ export function ReadTab({ run, tick, onChanged }: { run: RunSummary; tick: numbe
           ))}
         </tbody></table>
       )}
+      {pager}
       {error && <p className="aphint" role="alert">{error}</p>}
     </section>
   )

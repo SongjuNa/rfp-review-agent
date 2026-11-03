@@ -67,6 +67,14 @@ GEMINI_API_KEY=여기에_받은_키
 
 키가 없으면 비워 두세요. AI 보조 단계만 건너뛰고 나머지(코드 규칙으로 하는 판정)는 그대로 돌아갑니다.
 
+키가 있어도 AI를 쓰지 않으려면(요금·외부 전송을 막으려면) 한 줄을 더합니다. 다시 켤 때는 `gemini`로 바꿉니다.
+
+```
+RFP_AI_MODE=off
+```
+
+바꾼 뒤에는 `docker compose up -d backend`로 다시 띄웁니다(`restart`는 설정을 다시 읽지 않습니다). `http://localhost:8000/api/health`에서 `"ai_mode":"OFF"`, `"external_send":false`이면 꺼진 것입니다.
+
 > ⚠️ `.env`와 키는 **절대 GitHub에 올리지 않습니다.** (`.gitignore`가 막아 두었지만 키를 채팅이나 코드에 붙여 넣지도 마세요.)
 
 ### 2-3. RFP 파일 넣기
@@ -161,6 +169,19 @@ docker compose exec backend rfp-db seed-products
 | 저장된 결과를 모두 지우고 처음부터 | `docker compose down -v` 다음에 2-4, 2-5를 다시 |
 
 `-v`를 붙이면 창고(DB) 안의 검토 결과가 **모두 지워집니다.** 꼭 필요할 때만 쓰세요.
+
+### 시연용 깨끗한 DB 따로 만들기
+
+쓰던 DB는 그대로 두고, 시연에 쓸 DB(`rfp_demo`)를 새로 만들어 채웁니다. 먼저 합성 RFP 파일 28을 만들어 둡니다(2-3).
+
+```bash
+cd backend
+uv run python ../generate_risk_rfp.py && uv run python ../generate_switch_rfp.py
+RFP_AI_MODE=off DATABASE_URL=postgresql://rfp:rfp@localhost:5433/rfp_demo uv run rfp-db demo-setup --create
+RFP_AI_MODE=off DATABASE_URL=postgresql://rfp:rfp@localhost:5433/rfp_demo uv run uvicorn rfp_agent.api.main:app --port 8000
+```
+
+그다음 화면(`cd frontend && npm run dev`)을 열면 검토 목록에 시연 검토 하나와 정답지 두 개가 있습니다. 이미 검토가 있는 DB에서는 이 명령이 아무것도 바꾸지 않고 멈춥니다.
 
 ---
 

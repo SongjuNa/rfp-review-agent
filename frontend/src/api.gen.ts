@@ -1,5 +1,5 @@
 // 만든 파일: 고치지 마세요. `npm run gen:api`로 다시 만듭니다 (scripts/gen-api-types.mjs).
-// 출처: 백엔드 응답 모델 → frontend/openapi.json (RFP ��� ���� ���� API 0.2.0)
+// 출처: 백엔드 응답 모델 → frontend/openapi.json (RFP 기술 검토 지원 API 0.2.0)
 
 export type AcceptBody = {
   value: Record<string, unknown>
@@ -16,7 +16,7 @@ export type Action = {
   actor_id?: number | null
 }
 
-/** Ȯ�����������ݷ� �ϳ�. �ٲ�� ������ ���� ��� ǥ���� ĭ�� �޶� ���� �����̴�. */
+/** 확정·수정·반려 하나. 바뀌기 전·후 줄은 대상 표마다 칸이 달라 자유 형식이다. */
 export type ActionResult = {
   before: Record<string, unknown> | null
   after: Record<string, unknown> | null
@@ -31,7 +31,28 @@ export type ActorBody = {
   actor_id?: number | null
 }
 
-/** ������. TYPE = ���� ������, REQ = �䱸���� ������(add-requirement-answer-key). made_by�� CLAUDE_DRAFT(Claude �ʾ�)��AUTO(�ڵ� �ڵ�)�� ��� Ȯ�� ��. */
+export type AiUsage = {
+  days: number
+  items: AiUsageRow[]
+  total_calls: number
+  total_cost_krw: number | null
+}
+
+/** 날짜·기능·모델별 AI 사용량 (add-ai-usage-log). ANALYSIS는 분석 실행(review_run) 합. */
+export type AiUsageRow = {
+  day: string
+  feature: 'ANALYSIS' | 'ASSISTANT' | 'HANDOFF_ASK' | 'PRODUCT_SWITCH' | 'LOSS_EDIT' | 'REVIEW_ACTION' | 'BULK_CONFIRM'
+  feature_name: string
+  model: string | null
+  calls: number
+  retries: number
+  input_tokens: number
+  output_tokens: number
+  thinking_tokens: number
+  estimated_cost_krw: number | null
+}
+
+/** 정답지. TYPE = 유형 정답지, REQ = 요구사항 정답지(add-requirement-answer-key). made_by가 CLAUDE_DRAFT(Claude 초안)·AUTO(코드 자동)면 사람 확인 전. */
 export type AnswerKey = {
   key_id: number
   key_name: string
@@ -119,7 +140,7 @@ export type AssignmentStatus = {
   status: 'TODO' | 'DOING' | 'DONE'
 }
 
-/** ���� ����� �� (add-review-assistant, FR-17). mode SEARCH = AI ���� ���ڷ� ã��. */
+/** 검토 도우미 답 (add-review-assistant, FR-17). mode SEARCH = AI 없이 글자로 찾음. */
 export type AssistantAnswer = {
   mode: 'AI' | 'SEARCH'
   sentences: AssistantSentence[]
@@ -129,7 +150,7 @@ export type AssistantAnswer = {
   note: string | null
 }
 
-/** ���� ����� �ٰ� ��: �䱸����(R��) �Ǵ� ����(J��). ���� ��ġ �ʼ� (CR-02). */
+/** 검토 도우미 근거 줄: 요구사항(R…) 또는 판정(J…). 원문 위치 필수 (CR-02). */
 export type AssistantEvidence = {
   ref: string
   kind: 'REQUIREMENT' | 'JUDGMENT'
@@ -144,13 +165,13 @@ export type AssistantEvidence = {
   locations: Location[]
 }
 
-/** AI�� �� �� ����. �ٰ� ��ȣ�� �ڵ尡 �����ߴ� (CR-07). */
+/** AI가 쓴 답 문장. 근거 번호는 코드가 대조했다 (CR-07). */
 export type AssistantSentence = {
   text: string
   evidence_ids: string[]
 }
 
-/** ã�� ��� �� �ܰ�: ������ ����, ã�� �� ��. */
+/** 찾은 경로 한 단계: 도구와 인자, 찾은 줄 수. */
 export type AssistantStep = {
   tool: 'search_requirements' | 'find_judgments' | 'get_requirement'
   words: string | null
@@ -197,7 +218,7 @@ export type BulkResult = {
   submission_check: SubmissionCheck | null
 }
 
-/** �Ѳ����� Ȯ������ �� �� (update-bulk-confirm-guard). �� �پ� Ȯ���� Ȯ���Ѵ�. */
+/** 한꺼번에 확정에서 뺀 줄 (update-bulk-confirm-guard). 한 줄씩 확인해 확정한다. */
 export type BulkSkipped = {
   judgment_id: number
   reason: 'CHECK' | 'MISMATCH' | 'NO_VALUE'
@@ -243,7 +264,7 @@ export type BusinessEvent = {
   review_no: string | null
 }
 
-/** ��� ����. ���� ĭ�� �ٲٰ� �� ���ڿ��� ����� ����. ������� ��� �� ����. */
+/** 사업 정보. 보낸 칸만 바꾸고 빈 문자열은 비우기로 본다. 사업명은 비울 수 없다. */
 export type BusinessInfo = {
   business_name?: string | null
   customer_name?: string | null
@@ -300,7 +321,7 @@ export type BusinessPerson = {
   scope: string | null
 }
 
-/** ����� ����� ���� �ϳ� (���� ����). ���´� �������� �ʰ� ����Ѵ�. */
+/** 사업에 연결된 검토 하나 (설비 범위). 상태는 저장하지 않고 계산한다. */
 export type BusinessRange = {
   run_id: number
   review_no: string
@@ -320,7 +341,7 @@ export type BusinessSummary = {
   overdue: number
 }
 
-/** ��� �Ǵܿ��� ���� ��� ����: �ս� ȯ�� �����(LOSS), ��Ż �ĺ� ���� ���� Ȯ��(DEVIATION). */
+/** 기술 판단에서 생긴 상업 영향: 손실 환산 가산액(LOSS), 일탈 후보 가격 영향 확인(DEVIATION). */
 export type CommercialImpact = {
   kind: 'LOSS' | 'DEVIATION'
   loss_calc_id: number | null
@@ -360,7 +381,7 @@ export type CompareRule = {
   used: number
 }
 
-/** ���� RFP �� ���: ���� �������� ó���� ��ģ �ٸ� ���� (add-past-compare). */
+/** 지난 RFP 비교 대상: 같은 고객사의 처리를 마친 다른 검토 (add-past-compare). */
 export type CompareTarget = {
   run_id: number
   review_no: string
@@ -379,7 +400,7 @@ export type CompareTargets = {
   targets: CompareTarget[]
 }
 
-/** ��� ���� �� �� (FR-16). ���� ������ �ݺ��Ǹ� �� �ٷ� ���´�. ��� ���� �ĺ��� (CR-08). */
+/** 비용 조건 한 줄 (FR-16). 같은 조건이 반복되면 한 줄로 묶는다. 모든 줄은 후보다 (CR-08). */
 export type CostCondition = {
   requirement_id: number
   requirement_ids: number[]
@@ -506,7 +527,7 @@ export type DeliverableWarranty = {
   source_kind: string | null
 }
 
-/** ���� ���� ��Ģ �� ��. used�� �� ������ ��Ģ�� �з��� ���� ��. */
+/** 문서 종류 규칙 한 줄. used는 그 종류로 규칙이 분류한 문서 수. */
 export type DocKindRule = {
   doc_kind_rule_id: number
   priority: number
@@ -517,13 +538,13 @@ export type DocKindRule = {
   used: number
 }
 
-/** ��� ȭ�鿡�� ����� ���� ���� �з�. ��� ĭ�� ��Ģ ����� ����. */
+/** 등록 화면에서 사람이 정한 문서 분류. 비운 칸은 규칙 결과를 쓴다. */
 export type DocumentChoice = {
   bundle?: 'A' | 'B' | 'C' | 'D' | null
   doc_kind?: 'BID_FORM' | 'REQUIREMENT_SPEC' | 'PURCHASE_SPEC' | 'TEST_SPEC' | 'SUPPLIER_SPEC' | 'BOQ' | 'UNKNOWN' | null
 }
 
-/** ���� �� ���� (add-judgment-view). partial�̸� ������ ���� DB�� ���� �ٸ� �Դ�. */
+/** 원문 줄 범위 (add-judgment-view). partial이면 파일이 없어 DB에 남은 줄만 왔다. */
 export type DocumentLines = {
   file_no: number
   file_name: string
@@ -542,7 +563,7 @@ export type DocumentPair = {
   evidence: string | null
 }
 
-/** �м� �� �з� ��õ (�������� ����). ���������� ����� �ڵ� ��Ģ�� ��õ�̴�. */
+/** 분석 전 분류 추천 (저장하지 않음). 묶음·판정 대상은 코드 규칙의 추천이다. */
 export type DocumentPreview = {
   file_name: string
   in_catalog: boolean
@@ -590,7 +611,7 @@ export type Equipment = {
   ambiguous: number
 }
 
-/** ��ǥ �ϳ�. ���� ������(�и� 0) null. ��ǥ�� ������ passed�� null. */
+/** 지표 하나. 값이 없으면(분모 0) null. 목표가 없으면 passed는 null. */
 export type EvalMetric = {
   code: string
   name: string
@@ -618,7 +639,7 @@ export type EvalNotMeasured = {
   note: string
 }
 
-/** �䱸���� ������ ä���� �ڼ��� �� (K1��K2��K3��K10). */
+/** 요구사항 정답지 채점의 자세한 수 (K1·K2·K3·K10). */
 export type EvalRequirementDetail = {
   documents: number
   requirement_rows: number
@@ -631,7 +652,7 @@ export type EvalRequirementDetail = {
   risk_found: number
 }
 
-/** ä���� ���� �� �ִ� ���� (����� Ȯ���������� ���� ���� ����). */
+/** 채점에 넣을 수 있는 검토 (사람이 확정·수정한 판정 줄이 있음). */
 export type EvalRun = {
   run_id: number
   review_no: string
@@ -642,7 +663,7 @@ export type EvalRun = {
   last_reviewed_at: string | null
 }
 
-/** ä�� ��� �� ��. */
+/** 채점 기록 한 줄. */
 export type EvalScore = {
   score_id: number
   run_ids: number[]
@@ -687,14 +708,14 @@ export type FieldHistory = {
   cases: number
 }
 
-/** �帧 ��� �� �ܰ迡�� �ٲ� �Ǽ� (add-flow-history). before�� ������ �� �ܰ迡�� ó�� ����. */
+/** 흐름 기록 한 단계에서 바뀐 건수 (add-flow-history). before가 없으면 그 단계에서 처음 생김. */
 export type FlowChange = {
   key: string
   before: number | null
   after: number
 }
 
-/** �帧 ����� �ܰ� �ϳ� (add-flow-history, C2). �ð��� �帧 ���� �ð� ����. */
+/** 흐름 기록의 단계 하나 (add-flow-history, C2). 시간은 흐름 저장 시각 기준. */
 export type FlowStep = {
   node: string
   finished_at: string
@@ -708,7 +729,7 @@ export type HandoffRequest = {
   table_id?: number | null
 }
 
-/** ���� �ΰ� ��� (add-submission-package). �ּ� �������߼� ���е� 200, error�� ä���. */
+/** 영업 인계 결과 (add-submission-package). 주소 없음·발송 실패도 200, error를 채운다. */
 export type HandoffResult = {
   handoff_id: number
   sent: boolean
@@ -805,7 +826,7 @@ export type LibraryRun = {
   new_business_name?: string | null
 }
 
-/** ���� ��ġ: ���� ��ȣ + �� �Ǵ� ǥ + �� (CR-02). ����ǥ���׸����� �ִ� �͸� �ִ�. */
+/** 원문 위치: 파일 번호 + 절 또는 표 + 행 (CR-02). 절·표·항목·행은 있는 것만 있다. */
 export type Location = {
   file_no: number
   section_no: string | null
@@ -851,14 +872,14 @@ export type Loss = {
   price_locations: Location[]
 }
 
-/** ������ ����� (�ܰ� �� �սǰ�). �սǰ��� ������ null. */
+/** 종류별 가산액 (단가 × 손실값). 손실값이 없으면 null. */
 export type LossAmounts = {
   noload: number | null
   load: number | null
   aux: number | null
 }
 
-/** �սǰ��� �ְ� �ٽ� ����� ���. ����� ���� ���̶� �׻� �� ���� (CR-06). */
+/** 손실값을 넣고 다시 계산한 결과. 사람이 넣은 값이라 항상 팀 가정 (CR-06). */
 export type LossResult = {
   total_usd: number | null
   formula: string | null
@@ -872,7 +893,7 @@ export type LossValues = {
   loss_aux_kw?: number | null
 }
 
-/** ������ ã�� �ĺ� (add-meaning-search). RISK_SENTENCE = ���� �߰� �ĺ�(B5), ITEM_LINK = �׸� ���� �ĺ�(B3). �ĺ��� �� ���������� ������ �ƴϴ�. */
+/** 뜻으로 찾은 후보 (add-meaning-search). RISK_SENTENCE = 사전 추가 후보(B5), ITEM_LINK = 항목 연결 후보(B3). 후보일 뿐 판정·위험 조건이 아니다. */
 export type MeaningCandidate = {
   candidate_id: number
   run_id: number
@@ -925,7 +946,7 @@ export type PastCompare = {
   same: number
 }
 
-/** �ٸ� ���信�� ����� Ȯ���������� ���� �䱸������ ��ǰ ���� (add-review-memory). ��Ʈ�� ��. */
+/** 다른 검토에서 사람이 확정·수정한 같은 요구·같은 제품 판정 (add-review-memory). 힌트일 뿐. */
 export type PastDecision = {
   run_id: number
   review_no: string
@@ -939,7 +960,7 @@ export type PastDecision = {
   score?: number | null
 }
 
-/** ��ǰǥ �� �� (add-reference-views). �� ĭ�� null �״�� (CR-04). */
+/** 제품표 한 줄 (add-reference-views). 빈 칸은 null 그대로 (CR-04). */
 export type Product = {
   product_code: string
   product_name: string
@@ -985,7 +1006,7 @@ export type ProductChoice = {
   product_code?: string | null
 }
 
-/** ��ǰ �ϳ�. ��ǰǥ�� ��� ĭ�� �Բ� ����, ĭ �̸��� ��ǰǥ CSV�� ������. */
+/** 제품 하나. 제품표의 모든 칸이 함께 오고, 칸 이름은 제품표 CSV를 따른다. */
 export type ProductDetail = {
   product_code: string
   product_name: string
@@ -1049,7 +1070,7 @@ export type ProductProposal = {
   is_assumed: boolean
 }
 
-/** �� ��ǰ �ٲٱ� �� �ٽ� ���� �� ��. */
+/** 비교 제품 바꾸기 뒤 다시 만든 줄 수. */
 export type ProductSwitch = {
   judgment_count: number
   check_count: number
@@ -1092,7 +1113,7 @@ export type Proposal = {
   locations: Location[]
 }
 
-/** ���� �б� ���� �� (SCR-08-2). kind: ǥ���׸�����������ġ. */
+/** 문서 읽기 점검 줄 (SCR-08-2). kind: 표·그림·단위·위치. */
 export type ReadCheck = {
   key: string
   kind: string
@@ -1107,7 +1128,7 @@ export type ReadCheck = {
   checked_at: string | null
 }
 
-/** �䱸����. ���(���� �б� ����)�� ���� ��ġ�� ���� �ٵ� ���� �ش�. */
+/** 요구사항. 목록(문서 읽기 점검)은 원문 위치가 없는 줄도 보여 준다. */
 export type Requirement = {
   requirement_id: number
   file_no: number
@@ -1181,7 +1202,7 @@ export type ReviewCard = {
   approval?: Approval | null
 }
 
-/** ���� ����. ���� ĭ�� �ٲٰ� �� ���ڿ��� ����� ���� (add-review-info). */
+/** 검토 정보. 보낸 칸만 바꾸고 빈 문자열은 비우기로 본다 (add-review-info). */
 export type ReviewInfo = {
   project_name?: string | null
   review_name?: string | null
@@ -1199,7 +1220,7 @@ export type ReviewRatio = {
   hand_fill: number
 }
 
-/** ���� �߰��� �ٽ� �м��� ��� (add-revision-notice). �� ���� ���� ��(�䱸������ ��ǰ���� ��Ģ) ����. */
+/** 문서 추가로 다시 분석한 결과 (add-revision-notice). 줄 수는 같은 줄(요구값·비교 제품·비교 규칙) 기준. */
 export type Revision = {
   no: number
   at: string
@@ -1209,7 +1230,7 @@ export type Revision = {
   removed: number
 }
 
-/** �ܰ���� �ٽ� ó�� (add-step-rewind): ó�� �ܰ� �̸��� ����. */
+/** 단계부터 다시 처리 (add-step-rewind): 처리 단계 이름과 사유. */
 export type Rewind = {
   step: string
   reason: string
@@ -1239,7 +1260,7 @@ export type RiskExpression = {
   used: number
 }
 
-/** ���� ���� �� ���� �߰� �ĺ�. status: DONE / NO_AI(��� �� ����) / SKIPPED(����) / null(���� ����). */
+/** 위험 조건 탭 사전 추가 후보. status: DONE / NO_AI(언어 모델 없음) / SKIPPED(실패) / null(예전 검토). */
 export type RiskMeaning = {
   status: 'DONE' | 'NO_AI' | 'SKIPPED' | null
   items: MeaningCandidate[]
@@ -1252,14 +1273,14 @@ export type RiskMember = {
   locations: Location[]
 }
 
-/** ��Ģ �߰�������. value ĭ�� �������� �ٸ��� (pipeline/rule_edit.py). ������ �� ���´�. */
+/** 규칙 추가·수정. value 칸은 사전마다 다르다 (pipeline/rule_edit.py). 사유는 꼭 적는다. */
 export type RuleChange = {
   value: Record<string, unknown>
   reason?: string | null
   actor_id?: number | null
 }
 
-/** ��Ģ ��ħ �̷� �� �� (add-rule-editing). row_key�� ��ġ�� ��(�߰��� �߰���) �� Ű, after_key�� ��ģ �� Ű. */
+/** 규칙 고침 이력 한 줄 (add-rule-editing). row_key는 고치기 전(추가는 추가한) 줄 키, after_key는 고친 뒤 키. */
 export type RuleEdit = {
   edit_id: number
   dictionary: 'compare' | 'risk-expressions' | 'items' | 'doc-kinds'
@@ -1280,7 +1301,7 @@ export type RuleRemoval = {
   actor_id?: number | null
 }
 
-/** ���� ǥ�� ������ �߰� ���� (add-rule-suggestion). ��ġ�� ǥ���� ���� ù ����. */
+/** 위험 표현 사전에 추가 제안 (add-rule-suggestion). 위치는 표현이 나온 첫 문장. */
 export type RuleSuggestion = {
   suggestion_id: number
   expression: string
@@ -1326,7 +1347,7 @@ export type RunDocument = {
   ocr_lines?: number
 }
 
-/** ���� �ϳ��� �帧 ��� (add-flow-history). �б� ����. */
+/** 검토 하나의 흐름 기록 (add-flow-history). 읽기 전용. */
 export type RunFlow = {
   run_id: number
   recorded: boolean
@@ -1370,7 +1391,7 @@ export type RunListItem = {
   revision?: Revision | null
 }
 
-/** ���� ��� �� �� (add-run-log, NFR-09). ����� �� �ܰ�(�� ����)�� ��� ��. */
+/** 실행 기록 한 줄 (add-run-log, NFR-09). 비용은 모델 단가(팀 가정)로 어림한 값. */
 export type RunLogItem = {
   project_name: string | null
   review_name: string | null
@@ -1412,7 +1433,7 @@ export type RunLogItem = {
   steps: RunStepTime[]
 }
 
-/** ���� ����� �ܰ� �ϳ� (add-run-log). ������ ���� �ܰ�� seconds�� null. */
+/** 실행 기록의 단계 하나 (add-run-log). 끝나지 않은 단계는 seconds가 null. */
 export type RunStepTime = {
   attempt: number
   step: string
@@ -1475,7 +1496,7 @@ export type ScoreRequest = {
   actor_id?: number | null
 }
 
-/** ��� ���� ���� (add-screen-summary, ���� Q1). �ڵ尡 Ʋ�� ä�� ����, ���� �����͸� ���� ����. */
+/** 요약 상자 문장 (add-screen-summary, 결정 Q1). 코드가 틀에 채운 문장, 같은 데이터면 같은 문장. */
 export type ScreenSummary = {
   sentences: SummaryPart[][]
   meta: string | null
@@ -1506,7 +1527,7 @@ export type StageResult = {
   approval_id?: number | null
 }
 
-/** ���� �б� �ܰ� ���� ���� ���� (ó�� ���� ȭ��). AI �ϸ� �� ���� �ִ�. */
+/** 문서 읽기 단계 안의 세부 진행 (처리 상태 화면). AI 일만 줄 수가 있다. */
 export type StepDetail = {
   part: 'classify' | 'structure' | 'extract' | 'label' | 'save' | 'type'
   done: number | null
@@ -1542,7 +1563,7 @@ export type SuggestBody = {
   actor_id?: number | null
 }
 
-/** ��� ���� ���� (add-screen-summary). link�� href�� ȭ�� �ּ�(#�� ȭ���� ����), strong�� ����. */
+/** 요약 문장 조각 (add-screen-summary). link면 href는 화면 주소(#는 화면이 붙임), strong은 강조. */
 export type SummaryPart = {
   t: string
   kind: 'text' | 'link' | 'strong'
@@ -1597,7 +1618,7 @@ export type TypeEdit = {
   actor_id?: number | null
 }
 
-/** ��� ���� ��ġ�� ��� (add-type-examples). NONE�� �̺з�. */
+/** 사람 유형 고치기 결과 (add-type-examples). NONE은 미분류. */
 export type TypeEditResult = {
   requirement_id: number
   before: string

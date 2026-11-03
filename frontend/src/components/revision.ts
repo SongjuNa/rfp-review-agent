@@ -4,6 +4,6 @@ import type { Revision } from '../api'
 
 /** "판정 2줄 바뀜 · 3줄 추가 · 1줄 사라짐" (0인 것은 뺌, 모두 0이면 "판정 바뀐 줄 없음") */
 export function revisionText(r: Revision): string {
-  const parts = [r.changed && `판정 ${r.changed}줄 바뀜`, r.added && `${r.added}줄 추가`, r.removed && `${r.removed}줄 사라짐`].filter(Boolean)
-  return parts.length ? parts.join(' · ') : '판정 바뀐 줄 없음'
+  const parts = [r.changed && `판정 ${r.changed}건 변경`, r.added && `${r.added}건 추가`, r.removed && `${r.removed}건 삭제`].filter(Boolean)
+  return parts.length ? parts.join(' · ') : '변경된 판정 없음'
 }

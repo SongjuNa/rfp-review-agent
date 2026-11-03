@@ -110,7 +110,8 @@ def _judgment_drafts(conn: psycopg.Connection, run_id: int) -> list[Draft]:
                 facts = f"항목: {name}, 요구 칸 {{v1}} {unit}에 값이 여럿, 어느 값인지 질의"
                 template = (f"{name} 요구 칸에 값이 여럿({{v1}} {unit}) 있어 어느 값을 적용하는지 "
                             "질의합니다.")
-            if "p" not in values:           # 비교 제품이 없으면 AI에 "비교 제품" 자리표시자를 주지 않는다
+            # 비교 제품이 없으면 AI에 "비교 제품" 자리표시자를 주지 않는다
+            if "p" not in values:
                 marks = {k: v for k, v in marks.items() if k != "p"}
             draft = drafts[key] = Draft(kind, key, facts, " ".join(template.split()), marks,
                                         values)

@@ -70,9 +70,9 @@ test('요약 칸', async ({ page }) => {
 test('꼭 볼 것', async ({ page }) => {
   await mock(page)
   const k = page.locator('.hf-k')
-  await expect(k).toContainText('꼭 볼 것12줄')
+  await expect(k).toContainText('꼭 볼 것12건')
   await expect(k).toContainText('일탈 2 · 질의 2 · 확인 8')
-  await expect(k).toContainText('준수45줄')
+  await expect(k).toContainText('준수45건')
   await expect(page.getByRole('tab', { name: /^판정/ })).toContainText('12')
 })
 
@@ -108,9 +108,9 @@ test('더 보기 탭', async ({ page }) => {
 test('아래 행동 줄로 한꺼번에 확정', async ({ page }) => {
   await mock(page, { comply: 45 })
   const bar = page.locator('.ftb')
-  await expect(bar).toContainText('준수 45줄은')
+  await expect(bar).toContainText('준수 45건은')
   await bar.getByRole('button', { name: '모두 확정' }).click()
-  await expect(page.locator('.uitw')).toContainText('판정 45줄을 제안대로 확정했습니다.')
+  await expect(page.locator('.uisnk')).toContainText('판정 45건을 일괄 확정했습니다.')
   await expect(bar.getByRole('button', { name: '모두 확정' })).toHaveCount(0)
 })
 

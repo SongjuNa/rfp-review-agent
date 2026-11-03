@@ -13,6 +13,7 @@ import { useSession } from '../../shell/useSession'
 import { filterQuery, parseFilter } from '../../components/judgeFilter'
 import { OutputEditor } from './OutputEditor'
 import { RevisionBar } from './RevisionBar'
+import { useToast } from '../../ui'
 
 // SCR-08-1 판정 탭 (목업 v4.57 Detail #judge). docs/screens/SCR-08-1-판정.md
 // 판정 칩·거르기·판정 순서 표, 줄을 누르면 판정 상세 화면(add-judgment-view), 오른쪽 패널은 돌아온 줄. 고른 줄·준수 모두를 한꺼번에 제안대로 확정 (add-bulk-confirm).
@@ -55,7 +56,7 @@ export function JudgeTab({ run, tick, onChanged }: { run: RunSummary; tick: numb
   const [wWhy, setWWhy] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [sel, setSel] = useState<Record<number, string>>({})   // 고른 판정 id → 판정 (쪽을 넘겨도 남는다)
-  const [toast, setToast] = useState('')
+  const toast = useToast()
   const [busy, setBusy] = useState(false)
   const [applying, setApplying] = useState(false)
   const [panelError, setPanelError] = useState<string | null>(null)
@@ -87,7 +88,7 @@ export function JudgeTab({ run, tick, onChanged }: { run: RunSummary; tick: numb
   // 줄을 누르면 판정 상세 화면. 지금 거르기·쪽을 주소로 넘겨 이전·다음과 목록으로 돌아오기에 쓴다
   const open = (j: Judgment) => navigate(`/reviews/${id}/judgments/${j.judgment_id}${filterQuery({ f, unc: onlyUnc, q: text, type, past: onlyPast, rev: onlyRev, page, size })}`)
   const done = () => { onChanged() }
-  const say = (m: string) => { setToast(m); setTimeout(() => setToast(''), 3000) }
+  const say = (m: string) => toast.done(m)
   const act = (body: Parameters<typeof api.act>[1]) => api.act(id, { ...body, actor_id: user!.user_id }).then(done)
   const go = (d: number) => {
     const i = list.findIndex((r) => r.judgment_id === (curRow?.judgment_id ?? -1)) + d
@@ -158,7 +159,7 @@ export function JudgeTab({ run, tick, onChanged }: { run: RunSummary; tick: numb
         )}
         <span style={{ flex: '1 1 0' }} />
         <label className="sr" htmlFor="jq">판정 검색</label>
-        <label className="unc"><input type="checkbox" checked={onlyUnc} onChange={() => reset(() => setOnlyUnc(!onlyUnc))} />확정 안 한 줄만</label>
+        <label className="unc"><input type="checkbox" checked={onlyUnc} onChange={() => reset(() => setOnlyUnc(!onlyUnc))} />미확정만</label>
         <input className="fi" id="jq" value={text} onChange={(e) => { setText(e.target.value); setPage(1); setCur(null) }}
           placeholder="항목명, 영문, 원문 문장" style={{ width: 200 }} />
         <label className="sr" htmlFor="jtype">유형</label>
@@ -170,18 +171,18 @@ export function JudgeTab({ run, tick, onChanged }: { run: RunSummary; tick: numb
       {(violations > 0 || unsure > 0) && (
         <p className="chkn"><span className="ms" aria-hidden="true">calculate</span>
           <span>공학 검산 {[violations ? `위반 ${violations}건` : '', unsure ? `확인 필요 ${unsure}건` : ''].filter(Boolean).join(' · ')}
-            <span className="en" style={{ display: 'inline', marginLeft: 6 }}>{CHECK_RULE}. 표에 표시한 줄을 눌러 계산식을 보세요.</span></span></p>
+            <span className="en" style={{ display: 'inline', marginLeft: 6 }}>{CHECK_RULE}. 표에 표시한 항목을 눌러 계산식을 보세요.</span></span></p>
       )}
       <div className={'work' + (curRow ? ' open' : '')}>
         <div style={{ minWidth: 0 }}>
           {canEdit && selIds.length > 0 && (
-            <div className="bulk"><b>{selIds.length}줄 선택</b><span className="en" style={{ margin: 0 }}>{selSum}</span><span style={{ flex: '1 1 0' }} />
+            <div className="bulk"><b>{selIds.length}건 선택</b><span className="en" style={{ margin: 0 }}>{selSum}</span><span style={{ flex: '1 1 0' }} />
               <button type="button" className="bo" onClick={() => setSel({})}>선택 해제</button>
               <button type="button" className="bp" disabled={busy} onClick={() => confirmIds(selIds)}><span className="ms" aria-hidden="true" style={{ fontSize: 'var(--ic-s)' }}>done_all</span>제안대로 확정</button></div>
           )}
           <div className="tw">
             <table className="tbl">
-              <thead><tr><th style={{ width: 34 }}><input type="checkbox" className="jck" checked={allSel} onChange={toggleAll} disabled={!canEdit} aria-label="보이는 줄 모두 선택" /></th><th style={{ width: 92 }}>판정</th><th>항목</th><th>요구값</th><th>제품값 · 보증값</th><th>원문 위치</th></tr></thead>
+              <thead><tr><th style={{ width: 34 }}><input type="checkbox" className="jck" checked={allSel} onChange={toggleAll} disabled={!canEdit} aria-label="표시된 항목 모두 선택" /></th><th style={{ width: 92 }}>판정</th><th>항목</th><th>요구값</th><th>제품값 · 보증값</th><th>원문 위치</th></tr></thead>
               <tbody>
                 {list.map((j) => {
                   const p = prodCell(j, wOf(j))
@@ -197,7 +198,7 @@ export function JudgeTab({ run, tick, onChanged }: { run: RunSummary; tick: numb
                         {(j.review_status === 'CONFIRMED' || j.review_status === 'EDITED') && <div className="cfm"><span className="ms" aria-hidden="true">check</span>확정</div>}
                         {j.past_decision && <div className={'en past' + (j.past_decision.same ? '' : ' c-ora')} title={`${j.past_decision.review_no}에서 사람이 ${RESULT_NAMES[j.past_decision.result]}(으)로 확정`}>
                           {j.past_decision.same ? `지난 확정 ${RESULT_NAMES[j.past_decision.result]}` : '지난 확정과 다름'}
-                          {j.past_decision.match === 'MEANING' && j.past_decision.score != null && ` · 뜻 비슷 ${j.past_decision.score.toFixed(2)}`}</div>}
+                          {j.past_decision.match === 'MEANING' && j.past_decision.score != null && ` · 유사도 ${j.past_decision.score.toFixed(2)}`}</div>}
                       </td>
                       <td style={{ minWidth: 180 }}><span style={{ fontWeight: 600 }}>{itemName(j)}</span>
                         {checkOf.get(j.requirement_id) && checkOf.get(j.requirement_id)!.result !== 'PASS' && (
@@ -214,11 +215,11 @@ export function JudgeTab({ run, tick, onChanged }: { run: RunSummary; tick: numb
             </table>
           </div>
           {rows.data && list.length === 0 && (
-            <p style={{ margin: 0, padding: '16px 10px', color: 'var(--c-muted)' }}>조건에 맞는 줄이 없습니다.{' '}
+            <p style={{ margin: 0, padding: '16px 10px', color: 'var(--c-muted)' }}>조건에 맞는 판정이 없습니다.{' '}
               <button type="button" className="lnk" onClick={clearFilter}>필터 지우기</button></p>
           )}
           {total > 0 && <Pager total={total} page={page} size={size} shown={list.length} onPage={setPage} onSize={(s) => { setSize(s); setPage(1) }} />}
-          <div className="tfoot"><span>{list.length}줄 표시 · 전체 판정 {c?.total ?? 0}줄</span><span>판정 순서: 일탈 후보 → 질의 후보 → 확인 필요 → 보증값 작성 → 준수</span></div>
+          <div className="tfoot"><span>{list.length}건 표시 · 전체 판정 {c?.total ?? 0}건</span><span>판정 순서: 일탈 후보 → 질의 후보 → 확인 필요 → 보증값 작성 → 준수</span></div>
           {error && <p className="aphint" role="alert">{error}</p>}
         </div>
 
@@ -230,7 +231,6 @@ export function JudgeTab({ run, tick, onChanged }: { run: RunSummary; tick: numb
         )}
       </div>
 
-      {toast && <div className="toast" role="status"><span className="ms" aria-hidden="true">check_circle</span>{toast}</div>}
     </section>
   )
 }
@@ -288,7 +288,7 @@ function Panel({ runId, j, w, check, items, log, docs, canEdit, edK, edWhy, edHi
         <div>
           <div className="lbl">판정 출처</div>
           <table className="pv"><tbody>
-            <tr><th>시스템 제안</th><td><span className={`st ${RESULT_TONES[sug]}`}>{RESULT_NAMES[sug]}</span><span className="pvs">코드 규칙</span></td></tr>
+            <tr><th>시스템 제안</th><td><span className={`st ${RESULT_TONES[sug]}`}>{RESULT_NAMES[sug]}</span><span className="pvs">규칙 기반</span></td></tr>
             <tr><th>담당자 확정</th><td>{conf
               ? <><span className={`st ${RESULT_TONES[j.result]}`}>{RESULT_NAMES[j.result]}</span><span className="pvs">{conf.actor} · {stamp(conf.acted_at)}</span></>
               : <span className="pend" title="확정하지 않으면 시스템 제안 그대로 상신됩니다">아직 확정 안 함</span>}</td></tr>
@@ -297,7 +297,7 @@ function Panel({ runId, j, w, check, items, log, docs, canEdit, edK, edWhy, edHi
         </div>
         {j.result === 'WARRANTY_TO_FILL' && w && (
           <div>
-            <label className="lbl" htmlFor="wval" style={{ display: 'block' }}>보증값 (comply는 쓸 수 없음)</label>
+            <label className="lbl" htmlFor="wval" style={{ display: 'block' }}>보증값 ("Comply"는 입력할 수 없음)</label>
             {w.candidate_value
               ? <div style={{ fontWeight: 600 }}>{prodCell(j, w).val} <span className="en" style={{ display: 'inline', marginLeft: 6 }}>출처 {prodCell(j, w).sub}</span></div>
               : canEdit && (
@@ -311,7 +311,7 @@ function Panel({ runId, j, w, check, items, log, docs, canEdit, edK, edWhy, edHi
         )}
         {draft && <OutputEditor key={`${draft.item_id}-${draft.text_draft}-${draft.status}`} runId={runId} item={draft} id="draft" canEdit={canEdit} onDone={onDone} onSaved={onSaved} />}
         <div style={{ borderTop: '1px solid #DCE3EC', paddingTop: 14 }}>
-          <div className="lbl">판정 바꾸기</div>
+          <div className="lbl">판정 변경</div>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             <label className="sr" htmlFor="newk">새 판정</label>
             <select className="fi" id="newk" value={edK || j.result} disabled={!canEdit} onChange={(e) => setEdK(e.target.value)}>

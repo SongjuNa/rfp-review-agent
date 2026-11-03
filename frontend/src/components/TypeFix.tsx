@@ -31,7 +31,8 @@ export function TypeFix({ runId, requirementId, current }: { runId: number; requ
   }
   return (
     <div className="tfix" data-testid="type-fix" style={{ margin: '8px 0' }}>
-      {!open && <button type="button" className="lnk2" onClick={() => setOpen(true)}>유형 고치기 <span className="dimv">(지금 {name(shown)})</span></button>}
+      {!open && <button type="button" className="uib" onClick={() => setOpen(true)}>
+        <span className="ms" aria-hidden="true">edit</span>유형 수정<span className="uib-v">· 지금 {name(shown)}</span></button>}
       {open && (
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
           <select className="fi" aria-label="유형" value={code} onChange={(e) => setCode(e.target.value)} style={{ maxWidth: 160 }}>

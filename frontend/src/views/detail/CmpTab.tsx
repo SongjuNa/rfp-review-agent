@@ -33,7 +33,7 @@ function Compare({ run, otherId }: { run: RunSummary; otherId: number }) {
       <div className="cmph">
         <div><span className="l">지난 검토</span>
           <b><a href={href(`/reviews/${t.run_id}`)}>{t.review_no}</a> · {reviewTitle(t)}</b>
-          <span className="en" style={{ margin: 0 }}>시작 {t.started_at.slice(0, 10)} · 판정 {t.judgments}줄{t.products.length ? ` · ${t.products.join(', ')}` : ''}</span></div>
+          <span className="en" style={{ margin: 0 }}>시작 {t.started_at.slice(0, 10)} · 판정 {t.judgments}건{t.products.length ? ` · ${t.products.join(', ')}` : ''}</span></div>
         <span className={`st ${STAGE_TONES[t.stage]}`}>{STAGE_NAMES[t.stage]}</span>
       </div>
       <div className="cmpk">
@@ -62,7 +62,7 @@ function Compare({ run, otherId }: { run: RunSummary; otherId: number }) {
             ))}
           </tbody>
         </table></div>}
-      <p className="cmfoot">같은 요구 {same}줄은 값과 판정이 지난번과 같아 숨겼습니다.</p>
+      <p className="cmfoot">같은 요구 {same}건은 값과 판정이 지난번과 같아 숨겼습니다.</p>
     </>
   )
 }
@@ -83,7 +83,7 @@ export function CmpTab({ run }: { run: RunSummary }) {
       </div>
       {list.error && <p role="alert">{list.error}</p>}
       {list.data && !list.data.customer_name && (
-        <p className="cmempty">검토 정보에 고객사를 넣으면 같은 고객사의 지난 검토와 비교합니다. 머리글의 "검토 정보 고치기"에서 넣을 수 있습니다.</p>)}
+        <p className="cmempty">검토 정보에 고객사를 넣으면 같은 고객사의 지난 검토와 비교합니다. 머리글의 "검토 정보 수정"에서 넣을 수 있습니다.</p>)}
       {list.data?.customer_name && targets.length === 0 && (
         <p className="cmempty">고객사 "{list.data.customer_name}"의 처리를 마친 다른 검토가 없습니다. 같은 고객사로 검토를 등록하면 여기서 비교합니다.</p>)}
       {id !== null && <Compare key={id} run={run} otherId={id} />}

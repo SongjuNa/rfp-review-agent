@@ -51,3 +51,24 @@ test('위험으로 확정', async ({ page }) => {
   await expect(row.locator('td').last()).not.toContainText('위험으로 확정')
   await expect(row.locator('td').last()).toContainText('·')
 })
+
+// 명세 review-workspace "위험 조건 처리 알림"의 Scenario (change update-risk-action-toasts)
+test('위험으로 확정 알림', async ({ page }) => {
+  const rows = await openRisk(page, '확정 알림')
+  const row = rows.filter({ hasText: '“deemed”' })
+  await row.getByRole('button', { name: '위험으로 확정' }).click()
+  const toast = page.locator('.uisnk').filter({ hasText: '“deemed”: 위험으로 확정했습니다' })
+  await expect(toast).toContainText('질의 후보와 결재 확인 사유에 남습니다')
+  await expect(row.locator('.st')).toHaveText('확정')
+})
+
+test('문제 없음 알림', async ({ page }) => {
+  const rows = await openRisk(page, '닫기 알림')
+  const row = rows.filter({ hasText: '“deemed”' })
+  await row.getByRole('button', { name: '문제 없음' }).click()
+  await row.getByLabel('문제 없음 사유').fill('책임 범위가 계약서에 정해져 있음')
+  await row.getByRole('button', { name: '닫기' }).click()
+  const toast = page.locator('.uisnk').filter({ hasText: '“deemed”: 문제 없음으로 닫았습니다' })
+  await expect(toast).toContainText('질의 후보는 목록에서 빠집니다')
+  await expect(rows.filter({ hasText: '“deemed”' }).locator('.st')).toHaveText('문제 없음')
+})

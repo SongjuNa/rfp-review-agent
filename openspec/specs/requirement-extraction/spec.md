@@ -101,3 +101,60 @@
 #### Scenario: 위험 표현이 든 작성 안내
 - **WHEN** 입찰 서식의 서식 작성 안내 문장에 위험 표현이 들어 있으면
 - **THEN** 그 문장은 요구사항으로 남는다
+
+### Requirement: AI 문장 구분에서 묻지 않는 문장
+시스템은 AI로 요구사항 후보를 작성 규칙·설명과 구분할 때, 위험 표현이 든 문장과 협조 요청 유형(비용 영향·시험·제조사 자격처럼 담당이 견적·품질·영업인 유형) 규칙에 걸리는 문장은 AI에 묻지 않고 요구사항으로 두어야 한다(SHALL, CR-01). 그 밖의 문장은 AI 답을 따른다. 작성 규칙·설명으로 바뀌면 위험 조건 찾기와 부서 협조 요청에서 빠지기 때문이다. [제안 11-02]
+
+#### Scenario: 협조 요청 유형 문장
+- **WHEN** AI가 절의 문장을 모두 작성 규칙이라고 답하는 처리에서 "The evaluated price shall state the currency, price validity period and payment milestones for the complete scope of supply."를 처리하면
+- **THEN** 그 문장은 AI에 묻지 않고 요구사항으로 남으며 주 유형은 비용 영향이다
+
+#### Scenario: 유형 낱말이 없는 문장
+- **WHEN** 같은 처리에서 위험 표현도 협조 요청 유형 낱말도 없는 "The Evaluation Committee shall score compliant proposals using the weight model below."를 처리하면
+- **THEN** AI 답대로 작성 규칙이다
+
+### Requirement: 의무 표현이 없는 요구 줄
+시스템은 의무 표현("shall / must / required …")이 없어도 다음 줄을 요구사항 후보로 뽑아야 한다(SHALL, CR-01). 데이터시트가 아닌 표에서 한 칸이 상태 값("Mandatory", "Required", "필수")으로 2줄 이상 반복되면 그 값이 있는 줄(머리 줄은 빼고), 필수 제출물·제출 서류 절의 짧은 목록 줄(문서에 한 번만 나오는 줄), 위험 표현 사전에 걸리는 문장. [제안 11-02]
+
+#### Scenario: 상태 칸이 있는 요구 표
+- **WHEN** 머리 줄 "ID | Requirement | Required Bidder Response | Status"와 상태가 "Mandatory"인 줄 3개가 있는 표를 추출하면
+- **THEN** 상태가 "Mandatory"인 3줄이 요구사항 후보이고 머리 줄은 후보가 아니다
+
+#### Scenario: 제출물 목록 절
+- **WHEN** 제목이 "2. Mandatory Proposal Submission"인 절의 목록 줄 "Manufacturer product datasheet and a complete bill of materials for every offered item."을 추출하면
+- **THEN** 의무 표현이 없어도 요구사항 후보이다
+
+#### Scenario: 머리말 반복 줄
+- **WHEN** 제출 서류 절 안에 문서 곳곳에 반복되는 머리말 줄과 15자보다 짧은 쪽 번호 줄이 있으면
+- **THEN** 그 줄들은 후보가 아니다
+
+#### Scenario: 위험 표현 문장
+- **WHEN** "No deviations from the technical requirements will be accepted after contract award."를 추출하면
+- **THEN** 의무 표현이 없어도 요구사항 후보이고, 처리하면 포괄 조항 위험 조건 후보가 된다
+
+### Requirement: 보강한 유형 규칙
+시스템의 유형 규칙표는 번호 없는 규격 이름 표현("IEC/ANSI/UL standards", 다른 유형이 없을 때만 주 유형), 단가·가격 조건 표현("unit price", "commercial proposal", "단가"), 제조사 위임·생산 시설 표현("manufacturer authorization", "production facility"), 누설·부분 방전 표현("leakage", "partial discharge", "누설")을 각각 적용 규격·인증, 비용 영향, 제조사 자격, 기술 성능으로 붙여야 한다(SHALL, CR-01). [제안 11-03]
+
+#### Scenario: 번호 없는 규격 이름
+- **WHEN** "Applicable IEC/ANSI/UL standards, declarations, certificates, and test reports."에 유형을 붙이면
+- **THEN** 주 유형은 적용 규격·인증이다
+
+#### Scenario: 기술 성능 줄의 규격 이름
+- **WHEN** "Rated terminal load / As per IEC standards"에 유형을 붙이면
+- **THEN** 주 유형은 기술 성능이다
+
+#### Scenario: 단가 조건
+- **WHEN** "Commercial proposal showing unit price, quantity, delivery term, warranty, and validity period."에 유형을 붙이면
+- **THEN** 주 유형은 비용 영향이고 견적 담당 협조 요청 대상이다
+
+#### Scenario: 한국어 오타의 단가
+- **WHEN** "차단가의 보조접점은 10,000회 연속 개폐 후에도 성능을 유지하여야 한다"에 유형을 붙이면
+- **THEN** 단가 규칙으로 비용 영향이 되지 않는다
+
+#### Scenario: 제조사 위임
+- **WHEN** "Manufacturer authorization, production facility information, after-sales organization, and technical support plan."에 유형을 붙이면
+- **THEN** 주 유형은 제조사 자격이다
+
+#### Scenario: 가스 누설
+- **WHEN** "The annual gas leakage rate of each gas compartment of the GIS shall not exceed 0.5 %."에 유형을 붙이면
+- **THEN** 주 유형은 기술 성능이다

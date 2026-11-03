@@ -34,7 +34,7 @@ export const STEP_NAMES: Record<string, string> = {
   created: '시작', documents: '문서 읽기', pairs: '같은 문서 찾기', risks: '위험 조건 찾기',
   judge: '제품 비교 판정', check: '공학 규칙 검산', warranty: '보증값 후보', loss: '손실 환산', outputs: '일탈·질의 목록',
   proposals: '제안 포인트', assign: '담당자 전달', done: '처리 끝', engineer_review: '담당자 확인', approval: '승인 대기',
-  approved: '승인됨', rejected: '반려됨', meaning: '뜻으로 찾기',
+  approved: '승인됨', rejected: '반려됨', meaning: '유사 문장 검색',
 }
 // 흐름 기록 (add-flow-history): 사람 동작과 바뀐 건수 이름. 단계 이름은 STEP_NAMES (+ meaning)
 export const FLOW_ACTION_NAMES: Record<string, string> = {
@@ -44,13 +44,13 @@ export const FLOW_ACTION_NAMES: Record<string, string> = {
 export const FLOW_COUNT_NAMES: Record<string, string> = {
   documents: '문서', readable_documents: '읽은 문서', risk_count: '위험 조건', judgment_count: '판정', check_count: '검산',
   warranty_count: '보증값', loss_count: '손실 환산', output_count: '목록 줄', proposal_count: '제안 포인트',
-  assignment_count: '담당 전달', meaning_count: '문장 벡터',
+  assignment_count: '협조 요청', meaning_count: '유사도 분석',
 }
 // 단계부터 다시 처리 (add-step-rewind)에서 고를 수 있는 처리 단계, 흐름 순서
 export const PIPELINE_STEPS = ['documents', 'pairs', 'risks', 'judge', 'meaning', 'check', 'warranty', 'loss', 'outputs', 'proposals', 'assign']
 export const STATUS_NAMES: Record<string, string> = {
   CANDIDATE: '후보', CONFIRMED: '확정', EDITED: '수정함', REJECTED: '반려', EMPTY_REVIEW: '확인 필요',
-  DRAFT: '초안', REMOVED: '뺌', ADOPTED: '채택', DISCARDED: '버림', CLOSED_OK: '문제 없음',
+  DRAFT: '초안', REMOVED: '제외', ADOPTED: '채택', DISCARDED: '제외', CLOSED_OK: '문제 없음',
 }
 export const POINT_KIND_NAMES: Record<string, string> = {
   MARGIN: '여유', LOSS: '손실 환산', FIELD: '현장 이력',
@@ -85,7 +85,7 @@ export const FAMILY_NAMES: Record<string, string> = {
 /** 비교 방향 (compare_rule.direction, item_key.default_direction) */
 export const DIRECTION_NAMES: Record<string, string> = {
   EQ: '같아야 함', GE: '같거나 커야 함', LE: '같거나 작아야 함', LT: '작아야 함', IN: '요구를 포함해야 함',
-  FILL: '보증값 작성', TEXT: '문장 비교', AI: '문장 읽기 (언어 모델)', SOURCE: '원문 기호 따름',
+  FILL: '보증값 작성', TEXT: '문장 비교', AI: 'AI 문장 판독', SOURCE: '원문 기호 따름',
 }
 /** 규칙 사전 이름 (판정 규칙 화면 고치기 API의 dictionary) */
 export const DICTIONARY_NAMES: Record<string, string> = {

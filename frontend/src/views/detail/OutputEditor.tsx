@@ -47,12 +47,12 @@ export function OutputEditor({ runId, item, id, canEdit, onDone, onSaved }: {
             <input className="fi" aria-label={changed ? '고친 사유' : '빼는 사유'} placeholder={changed ? '고친 사유 (이력에 남음)' : '빼는 사유'} value={why}
               onChange={(e) => setWhy(e.target.value)} style={{ flex: 1, height: 32 }} />
             <button type="button" className="bp" disabled={busy || !why.trim() || (changed && !text.trim())} onClick={() => act(changed ? 'EDIT' : 'REJECT')}>
-              {changed ? '문장 저장' : '빼기'}</button>
+              {changed ? '문장 저장' : '제외'}</button>
             <button type="button" className="bo" onClick={() => { setText(item.text_draft); setDropping(false); setWhy('') }}>취소</button>
           </div>
         : <div style={{ display: 'flex', gap: 12, marginTop: 4 }}>
             <button type="button" className="lnk" disabled={busy || item.status === 'CONFIRMED'} onClick={() => act('CONFIRM')}>문장 확정</button>
-            <button type="button" className="lnk" disabled={busy} onClick={() => setDropping(true)}>목록에서 빼기</button>
+            <button type="button" className="lnk" disabled={busy} onClick={() => setDropping(true)}>목록에서 제외</button>
           </div>)}
       {error && <p className="aphint" role="alert">{error}</p>}
     </div>

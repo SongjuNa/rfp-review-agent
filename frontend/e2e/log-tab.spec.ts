@@ -11,7 +11,7 @@ test('판정 바꾼 이력', async ({ page }) => {
   const rows = page.locator('#log table.mini tbody tr')
   await expect(rows.first()).toContainText(/판정 ".+" .+ → 일탈 후보/)
   await expect(rows.first()).toContainText('사유: 시험용 일탈')
-  await expect(rows.last()).toContainText(/시스템판정 \d+줄 생성/)
+  await expect(rows.last()).toContainText(/시스템판정 \d+건 생성/)
 })
 
 test('위험 조건 닫은 이력', async ({ page }) => {

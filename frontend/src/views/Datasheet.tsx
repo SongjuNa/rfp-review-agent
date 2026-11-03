@@ -9,6 +9,7 @@ import { useCrumbTail } from '../shell/crumb'
 import { usePageCss } from '../shell/pageCss'
 import { href } from '../shell/router'
 import { useSession } from '../shell/useSession'
+import { useToast } from '../ui'
 
 // SCR-10 데이터시트 채우기 (목업 v4.57 Datasheet). docs/screens/SCR-10-데이터시트.md
 // 고객 표 하나의 칸 순서 그대로. 근거 값이 없는 칸은 비워 두고 "확인 필요" (CR-04). 화면과 엑셀이 같은 줄.
@@ -31,7 +32,7 @@ export function Datasheet({ runId }: { runId: number }) {
   const [busy, setBusy] = useState(false)
   const [sending, setSending] = useState(false)
   const [confirming, setConfirming] = useState<string | null>(null)
-  const [toast, setToast] = useState('')
+  const toast = useToast()
   const [error, setError] = useState<string | null>(null)
   const run = useLoad(() => api.run(runId), [runId])
   const sheets = useLoad(() => api.datasheets(runId), [runId, tick])
@@ -48,7 +49,7 @@ export function Datasheet({ runId }: { runId: number }) {
   const canEdit = r?.stage === 'ENGINEER_REVIEW' && user?.role === 'ENGINEER'
   const found = d?.rows.filter((x) => flt === 'all' || x.state === flt) ?? []
   const rows = found.slice((page - 1) * size, page * size)
-  const say = (m: string) => { setToast(m); setTimeout(() => setToast(''), 2800) }
+  const say = (m: string) => toast.done(m)
   const confirm = (x: DatasheetRow) => {
     setError(null)
     setConfirming(x.no)
@@ -83,7 +84,7 @@ export function Datasheet({ runId }: { runId: number }) {
     api.handoffDatasheet(runId, tableId, user!.user_id).then((res) => {
       setTick((t) => t + 1)
       if (res.sent) say(`영업 담당(${res.mail_to})에게 넘겼습니다. 확인 필요 ${res.empty ?? 0}칸은 비운 채로 넘어갑니다.`)
-      else setError(res.error === '주소 없음' ? '영업 주소가 설정되지 않아 넘기지 못했습니다(RFP_MAIL_SALES).' : `영업에 넘기지 못했습니다: ${res.error}`)
+      else setError(res.error === '주소 없음' ? '영업 담당 메일 주소가 설정되지 않아 넘기지 못했습니다. 시스템 담당자에게 문의하세요.' : `영업에 넘기지 못했습니다: ${res.error}`)
     }, (e: Error) => setError(e.message)).finally(() => setSending(false))
   }
   const sub = d && r ? [d.table_name, d.source_file, r.project_name, r.review_no].filter(Boolean).join(' · ') : ''
@@ -154,7 +155,6 @@ export function Datasheet({ runId }: { runId: number }) {
         {found.length > 0 && <Pager total={found.length} page={page} size={size} shown={rows.length} onPage={setPage} onSize={(n) => { setSize(n); setPage(1) }} />}
         {d && rows.length === 0 && <p style={{ margin: 0, padding: '16px 12px', color: 'var(--c-muted)' }}>이 보기에 맞는 칸이 없습니다.</p>}
       </section>
-      {toast && <div className="stt" role="status"><span className="ms" aria-hidden="true">check_circle</span>{toast}</div>}
     </main>
   )
 }

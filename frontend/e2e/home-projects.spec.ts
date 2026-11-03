@@ -69,7 +69,7 @@ test('오늘 할 일 순서', async ({ page }) => {
   await expect(items).toHaveCount(2)
   await expect(items.first()).toContainText('RV-TEST-9403')
   await expect(items.first()).toContainText(`상신 권장 ${md(after(1))} (D-1)`)
-  await expect(items.first()).toContainText('확인 필요 3줄')
+  await expect(items.first()).toContainText('확인 필요 3건')
   await expect(items.first().getByRole('link', { name: '판정 확인' })).toHaveAttribute('href', '#/reviews/9403')
   await expect(items.nth(1)).toContainText('RV-TEST-9406')
   // "내가 처리할 건" 수는 내 차례인 검토 수와 같다
@@ -206,4 +206,101 @@ test('승인 전 잠김', async ({ page }) => {
   const btn = page.getByRole('button', { name: '인계 패키지 보기' })
   await expect(btn).toBeDisabled()
   await expect(btn).toHaveAccessibleDescription('결재가 승인된 검토가 없습니다')
+})
+
+// 명세 review-workspace "검토 목록 내가 처리할 건"의 Scenario (change update-list-my-turn)
+test('목록 내가 처리할 건은 홈과 같은 수', async ({ page }) => {
+  await mock(page, [
+    run(9501, '담당자 확인'),
+    run(9502, '반려됨', { stage: 'REJECTED' }),
+    run(9503, '남의 검토', { engineer_id: 7 }),
+    run(9504, '승인 끝', { stage: 'APPROVED' }),
+  ])
+  await page.goto('/#/')
+  await expect(page.locator('.qsum button', { hasText: '내가 처리할 건' }).locator('b')).toHaveText('2')
+  await page.goto('/#/reviews')
+  const cell = page.locator('.sumline button', { hasText: '내가 처리할 건' })
+  await expect(cell.locator('b')).toHaveText('2')
+  await expect(cell).toHaveAttribute('title', /반려됨/)
+  await page.getByRole('group', { name: '담당 범위' }).getByRole('button', { name: '팀 전체' }).click()
+  await expect(cell.locator('b')).toHaveText('2')
+})
+
+// 명세 review-workspace "인계 패키지 미리 보기" — 사업 상세에서 미리 보기 (change add-package-preview)
+test('사업 상세에서 미리 보기', async ({ page }) => {
+  await mock(page, [], { business: detail('APPROVED') })
+  // 미리 보기 창이 부르는 것만 이 검토 값으로 돌려준다 (나중에 건 route가 먼저)
+  await page.route(/\/api\/runs\/9550(\/(tbe|cost-conditions|approval))?(\?.*)?$/, (r) => {
+    const p = new URL(r.request().url()).pathname
+    if (p.endsWith('/tbe')) return r.fulfill({ json: { file_name: '', review_no: 'RV-TEST-9550', project_name: null, review_name: null, rows: [],
+      counts: { rows: 0, comply: 0, deviation: 0, query: 0, review: 0, candidates: 0, no_location: 0 } } })
+    if (p.endsWith('/cost-conditions')) return r.fulfill({ json: { conditions: [], impacts: [] } })
+    if (p.endsWith('/approval')) return r.fulfill({ json: { stage: 'APPROVED', approval: null, reasons: [], preview: null, review_ratio: null, submission_check: null, read_unchecked: 0 } })
+    return r.fulfill({ json: run(9550, '115 kV GIS', { stage: 'APPROVED' }) })
+  })
+  await page.goto('/#/projects/PJ-2026-005')
+  await page.getByRole('button', { name: '인계 패키지 보기' }).click()
+  await page.getByRole('dialog', { name: '인계 패키지' }).getByRole('button', { name: '미리 보기' }).click()
+  const dlg = page.getByRole('dialog', { name: '영업 인계 패키지' })
+  await expect(dlg).toContainText('RV-TEST-9550')
+  await expect(dlg.getByRole('tab', { name: /영업 할 일/ })).toBeVisible()
+  await page.unrouteAll({ behavior: 'ignoreErrors' })
+})
+
+// 명세 review-workspace "검토 목록 요약 줄 결재 완료·분석 중" (change update-list-summary-rest)
+test('요약 줄 결재 완료·분석 중', async ({ page }) => {
+  await mock(page, [
+    run(9601, '확인 1'), run(9602, '확인 2'),
+    run(9603, '결재 중', { stage: 'APPROVAL', approver_id: 2 }),
+    run(9604, '완료 1', { stage: 'APPROVED' }), run(9605, '완료 2', { stage: 'APPROVED' }),
+    run(9606, '분석', { stage: 'PROCESSING', step: 'documents' }),
+  ])
+  await page.goto('/#/reviews')
+  const line = page.locator('.sumline')
+  const num = (label: string) => line.locator('span, button', { hasText: label }).locator('b')
+  await expect(num('내가 처리할 건')).toHaveText('2')
+  await expect(num('결재 대기')).toHaveText('1')
+  await expect(num('결재 완료')).toHaveText('2')
+  await expect(num('분석 중')).toHaveText('1')
+  await expect(page.locator('.sech h2')).toContainText('6')
+  await expect(line.locator('.sumrest', { hasText: '결재 완료' })).toHaveAttribute('title', /결재가 승인/)
+})
+
+// 명세 review-workspace "요약 줄 칸으로 거르기" (change update-list-summary-filter)
+const SUM_LIST = () => [
+  run(9701, '확인 1'), run(9702, '확인 2'), run(9703, '결재 중', { stage: 'APPROVAL', approver_id: 2 }),
+  run(9704, '완료 1', { stage: 'APPROVED' }), run(9705, '완료 2', { stage: 'APPROVED' }),
+]
+
+test('검토 목록 요약 칸으로 거르기', async ({ page }) => {
+  await mock(page, SUM_LIST())
+  await page.goto('/#/reviews')
+  const rows = page.locator('table.tbl tbody tr')
+  await expect(rows).toHaveCount(5)
+  const done = page.locator('.sumline').getByRole('button', { name: /결재 완료/ })
+  await done.click()
+  await expect(page).toHaveURL(/#\/reviews\?sum=approved$/)
+  await expect(rows).toHaveCount(2)
+  await expect(page.locator('.sumbar')).toContainText('결재 완료 2건만 보는 중')
+  await expect(done).toHaveAttribute('aria-pressed', 'true')
+  for (const [label, n] of [['내가 처리할 건', 2], ['결재 대기', 1]] as const) {     // 다른 칸도 거른다
+    await page.locator('.sumline').getByRole('button', { name: new RegExp(label) }).click()
+    await expect(rows).toHaveCount(n)
+  }
+  await page.locator('.sumline').getByRole('button', { name: /결재 대기/ }).click()   // 다시 누르면 풂
+  await expect(rows).toHaveCount(5)
+  await expect(page.locator('.sumbar')).toHaveCount(0)
+})
+
+test('뒤로 가기로 전체 목록', async ({ page }) => {
+  await mock(page, SUM_LIST())
+  await page.goto('/#/reviews')
+  const rows = page.locator('table.tbl tbody tr')
+  await expect(rows).toHaveCount(5)
+  await page.locator('.sumline').getByRole('button', { name: /내가 처리할 건/ }).click()
+  await expect(rows).toHaveCount(2)
+  await page.goBack()
+  await expect(page).toHaveURL(/#\/reviews$/)
+  await expect(rows).toHaveCount(5)
+  await expect(page.locator('.sumbar')).toHaveCount(0)
 })

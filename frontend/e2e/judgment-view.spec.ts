@@ -148,8 +148,8 @@ test('찾은 방법과 신뢰도', async ({ page }) => {
   await mock(page)
   await page.goto(`/#/reviews/${ID}/judgments/502`)
   const pv = page.locator('.pv')
-  await expect(pv).toContainText('찾은 방법AI가 찾음신뢰도 0.82')
-  await expect(pv).toContainText('시스템 제안일탈 후보코드 규칙')
+  await expect(pv).toContainText('찾은 방법AI 추출신뢰도 0.82')
+  await expect(pv).toContainText('시스템 제안일탈 후보규칙 기반')
   await expect(pv).toContainText('아직 확정 안 함')
 })
 
@@ -158,7 +158,7 @@ test('제안대로 확정하고 다음 판정', async ({ page }) => {
   await page.goto(`/#/reviews/${ID}/judgments/501`)
   await expect(view(page)).toBeVisible()
   await page.getByRole('button', { name: '제안대로 확정' }).click()
-  await expect(page.locator('.uitw')).toContainText('판정을 제안대로 확정했습니다.')
+  await expect(page.locator('.uisnk')).toContainText('판정을 제안대로 확정했습니다.')
   await expect(page.locator('h1#mdTitle')).toContainText('모선 연결 정격 전류')
   await expect(page.locator('.mdpos')).toHaveText('판정 2 / 3')
   expect(posts).toEqual([expect.objectContaining({ target_id: 501, action: 'CONFIRM', actor_id: 1 })])
@@ -167,7 +167,7 @@ test('제안대로 확정하고 다음 판정', async ({ page }) => {
 test('단계 때문에 못 고침', async ({ page }) => {
   await mock(page, 'APPROVAL')
   await page.goto(`/#/reviews/${ID}/judgments/501`)
-  for (const name of ['판정 바꾸기', '제안대로 확정']) {
+  for (const name of ['판정 변경', '제안대로 확정']) {
     const b = page.getByRole('button', { name, exact: true })
     await expect(b).toBeDisabled()
     await expect(b).toHaveAttribute('title', '승인 대기 중에는 고칠 수 없습니다')
@@ -177,8 +177,8 @@ test('단계 때문에 못 고침', async ({ page }) => {
 test('사유 필수', async ({ page }) => {
   const posts = await mock(page)
   await page.goto(`/#/reviews/${ID}/judgments/501`)
-  await page.getByRole('button', { name: '판정 바꾸기' }).click()
-  const dlg = page.getByRole('dialog', { name: '판정 바꾸기' })
+  await page.getByRole('button', { name: '판정 변경' }).click()
+  const dlg = page.getByRole('dialog', { name: '판정 변경' })
   await dlg.getByLabel('새 판정').selectOption('QUERY_CANDIDATE')
   await dlg.getByRole('button', { name: '적용' }).click()
   await expect(dlg.getByRole('alert')).toHaveText('판정을 바꾸려면 사유를 적어 주세요.')

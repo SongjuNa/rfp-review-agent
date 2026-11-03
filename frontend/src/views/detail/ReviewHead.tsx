@@ -29,8 +29,8 @@ function ExportMenu({ run, onWord }: { run: RunSummary; onWord: (kind: 'DEVIATIO
         내보내기<span className="ms" aria-hidden="true" style={{ fontSize: 'var(--ic-s)' }}>expand_more</span></button>
       {open && (
         <div className="mm" role="menu" onKeyDown={(e) => { if (e.key === 'Escape') setOpen(false) }}>
-          {word('DEVIATION', '일탈 목록 초안 (Word)', '일탈 목록에 넣을 줄이 없습니다')}
-          {word('QUERY', '질의서 초안 (Word)', '질의서에 넣을 줄이 없습니다')}
+          {word('DEVIATION', '일탈 목록 초안 (Word)', '일탈 목록에 들어갈 항목이 없습니다')}
+          {word('QUERY', '질의서 초안 (Word)', '질의서에 들어갈 항목이 없습니다')}
           <a role="menuitem" href={href(`/reviews/${run.run_id}/tbe`)}>TBE 준수표</a>
           <a role="menuitem" href={href(`/reviews/${run.run_id}/datasheet`)}>데이터시트 채우기</a>
         </div>
@@ -57,7 +57,7 @@ export function TitleRow({ run, onRefresh, onAddDoc, onAsk, asking, onEdit, onWo
         {onAddDoc && <Button icon="note_add" onClick={onAddDoc}>문서 추가</Button>}
         {ready && <ExportMenu run={run} onWord={onWord} />}
         {onAsk && <Button icon="forum" onClick={onAsk} aria-expanded={asking} title="이 검토의 요구사항·판정을 묻기 (읽기 전용)">검토 도우미</Button>}
-        <Button icon="edit" onClick={onEdit}>검토 정보 고치기</Button>
+        <Button icon="edit" onClick={onEdit}>검토 정보 수정</Button>
       </div>
     </div>
   )
@@ -103,7 +103,7 @@ export function InfoBox({ run, docs, approver, head, onDocs, onTab, onComply, co
           <div><dt>고객사</dt><dd>{run.customer_name ?? none}</dd></div>
           <div><dt>국가</dt><dd>{run.country ?? none}</dd></div>
           <div><dt>고객 입찰 번호</dt><dd>{biz.data?.tender_no ?? none}</dd></div>
-          <div><dt>영업</dt><dd>{biz.data?.sales_name ?? (run.business_id ? none : <span title="검토 정보 고치기에서 사업을 연결하면 보입니다">{none} · 사업 연결 안 됨</span>)}</dd></div>
+          <div><dt>영업</dt><dd>{biz.data?.sales_name ?? (run.business_id ? none : <span title="검토 정보 수정에서 사업을 연결하면 보입니다">{none} · 사업 연결 안 됨</span>)}</dd></div>
         </dl>
       </section>
       {ready && (
@@ -111,12 +111,12 @@ export function InfoBox({ run, docs, approver, head, onDocs, onTab, onComply, co
           <h3 id="hfK">판정 진행</h3>
           <div className="hc-kv">
             <button type="button" onClick={() => onTab('judge')}>
-              <span className="l">꼭 볼 것</span><b className={head?.must ? 'c-ora' : undefined}>{head?.must ?? none}<small>줄</small></b>
+              <span className="l">꼭 볼 것</span><b className={head?.must ? 'c-ora' : undefined}>{head?.must ?? none}<small>건</small></b>
               {head && <span className="s" title={`일탈 ${head.deviations} · 질의 ${head.queries} · 확인 필요 ${head.review}`}>일탈 {head.deviations} · 질의 {head.queries} · 확인 {head.review}</span>}
             </button>
             <button type="button" onClick={onComply ?? (() => onTab('judge'))} disabled={complying}
-              title={onComply ? `확정하지 않은 준수 ${head?.counts.unconfirmed_comply ?? 0}줄을 모두 제안대로 확정합니다` : undefined}>
-              <span className="l">준수</span><b className="c-green">{head?.comply ?? none}<small>줄</small></b>
+              title={onComply ? `확정하지 않은 준수 ${head?.counts.unconfirmed_comply ?? 0}건을 일괄 확정합니다` : undefined}>
+              <span className="l">준수</span><b className="c-green">{head?.comply ?? none}<small>건</small></b>
               <span className="s">{complying ? '확정하는 중…' : onComply ? '묶어서 확정' : '판정 탭에서 보기'}</span>
             </button>
             <a href={href(`/reviews/${run.run_id}/datasheet`)}>
@@ -162,9 +162,9 @@ export function ActionBar({ run, head, approver, onSubmit, onComply, complying }
   const c = head?.counts
   return (
     <div className="ftb">
-      <span>확정 안 한 판정 <b>{c ? `${num(c.unconfirmed)}줄` : '—'}</b></span>
+      <span>확정 안 한 판정 <b>{c ? `${num(c.unconfirmed)}건` : '—'}</b></span>
       {onComply && c && (
-        <span>준수 {num(c.unconfirmed_comply)}줄은 <button type="button" className="lnk" disabled={complying} onClick={onComply}>{complying ? '확정하는 중…' : '모두 확정'}</button></span>
+        <span>준수 {num(c.unconfirmed_comply)}건은 <button type="button" className="lnk" disabled={complying} onClick={onComply}>{complying ? '확정하는 중…' : '모두 확정'}</button></span>
       )}
       {head && head.emptyCells > 0 && (
         <span>비어 있는 작성 칸 <b>{num(head.emptyCells)}칸</b> <a className="lnk" href={href(`/reviews/${run.run_id}/datasheet`)}>데이터시트 채우기</a></span>

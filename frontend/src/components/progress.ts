@@ -48,11 +48,20 @@ function documentShare(d: StepDetail | null): number {
 export function stepText(run: Progressing): string {
   const d = run.step_detail
   if (run.step === 'documents' && d) {
-    const count = d.total ? ` ${(d.done ?? 0).toLocaleString('ko-KR')} / ${d.total.toLocaleString('ko-KR')}줄` : ''
+    const count = d.total ? ` ${(d.done ?? 0).toLocaleString('ko-KR')} / ${d.total.toLocaleString('ko-KR')}건` : ''
     const file = d.file_count > 1 ? ` · 파일 ${d.file_index} / ${d.file_count}` : ''
     return `${PARTS[d.part][2]}${count}${file}`
   }
   return STEPS.find(([k]) => k === run.step)?.[1] ?? '처리하는 중'
+}
+
+/** 검토 목록 줄의 짧은 진행 문장 (목업 v4.96 목록 줄 진행 막대, "3/7 요구사항 문장 찾기 · 7 %"). 줄 수는 빼고 단계 순번을 붙인다 */
+export function stepLine(run: Progressing): string {
+  const steps = STEPS.slice(1)                                 // 'created'는 시작 전이라 세지 않는다
+  const at = Math.max(0, steps.findIndex(([k]) => k === run.step))
+  const d = run.step_detail
+  const name = run.step === 'documents' && d ? PARTS[d.part][2] : steps[at]?.[1] ?? '처리를 시작하는 중'
+  return `${at + 1}/${steps.length} ${name} · ${progress(run)} %`
 }
 
 /** "n분 m초" 같은 짧은 시간 */
