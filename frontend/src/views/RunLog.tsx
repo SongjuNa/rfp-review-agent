@@ -21,7 +21,7 @@ const tokens = (r: RunLogItem) => r.llm_input_tokens + r.llm_output_tokens + r.l
 const noLog = (r: RunLogItem) => r.steps.length === 0
 
 function Steps({ r }: { r: RunLogItem }) {
-  if (noLog(r)) return <p className="dimv">기록 없음 (실행 기록 기능 전에 처리한 검토)</p>
+  if (noLog(r)) return <p className="dimv">기록 없음 (기록 기능 도입 전 검토)</p>
   const tries = [...new Set(r.steps.map((s) => s.attempt))]
   return (
     <div className="rlsteps">
@@ -135,7 +135,7 @@ export function RunLog() {
 
   return (
     <main className="main">
-      <div className="idl"><span>review_run · run_step_time</span><span>최근 실행 {rows.length}건</span><span>아래 실행 표는 분석 중 AI만 셉니다 (분석 밖 사용량은 AI 사용량 상자)</span><AiModeLine as="span" /></div>
+      <div className="idl"><span>최근 실행 {rows.length}건</span><span>아래 표는 분석 중 AI 사용량만 집계합니다 (그 밖의 사용량은 위 AI 사용량 참고)</span><AiModeLine as="span" /></div>
       <div className="ttl"><h1>실행 기록</h1></div>
       <AiUsageBox />
       <div className="kpis">
@@ -164,8 +164,8 @@ export function RunLog() {
                     {r.cancelled && <div className="en">취소함</div>}</td>
                   <td>{stamp(r.started_at)}</td>
                   <td style={{ textAlign: 'right' }}>{r.stage === 'PROCESSING' ? '처리 중' : secs(r.seconds)}</td>
-                  <td>{r.llm_model ?? '규칙만'}<div className="en">사전 {r.dict_version}</div></td>
-                  <td style={{ textAlign: 'right' }}>{noLog(r) ? <span className="dimv">기록 없음</span> : <>{num(r.llm_calls)}{r.llm_retries > 0 && <div className="en c-ora">재시도 {r.llm_retries}</div>}{r.explanations_dropped > 0 && <div className="en c-ora" title="근거 조각·인용·숫자 대조에서 버린 위험 조건 설명">AI 설명 버림 {r.explanations_dropped}</div>}{r.explanations_unverified > 0 && <div className="en c-ora" title="검증 에이전트가 근거가 받쳐 준다고 답하지 않은 위험 조건 설명">검증 확인 필요 {r.explanations_unverified}</div>}{(r.type_examples ?? 0) > 0 && <div className="en" title="다른 문서에서 사람이 고친 유형을 예시로 붙여 물은 줄 (add-type-examples)">유형 예시 {r.type_examples}줄</div>}</>}</td>
+                  <td>{r.llm_model ?? '규칙 기반'}<div className="en">사전 {r.dict_version}</div></td>
+                  <td style={{ textAlign: 'right' }}>{noLog(r) ? <span className="dimv">기록 없음</span> : <>{num(r.llm_calls)}{r.llm_retries > 0 && <div className="en c-ora">재시도 {r.llm_retries}</div>}{r.explanations_dropped > 0 && <div className="en c-ora" title="원문 근거와 맞지 않아 제외한 AI 위험 설명">AI 설명 버림 {r.explanations_dropped}</div>}{r.explanations_unverified > 0 && <div className="en c-ora" title="AI 재검증에서 근거 확인이 안 된 위험 설명">검증 확인 필요 {r.explanations_unverified}</div>}{(r.type_examples ?? 0) > 0 && <div className="en" title="담당자가 고친 유형을 참고 예시로 넣어 AI에 물은 항목">유형 예시 {r.type_examples}줄</div>}</>}</td>
                   <td style={{ textAlign: 'right' }}>{noLog(r) ? '—' : num(tokens(r))}</td>
                   <td style={{ textAlign: 'right' }}>{noLog(r) ? '—' : <>{won(r.estimated_cost_krw)}{r.cost_assumed && <div className="en">추정 · 팀 가정</div>}</>}</td>
                   <td style={{ textAlign: 'right' }}>{r.documents}{r.documents_reused > 0 && <div className="en">다시 씀 {r.documents_reused}</div>}</td>

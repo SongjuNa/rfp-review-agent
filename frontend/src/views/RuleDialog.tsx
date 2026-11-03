@@ -164,7 +164,7 @@ export function RuleDialog({ target, itemKeys, onClose, onDone }: {
           <section className="aps"><h3>{verb} 사유<span className="auto2">필수</span></h3>
             <textarea className="fi" rows={2} aria-label={`${verb} 사유`} value={reason} onChange={(e) => setReason(e.target.value)}
               placeholder="예: 현업 멘토 사례, 고객사 파일 이름이 다름" style={{ width: '100%', boxSizing: 'border-box' }} />
-            <p className="rnote">고친 내용은 수정 이력에 남고, 다음 검토부터 새 사전 판으로 처리합니다.</p>
+            <p className="rnote">고친 내용은 수정 이력에 남고, 다음 검토부터 적용됩니다.</p>
             {!allowed && <p className="aphint">규칙은 엔지니어·승인자만 고칠 수 있습니다. 머리글에서 사용자를 바꿔 주세요.</p>}
             {error && <p className="aphint" role="alert">{error}</p>}
           </section>

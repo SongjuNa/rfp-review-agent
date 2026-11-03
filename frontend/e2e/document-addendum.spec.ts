@@ -25,7 +25,7 @@ test('문서 추가하고 다시 분석', async ({ page, request }) => {
   await page.getByRole('button', { name: '문서 1개' }).click()
   const dialog = page.getByRole('dialog', { name: '문서 1개' })
   await expect(dialog.getByRole('heading', { name: '문서 추가' })).toBeVisible()
-  await dialog.getByLabel('더할 docx 파일').setInputFiles({
+  await dialog.getByLabel('추가할 파일 (docx·PDF)').setInputFiles({
     name: ADD, mimeType: 'application/octet-stream',
     buffer: readFileSync(new URL(`./fixtures/${ADD}`, import.meta.url)),
   })

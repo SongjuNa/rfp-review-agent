@@ -49,7 +49,7 @@ export function PackageActions({ runId, label }: { runId: number; label?: React.
       setTick((t) => t + 1)
       setNote(res.sent
         ? { ok: true, text: `영업 담당(${res.mail_to})에게 인계 패키지를 보냈습니다. 파일 ${res.files.length - 1}개와 목록.txt` }
-        : { ok: false, text: res.error === '주소 없음' ? '영업 주소가 설정되지 않아 보내지 못했습니다(RFP_MAIL_SALES).' : `보내지 못했습니다: ${res.error}` })
+        : { ok: false, text: res.error === '주소 없음' ? '영업 담당 메일 주소가 설정되지 않아 보내지 못했습니다. 시스템 담당자에게 문의하세요.' : `보내지 못했습니다: ${res.error}` })
     }, (e: Error) => setNote({ ok: false, text: e.message })).finally(() => setBusy(null))
   }
 

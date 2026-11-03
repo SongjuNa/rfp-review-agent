@@ -33,7 +33,7 @@ test('Claude 초안 표시', async ({ page }) => {
   await page.goto('/#/eval')
   await page.getByRole('tab', { name: '정답지' }).click()
   const row = page.locator('label.gt-tr', { hasText: '유형 정답지 100줄' })
-  await expect(row).toContainText('Claude 초안 · 사람 확인 전')
+  await expect(row).toContainText('AI 초안 · 검수 전')
   await expect(row).toContainText('12 / 100')
 })
 
@@ -66,7 +66,7 @@ test('요구사항 정답지로 채점', async ({ page }) => {
   await expect(run.locator('input')).not.toBeChecked()
   await run.locator('input').check()
   const key = page.locator('label[data-key="공급사 답안 262000"]')
-  await expect(key).toContainText('코드 자동 · 사람 확인 전')
+  await expect(key).toContainText('자동 생성 · 검수 전')
   await expect(key).toContainText('262000 Electric Distribution')
   await key.locator('input').check()
   await page.getByRole('button', { name: '지금 채점하기' }).click()

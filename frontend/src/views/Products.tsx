@@ -15,7 +15,7 @@ import { useSession } from '../shell/useSession'
 // 읽기만 한다. 빈 칸은 "비어 있음", 그 제품군에 없는 칸은 "—", 팀 가정 값은 "팀 가정" (CR-04, CR-06).
 // 줄을 누르면 오른쪽 빠른 보기, 제품 코드를 누르면 제품 상세 화면(SCR-16-1, ProductView). 요구 조건으로 찾기는 화면에서 거른다 (add-product-view).
 
-const LOCK = '제품표 고치기는 이 change 범위 밖입니다 (data/seed를 고쳐 다시 적재)'
+const LOCK = '제품표는 이 화면에서 수정할 수 없습니다. 제품 담당에게 요청하세요.'
 const ALL = 500                    // 요구 조건으로 찾기를 켜면 한 번에 받는 제품 수 (design.md 5)
 const QV_SPECS = ['rated_voltage_kv', 'rated_current_a', 'short_circuit_ka', 'peak_current_ka', 'rated_frequency']
 const QV_TR = ['rated_voltage_kv', 'rated_capacity', 'noload_loss_kw', 'load_loss_kw', 'rated_frequency']
@@ -77,7 +77,7 @@ export function Products() {
         <a className={view === 'list' ? 'on' : ''} href="#/products" onClick={(e) => { e.preventDefault(); setView('list') }}>제품 목록</a>
         <a className={view === 'cmp' ? 'on' : ''} href="#/products" onClick={(e) => { e.preventDefault(); setView('cmp') }}>비교 ({sel.length})</a>
       </nav>
-      <div className="idl"><span>product_master</span><span>제품 {total} · 제품군 {all.length}</span><span>지금 DB에 적재된 판 (실행이 쓴 판과 다를 수 있음)</span></div>
+      <div className="idl"><span>제품 {total} · 제품군 {all.length}</span><span>현재 제품표 기준 (이전 검토에 쓴 제품표와 다를 수 있음)</span></div>
       <div className="ttl">
         <h1>제품표</h1>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
@@ -202,7 +202,7 @@ function QuickView({ code, data, error, items, inCmp, cmpFull, onCmp, onPick, on
           {blocks.length > 0 && (
             <div className="qv-blk"><h4><span className="ms" aria-hidden="true">warning</span>값이 없어 막힌 판정 {blocks.length}</h4>
               {blocks.slice(0, 3).map((b) => <div key={b.judgment_id} className="qv-b"><span><b>{b.item_name}</b> — {b.review_no} 확인 필요</span>
-                <span title="값 요청은 제품표 담당 기능이 없어 잠겨 있습니다"><button type="button" className="bo" disabled>값 요청</button></span></div>)}
+                <span title="값 요청 기능은 준비 중입니다"><button type="button" className="bo" disabled>값 요청</button></span></div>)}
             </div>
           )}
           <h4>지금 쓰이는 검토 <span className="n">{p.used_runs}</span></h4>

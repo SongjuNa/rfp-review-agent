@@ -19,7 +19,7 @@ test('RFP 한 건 처음부터 끝까지', async ({ page, request }) => {
   // 1. 검토 등록 (SCR-07): 올리고, 분류 추천을 보고, 검토 정보를 적고 시작
   await as(page, ENGINEER)
   await page.goto('/#/register')
-  await page.getByLabel('docx 올리기').setInputFiles(fileURLToPath(DOCX))
+  await page.getByLabel('파일 올리기').setInputFiles(fileURLToPath(DOCX))
   const doc = page.locator('tr', { hasText: 'synthetic_judgment.docx' })
   await expect(doc).toBeVisible()
   test.skip(await page.getByText(/판정 대상.*없/).first().isVisible(), '합성 데이터시트가 문서 목록(묶음 A)에 없습니다')

@@ -10,7 +10,7 @@ export function PastDecisionRow({ j }: { j: Judgment }) {
   return (
     <tr className="pastrow"><th>지난 검토</th><td><span className={`st ${RESULT_TONES[p.result]}`}>{RESULT_NAMES[p.result]}</span>
       {!p.same && <span className="pvs c-ora">지금과 다름</span>}
-      {p.match === 'MEANING' && p.score != null && <span className="pvs" data-testid="past-meaning">뜻 비슷 {p.score.toFixed(2)}</span>}
+      {p.match === 'MEANING' && p.score != null && <span className="pvs" data-testid="past-meaning">유사도 {p.score.toFixed(2)}</span>}
       <span className="pvs"><a href={href(`/reviews/${p.run_id}`)}>{p.review_no}</a>
         {p.decided_by ? ` · ${p.decided_by}` : ''}{p.decided_at ? ` · ${stamp(p.decided_at)}` : ''}</span>
       {p.reason && <div className="en">사유: {p.reason}</div>}

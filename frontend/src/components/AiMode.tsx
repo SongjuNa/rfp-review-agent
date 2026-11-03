@@ -7,7 +7,7 @@ import { useLoad } from './useLoad'
 function aiModeText(h: Health): string {
   if (h.ai_mode === 'GEMINI') return `AI: Gemini ${h.ai_model ?? ''} · 문장을 외부 AI로 보냅니다`
   if (h.ai_mode === 'LOCAL') return `AI: 사내 모델 ${h.ai_model ?? ''} · 외부로 보내지 않습니다`
-  return 'AI 꺼짐 · 어디에도 보내지 않고 코드 규칙만 씁니다'
+  return 'AI 사용 안 함 · 외부로 보내지 않고 규칙 기반으로만 분석합니다'
 }
 
 export function AiModeLine({ as = 'p' }: { as?: 'p' | 'span' }) {

@@ -33,8 +33,8 @@ function change(now: EvalMetric, before: EvalMetric | undefined) {
 const REQ_CODES = ['K1', 'K2', 'K3', 'K10']
 
 function DraftTag({ k }: { k: Pick<AnswerKey, 'made_by'> | { made_by: string | null } }) {
-  if (k.made_by === 'CLAUDE_DRAFT') return <span className="st c-ora" style={{ marginLeft: 6 }}>Claude 초안 · 사람 확인 전</span>
-  if (k.made_by === 'AUTO') return <span className="st c-ora" style={{ marginLeft: 6 }}>코드 자동 · 사람 확인 전</span>
+  if (k.made_by === 'CLAUDE_DRAFT') return <span className="st c-ora" style={{ marginLeft: 6 }}>AI 초안 · 검수 전</span>
+  if (k.made_by === 'AUTO') return <span className="st c-ora" style={{ marginLeft: 6 }}>자동 생성 · 검수 전</span>
   return null
 }
 
@@ -89,7 +89,7 @@ export function Eval() {
         <button type="button" className="bp" onClick={run} disabled={running || picked.length === 0}
           title={picked.length === 0 ? '정답지 탭에서 채점할 검토를 고르세요' : undefined}>
           <span className="ms" aria-hidden="true" style={{ fontSize: 'var(--ic-s)' }}>play_arrow</span>{running ? '채점 중…' : '지금 채점하기'}</button></div>
-      <div className="sh-note"><span className="ms" aria-hidden="true">info</span><span>점수는 코드로만 잽니다. 판정 정확도(K5·K6)는 엔지니어가 <b>확정·수정한 줄</b>을 정답으로 보고, 유형 분류 정확도(K13)는 고른 유형 정답지로, 추출 재현율·정확도(K1·K2)·값(K3)·위험 조건 재현율(K10)은 고른 요구사항 정답지로 잽니다. 지난 검토의 사람 판정은 새 검토의 판정을 자동으로 바꾸지 않으며, 사람 검토를 건너뛰는 자동 확정은 하지 않습니다.</span></div>
+      <div className="sh-note"><span className="ms" aria-hidden="true">info</span><span>점수는 시스템이 자동으로 계산합니다. 판정 정확도(K5·K6)는 엔지니어가 <b>확정·수정한 줄</b>을 정답으로 보고, 유형 분류 정확도(K13)는 고른 유형 정답지로, 추출 재현율·정확도(K1·K2)·값(K3)·위험 조건 재현율(K10)은 고른 요구사항 정답지로 잽니다. 지난 검토의 사람 판정은 새 검토의 판정을 자동으로 바꾸지 않으며, 사람 검토를 건너뛰는 자동 확정은 하지 않습니다.</span></div>
       {error && <div className="sh-note c-red" role="alert"><span className="ms" aria-hidden="true">error</span><span>{error}</span></div>}
       <div className="sh-sum">
         <span>정답지<b>{key ? `${key.rows.toLocaleString('en-US')}줄` : '없음'}</b></span><span>검토<b>{picked.length}건</b></span>
@@ -164,7 +164,7 @@ export function Eval() {
           <label className="sh-note" style={{ display: 'flex', gap: 8, alignItems: 'center' }}><span className="ms" aria-hidden="true">edit_note</span>
             <span style={{ whiteSpace: 'nowrap' }}>무엇을 고쳤나</span>
             <input type="text" value={note} maxLength={500} onChange={(e) => setNote(e.target.value)} placeholder="예: 비교 방향 사전 3줄 고침 (채점 기록에 남습니다)" style={{ flex: 1 }} aria-label="무엇을 고쳤나" /></label>
-          <div className="sh-note"><span className="ms" aria-hidden="true">upload_file</span><span>유형 정답지는 명령으로 넣습니다: <code>rfp-db load-answer-key 정답지.csv --name 이름</code> (사람이 만든 정답지는 <code>--human</code>). Claude 초안은 사람이 &quot;사람 확인&quot; 칸을 채운 줄만 사람 확인으로 셉니다. 요구사항 정답지는 <code>--kind REQ --doc 문서이름</code>을 붙여 넣고, 공급사 답안 문서는 <code>rfp-db make-answer-key 답안.docx --name 이름</code>으로 코드가 만듭니다.</span></div>
+          <div className="sh-note"><span className="ms" aria-hidden="true">upload_file</span><span>정답지 등록은 시스템 담당자에게 요청하세요. AI 초안·자동 생성 정답지는 담당자가 검수한 항목만 검수 완료로 셉니다.</span></div>
         </>
       )}
       {tab === 'l' && (
@@ -174,7 +174,7 @@ export function Eval() {
           {history.map((s) => (
             <div key={s.score_id} className="lg-tr ev-row"><span className="mono sh-mut">{stamp(s.scored_at)}</span>
               <span>{s.key_name && <span className="st c-grey">{s.key_name}</span>}{s.req_key_name && <span className="st c-grey">{s.req_key_name}</span>}{!s.key_name && !s.req_key_name && <span className="sh-mut">판정만</span>}</span>
-              <span>{s.note ?? <span className="sh-mut">메모 없음</span>}<span className="sh-mut" style={{ display: 'block' }}>검토 {s.run_ids.length}건 · 코드 {s.code_version ?? '—'}</span></span>
+              <span>{s.note ?? <span className="sh-mut">메모 없음</span>}<span className="sh-mut" style={{ display: 'block' }}>검토 {s.run_ids.length}건 · 시스템 버전 {s.code_version ?? '—'}</span></span>
               <span className="mono c-blue" style={{ fontWeight: 600 }}>{shown(metricOf(s, 'K5'))} · {shown(metricOf(s, 'K13'))}</span>
               <span className="sh-mut">{s.scored_by_name ?? '—'}</span></div>
           ))}

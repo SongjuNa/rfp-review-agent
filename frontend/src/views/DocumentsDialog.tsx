@@ -55,7 +55,7 @@ function AddDocuments({ run, docs, onAdded }: { run: RunSummary; docs: RunDocume
       <h3 id="docAddTitle">문서 추가</h3>
       <p className="aphint" style={{ color: 'var(--c-muted)' }}>발주처가 낸 정정본·추가 문서(Addendum)를 더하면 처음 문서와 함께 이 검토를 다시 분석합니다.
         처리한 문서는 다시 쓰고, 확정·수정·반려한 판정과 위험 조건은 같은 줄이면 그대로 이어받습니다.</p>
-      <input ref={input} type="file" accept=".docx,.pdf" multiple hidden onChange={pick} aria-label="더할 docx 파일" />
+      <input ref={input} type="file" accept=".docx,.pdf" multiple hidden onChange={pick} aria-label="추가할 파일 (docx·PDF)" />
       <button type="button" className="bo" onClick={() => input.current?.click()} disabled={busy}>
         <span className="ms" aria-hidden="true" style={{ fontSize: 'var(--ic-s)' }}>note_add</span>docx·PDF 고르기</button>
       {files.length > 0 && (
@@ -145,7 +145,7 @@ export function DocumentsDialog({ run, docs, onClose, onAdded }: {
               ))}
             </tbody>
           </table></div>
-          <p className="aphint" style={{ color: 'var(--c-muted)' }}>판정은 묶음 A·B 문서만 합니다(CR-09). 분석한 문서의 종류·묶음은 이 창에서 고칠 수 없습니다.</p>
+          <p className="aphint" style={{ color: 'var(--c-muted)' }}>판정은 판정 대상(묶음 A·B) 문서에만 합니다. 분석한 문서의 종류·묶음은 이 창에서 고칠 수 없습니다.</p>
           {canAdd && <AddDocuments run={run} docs={docs} onAdded={() => { onClose(); onAdded?.() }} />}
         </div>
         <div className="mdf">

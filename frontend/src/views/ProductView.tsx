@@ -54,14 +54,14 @@ export function ProductView({ code }: { code: string }) {
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           {back}
-          <span title="제품표는 읽기 전용입니다 (data/seed를 고쳐 다시 적재)"><button type="button" className="bp" disabled>
+          <span title="제품표는 읽기 전용입니다"><button type="button" className="bp" disabled>
             <span className="ms" aria-hidden="true" style={{ fontSize: 'var(--ic-s)' }}>lock</span>수정 요청</button></span>
         </div>
       </div>
       <div className="hc3">
         <section aria-label="제품"><h3>제품</h3><dl>
           <div><dt>제품군</dt><dd>{fam}</dd></div><div><dt>정격 전압</dt><dd>{kv.state === 'na' ? '—' : `${kv.text} kV`}</dd></div>
-          <div><dt>값 종류</dt><dd>{valueKind(p)}</dd></div><div><dt>갱신</dt><dd>제품표 적재 판</dd></div></dl></section>
+          <div><dt>값 종류</dt><dd>{valueKind(p)}</dd></div><div><dt>갱신</dt><dd>현재 제품표</dd></div></dl></section>
         <section aria-label="근거 상태"><h3>근거 상태</h3><div className="kv3">
           <div><span>팀 가정</span><b className="c-blue">{assumedCount(p)}</b></div><div><span>빈칸</span><b className="c-ora">{p.empty_count}</b></div></div></section>
         <section aria-label="쓰임"><h3>쓰임</h3><div className="kv3">
@@ -69,7 +69,7 @@ export function ProductView({ code }: { code: string }) {
           <div><span>제안 포인트</span><b className="c-green">{p.proposals.length}</b></div></div>
           {blocks.slice(0, 3).map((b) => <div key={b.judgment_id} className="qv-b" style={{ marginTop: 8 }}>
             <span><b>{b.item_name}</b> — <a href={href(`/reviews/${b.run_id}/judgments/${b.judgment_id}`)}>{b.review_no}</a> 확인 필요</span>
-            <span title="값 요청은 제품표 담당 기능이 없어 잠겨 있습니다"><button type="button" className="bo" disabled>값 요청</button></span></div>)}
+            <span title="값 요청 기능은 준비 중입니다"><button type="button" className="bo" disabled>값 요청</button></span></div>)}
         </section>
       </div>
       <div className="pmw pvw">
@@ -84,7 +84,7 @@ export function ProductView({ code }: { code: string }) {
               {TABS.map(([k, l]) => <button key={k} type="button" role="tab" className={tab === k ? 'on' : ''} aria-selected={tab === k} onClick={() => setTab(k)}>{l}</button>)}
             </div>
             <div className="pinfo">
-              <div className="upd"><span className="ms" aria-hidden="true" style={{ fontSize: 15 }}>update</span>지금 DB에 적재된 제품표 판</div>
+              <div className="upd"><span className="ms" aria-hidden="true" style={{ fontSize: 15 }}>update</span>현재 제품표 기준</div>
               {tab === 'spec' && <>
                 <table className="tbl">
                   <thead><tr><th>항목</th><th style={{ textAlign: 'right' }}>값</th><th>비교 방향</th><th>근거</th></tr></thead>
@@ -96,7 +96,7 @@ export function ProductView({ code }: { code: string }) {
                       <td className="en" style={{ margin: 0 }}>{strength(c, its)}</td>
                       <td><span className={x.state === 'assume' ? 'c-blue' : x.state === 'empty' ? 'c-ora' : ''}>
                         {x.state === 'assume' ? '팀 가정' : x.state === 'empty' ? '비어 있음 · 판정 때 확인 필요' : '카탈로그'}</span>
-                        <div className="en" style={{ margin: 0 }}>{x.state === 'assume' ? p.comparison_values_source ?? '팀 합성' : p.source_doc}</div></td></tr>
+                        <div className="en" style={{ margin: 0 }}>{x.state === 'assume' ? p.comparison_values_source ?? '팀 가정' : p.source_doc}</div></td></tr>
                   })}</tbody>
                 </table>
                 <div className="pnote">판정에 쓰인 판정 {p.used}줄 · 검토 {p.used_runs}건. 값이 없는 칸은 판정에서 "확인 필요"가 됩니다.</div>

@@ -73,7 +73,7 @@ test('머리글에서 고치기', async ({ page, request }) => {
 
 test('검토 등록 화면으로 시작', async ({ page }) => {
   await page.goto('/#/register')
-  await page.getByLabel('docx 올리기').setInputFiles(fileURLToPath(DOCX))
+  await page.getByLabel('파일 올리기').setInputFiles(fileURLToPath(DOCX))
   await expect(page.getByText('올릴 준비')).toBeVisible()
   // 문서 목록에 없는 문서라 묶음을 B로 정해야 다음으로 간다 (reject-unjudged-registration)
   await page.locator('tr', { hasText: 'synthetic_154kV_GIS_spec.docx' }).getByLabel('묶음').selectOption('B')

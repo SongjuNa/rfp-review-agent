@@ -11,7 +11,7 @@ test('실행 기록 보기', async ({ page, request }) => {
   await expect(page.locator('.kpis')).toContainText('추정 · 팀 가정')
   const row = page.locator('tr', { hasText: run.review_no })
   await expect(row).toContainText('담당자 확인')
-  await expect(row).toContainText('규칙만')                         // 로컬은 AI 키 없이 돈다
+  await expect(row).toContainText('규칙 기반')                         // 로컬은 AI 키 없이 돈다
   await row.click()
   const steps = page.locator('.rlopen')
   await expect(steps).toContainText('처음 처리')

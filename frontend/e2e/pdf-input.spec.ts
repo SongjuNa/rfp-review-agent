@@ -8,7 +8,7 @@ const isoAfter = (days: number) => new Date(Date.now() + days * 86_400_000).toIS
 
 test('PDF로 검토 등록', async ({ page, request }) => {
   await page.goto('/#/register')
-  await page.getByLabel('docx 올리기').setInputFiles(fileURLToPath(PDF))
+  await page.getByLabel('파일 올리기').setInputFiles(fileURLToPath(PDF))
   const row = page.locator('tr', { hasText: 'synthetic_judgment.pdf' })
   await expect(row.getByLabel('묶음')).toHaveValue('A', { timeout: 10_000 })    // 분류 추천에 PDF가 보임
   await expect(row).toContainText('판정 대상')

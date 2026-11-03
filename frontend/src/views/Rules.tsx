@@ -70,7 +70,7 @@ function nameTab(items: ItemKey[]): Tab {
     used: items.reduce((a, r) => a + r.used, 0),
     rows: items.map((r) => ({
       key: `name:${r.item_key}`, search: [r.name_ko, r.item_key, ...r.aliases].join(' '),
-      cells: [{ v: r.name_ko }, { v: r.aliases.length ? r.aliases.join(', ') : '같은 뜻 표현 없음', cls: r.aliases.length ? '' : 'c-grey' },
+      cells: [{ v: r.name_ko }, { v: r.aliases.length ? r.aliases.join(', ') : '동의어 없음', cls: r.aliases.length ? '' : 'c-grey' },
         { v: r.pm_column ?? (r.fixed_key ? `고정값 ${r.fixed_key}` : '—'), cls: 'mono' }, { v: dir(r.default_direction) }, usedCell(r.used)],
       detail: [['표준 항목 키', r.item_key], ['강점 방향', strength(r.strength_direction)], ['메모', r.note ?? '—']],
       id: r.item_key, title: r.name_ko, rkey: { item_key: r.item_key },
@@ -222,7 +222,7 @@ export function Rules() {
 }
 
 function RowHistory({ edits }: { edits: RuleEdit[] }) {
-  if (!edits.length) return <ul><li>고친 적 없음 (기준 데이터 적재본 그대로)</li></ul>
+  if (!edits.length) return <ul><li>수정 이력 없음 (초기 규칙)</li></ul>
   return (
     <ul className="rhist">
       {edits.map((e) => (
@@ -250,7 +250,7 @@ function ItemLinks({ items, error, canEdit, lockText, onDone }: {
     setBusy(true)
     setFail(null)
     ;(accept ? api.acceptItem(x.candidate_id, user.user_id) : api.hideItem(x.candidate_id, user.user_id))
-      .then(() => { setDone(accept ? `“${x.text_raw}”을(를) ${x.target}의 같은 뜻 표현에 넣었습니다. 다음 분석부터 판정에 쓰입니다.` : `“${x.text_raw}” 후보를 숨겼습니다.`); onDone() },
+      .then(() => { setDone(accept ? `“${x.text_raw}”을(를) ${x.target}의 동의어로 추가했습니다. 다음 분석부터 판정에 쓰입니다.` : `“${x.text_raw}” 후보를 숨겼습니다.`); onDone() },
         (e: Error) => setFail(e.message))
       .finally(() => setBusy(false))
   }
@@ -258,14 +258,14 @@ function ItemLinks({ items, error, canEdit, lockText, onDone }: {
     <section className="rkp" aria-labelledby="ilT" style={{ marginTop: 16 }}>
       <div className="rkp-h"><h2 id="ilT">항목 이름 · 연결 후보{items.length > 0 && <span className="st c-blue" style={{ marginLeft: 8 }}>{items.length}</span>}</h2>
         <span>판정 대상 데이터시트에서 사전에 없어 판정하지 못한 항목 이름을, 항목 표현과 뜻으로 비교했습니다. 가장 가까운 항목이 0.85 이상이고 둘째보다 0.03 앞설 때만 보입니다.</span></div>
-      {items.length === 0 && <div className="rkp-r"><span className="c-grey">연결 후보가 없습니다. 언어 모델로 분석한 검토에서 만들어집니다.</span></div>}
+      {items.length === 0 && <div className="rkp-r"><span className="c-grey">연결 후보가 없습니다. AI를 사용한 분석에서만 만들어집니다.</span></div>}
       {items.map((x) => (
         <div key={x.candidate_id} className="rkp-r sg" data-testid="item-link">
           <span className="mono">{x.score.toFixed(2)}</span>
           <b>“{x.text_raw}”</b>
           <span>→ <b className="mono">{x.target}</b> (가까운 표현 “{x.near_text}”{x.second_target ? ` · 둘째 ${x.second_target} ${x.second_score?.toFixed(2)}` : ''}) · <a href={`#/reviews/${x.run_id}`}>{x.review_no}</a> · {locationText(x.locations[0])}</span>
           <span style={{ display: 'flex', gap: 6, alignItems: 'center' }} title={canEdit ? undefined : lockText}>
-            <button type="button" className="bo" disabled={!canEdit || busy} onClick={() => act(x, true)}>같은 뜻 표현으로 추가</button>
+            <button type="button" className="bo" disabled={!canEdit || busy} onClick={() => act(x, true)}>동의어로 추가</button>
             <button type="button" className="bo" disabled={!canEdit || busy} onClick={() => act(x, false)}>숨기기</button>
           </span>
         </div>

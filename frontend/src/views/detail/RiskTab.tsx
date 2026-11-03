@@ -18,7 +18,7 @@ const TONES: Record<string, string> = { CANDIDATE: 'c-ora', CONFIRMED: 'c-red', 
 // 언어 모델 설명이 없을 때 쓰는 종류별 한 줄
 // 근거 대조에서 AI 설명을 버린 이유 (update-ai-answer-checks)
 const DROP_REASONS: Record<string, string> = {
-  UNKNOWN_EVIDENCE: '없는 근거 ID',
+  UNKNOWN_EVIDENCE: '근거 위치 불일치',
   QUOTE_NOT_FOUND: '근거에 없는 인용',
   NUMBER_NOT_ALLOWED: '근거에 없는 숫자',
   FORMAT_ERROR: '형식 오류',
@@ -217,17 +217,17 @@ function Found({ run, docs }: { run: RunSummary; docs: RunDocument[] }) {
       })}
       {list.data?.length === 0 && <div className="rk-r"><div><span>아직 제안한 표현이 없습니다.</span></div></div>}
       <div className="rk-h" data-testid="meaning-head"><b>사전 추가 후보 {near.data?.items.length ?? 0}</b>
-        <span>{near.data?.status === 'NO_AI' ? '언어 모델 없이 분석해 뜻 찾기를 하지 않았습니다.'
-          : near.data?.status === 'SKIPPED' ? '뜻 찾기 요청이 실패해 건너뛰었습니다. 위험 조건 탐지(사전)는 그대로입니다.'
-          : near.data?.status == null ? '이 검토는 뜻 찾기 전에 분석했습니다.'
+        <span>{near.data?.status === 'NO_AI' ? 'AI 없이 분석해 유사 문장 검색을 하지 않았습니다.'
+          : near.data?.status === 'SKIPPED' ? '유사 문장 검색에 실패해 건너뛰었습니다. 사전 기반 위험 조건 탐지 결과는 그대로입니다.'
+          : near.data?.status == null ? '유사 문장 검색 기능 도입 전에 분석한 검토입니다.'
           : '사전에 걸리지 않은 문장 중 위에서 잡힌 문장·사전 표현과 뜻이 가까운 문장입니다. 위험 조건이 아니라 사전에 넣을지 볼 후보입니다.'}</span></div>
       {(near.data?.items ?? []).map((c) => (
         <div key={c.candidate_id} className="rk-r" data-testid="meaning-candidate">
           <div><b>“{c.text_raw}”</b>
-            <span>{locShort(c, docs)} · 가까운 {c.target ? `${RISK_NAMES[c.target] ?? c.target} ` : ''}“{c.near_text}” · 뜻 비슷 {c.score.toFixed(2)}</span></div>
+            <span>{locShort(c, docs)} · 유사 {c.target ? `${RISK_NAMES[c.target] ?? c.target} ` : ''}“{c.near_text}” · 유사도 {c.score.toFixed(2)}</span></div>
           <button type="button" className="bo" disabled={!canSuggest || busy}
             title={canSuggest ? '아래 제안 칸에 이 문장을 채웁니다. 표현만 남기고 줄여서 제안하세요.' : '엔지니어만 제안할 수 있습니다'}
-            onClick={() => fill(c.text_raw.slice(0, 100), `뜻이 비슷한 문장 (점수 ${c.score.toFixed(2)})`)}>사전 추가 제안</button>
+            onClick={() => fill(c.text_raw.slice(0, 100), `유사 문장 (유사도 ${c.score.toFixed(2)})`)}>사전 추가 제안</button>
         </div>
       ))}
       <div className={'rk-f' + (flash ? ' on' : '')}>

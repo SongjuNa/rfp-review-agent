@@ -21,7 +21,7 @@ export function SummaryBox({ load, label }: { load: () => Promise<ScreenSummary>
   const fetch = useCallback((loud: boolean) => {
     const mine = ++seq.current
     load().then((d) => {
-      if (!Array.isArray(d?.sentences)) throw new Error('요약 응답 모양이 다릅니다')   // 문장 없는 응답은 실패로 보인다
+      if (!Array.isArray(d?.sentences)) throw new Error('요약을 불러오지 못했습니다')   // 문장 없는 응답은 실패로 보인다
       return d
     }).then((d) => { if (mine === seq.current) { setData(d); setFailed(false); setBusy(false); if (loud) setRound((r) => r + 1) } },
       () => { if (mine === seq.current) { setFailed(true); setBusy(false) } })
@@ -32,7 +32,7 @@ export function SummaryBox({ load, label }: { load: () => Promise<ScreenSummary>
     <section className="ais" aria-label={label} aria-live="polite" aria-busy={busy}>
       <span className="ais-ic" aria-hidden="true"><span className="ms">summarize</span></span>
       <div className="ais-b">
-        <div className="ais-h"><b>요약</b><span className="ais-tag" title="코드가 정해진 틀에 숫자·이름·날짜를 채운 문장입니다 (AI 없음)">코드가 씀</span>
+        <div className="ais-h"><b>요약</b><span className="ais-tag" title="시스템이 정해진 양식으로 만든 요약입니다 (AI 미사용)">자동 요약</span>
           {data && !failed && <span className="ais-t">{hhmm(data.made_at)} 요약</span>}
           {data?.meta && !failed && <span className="ais-m">· {data.meta}</span>}
           <button type="button" onClick={again} disabled={busy}><span className="ms" aria-hidden="true">refresh</span>다시 요약</button></div>

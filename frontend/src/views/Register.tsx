@@ -212,8 +212,8 @@ export function Register({ businessId = null }: { businessId?: number | null }) 
           <p className="sub2">입찰 안내서, 기술 명세서, 가격표를 함께 올리면 정보를 더 많이 채울 수 있습니다.</p>
           <label className="drop2" onDragOver={(e) => e.preventDefault()} onDrop={onDrop}>
             <span className="ms" aria-hidden="true">upload_file</span><b>docx·PDF 파일을 끌어다 놓거나 눌러서 고르기</b>
-            <span>여러 개 가능 · 스캔한 문서의 글자는 읽지 않음</span>
-            <input type="file" multiple accept=".docx,.pdf" aria-label="docx 올리기"
+            <span>여러 개 가능 · docx·PDF, 스캔 문서는 글자 인식(OCR)으로 읽음</span>
+            <input type="file" multiple accept=".docx,.pdf" aria-label="파일 올리기"
               onChange={(e) => { addFiles(e.target.files); e.target.value = '' }} />
           </label>
           {(library.data?.length ?? 0) > 0 && (
