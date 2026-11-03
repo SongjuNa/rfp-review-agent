@@ -219,7 +219,7 @@ test('목록 내가 처리할 건은 홈과 같은 수', async ({ page }) => {
   await page.goto('/#/')
   await expect(page.locator('.qsum button', { hasText: '내가 처리할 건' }).locator('b')).toHaveText('2')
   await page.goto('/#/reviews')
-  const cell = page.locator('.sumline span', { hasText: '내가 처리할 건' })
+  const cell = page.locator('.sumline button', { hasText: '내가 처리할 건' })
   await expect(cell.locator('b')).toHaveText('2')
   await expect(cell).toHaveAttribute('title', /반려됨/)
   await page.getByRole('group', { name: '담당 범위' }).getByRole('button', { name: '팀 전체' }).click()
@@ -264,4 +264,43 @@ test('요약 줄 결재 완료·분석 중', async ({ page }) => {
   await expect(num('분석 중')).toHaveText('1')
   await expect(page.locator('.sech h2')).toContainText('6')
   await expect(line.locator('.sumrest', { hasText: '결재 완료' })).toHaveAttribute('title', /결재가 승인/)
+})
+
+// 명세 review-workspace "요약 줄 칸으로 거르기" (change update-list-summary-filter)
+const SUM_LIST = () => [
+  run(9701, '확인 1'), run(9702, '확인 2'), run(9703, '결재 중', { stage: 'APPROVAL', approver_id: 2 }),
+  run(9704, '완료 1', { stage: 'APPROVED' }), run(9705, '완료 2', { stage: 'APPROVED' }),
+]
+
+test('검토 목록 요약 칸으로 거르기', async ({ page }) => {
+  await mock(page, SUM_LIST())
+  await page.goto('/#/reviews')
+  const rows = page.locator('table.tbl tbody tr')
+  await expect(rows).toHaveCount(5)
+  const done = page.locator('.sumline').getByRole('button', { name: /결재 완료/ })
+  await done.click()
+  await expect(page).toHaveURL(/#\/reviews\?sum=approved$/)
+  await expect(rows).toHaveCount(2)
+  await expect(page.locator('.sumbar')).toContainText('결재 완료 2건만 보는 중')
+  await expect(done).toHaveAttribute('aria-pressed', 'true')
+  for (const [label, n] of [['내가 처리할 건', 2], ['결재 대기', 1]] as const) {     // 다른 칸도 거른다
+    await page.locator('.sumline').getByRole('button', { name: new RegExp(label) }).click()
+    await expect(rows).toHaveCount(n)
+  }
+  await page.locator('.sumline').getByRole('button', { name: /결재 대기/ }).click()   // 다시 누르면 풂
+  await expect(rows).toHaveCount(5)
+  await expect(page.locator('.sumbar')).toHaveCount(0)
+})
+
+test('뒤로 가기로 전체 목록', async ({ page }) => {
+  await mock(page, SUM_LIST())
+  await page.goto('/#/reviews')
+  const rows = page.locator('table.tbl tbody tr')
+  await expect(rows).toHaveCount(5)
+  await page.locator('.sumline').getByRole('button', { name: /내가 처리할 건/ }).click()
+  await expect(rows).toHaveCount(2)
+  await page.goBack()
+  await expect(page).toHaveURL(/#\/reviews$/)
+  await expect(rows).toHaveCount(5)
+  await expect(page.locator('.sumbar')).toHaveCount(0)
 })
