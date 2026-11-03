@@ -48,7 +48,7 @@ function documentShare(d: StepDetail | null): number {
 export function stepText(run: Progressing): string {
   const d = run.step_detail
   if (run.step === 'documents' && d) {
-    const count = d.total ? ` ${(d.done ?? 0).toLocaleString('ko-KR')} / ${d.total.toLocaleString('ko-KR')}줄` : ''
+    const count = d.total ? ` ${(d.done ?? 0).toLocaleString('ko-KR')} / ${d.total.toLocaleString('ko-KR')}건` : ''
     const file = d.file_count > 1 ? ` · 파일 ${d.file_index} / ${d.file_count}` : ''
     return `${PARTS[d.part][2]}${count}${file}`
   }

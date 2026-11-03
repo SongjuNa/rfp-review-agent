@@ -69,7 +69,7 @@ test('오늘 할 일 순서', async ({ page }) => {
   await expect(items).toHaveCount(2)
   await expect(items.first()).toContainText('RV-TEST-9403')
   await expect(items.first()).toContainText(`상신 권장 ${md(after(1))} (D-1)`)
-  await expect(items.first()).toContainText('확인 필요 3줄')
+  await expect(items.first()).toContainText('확인 필요 3건')
   await expect(items.first().getByRole('link', { name: '판정 확인' })).toHaveAttribute('href', '#/reviews/9403')
   await expect(items.nth(1)).toContainText('RV-TEST-9406')
   // "내가 처리할 건" 수는 내 차례인 검토 수와 같다

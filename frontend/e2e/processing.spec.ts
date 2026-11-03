@@ -44,11 +44,11 @@ test('유형 붙이기 진행', async ({ page, request }) => {
   await as(page, ENGINEER)
   await page.goto(`/#/reviews/${run.run_id}`)
   const bar = page.getByRole('progressbar', { name: 'RFP 분석' })
-  await expect(page.locator('.ldtx').first()).toContainText('AI로 유형 붙이는 중 0 / 3,397줄')
+  await expect(page.locator('.ldtx').first()).toContainText('AI로 유형 붙이는 중 0 / 3,397건')
   const zero = Number(await bar.getAttribute('aria-valuenow'))
 
   done = 480                                   // 화면이 2초마다 다시 부르면 바뀐 진행이 보인다
-  await expect(page.locator('.ldtx').first()).toContainText('AI로 유형 붙이는 중 480 / 3,397줄')
+  await expect(page.locator('.ldtx').first()).toContainText('AI로 유형 붙이는 중 480 / 3,397건')
   await expect(page.locator('.ldtime')).toContainText('지난 시간')
   expect(Number(await bar.getAttribute('aria-valuenow'))).toBeGreaterThan(zero)
   await expect(page.getByText('10분 넘게 진행이 없습니다')).toHaveCount(0)

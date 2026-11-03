@@ -33,7 +33,7 @@ export function historyText(l: LogEntry): string {
       return l.action === 'CONFIRM' ? `${list} 문장 ${name} 확정` : l.action === 'REJECT' ? `${list}에서 ${name} 뺌` : `${list} 문장 ${name} 고침`
     }
     case 'proposal_point':
-      return l.action === 'ADOPT' ? `제안 포인트 ${name} 채택` : l.action === 'DISCARD' ? `제안 포인트 ${name} 버림` : `제안 포인트 ${name} 문장 고침`
+      return l.action === 'ADOPT' ? `제안 포인트 ${name} 채택` : l.action === 'DISCARD' ? `제안 포인트 ${name} 제외` : `제안 포인트 ${name} 문장 고침`
     case 'loss_calc':
       return `손실값 고침 (무부하 ${kw(a.loss_noload_kw)} · 부하 ${kw(a.loss_load_kw)} · 보조 ${kw(a.loss_aux_kw)} kW)`
     case 'read_check':
@@ -43,8 +43,8 @@ export function historyText(l: LogEntry): string {
       // 협조 요청 메일 (update-role-handoff-mail): 보낸 기록과 회신 기록
       const dept = ROLE_NAMES[String(a.dept)] ?? '담당'
       if (l.action === 'SEND') return `협조 요청 메일 보냄: ${dept} ${v(a.mail_to)} (${kw(a.count)}건)`
-      if (l.action === 'REPLY') return `협조 요청 회신 받음 표시${a.reply_note ? `: ${String(a.reply_note)}` : ''}`
-      return '협조 요청 회신 받음 표시 되돌림'
+      if (l.action === 'REPLY') return `협조 요청 회신 완료${a.reply_note ? `: ${String(a.reply_note)}` : ''}`
+      return '협조 요청 회신 완료 취소'
     }
     case 'sales_handoff': {
       // 영업 인계 (add-submission-package)

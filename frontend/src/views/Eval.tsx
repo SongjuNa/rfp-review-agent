@@ -92,7 +92,7 @@ export function Eval() {
       <div className="sh-note"><span className="ms" aria-hidden="true">info</span><span>점수는 시스템이 자동으로 계산합니다. 판정 정확도(K5·K6)는 엔지니어가 <b>확정·수정한 줄</b>을 정답으로 보고, 유형 분류 정확도(K13)는 고른 유형 정답지로, 추출 재현율·정확도(K1·K2)·값(K3)·위험 조건 재현율(K10)은 고른 요구사항 정답지로 잽니다. 지난 검토의 사람 판정은 새 검토의 판정을 자동으로 바꾸지 않으며, 사람 검토를 건너뛰는 자동 확정은 하지 않습니다.</span></div>
       {error && <div className="sh-note c-red" role="alert"><span className="ms" aria-hidden="true">error</span><span>{error}</span></div>}
       <div className="sh-sum">
-        <span>정답지<b>{key ? `${key.rows.toLocaleString('en-US')}줄` : '없음'}</b></span><span>검토<b>{picked.length}건</b></span>
+        <span>정답지<b>{key ? `${key.rows.toLocaleString('en-US')}건` : '없음'}</b></span><span>검토<b>{picked.length}건</b></span>
         <span>마지막 채점<b>{latest ? stamp(latest.scored_at) : '—'}</b></span>
         <span>목표 달성<b className="c-green">{latest ? `${measured.filter((r) => r.m.passed).length} / ${measured.length}` : '—'}</b></span>
         <span>지난번보다 좋아짐<b className="c-blue">{previous ? better : '—'}</b></span>
@@ -134,7 +134,7 @@ export function Eval() {
               <label key={r.run_id} className="gt-tr ev-row"><input type="checkbox" checked={isOn(r)} onChange={() => setPick({ ...pick, [r.run_id]: !isOn(r) })} />
                 <span><b>{r.review_name ?? r.review_no}</b><a className="mono sh-mut" style={{ display: 'block' }} href={href(`/reviews/${r.run_id}`)} onClick={(e) => e.stopPropagation()}>{r.review_no}</a></span>
                 <span className="sh-mut">{r.reviewer ?? '—'}</span>
-                <span className="mono sh-mut">{r.last_reviewed_at ? stamp(r.last_reviewed_at) : '—'}</span><span className="mono">{r.reviewed}줄{r.reviewed === 0 && <span className="sh-mut" style={{ display: 'block', fontFamily: 'inherit' }}>요구사항 정답지용</span>}</span></label>
+                <span className="mono sh-mut">{r.last_reviewed_at ? stamp(r.last_reviewed_at) : '—'}</span><span className="mono">{r.reviewed}건{r.reviewed === 0 && <span className="sh-mut" style={{ display: 'block', fontFamily: 'inherit' }}>요구사항 정답지용</span>}</span></label>
             ))}
           </div>
           <h3 style={{ margin: '24px 0 8px' }}>유형 정답지</h3>
@@ -146,7 +146,7 @@ export function Eval() {
               <label key={k.key_id} className="gt-tr ev-row"><input type="radio" name="answer-key" checked={chosenKey === k.key_id} onChange={() => setKeyId(k.key_id)} />
                 <span><b>{k.key_name}</b><DraftTag k={k} />{k.ambiguous > 0 && <span className="sh-mut" style={{ display: 'block' }}>애매한 줄 {k.ambiguous}개는 따로 셉니다</span>}</span>
                 <span className="mono sh-mut">{k.human_checked} / {k.rows}</span>
-                <span className="mono sh-mut">{stamp(k.created_at)}</span><span className="mono">{k.rows}줄</span></label>
+                <span className="mono sh-mut">{stamp(k.created_at)}</span><span className="mono">{k.rows}건</span></label>
             ))}
           </div>
           <h3 style={{ margin: '24px 0 8px' }}>요구사항 정답지</h3>
@@ -158,12 +158,12 @@ export function Eval() {
               <label key={k.key_id} className="gt-tr ev-row" data-key={k.key_name}><input type="radio" name="req-key" checked={reqKeyId === k.key_id} onChange={() => setReqKeyId(k.key_id)} />
                 <span><b>{k.key_name}</b><DraftTag k={k} /></span>
                 <span className="sh-mut">{k.doc_name ?? '검토의 모든 문서'}</span>
-                <span className="mono sh-mut">{stamp(k.created_at)}</span><span className="mono">{k.rows}줄</span></label>
+                <span className="mono sh-mut">{stamp(k.created_at)}</span><span className="mono">{k.rows}건</span></label>
             ))}
           </div>
           <label className="sh-note" style={{ display: 'flex', gap: 8, alignItems: 'center' }}><span className="ms" aria-hidden="true">edit_note</span>
             <span style={{ whiteSpace: 'nowrap' }}>무엇을 고쳤나</span>
-            <input type="text" value={note} maxLength={500} onChange={(e) => setNote(e.target.value)} placeholder="예: 비교 방향 사전 3줄 고침 (채점 기록에 남습니다)" style={{ flex: 1 }} aria-label="무엇을 고쳤나" /></label>
+            <input type="text" value={note} maxLength={500} onChange={(e) => setNote(e.target.value)} placeholder="예: 비교 방향 규칙 3건 수정 (채점 기록에 남습니다)" style={{ flex: 1 }} aria-label="무엇을 고쳤나" /></label>
           <div className="sh-note"><span className="ms" aria-hidden="true">upload_file</span><span>정답지 등록은 시스템 담당자에게 요청하세요. AI 초안·자동 생성 정답지는 담당자가 검수한 항목만 검수 완료로 셉니다.</span></div>
         </>
       )}

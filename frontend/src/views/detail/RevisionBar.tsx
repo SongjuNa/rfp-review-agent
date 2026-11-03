@@ -26,7 +26,7 @@ export function RevisionBar({ runId, revision, only, onToggle }: { runId: number
       <span className="ms" aria-hidden="true">published_with_changes</span>
       <span><b>문서 추가 반영</b> · {revision.files.join(', ') || '추가 문서'} · {revisionText(revision)} · {stamp(revision.at)}</span>
       <span style={{ flex: '1 1 0' }} />
-      {(some || only) && <button type="button" className={'bo' + (only ? ' on' : '')} aria-pressed={only} onClick={onToggle}>{only ? '모든 줄 보기' : '바뀐 줄만 보기'}</button>}
+      {(some || only) && <button type="button" className={'bo' + (only ? ' on' : '')} aria-pressed={only} onClick={onToggle}>{only ? '모든 항목 보기' : '변경 항목만 보기'}</button>}
       {!only && <button type="button" className="ib" aria-label="개정 안내 닫기" title="닫기" onClick={close}><span className="ms" aria-hidden="true">close</span></button>}
     </div>
   )

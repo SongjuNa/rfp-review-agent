@@ -260,7 +260,7 @@ function Detail({ runId, stage, j, docs, pos, total, onPrev, onNext, editing, se
         <div className="mdf">
           <span className="mdf-n">↑↓ 이전·다음 판정 · Esc 목록으로</span>
           {error && <span className="c-red" role="alert">{error}</span>}
-          <Button onClick={() => setEditing(true)} disabledReason={lock}>판정 바꾸기</Button>
+          <Button onClick={() => setEditing(true)} disabledReason={lock}>판정 변경</Button>
           <Button kind="primary" onClick={confirm} busy={busy} disabledReason={lock ?? (conf ? '이미 확정한 판정입니다' : null)}>{conf ? '확정함' : '제안대로 확정'}</Button>
         </div>
       </div>
@@ -297,7 +297,7 @@ function SourceLines({ runId, loc, needle }: { runId: number; loc: Location; nee
         const [a, m, b] = hit ? markSplit(l.text, needle) : [l.text, '', '']
         return <div key={l.line_no} className={hit ? 'pl hitl' : 'pl'}><span className="lno">{l.line_no}</span><span className="ltx">{a}{m && <mark>{m}</mark>}{b}</span></div>
       })}
-      {lines.data.partial && <p className="en" role="note">원문 파일이 없어 저장된 줄만 보입니다.</p>}
+      {lines.data.partial && <p className="en" role="note">원문 파일이 없어 추출된 문장만 표시합니다.</p>}
     </>
   )
 }
@@ -318,7 +318,7 @@ function EditDialog({ runId, j, onClose, onDone }: { runId: number; j: Judgment;
       .finally(() => setBusy(false))
   }
   return (
-    <Modal title="판정 바꾸기" onClose={onClose} footer={<>
+    <Modal title="판정 변경" onClose={onClose} footer={<>
       <Button onClick={onClose}>닫기</Button>
       <Button kind="primary" onClick={apply} busy={busy} disabledReason={k === j.result ? '지금 판정과 같습니다' : null}>{busy ? '적용 중…' : '적용'}</Button>
     </>}>

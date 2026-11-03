@@ -40,7 +40,7 @@ test('같은 고객사 지난 검토와 비교', async ({ page, request }) => {
   await expect(cmp.getByRole('button', { name: /새로 생김/ })).toHaveAttribute('aria-pressed', 'true')
   await expect(rows).toHaveCount(1)
   await expect(rows).toContainText('125 kA')
-  await expect(cmp.locator('.cmfoot')).toHaveText(/같은 요구 \d+줄은 값과 판정이 지난번과 같아 숨겼습니다\./)
+  await expect(cmp.locator('.cmfoot')).toHaveText(/같은 요구 \d+건은 값과 판정이 지난번과 같아 숨겼습니다\./)
 })
 
 test('고객사 없음 안내', async ({ page, request }) => {

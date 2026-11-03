@@ -41,7 +41,7 @@ export function ReviewInfoDialog({ run, onClose, onSaved }: { run: RunSummary; o
         <div className="mdh">
           <div style={{ flex: '1 1 auto', minWidth: 0 }}>
             <div className="apid">{run.review_no} · {reviewTitle(run)}</div>
-            <h2 id="infoTitle" style={{ margin: '2px 0 0', fontSize: 'var(--fs-h3)' }}>검토 정보 고치기</h2>
+            <h2 id="infoTitle" style={{ margin: '2px 0 0', fontSize: 'var(--fs-h3)' }}>검토 정보 수정</h2>
           </div>
           <button type="button" className="ib" onClick={onClose} aria-label="닫기" title="닫기 (Esc)"><span className="ms" aria-hidden="true">close</span></button>
         </div>

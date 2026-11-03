@@ -50,7 +50,7 @@ export const FLOW_COUNT_NAMES: Record<string, string> = {
 export const PIPELINE_STEPS = ['documents', 'pairs', 'risks', 'judge', 'meaning', 'check', 'warranty', 'loss', 'outputs', 'proposals', 'assign']
 export const STATUS_NAMES: Record<string, string> = {
   CANDIDATE: '후보', CONFIRMED: '확정', EDITED: '수정함', REJECTED: '반려', EMPTY_REVIEW: '확인 필요',
-  DRAFT: '초안', REMOVED: '뺌', ADOPTED: '채택', DISCARDED: '버림', CLOSED_OK: '문제 없음',
+  DRAFT: '초안', REMOVED: '제외', ADOPTED: '채택', DISCARDED: '제외', CLOSED_OK: '문제 없음',
 }
 export const POINT_KIND_NAMES: Record<string, string> = {
   MARGIN: '여유', LOSS: '손실 환산', FIELD: '현장 이력',

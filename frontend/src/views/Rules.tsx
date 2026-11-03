@@ -227,7 +227,7 @@ function RowHistory({ edits }: { edits: RuleEdit[] }) {
     <ul className="rhist">
       {edits.map((e) => (
         <li key={e.edit_id} className={e.discarded_at ? 'rdis' : ''}>
-          <b>{ACTIONS[e.action]}</b> {e.reason} <span className="rwho">· {e.actor_name} · {when(e.edited_at)}{e.discarded_at ? ' · 버림' : ''}</span>
+          <b>{ACTIONS[e.action]}</b> {e.reason} <span className="rwho">· {e.actor_name} · {when(e.edited_at)}{e.discarded_at ? ' · 제외' : ''}</span>
           {changed(e) && <div className="rwho mono">{changed(e)}</div>}
         </li>
       ))}

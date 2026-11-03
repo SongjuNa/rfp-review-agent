@@ -11,8 +11,8 @@ export const SKIP_REASONS = [['CHECK', '검산'], ['MISMATCH', '숫자 불일치
 export function bulkMessage(out: BulkResult): string {
   const left = SKIP_REASONS.map(([k, name]) => [name, out.skipped.filter((x) => x.reason === k).length] as const)
     .filter(([, n]) => n).map(([name, n]) => `${name} ${n}`).join(' · ')
-  return `판정 ${out.confirmed}줄을 제안대로 확정했습니다.` +
-    (out.skipped.length ? ` ${out.skipped.length}줄은 뺐습니다(${left}). 한 줄씩 확인해 확정하세요.` : '')
+  return `판정 ${out.confirmed}건을 일괄 확정했습니다.` +
+    (out.skipped.length ? ` ${out.skipped.length}건은 제외했습니다(${left}). 개별 확인 후 확정하세요.` : '')
 }
 
 /** 확정하지 않은 준수 판정 id를 쪽마다 모두 모은다 */

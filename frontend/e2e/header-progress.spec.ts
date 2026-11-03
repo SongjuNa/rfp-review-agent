@@ -26,7 +26,7 @@ test('머리글 분석 진행 표시', async ({ page }) => {
   await btn.click()
   const pop = page.getByRole('dialog', { name: '분석 진행' })
   await expect(pop).toContainText('RV-TEST-01')
-  await expect(pop).toContainText('AI로 유형 붙이는 중 480 / 3,397줄')
+  await expect(pop).toContainText('AI로 유형 붙이는 중 480 / 3,397건')
   await expect(pop.getByRole('progressbar', { name: 'RV-TEST-01 진행' })).toBeVisible()
   await expect(pop.getByRole('link', { name: '진행 보기' })).toHaveAttribute('href', '#/reviews/9001')
 })

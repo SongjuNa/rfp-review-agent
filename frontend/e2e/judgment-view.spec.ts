@@ -167,7 +167,7 @@ test('제안대로 확정하고 다음 판정', async ({ page }) => {
 test('단계 때문에 못 고침', async ({ page }) => {
   await mock(page, 'APPROVAL')
   await page.goto(`/#/reviews/${ID}/judgments/501`)
-  for (const name of ['판정 바꾸기', '제안대로 확정']) {
+  for (const name of ['판정 변경', '제안대로 확정']) {
     const b = page.getByRole('button', { name, exact: true })
     await expect(b).toBeDisabled()
     await expect(b).toHaveAttribute('title', '승인 대기 중에는 고칠 수 없습니다')
@@ -177,8 +177,8 @@ test('단계 때문에 못 고침', async ({ page }) => {
 test('사유 필수', async ({ page }) => {
   const posts = await mock(page)
   await page.goto(`/#/reviews/${ID}/judgments/501`)
-  await page.getByRole('button', { name: '판정 바꾸기' }).click()
-  const dlg = page.getByRole('dialog', { name: '판정 바꾸기' })
+  await page.getByRole('button', { name: '판정 변경' }).click()
+  const dlg = page.getByRole('dialog', { name: '판정 변경' })
   await dlg.getByLabel('새 판정').selectOption('QUERY_CANDIDATE')
   await dlg.getByRole('button', { name: '적용' }).click()
   await expect(dlg.getByRole('alert')).toHaveText('판정을 바꾸려면 사유를 적어 주세요.')

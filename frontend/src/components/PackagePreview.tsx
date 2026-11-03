@@ -12,7 +12,7 @@ import { Modal, useToast } from '../ui'
 // 숫자는 제출본(v1) 기준 응답 값만 센다(CR-01), 팀 가정은 TBE 줄의 assumed (CR-06). 내려받기는 지금 zip 그대로.
 
 type Tab = 'cover' | 'tbe' | 'out' | 'cost' | 'sales'
-const SALES_ST: Record<string, string> = { TODO: '안 보냄', DOING: '회신 대기', DONE: '회신 받음' }
+const SALES_ST: Record<string, string> = { TODO: '미발송', DOING: '회신 대기', DONE: '회신 완료' }
 const TONE: Record<string, string> = { COMPLY: 'c-green', DEVIATION_CANDIDATE: 'c-red', QUERY_CANDIDATE: 'c-ora', NEEDS_REVIEW: 'c-ora', WARRANTY_TO_FILL: 'c-blue' }
 
 /** 표지: 설비 묶음마다 준수·일탈·질의·확인 필요 수와 확인 필요 줄 3개 */

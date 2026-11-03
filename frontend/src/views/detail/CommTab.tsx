@@ -13,7 +13,7 @@ import { href } from '../../shell/router'
 // update-comm-tab-layout: 두 표를 같은 네 칸·고정 폭으로, 값 먼저 + 원문 한 줄, 줄을 누르면 원문 전체를 펼친다.
 
 const REQ_ST: Record<string, [string, string]> = {
-  TODO: ['안 보냄', 'st c-grey'], DOING: ['회신 대기', 'st c-blue'], DONE: ['회신 받음', 'st c-green'],
+  TODO: ['미발송', 'st c-grey'], DOING: ['회신 대기', 'st c-blue'], DONE: ['회신 완료', 'st c-green'],
 }
 const NONE: [string, string] = ['협조 요청 없음', 'st c-grey']
 
