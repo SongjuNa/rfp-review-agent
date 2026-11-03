@@ -960,6 +960,16 @@ export type PastDecision = {
   score?: number | null
 }
 
+/** 검산 확인 (add-check-calculator). 분석 검산과 같은 규칙, 저장 안 함. 확인 필요면 계산값이 비어 있다. */
+export type PeakCheck = {
+  rule_code: string
+  factor: number | null
+  expected_ka: number | null
+  allowed_ka: number[]
+  result: 'PASS' | 'VIOLATION' | 'NEEDS_REVIEW'
+  reason_code: string | null
+}
+
 /** 제품표 한 줄 (add-reference-views). 빈 칸은 null 그대로 (CR-04). */
 export type Product = {
   product_code: string

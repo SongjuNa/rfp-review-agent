@@ -10,6 +10,7 @@ from rfp_agent.api.schemas import (
     CompareRule,
     DocKindRule,
     ItemKey,
+    PeakCheck,
     Product,
     ProductDetail,
     ProductFamily,
@@ -18,7 +19,7 @@ from rfp_agent.api.schemas import (
     RuleEdit,
 )
 from rfp_agent.db.connection import connect
-from rfp_agent.pipeline import product_export, reference, rule_edit
+from rfp_agent.pipeline import engineering, product_export, reference, rule_edit
 
 router = APIRouter(prefix="/api")
 
@@ -137,3 +138,10 @@ def delete_rule(dictionary: RuleDictionary, row_id: str, body: RuleRemoval) -> R
     """규칙 한 줄 삭제. 지난 결과가 가리키는 사전은 끄고, 쓰이는 표준 항목은 막는다."""
     return _edit(lambda conn: rule_edit.delete(conn, dictionary, row_id, body.reason,
                                                body.actor_id))
+
+
+@router.get("/engineering/peak-check")
+def peak_check(ik_ka: float = Query(..., gt=0), frequency_hz: float = Query(..., gt=0),
+               peak_ka: float = Query(..., gt=0)) -> PeakCheck:
+    """검산 확인 (add-check-calculator): 판정 상세에서 값을 바꿔 보는 참고 계산. DB 안 씀."""
+    return PeakCheck(**engineering.peak_check(ik_ka, frequency_hz, peak_ka))

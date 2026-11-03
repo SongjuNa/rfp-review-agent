@@ -114,3 +114,15 @@ body:has(.ftb) .uisnk{bottom:88px}
 .jtip mark{background:var(--c-orange-bg);color:inherit;padding:0 2px;border-radius:2px}
 .jtip-f{margin-top:4px;font-size:var(--t-xs);color:var(--c-link)}
 #judge table.tbl tbody tr:focus-visible{outline:2px solid var(--c-link);outline-offset:-2px}
+
+/* 판정 상세 검산 확인 (add-check-calculator) */
+.cc{margin:var(--s-3) 0;padding:var(--s-3) var(--s-4);border:1px solid var(--c-line);border-radius:var(--r-lg);background:var(--c-bg-page)}
+.cc-h{display:flex;align-items:baseline;gap:var(--s-2)}
+.cc-h b{font-size:var(--t-sm);color:var(--c-text)}
+.cc-h span{font-size:var(--t-xs);color:var(--c-muted)}
+.cc-row{display:flex;flex-wrap:wrap;align-items:flex-end;gap:var(--s-3);margin-top:var(--s-2)}
+.cc-f{display:flex;flex-direction:column;gap:4px;font-size:var(--t-xs);color:var(--c-text-3)}
+.cc-in{display:inline-flex;align-items:center;gap:4px;color:var(--c-text-3)}
+.cc-in .fi{width:88px;text-align:right}
+.cc-o{margin:var(--s-2) 0 0;font-size:var(--t-sm)}
+.cc-r{margin:4px 0 0}
