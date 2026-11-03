@@ -26,3 +26,24 @@ test('PDF로 검토 등록', async ({ page, request }) => {
   const summary = await (await request.get(`/api/runs/${run.run_id}`)).json() as { judgments: number }
   expect(summary.judgments).toBeGreaterThan(0)                                       // PDF 표로 판정까지
 })
+
+// 명세 document-intake "PDF 원문 위치의 쪽 번호" Scenario "PDF 요구사항의 쪽"의 화면 쪽 (add-pdf-page-location)
+test('PDF 판정 원문 위치에 쪽', async ({ page }) => {
+  const loc = { file_no: 101, section_no: '1', section_title: 'GENERAL', table_name: null, item_no: null,
+    line_start: 12, line_end: 12, page: 2 }
+  await page.route('**/api/runs/*/judgments?*', async (r) => {
+    const res = await r.fetch()
+    const rows = await res.json() as { locations: unknown[] }[]
+    return r.fulfill({ response: res, json: rows.map((j) => ({ ...j, locations: [loc] })) })
+  })
+  const runs = await (await page.request.get('/api/runs?limit=50')).json() as { run_id: number }[]
+  let id = 0                                                    // 판정이 있는 검토 하나 (위치는 위에서 바꿔 끼움)
+  for (const r of runs) {
+    const s = await (await page.request.get(`/api/runs/${r.run_id}`)).json() as { judgments: number }
+    if (s.judgments > 0) { id = r.run_id; break }
+  }
+  expect(id).toBeGreaterThan(0)
+  await page.goto(`/#/reviews/${id}`)
+  await expect(page.locator('#judge table.tbl tbody tr').first()).toContainText('2쪽 · 1 GENERAL · 12행')
+  await page.unrouteAll({ behavior: 'ignoreErrors' })
+})

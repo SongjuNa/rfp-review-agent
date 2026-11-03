@@ -16,7 +16,7 @@ from psycopg.types.json import Jsonb
 from rfp_agent.llm import tasks
 from rfp_agent.llm.client import LLM
 from rfp_agent.pipeline import classify as cls
-from rfp_agent.pipeline import type_examples
+from rfp_agent.pipeline import pdf_reader, type_examples
 from rfp_agent.pipeline.dictionaries import PipelineDicts
 from rfp_agent.pipeline.docx_reader import find_figures
 from rfp_agent.pipeline.extract import Candidate, extract
@@ -69,7 +69,8 @@ def content_hash(path: Path) -> str:
 
 
 def _insert_document(conn, path: Path, c: cls.Classification, dicts: PipelineDicts,
-                     line_basis: str, key: str, digest: str) -> tuple[int, int]:
+                     line_basis: str, key: str, digest: str,
+                     blocks: list | None = None) -> tuple[int, int]:
     """이 처리 판(key)으로 처리한 문서 행을 새로 만든다.
 
     번호는 파일 목록 → 같은 파일의 이전 번호 → 101번부터.
@@ -84,6 +85,8 @@ def _insert_document(conn, path: Path, c: cls.Classification, dicts: PipelineDic
         readable=c.readable, classify_by=c.classify_by, needs_review=c.needs_review,
         source_path=str(path), line_basis=line_basis, processing_key=key,
         content_hash=digest,
+        # PDF 쪽마다 첫 줄 (add-pdf-page-location)
+        page_starts=pdf_reader.page_starts(blocks) if line_basis == "PDF" and blocks else None,
     )
     cols = ", ".join(values)
     marks = ", ".join(f"%({k})s" for k in values)
@@ -391,7 +394,7 @@ def _save(conn, path: Path, dicts: PipelineDicts, key: str, report: Report,
           lines: int) -> DocumentResult:
     """준비한 결과를 한 트랜잭션으로 저장한다. prep이 없으면 판독 불가 문서."""
     with conn.transaction():
-        doc_id, file_no = _insert_document(conn, path, c, dicts, line_basis, key, digest)
+        doc_id, file_no = _insert_document(conn, path, c, dicts, line_basis, key, digest, blocks)
         if prep is None:
             # 판독 불가 문서는 이후 단계를 건너뛴다 (FR-01 예외).
             return DocumentResult(doc_id, file_no, False, False)

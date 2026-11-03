@@ -38,6 +38,7 @@ class Block:
     has_figure: bool = False        # 그림 개체(w:drawing, w:pict)가 든 단락
     ocr: bool = False               # 그림·스캔 쪽에서 OCR로 읽은 단락 (add-ocr)
     caption: str | None = None      # 읽는 쪽이 정한 그림 설명 (PDF 도면 쪽, update-pdf-drawings)
+    page: int | None = None         # PDF 쪽 번호 (1부터, add-pdf-page-location). docx는 없음
 
     @property
     def last_line(self) -> int:

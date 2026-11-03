@@ -11105,6 +11105,17 @@
               }
             ],
             "title": "Line End"
+          },
+          "page": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Page"
           }
         },
         "additionalProperties": false,

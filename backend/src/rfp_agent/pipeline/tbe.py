@@ -51,7 +51,8 @@ def _where(loc: dict) -> str:
     table = loc["table_name"] + no if loc["table_name"] else ""
     section = _join(loc["section_no"], loc["section_title"])
     line = f"{loc['line_start']}행" if loc["line_start"] else ""
-    return " · ".join(p for p in (section, table, line) if p)
+    page = f"{loc['page']}쪽" if loc.get("page") else ""          # PDF 쪽 (add-pdf-page-location)
+    return " · ".join(p for p in (page, section, table, line) if p)
 
 
 def tbe(conn: psycopg.Connection, run_id: int, include: str = "all", lang: str = "en",
