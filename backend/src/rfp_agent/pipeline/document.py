@@ -24,6 +24,7 @@ from rfp_agent.pipeline.line_map import map_lines
 from rfp_agent.pipeline.processors import LABEL, TYPE, Processor, Stats, processor_for
 from rfp_agent.pipeline.reader import is_pdf, read_document
 from rfp_agent.pipeline.structure import (
+    MARK_LEGEND,
     LogicalTable,
     Section,
     SectionIndex,
@@ -285,7 +286,7 @@ def _prepare(conn, path: Path, dicts: PipelineDicts, llm: LLM | None, report: Re
     report("structure")
     sections = find_sections(blocks)
     tables = build_tables(blocks, dicts.column_roles,
-                          supplier_marks=bool(re.search(r"C: Complied", "\n".join(
+                          supplier_marks=bool(MARK_LEGEND.search("\n".join(
                               b.text for b in blocks[:400]))))
 
     report("extract")
