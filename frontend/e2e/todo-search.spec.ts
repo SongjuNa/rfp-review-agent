@@ -115,7 +115,8 @@ test('조건에 맞는 요청 없음', async ({ page }) => {
   await bar(page).getByLabel('검색어').fill('없는 낱말')
   await bar(page).getByRole('button', { name: '검색' }).click()
   await expect(page.getByText('조건에 맞는 요청이 없습니다.')).toBeVisible()
-  await page.locator('.emp').getByRole('button', { name: '조건 지우기' }).click()
+  await expect(page.locator('.emp').getByRole('button')).toHaveCount(0)        // 문장만, 조건 지우기 단추 없음 (update-todo-empty-text)
+  await page.getByRole('button', { name: '초기화' }).click()                    // 조건은 검색 영역 초기화·칩으로 푼다
   await expect(count(page)).toHaveText('8')
 })
 
