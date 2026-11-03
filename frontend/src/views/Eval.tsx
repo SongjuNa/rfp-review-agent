@@ -63,6 +63,11 @@ export function Eval() {
   const key = keyList.find((k) => k.key_id === chosenKey)
   const isOn = (r: { run_id: number; reviewed: number }) => pick[r.run_id] ?? r.reviewed > 0
   const picked = runList.filter(isOn)
+  // 검토 고르기 (update-eval-run-pick): 검색은 화면에서 거르고, 모두 고르기·해제는 보이는 줄에만
+  const [q, setQ] = useState('')
+  const needle = q.trim().toLowerCase()
+  const shownRuns = needle ? runList.filter((r) => `${r.review_no} ${r.review_name ?? ''}`.toLowerCase().includes(needle)) : runList
+  const pickShown = (on: boolean) => setPick({ ...pick, ...Object.fromEntries(shownRuns.map((r) => [r.run_id, on])) })
   const [latest, previous] = history
 
   const rows = latest ? latest.metrics.items.map((m) => ({ m, before: metricOf(previous, m.code) })) : []
@@ -126,11 +131,19 @@ export function Eval() {
       {tab === 'k' && rows.length > 0 && <Pager total={rows.length} page={page} size={size} shown={rows.slice((page - 1) * size, page * size).length} onPage={setPage} onSize={(n) => { setSize(n); setPage(1) }} />}
       {tab === 'g' && (
         <>
+          <div className="ev-pick" role="group" aria-label="채점할 검토 고르기">
+            <input className="fi" type="search" value={q} onChange={(e) => setQ(e.target.value)} aria-label="검토 찾기"
+              placeholder="검토 번호·이름" style={{ width: 220 }} />
+            <button type="button" className="bo" onClick={() => pickShown(true)} disabled={shownRuns.length === 0}>모두 고르기</button>
+            <button type="button" className="bo" onClick={() => pickShown(false)} disabled={shownRuns.length === 0}>모두 해제</button>
+            <span className="ev-picked" data-testid="eval-picked">검토 <b>{picked.length}건</b> 고름{needle && <span className="sh-mut"> · 보이는 검토 {shownRuns.length}건</span>}</span>
+          </div>
           <div className="sh-box">
             <div className="gt-tr sh-th"><span>넣기</span><span>검토</span><span>확정한 사람</span><span>마지막 확정</span><span>판정 줄</span></div>
             {runs.error && <div className="ev-row c-red" style={{ padding: '11px 16px' }}>{runs.error}</div>}
             {runs.data && runList.length === 0 && <div className="ev-row sh-mut" style={{ padding: '11px 16px' }}>분석을 마친 검토가 없습니다. 검토 상세 판정 탭에서 판정을 확정하면 판정 정확도(K5)를 잴 수 있습니다.</div>}
-            {runList.map((r) => (
+            {runs.data && runList.length > 0 && shownRuns.length === 0 && <div className="ev-row sh-mut" style={{ padding: '11px 16px' }}>찾는 검토가 없습니다.</div>}
+            {shownRuns.map((r) => (
               <label key={r.run_id} className="gt-tr ev-row"><input type="checkbox" checked={isOn(r)} onChange={() => setPick({ ...pick, [r.run_id]: !isOn(r) })} />
                 <span><b>{r.review_name ?? r.review_no}</b><a className="mono sh-mut" style={{ display: 'block' }} href={href(`/reviews/${r.run_id}`)} onClick={(e) => e.stopPropagation()}>{r.review_no}</a></span>
                 <span className="sh-mut">{r.reviewer ?? '—'}</span>
