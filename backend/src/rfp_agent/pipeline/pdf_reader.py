@@ -3,6 +3,8 @@
 쪽마다 표는 표 행으로, 표 밖 글자 줄은 줄 간격으로 묶어 단락으로 만든다. 줄 번호는 문서 처음부터
 이어 센다. 쪽마다 같은 높이에 반복되는 머리말·꼬리말(쪽 번호 등)은 뺀다.
 글자 층이 없는 쪽은 OCR 엔진이 있으면 OCR로 읽는다(add-ocr).
+글자 쪽의 큰 그림은 그림 위치로 남기고 OCR하며, 도면 쪽(표제란)은 주기 줄만 읽고, 돌아간 글자는
+읽지 않고 그림 위치로 알린다(update-pdf-drawings).
 엔진이 없는 스캔 PDF나 열 수 없는 PDF는 블록 0개(판독 불가).
 """
 
@@ -25,6 +27,23 @@ EDGE = 0.05             # 쪽 위·아래 이 비율 안의 줄은 머리말·�
 NUMBERED = re.compile(r"^\s*(?:PART\s+\d+|\d+(?:\.\d+)*\.?\s|[A-Z]\.\s|[가-힣]\.\s|\d+\)\s)")
 # 글머리표로 시작하는 줄도 새 단락 (•·▪◦●○■□※, 기호 글꼴이 바꾼 \x80~\x9f·\uf0xx)
 BULLET = re.compile(r"^\s*[•·▪◦●○■□※\x80-\x9f\uf020-\uf0ff]")
+
+
+# 글자 쪽의 그림: 쪽 넓이의 이 비율 이상, 가로·세로 이 pt 이상 (로고·도장은 건너뜀)
+FIGURE_AREA, FIGURE_MIN = 0.05, 72
+# 도면 쪽: 표제란 낱말 두 가지가 함께 있으면 (update-pdf-drawings)
+DRAWING_NO = re.compile(r"\b(?:DRAWING|DWG)[\s._]*NO\b", re.IGNORECASE)
+SCALE = re.compile(r"\bSCALE\b", re.IGNORECASE)
+TITLE = re.compile(r"^\s*TITLE\b", re.IGNORECASE)
+NOTE = re.compile(r"^\s*NOTES?\b", re.IGNORECASE)     # 도면 주기 줄은 한 줄씩 단락
+
+
+def _straight(obj: dict) -> bool:
+    """가로 글자인가 (글자 행렬의 b·c가 0). 글자가 아닌 개체는 그대로 둔다."""
+    if obj.get("object_type") != "char":
+        return True
+    m = obj.get("matrix") or (1, 0, 0, 1, 0, 0)
+    return abs(m[1]) < 1e-6 and abs(m[2]) < 1e-6
 
 
 def _inside(line: dict, boxes: list[tuple]) -> bool:
@@ -77,7 +96,7 @@ def _paragraphs(lines: list[dict], gap: float | None = None) -> list[str]:
     for line in lines:
         height = line["bottom"] - line["top"] or 1
         limit = height * (PARA_GAP - 1) if gap is None else gap + max(GAP_MIN, gap * GAP_RATIO)
-        new = prev is None or line["top"] - prev["bottom"] > limit \
+        new = prev is None or line["top"] - prev["bottom"] > limit or line.get("own") \
             or NUMBERED.match(line["text"]) or BULLET.match(line["text"])
         if new:
             out.append([line["text"]])
@@ -117,6 +136,55 @@ def _ocr_page(page) -> list[dict]:
     scale = page.height / image.height
     return [{"text": ln.text, "top": ln.top * scale, "bottom": ln.bottom * scale,
              "x0": 0, "x1": page.width, "ocr": True} for ln in ocr.read_lines(image)]
+
+
+def _ocr_region(page, bbox: tuple) -> list[dict]:
+    """글자 쪽에 박은 그림 영역을 OCR한 줄 (update-pdf-drawings). 위치는 쪽 좌표로 바꾼다."""
+    if not ocr.available():
+        return []
+    image = page.crop(bbox).to_image(resolution=OCR_DPI).original
+    scale = (bbox[3] - bbox[1]) / image.height
+    top = bbox[1]
+    return [{"text": ln.text, "top": top + ln.top * scale, "bottom": top + ln.bottom * scale,
+             "x0": 0, "x1": page.width, "ocr": True} for ln in ocr.read_lines(image)]
+
+
+def _page_figures(page) -> list[tuple]:
+    """글자 쪽의 큰 그림 위치 (x0, top, x1, bottom). 쪽 밖으로 나간 부분은 자른다."""
+    out = []
+    for im in page.images:
+        box = (max(im["x0"], 0), max(im["top"], 0), min(im["x1"], page.width),
+               min(im["bottom"], page.height))
+        w, h = box[2] - box[0], box[3] - box[1]
+        if w >= FIGURE_MIN and h >= FIGURE_MIN and w * h >= page.width * page.height * FIGURE_AREA:
+            out.append(box)
+    return out
+
+
+def _drawing_caption(tables, lines: list[dict]) -> str:
+    """도면 쪽 그림 설명 "도면 <번호> · <제목>". 표제란 칸에서, 없으면 글자 줄에서 찾는다."""
+    number = title = None
+    for t in tables:
+        for row in t.extract():
+            cells = [(c or "").strip() for c in row]
+            if len(cells) >= 2 and cells[1]:
+                if DRAWING_NO.match(cells[0]):
+                    number = number or cells[1]
+                elif TITLE.match(cells[0]):
+                    title = title or cells[1]
+    if number is None:
+        for ln in lines:
+            if m := re.search(DRAWING_NO.pattern + r"\.?\s*:?\s*(\S+)", ln["text"], re.IGNORECASE):
+                number = m.group(1)
+                break
+    return " · ".join(["도면" + (f" {number}" if number else "")] + ([title] if title else []))
+
+
+def _add_figure(blocks: list[Block], caption: str | None, ocr_lines: list[dict]) -> None:
+    """그림 블록(빈 글자, 그림 위치 기록)과 그림 속 OCR 단락."""
+    blocks.append(Block(seq=len(blocks), kind="P", text="", line_no=_next_line(blocks),
+                        line_count=1, has_figure=True, caption=caption))
+    _add_paragraphs(blocks, ocr_lines)
 
 
 def _add_table(blocks: list[Block], rows: list[list[str | None]], table_no: int) -> None:
@@ -161,7 +229,7 @@ def _mark_rows(blocks: list[Block]) -> list[Block]:
     while i < len(blocks):
         b = blocks[i]
         mark, text, lines = "", b.text, b.line_count
-        if b.kind != "P" or _section_heading(b.text):
+        if b.kind != "P" or b.has_figure or _section_heading(b.text):
             out.append(b)
             i += 1
             continue
@@ -191,24 +259,39 @@ def read_blocks(path: Path) -> list[Block]:
     with pdf:
         pages = []
         for page in pdf.pages:
-            tables = page.find_tables()
-            boxes = [t.bbox for t in tables]
-            lines = [ln for ln in page.extract_text_lines() if ln["text"].strip()]
+            # 돌아간 글자는 줄로 읽지 않는다 (update-pdf-drawings)
+            rotated = sum(1 for ch in page.chars if not _straight(ch) and ch["text"].strip())
+            flat = page.filter(_straight) if rotated else page
+            tables = flat.find_tables()
+            lines = [ln for ln in flat.extract_text_lines() if ln["text"].strip()]
+            figures: list[tuple] = []                   # (위치, 설명, 그림 속 OCR 줄)
             if not lines and not tables:
                 lines = _ocr_page(page)                 # 스캔한 쪽 (add-ocr)
-            pages.append((page, tables, [ln for ln in lines if not _inside(ln, boxes)]))
+            elif DRAWING_NO.search(text := " ".join(ln["text"] for ln in lines)) \
+                    and SCALE.search(text):
+                # 도면 쪽: 라벨·치수·표제란은 읽지 않고 주기 줄만 한 줄씩
+                figures.append((0, _drawing_caption(tables, lines), []))
+                lines = [{**ln, "own": True} for ln in lines if NOTE.match(ln["text"])]
+                tables = []
+            else:
+                figures += [(box[1], None, _ocr_region(page, box)) for box in _page_figures(page)]
+            if rotated:
+                figures.append((page.height, f"돌아간 글자 {rotated}자", []))
+            boxes = [t.bbox for t in tables]
+            pages.append((page, tables, [ln for ln in lines if not _inside(ln, boxes)], figures))
         # 쪽 절반 이상(2쪽 이상)에서 같은 높이에 반복되는 줄은 머리말·꼬리말
-        counts = Counter(k for page, _, lines in pages
+        counts = Counter(k for page, _, lines, _ in pages
                          for k in {_edge_key(ln, page.height) for ln in lines} if k)
         repeated = {k for k, n in counts.items() if len(pages) >= 2 and n >= max(2, len(pages) / 2)}
 
         blocks: list[Block] = []
         table_no = -1
-        for page, tables, lines in pages:
+        for page, tables, lines, figures in pages:
             items = [(ln["top"], "P", ln) for ln in lines
                      if _edge_key(ln, page.height) not in repeated]
             items += [(t.bbox[1], "T", t) for t in tables]
-            items.sort(key=lambda it: (it[0], it[1]))
+            items += [(top, "F", (caption, found)) for top, caption, found in figures]
+            items.sort(key=lambda it: (it[0], it[1]))   # 같은 높이면 그림 → 단락 → 표
             gap = line_gap([obj for _, kind, obj in items if kind == "P"])
             # 위에서 아래로: 표 사이의 글자 줄은 모아 두었다가 단락으로 묶는다
             pending: list[dict] = []
@@ -218,6 +301,9 @@ def read_blocks(path: Path) -> list[Block]:
                     continue
                 _add_paragraphs(blocks, pending, gap)
                 pending = []
+                if kind == "F":
+                    _add_figure(blocks, *obj)
+                    continue
                 table_no += 1
                 _add_table(blocks, obj.extract(), table_no)
             _add_paragraphs(blocks, pending, gap)
