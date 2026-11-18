@@ -92,7 +92,7 @@ SKKU × LS AI CAMPUS 1기 2조의 팀 프로젝트(주제 2, 최종 발표작)�
 
 AI가 낸 코드는 그대로 받지 않고, 시험과 실제 실행 결과로 확인한 것만 커밋했습니다.
 
-## 시스템 구성
+## 아키텍처
 
 <p align="center"><img src="docs/assets/readme/rfp-architecture.png" alt="RFP 검토 시스템 구성: React 화면, FastAPI·LangGraph 서버, Docker Compose(backend, PostgreSQL, frontend, Mailpit), Gemini, GitHub Actions CI" width="100%"></p>
 
