@@ -179,6 +179,27 @@ http://localhost:5173 에서 화면을 열 수 있습니다. 협조 요청 메�
 
 RFP 원본(`data/private/`)과 `.env`는 저장소에 포함하지 않습니다. 테스트는 `cd backend && uv run pytest`, 화면 E2E는 `cd frontend && npm run e2e`로 실행합니다. 로컬 설치와 문제 해결은 [설치 안내서](docs/setup-guide.md)에 있습니다.
 
+## 주요 API
+
+전체 API 104개 중 검토 흐름(등록 → 판정 → 확인 → 결재)의 핵심만 추렸습니다. 전체 목록은 서버 실행 후 http://localhost:8000/docs (Swagger)나 [`frontend/openapi.json`](frontend/openapi.json)에서 볼 수 있습니다.
+
+★ 표시는 위 "내 역할" 표에 있는 기능입니다.
+
+| 구분 | 메서드 · 경로 | 하는 일 |
+|---|---|---|
+| 검토 등록 | `POST /api/runs` | RFP 파일을 올려 검토 시작 (같은 파일은 다시 처리하지 않음) |
+| 흐름 기록 ★ | `GET /api/runs/{run_id}/flow` | 단계마다 걸린 시간·바뀐 건수·사람 동작·멈춘 자리 조회 |
+| 요구사항 ★ | `GET /api/runs/{run_id}/requirements` | 추출된 요구사항 목록 |
+| 판정 ★ | `GET /api/runs/{run_id}/judgments` | 적합성 판정 목록 (일탈 → 질의 → 확인 필요 → 작성 필요 → 준수 순 정렬 가능) |
+| 판정 ★ | `PUT /api/runs/{run_id}/equipment/{group}/product` | 설비 묶음의 비교 제품을 바꾸고 다시 판정 (이전 판정은 기록으로 남김) |
+| 손실 환산 ★ | `GET /api/runs/{run_id}/losses` | 손실 환산 결과 조회 |
+| 제안 ★ | `GET /api/runs/{run_id}/proposals` | 기술 제안 포인트 목록 |
+| 확인 | `POST /api/runs/{run_id}/actions` | 후보 확정·수정·반려 (제안 포인트는 채택·버림·수정), 이력 저장 |
+| 다시 처리 ★ | `POST /api/runs/{run_id}/rewind` | 고른 처리 단계부터 다시 처리 (사람이 확정한 결과는 이어받음) |
+| 결재 | `GET`·`POST /api/runs/{run_id}/approval` | 결재 상태 조회·결정 |
+| 운영 ★ | `GET /api/ai-usage` | 최근 기간의 날짜·기능별 AI 사용량과 추정 비용 |
+| 채점 | `POST /api/eval/scores` | 정답지로 검토 결과 채점 |
+
 ## API 문서와 데모
 
 - **API 문서**: 서버를 띄운 뒤 http://localhost:8000/docs 에서 Swagger 문서로 모든 API를 직접 호출해 볼 수 있습니다. API 계약은 [`frontend/openapi.json`](frontend/openapi.json)(104개)에 있고, 프론트엔드 타입은 이 계약에서 자동 생성합니다. CI가 계약과 서버가 어긋나는지 검사합니다.
